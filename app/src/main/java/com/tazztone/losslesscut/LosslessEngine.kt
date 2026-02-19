@@ -1,5 +1,6 @@
 package com.tazztone.losslesscut
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
@@ -57,6 +58,7 @@ object LosslessEngine {
         keyframes
     }
 
+    @SuppressLint("WrongConstant")
     suspend fun executeLosslessCut(
         context: Context,
         inputUri: Uri,
