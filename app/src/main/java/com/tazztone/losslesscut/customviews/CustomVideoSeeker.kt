@@ -6,8 +6,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
+import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.View
+import com.tazztone.losslesscut.R
 
 class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
@@ -26,10 +28,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
     }
     private var keyframes = listOf<Float>() // Normalized positions (0..1)
     var isLosslessMode = true // Enable snapping
+    private var lastSnappedKeyframe: Float? = null
 
     init {
         paint.color = Color.WHITE // Set the color of the line to white
         paint.strokeWidth = 5f // Set the stroke width for the line
+        contentDescription = context.getString(R.string.video_timeline_description)
     }
 
     // Method to draw the seek line based on the current seek position
@@ -56,19 +60,27 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 // Snap to keyframe if in Lossless Mode
                 // Also update onSeekListener with the SNAPPED position
+                var snapped = false
                 if (isLosslessMode && keyframes.isNotEmpty()) {
                     val snapThreshold = 0.05f // Snap if within 5% logic width
                     // Find nearest keyframe
                     val nearest = keyframes.minByOrNull { kotlin.math.abs(it - newSeekPosition) }
                     if (nearest != null && kotlin.math.abs(nearest - newSeekPosition) < snapThreshold) {
                          newSeekPosition = nearest
+                         snapped = true
+                         if (lastSnappedKeyframe != nearest) {
+                             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                             lastSnappedKeyframe = nearest
+                         }
                     }
                 }
 
+                if (!snapped) {
+                    lastSnappedKeyframe = null
+                }
+
                 seekPosition = newSeekPosition
-                val seekTime = (videoDuration * seekPosition).toLong() // Calculate seek time in milliseconds
                 onSeekListener?.invoke(seekPosition) // Notify listener of the normalized position
-                // onSeekListener?.invoke(seekTime.toFloat()) // REMOVED: Duplicate invoke with different meaning
                 invalidate() // Redraw the view to update the seek line
                 return true
             }

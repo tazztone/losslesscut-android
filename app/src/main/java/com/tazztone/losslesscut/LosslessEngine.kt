@@ -114,7 +114,8 @@ object LosslessEngine {
 
             mMuxer.start()
             
-            val buffer = ByteBuffer.allocate(bufferSize)
+            // Use allocateDirect to reduce memory copy overhead between Java heap and Native layer
+            val buffer = ByteBuffer.allocateDirect(bufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
 
             // Select ALL tracks first
