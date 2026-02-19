@@ -4,17 +4,31 @@ plugins {
 }
 
 android {
-    namespace 'com.tharunbirla.librecuts'
-    compileSdk 34
+    namespace 'com.tazztone.losslesscut'
+    compileSdk 35
 
     viewBinding {
         enabled = true
     }
 
+    signingConfigs {
+        release {
+            def keystorePropertiesFile = rootProject.file("keystore.properties")
+            if (keystorePropertiesFile.exists()) {
+                def keystoreProperties = new Properties()
+                keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+                storeFile = file(keystoreProperties['storeFile'])
+                storePassword = keystoreProperties['storePassword']
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+            }
+        }
+    }
+
     defaultConfig {
-        applicationId "com.tharunbirla.librecuts"
+        applicationId "com.tazztone.losslesscut"
         minSdk 26
-        targetSdk 34
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -28,6 +42,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
@@ -51,11 +66,8 @@ android {
 }
 
 dependencies {
-
-    implementation 'com.google.android.exoplayer:exoplayer-core:2.18.1'
-    implementation 'com.google.android.exoplayer:exoplayer-ui:2.18.1'
     implementation("com.arthenica:smart-exception-java:0.2.1")
-    implementation(files("libs/ffmpeg-kit.aar"))
+
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'com.airbnb.android:lottie:3.4.0'
     implementation libs.androidx.core.ktx
@@ -70,6 +82,11 @@ dependencies {
     implementation libs.androidx.constraintlayout
     implementation libs.androidx.recyclerview
     implementation libs.filament.android
+    
+    // Media3
+    implementation("androidx.media3:media3-exoplayer:1.5.1")
+    implementation("androidx.media3:media3-ui:1.5.1")
+
     testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
@@ -77,4 +94,74 @@ dependencies {
     androidTestImplementation libs.androidx.ui.test.junit4
     debugImplementation libs.androidx.ui.tooling
     debugImplementation libs.androidx.ui.test.manifest
+}
+
+import java.awt.Graphics2D
+import java.awt.Image
+import java.awt.image.BufferedImage
+import javax.imageio.ImageIO
+
+task updateAppIcons {
+    doLast {
+        def logoFile = rootProject.file("logo.png")
+        if (!logoFile.exists()) {
+            println "logo.png not found in project root."
+            return
+        }
+
+        def resDir = file("src/main/res")
+        def configs = [
+            [name: "mipmap-mdpi", size: 48],
+            [name: "mipmap-hdpi", size: 72],
+            [name: "mipmap-xhdpi", size: 96],
+            [name: "mipmap-xxhdpi", size: 144],
+            [name: "mipmap-xxxhdpi", size: 192]
+        ]
+        
+        def originalImage = ImageIO.read(logoFile)
+
+        configs.each { config ->
+            def targetDir = new File(resDir, config.name)
+            if (!targetDir.exists()) targetDir.mkdirs()
+
+            // Resize for standard icon
+            def scaledImage = originalImage.getScaledInstance(config.size, config.size, Image.SCALE_SMOOTH)
+            def bufferedImage = new BufferedImage(config.size, config.size, BufferedImage.TYPE_INT_ARGB)
+            def g2d = bufferedImage.createGraphics()
+            g2d.drawImage(scaledImage, 0, 0, null)
+            g2d.dispose()
+
+            def iconFile = new File(targetDir, "ic_launcher.png")
+            ImageIO.write(bufferedImage, "png", iconFile)
+            
+            // For now, use same icon for round (in a real scenario, we might want circular masking)
+            def roundIconFile = new File(targetDir, "ic_launcher_round.png")
+            ImageIO.write(bufferedImage, "png", roundIconFile)
+            
+            println "Generated icons for ${config.name}"
+        }
+        
+        // Generate Banner (320x180 aspect ratio roughly, mostly for TV/Play Store but good to have)
+        // Android TV banner is 320x180
+        def bannerWidth = 320
+        def bannerHeight = 180
+         // Calculate aspect ratio preserving resize
+        def ratio = Math.min((double)bannerWidth / originalImage.width, (double)bannerHeight / originalImage.height)
+        def newWidth = (int)(originalImage.width * ratio)
+        def newHeight = (int)(originalImage.height * ratio)
+
+        def bannerImage = new BufferedImage(bannerWidth, bannerHeight, BufferedImage.TYPE_INT_ARGB)
+        def g2dBanner = bannerImage.createGraphics()
+        
+        // Draw centered
+        def x = (bannerWidth - newWidth) / 2
+        def y = (bannerHeight - newHeight) / 2
+        
+        g2dBanner.drawImage(originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH), (int)x, (int)y, null)
+        g2dBanner.dispose()
+        
+        def bannerFile = new File(new File(resDir, "mipmap-xhdpi"), "ic_banner.png")
+        ImageIO.write(bannerImage, "png", bannerFile)
+        println "Generated ic_banner.png"
+    }
 }

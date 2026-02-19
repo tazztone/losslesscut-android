@@ -17,6 +17,19 @@
         android:clickable="true"
         android:focusable="true" />
 
+    <ImageButton
+        android:id="@+id/btnInfo"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
+        android:src="@drawable/ic_info_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="About"
+        android:tint="#FFFFFF" />
+
     <TextView
         android:id="@+id/instructionText"
         android:layout_width="wrap_content"

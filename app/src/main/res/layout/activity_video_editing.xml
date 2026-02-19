@@ -34,6 +34,15 @@
             android:layout_alignParentEnd="true"
             android:gravity="end">
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switchLossless"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Lossless Mode"
+                android:textColor="@android:color/white"
+                android:checked="true"
+                android:layout_marginEnd="16dp"/>
+
             <ImageButton
                 android:id="@+id/btnSave"
                 android:minWidth="48dp"
@@ -48,7 +57,7 @@
 
     </androidx.appcompat.widget.Toolbar>
 
-    <com.google.android.exoplayer2.ui.StyledPlayerView
+    <androidx.media3.ui.PlayerView
         android:id="@+id/playerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -95,7 +104,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"/>
 
-            <com.tharunbirla.librecuts.customviews.CustomVideoSeeker
+            <com.tazztone.losslesscut.customviews.CustomVideoSeeker
                 android:id="@+id/customVideoSeeker"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"/>

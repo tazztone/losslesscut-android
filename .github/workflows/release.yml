@@ -1,0 +1,104 @@
+name: Build & Publish Android Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_name:
+        description: 'Release Title (leave empty for default)'
+        required: false
+      publish_to_play_store:
+        description: 'Publish to Play Store'
+        type: boolean
+        default: true
+        required: false
+
+jobs:
+  build-and-release:
+    name: Build APK/AAB & Create Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+      
+      # 1. Setup Environment
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+          cache: 'gradle'
+
+      # 2. Prepare Keystore
+      - name: Decode Keystore & Create Properties
+        run: |
+          # Decode keystore file
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > keystore.jks
+          
+          # Create keystore.properties file referenced in build.gradle
+          echo "storeFile=../keystore.jks" > keystore.properties
+          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> keystore.properties
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> keystore.properties
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+          
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+        
+      # 3. Build Release Artifacts
+      - name: Build Release App Bundle & APK
+        run: ./gradlew bundleRelease assembleRelease
+          
+      # 4. Prepare Release Info
+      - name: Set Release Variables
+        id: vars
+        run: |
+          # Determine TAG
+          if [ "${{ github.event_name }}" == "push" ]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+          else
+            # For manual dispatch, use a generated tag or extracted version from build.gradle if possible
+            # But simpler to just use run number for fallback
+            TAG_NAME="v1.0-build.${{ github.run_number }}"
+          fi
+          
+          # Determine RELEASE TITLE
+          if [ -n "${{ github.event.inputs.release_name }}" ]; then
+            RELEASE_TITLE="${{ github.event.inputs.release_name }}"
+          else
+            RELEASE_TITLE="Release ${TAG_NAME}"
+          fi
+          
+          echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "title=$RELEASE_TITLE" >> $GITHUB_OUTPUT
+      
+      # 5. Create GitHub Release & Upload Artifacts
+      - name: Create GitHub Release & Upload Artifacts
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.title }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            app/build/outputs/bundle/release/app-release.aab
+            app/build/outputs/apk/release/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 6. Publish to Google Play Store (Production Track)
+      - name: Publish to Google Play Store
+        if: ${{ github.event.inputs.publish_to_play_store != 'false' }} 
+        # Note: You might need to change 'false' check depending on how the input is passed, 
+        # but for boolean inputs usually 'true' is string
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.tazztone.losslesscut
+          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed
