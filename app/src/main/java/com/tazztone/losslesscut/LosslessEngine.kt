@@ -4,8 +4,8 @@ import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.media.MediaMetadataRetriever
 import android.media.MediaMuxer
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -38,14 +38,14 @@ object LosslessEngine {
 
             if (videoTrackIndex >= 0) {
                 extractor.selectTrack(videoTrackIndex)
-                while (true) {
-                    val flags = extractor.sampleFlags
-                    // SAMPLE_FLAG_SYNC indicates a keyframe (I-frame)
-                    if (flags and MediaExtractor.SAMPLE_FLAG_SYNC != 0) {
-                        val timeUs = extractor.sampleTime
-                        keyframes.add(timeUs / 1_000_000.0) // Convert microseconds to seconds
-                    }
-                    if (!extractor.advance()) break
+                var timeUs = 0L
+                while (timeUs >= 0) {
+                    extractor.seekTo(timeUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
+                    val nextKeyframe = extractor.sampleTime
+                    if (nextKeyframe < 0 || (keyframes.isNotEmpty() && nextKeyframe <= timeUs)) break
+                    
+                    keyframes.add(nextKeyframe / 1_000_000.0)
+                    timeUs = nextKeyframe + 1 // Advance past this keyframe
                 }
             }
         } catch (e: Exception) {
@@ -71,21 +71,11 @@ object LosslessEngine {
         try {
             extractor.setDataSource(context, inputUri, null)
             
-            // Validate start/end times
-            val durationUs = try {
-                val retriever = MediaMetadataRetriever()
-                retriever.setDataSource(context, inputUri)
-                val dur = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
-                dur * 1000
-            } catch (e: Exception) {
-                -1L
-            }
+            val mMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            muxer = mMuxer
             
-            val startUs = startMs * 1000
-            val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
-
-            muxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-
+            // Validate start/end times & get duration from track format
+            var durationUs = -1L
             val trackMap = mutableMapOf<Int, Int>()
             var bufferSize = -1
 
@@ -93,10 +83,12 @@ object LosslessEngine {
                 val format = extractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
                 
-                // Select tracks to keep (Video and Audio)
                 if (mime.startsWith("video/") || mime.startsWith("audio/")) {
-                    extractor.selectTrack(i)
-                    trackMap[i] = muxer.addTrack(format)
+                    if (mime.startsWith("video/") && format.containsKey(MediaFormat.KEY_DURATION)) {
+                        durationUs = format.getLong(MediaFormat.KEY_DURATION)
+                    }
+                    
+                    trackMap[i] = mMuxer.addTrack(format)
                     
                     if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
                          val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
@@ -108,42 +100,52 @@ object LosslessEngine {
             if (trackMap.isEmpty()) return@withContext false
             if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
 
-            muxer.start()
+            val startUs = startMs * 1000
+            val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
+
+            mMuxer.start()
             
             val buffer = ByteBuffer.allocate(bufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
 
-            for ((extractorTrack, muxerTrack) in trackMap) {
+            // Select ALL tracks first
+            for ((extractorTrack, _) in trackMap) {
                 extractor.selectTrack(extractorTrack)
-                extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            }
 
-                while (true) {
-                    val sampleSize = extractor.readSampleData(buffer, 0)
-                    if (sampleSize < 0) break
-                    
-                    val sampleTime = extractor.sampleTime
-                    if (sampleTime > endUs) break
-                    
-                    if (sampleTime >= startUs) { // Should include packets slightly before start for B-frames if needed, but SEEK_TO_PREVIOUS_SYNC usually lands on IDR
-                        bufferInfo.presentationTimeUs = sampleTime - startUs
-                        bufferInfo.offset = 0
-                        bufferInfo.size = sampleSize
-                        bufferInfo.flags = extractor.sampleFlags
-                        
-                        // Fix for negative muxer capability
-                        if (bufferInfo.presentationTimeUs < 0) {
-                            bufferInfo.presentationTimeUs = 0
-                        }
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
 
-                        muxer.writeSampleData(muxerTrack, buffer, bufferInfo)
-                    }
-                    
-                    if (!extractor.advance()) break
+            // Single loop — let MediaExtractor decide which track is next
+            while (true) {
+                val sampleSize = extractor.readSampleData(buffer, 0)
+                if (sampleSize < 0) break
+
+                val sampleTime = extractor.sampleTime
+                if (sampleTime > endUs) break
+
+                val currentTrack = extractor.sampleTrackIndex
+                val muxerTrack = trackMap[currentTrack]
+                if (muxerTrack == null) {
+                    extractor.advance()
+                    continue
                 }
-                extractor.unselectTrack(extractorTrack)
+
+                if (sampleTime >= startUs) {
+                    bufferInfo.presentationTimeUs = sampleTime - startUs
+                    bufferInfo.offset = 0
+                    bufferInfo.size = sampleSize
+                    bufferInfo.flags = extractor.sampleFlags
+                    if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
+                    mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
+                }
+
+                if (!extractor.advance()) break
             }
             
             success = true
+            
+            // Scan file so it appears in gallery
+            MediaScannerConnection.scanFile(context, arrayOf(outputFile.absolutePath), null, null)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error executing lossless cut", e)

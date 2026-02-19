@@ -30,4 +30,10 @@ render.experimental.xml
 google-services.json
 
 # Android Profiling
-*.hprofkeystore.properties
+*.hprof
+
+# Project specific
+keystore.properties
+logo.png
+release.keystore
+*.jks
