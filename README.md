@@ -5,10 +5,11 @@ Lossless Video Cut is a lightweight, open-source Android application designed fo
 ## Features
 
 - **Lossless Trim**: Instantly cut videos at keyframe boundaries without losing any quality.
-- **Keyframe Visualization**: Automatically probles and displays keyframe (Sync Frame) positions on the timeline to help you make precise cuts.
+- **Keyframe Visualization**: Automatically probes and displays keyframe (Sync Frame) positions on the timeline to help you make precise cuts.
+- **MVVM Architecture**: Robust state management using `ViewModel` and `StateFlow` for a smoother, reactive UI.
+- **Scoped Storage (MediaStore)**: Modern Android storage handling that saves videos directly to public folders without requiring legacy permissions.
 - **Pure Native SDK**: Completely removed heavy FFmpeg dependencies, resulting in a significantly smaller APK size (~20MB) and better performance.
 - **Media3 Integration**: Built on top of the modern `androidx.media3` (ExoPlayer) stack for robust playback.
-- **Modern UI**: A clean, minimalist interface for quick editing tasks.
 
 ## Getting Started
 
@@ -42,15 +43,14 @@ Unlike traditional video editors that transcode the entire clip, Lossless Video 
 
 ## Permissions
 
-The app requires minimal permissions to function:
+The app follows modern Android security best practices:
 
-- **READ_MEDIA_VIDEO**: Required on Android 13+ to access video files.
-- **READ_EXTERNAL_STORAGE**: Required on older Android versions.
-- **WRITE_EXTERNAL_STORAGE**: Required on older versions to save output.
+- **READ_MEDIA_VIDEO**: Required on Android 13+ to browse video files.
+- **Scoped Storage**: On modern Android versions, the app uses `MediaStore` to save trimmed videos to the public `Movies/LosslessCut` folder, eliminating the need for `WRITE_EXTERNAL_STORAGE` for output.
 
 ## Developer Guide
 
-For detailed information on the codebase, architecture, and future roadmap, please refer to [AGENTS.md](AGENTS.md).
+For detailed information on the codebase, architecture (MVVM), and future roadmap, please refer to [AGENTS.md](AGENTS.md).
 
 ## Contributing
 

@@ -7,7 +7,7 @@
 
 This project is a lightweight, open-source Android application designed for **lossless video trimming**. It avoids re-encoding the video stream, preserving original quality and ensuring near-instant processing speeds.
 
-## Core Architecture
+## Core Architecture (v2.0 MVVM)
 
 ### 1. Engine Layer (`LosslessEngine.kt`)
 The heart of the application. It replaces the heavy FFmpeg dependency with native Android APIs.
@@ -15,35 +15,39 @@ The heart of the application. It replaces the heavy FFmpeg dependency with nativ
 *   **Logic**: Uses `MediaExtractor` to read encoded sample data and `MediaMuxer` to write it to a new container (MP4).
 *   **Key Functions**:
     *   `probeKeyframes(context, uri)`: Scans the video file to identify **Sync Frames** (I-frames). These timestamps are crucial for accurate cutting, as we can only cut at these points without re-encoding.
-    *   `executeLosslessCut(context, uri, outputFile, startMs, endMs)`: Performs the actual trim operation. It reads samples from the input, filters based on the time range, adjusts timestamps (PTS/DTS) to start at zero, and writes to the output file.
+    *   `executeLosslessCut(context, uri, outputUri, startMs, endMs)`: Performs the actual trim operation. Returns a `Result<Uri>` for robust error handling.
+*   **Resource Management**: Uses Kotlin's `.use {}` pattern for `MediaExtractor` and `MediaMuxer` to ensure resources are always released, even on failure.
 *   **Constraints**: Cuts are currently limited to Keyframe boundaries (GOP structure).
 
-### 2. UI Layer (`VideoEditingActivity.kt`)
-Handles user interaction, video playback, and timeline visualization.
+### 2. ViewModel Layer (`VideoEditingViewModel.kt`) [NEW in v2.0]
+Centralizes business logic and manages the UI state.
+*   **State Management**: Uses `StateFlow<VideoEditingUiState>` to represent Loading, Success, and Error states.
+*   **Threading**: Leverages `viewModelScope` and `Dispatchers.IO` for non-blocking engine operations.
+*   **Storage**: Coordinates with `StorageUtils` to handle `MediaStore` URIs for output files.
 
+### 3. UI Layer (`VideoEditingActivity.kt`)
+Observer-based activity that handles user interaction and timeline visualization.
+*   **Observation**: Observes the `ViewModel` state flow and updates UI components (Player, Seekbar, Loading screen) accordingly.
 *   **Player**: Uses `androidx.media3.exoplayer` for playback.
 *   **Timeline**: `CustomVideoSeeker` draws the timeline and overlays white ticks representing keyframes found by the engine.
-*   **Frame Extraction**: `FrameAdapter` uses `MediaMetadataRetriever` to generate thumbnails for the seek bar.
-*   **State Management**: Manages `Loader` visibility, player lifecycle, and handles the "Lossless/Precise" toggle state.
 
-### 3. Entry Point (`MainActivity.kt`)
-*   Provides a clean landing page with a "Select Video" button.
-*   Handles Permission requests (Storage/Media).
-*   Displays "About" dialog with licensing info.
+### 4. Storage Utility (`StorageUtils.kt`) [NEW in v2.0]
+*   Handles modern Android `MediaStore` integration.
+*   Enables Scoped Storage compliance by creating output URIs in public folders (e.g., `Movies/LosslessCut`) without requiring legacy storage permissions.
 
 ## Key Design Decisions
 
-*   **Native SDK vs FFmpeg**: Switched from `FFmpegKit` to `MediaExtractor`/`MediaMuxer` to reduce APK size (~100MB -> ~20MB) and avoid GPL licensing complexities.
-*   **Lossless-Only (v1.0)**: The initial release focuses purely on speed and quality. "Precise Mode" (re-encoding) is disabled in the UI until a smart-rendering implementation (re-encoding only the cut boundaries) is ready.
-*   **Media3 Migration**: Upgraded from legacy ExoPlayer to the modern Jetpack Media3 library for better long-term support.
+*   **MVVM Migration (v2.0)**: Transitioned from a monolithic Activity to MVVM to separate playback logic from file processing, making the codebase more testable (Robolectric) and maintainable.
+*   **MediaStore over File API**: Adopted `MediaStore` for all output operations to ensure seamless operation on Android 11+ and avoid the deprecated `Environment.getExternalStoragePublicDirectory`.
+*   **Result Types**: Switched engine APIs from `Boolean` to `Result<T>` to provide meaningful error messages to the UI.
+*   **Native SDK vs FFmpeg**: Maintained the decision to use `MediaExtractor`/`MediaMuxer` to keep APK size low (~20MB).
 
 ## Developer Workflow
 
-### Building
+### Building & Testing
 *   Standard Android Gradle build.
-*   `./gradlew assembleRelease` or `assembleDebug`.
-*   **Note**: Ensure `local.properties` contains your SDK path if not set in environment.
-*   **Icons**: Run `./gradlew updateAppIcons` to regenerate `res/mipmap-*` assets from `logo.png` in the project root.
+*   **Unit Tests**: Run `./gradlew test` to execute JVM-based unit tests (including Robolectric engine tests).
+*   **Instrumented Tests**: Run `./gradlew connectedAndroidTest` to verify UI on a device/emulator.
 
 ## CI/CD (GitHub Actions)
 
@@ -63,13 +67,10 @@ Configure the following secrets in your GitHub Repository settings:
 
 ## Future Roadmap (v2.0+)
 
-1.  **Smart Cut (Precise Mode)**: Implement "Smart Rendering".
-    *   Decode and re-encode only the frames between the cut point and the nearest keyframe.
-    *   Stream copy the rest.
-    *   Requires `MediaCodec` concatenation logic.
-2.  **Audio Fixes**: Ensure audio tracks are correctly offset when video tracks are trimmed.
-3.  **Merge Functionality**: Re-implement video merging using `MediaMuxer` (requires resolution/codec matching) or `MediaCodec` transcoding.
-4.  **UI Polish**: Enhanced timeline zooming for frame-accurate selection.
+1.  **Phase 1 [COMPLETED]**: Architectural Foundation (MVVM), MediaStore integration, and Engine robustness.
+2.  **Phase 2 [DEFERRED]**: Smart Cut (Precise Mode), Video Merging, and Overlays.
+    *   Precise Trim: Decode and re-encode only the frames between the cut point and the nearest keyframe.
+    *   Merging: Sequence multiplexing of multiple MP4 sources.
 
 ## Code Style & Conventions
 *   **Kotlin**: Use idiomatic Kotlin (coroutines for async work, extension functions).
