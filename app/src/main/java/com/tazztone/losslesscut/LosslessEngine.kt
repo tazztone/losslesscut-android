@@ -60,19 +60,22 @@ object LosslessEngine {
     suspend fun executeLosslessCut(
         context: Context,
         inputUri: Uri,
-        outputFile: File,
+        outputUri: Uri,
         startMs: Long,
         endMs: Long
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): Result<Uri> = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
-        var success = false
+        var pfd: android.os.ParcelFileDescriptor? = null
 
         try {
             extractor.setDataSource(context, inputUri, null)
             
-            val mMuxer = MediaMuxer(outputFile.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            muxer = mMuxer
+            pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
+            if (pfd == null) return@withContext Result.failure(IOException("Failed to open PFD for $outputUri"))
+
+            muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val mMuxer = muxer
             
             // Validate start/end times & get duration from track format
             var durationUs = -1L
@@ -85,7 +88,11 @@ object LosslessEngine {
                 
                 if (mime.startsWith("video/") || mime.startsWith("audio/")) {
                     if (mime.startsWith("video/") && format.containsKey(MediaFormat.KEY_DURATION)) {
-                        durationUs = format.getLong(MediaFormat.KEY_DURATION)
+                        try {
+                            durationUs = format.getLong(MediaFormat.KEY_DURATION)
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Could not get duration from video track format")
+                        }
                     }
                     
                     trackMap[i] = mMuxer.addTrack(format)
@@ -97,7 +104,7 @@ object LosslessEngine {
                 }
             }
             
-            if (trackMap.isEmpty()) return@withContext false
+            if (trackMap.isEmpty()) return@withContext Result.failure(IOException("No video/audio tracks found"))
             if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
 
             val startUs = startMs * 1000
@@ -142,15 +149,12 @@ object LosslessEngine {
                 if (!extractor.advance()) break
             }
             
-            success = true
-            
-            // Scan file so it appears in gallery
-            MediaScannerConnection.scanFile(context, arrayOf(outputFile.absolutePath), null, null)
+            StorageUtils.finalizeVideo(context, outputUri)
+            Result.success(outputUri)
 
         } catch (e: Exception) {
             Log.e(TAG, "Error executing lossless cut", e)
-             // Clean up partial file on failure
-            if (outputFile.exists()) outputFile.delete()
+            Result.failure(e)
         } finally {
             try {
                 muxer?.stop()
@@ -158,9 +162,8 @@ object LosslessEngine {
             } catch (e: Exception) {
                  Log.e(TAG, "Error releasing muxer", e)
             }
+            pfd?.close()
             extractor.release()
         }
-
-        success
     }
 }

@@ -1,28 +1,19 @@
 package com.tazztone.losslesscut
 
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.MediaStore
 import android.util.Log
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.FrameLayout
 import android.widget.ImageButton
-import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -33,32 +24,26 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.slider.RangeSlider
-import com.google.android.material.textfield.TextInputEditText
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import kotlinx.coroutines.*
-import java.io.File
-import java.util.Locale
 
 @Suppress("DEPRECATION")
 class VideoEditingActivity : AppCompatActivity() {
 
+    private val viewModel: VideoEditingViewModel by viewModels()
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
     private lateinit var tvDuration: TextView
     private lateinit var frameRecyclerView: RecyclerView
     private lateinit var customVideoSeeker: CustomVideoSeeker
-    private var videoUri: Uri? = null
-    private var videoFileName: String = ""
     private lateinit var loadingScreen: View
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var switchLossless: com.google.android.material.switchmaterial.SwitchMaterial
+    
     private var isVideoLoaded = false
-    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     private val mergePickerLauncher = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
-        videoUri?.let { currentUri ->
-            mergeVideos(currentUri, uris)
-        }
+        Toast.makeText(this, "Merge disabled in this version (Coming v2.0)", Toast.LENGTH_SHORT).show()
     }
 
     private val playerListener = object : Player.Listener {
@@ -67,27 +52,7 @@ class VideoEditingActivity : AppCompatActivity() {
                 isVideoLoaded = true
                 customVideoSeeker.setVideoDuration(player.duration)
                 updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
-
-                // Probe keyframes and extract frames on load
-                videoUri?.let { uri ->
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        try {
-                            val keyframes = LosslessEngine.probeKeyframes(this@VideoEditingActivity, uri)
-                            val durationSec = player.duration / 1000.0
-                            if (durationSec > 0) {
-                                val normalizedKeyframes = keyframes.map { (it / durationSec).toFloat() }
-                                withContext(Dispatchers.Main) {
-                                    customVideoSeeker.setKeyframes(normalizedKeyframes)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e("KeyframeProbe", "Failed to probe keyframes: ${e.message}")
-                        }
-                    }
-                    
-                    // Refresh frame strip
-                    extractVideoFrames()
-                }
+                extractVideoFrames()
             }
         }
 
@@ -109,19 +74,14 @@ class VideoEditingActivity : AppCompatActivity() {
                         or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
                 )
 
-        // Set loading and animation view
-        loadingScreen = findViewById(R.id.loadingScreen)
-        lottieAnimationView = findViewById(R.id.lottieAnimation)
-        try {
-            lottieAnimationView.playAnimation()
-        } catch (e: Exception) {
-            Log.e("LottieError", "Error loading Lottie animation: ${e.message}")
-        }
-
         initializeViews()
         setupExoPlayer()
         setupCustomSeeker()
         setupFrameRecyclerView()
+        observeViewModel()
+
+        val videoUri: Uri? = intent.getParcelableExtra("VIDEO_URI")
+        viewModel.initialize(this, videoUri)
     }
 
     private fun initializeViews() {
@@ -129,14 +89,24 @@ class VideoEditingActivity : AppCompatActivity() {
         tvDuration = findViewById(R.id.tvDuration)
         frameRecyclerView = findViewById(R.id.frameRecyclerView)
         customVideoSeeker = findViewById(R.id.customVideoSeeker)
+        loadingScreen = findViewById(R.id.loadingScreen)
+        lottieAnimationView = findViewById(R.id.lottieAnimation)
+        
+        try { lottieAnimationView.playAnimation() } catch (e: Exception) {}
 
         findViewById<ImageButton>(R.id.btnHome).setOnClickListener { onBackPressedDispatcher.onBackPressed()}
-        findViewById<ImageButton>(R.id.btnSave).setOnClickListener { saveAction() }
+        findViewById<ImageButton>(R.id.btnSave).setOnClickListener { 
+            Toast.makeText(this, "Video is saved to Movies/LosslessCut after trim", Toast.LENGTH_LONG).show()
+        }
         findViewById<ImageButton>(R.id.btnTrim).setOnClickListener { trimAction() }
-        findViewById<ImageButton>(R.id.btnText).setOnClickListener { textAction() }
-        findViewById<ImageButton>(R.id.btnAudio).setOnClickListener { audioAction() }
+        findViewById<ImageButton>(R.id.btnText).setOnClickListener { 
+            Toast.makeText(this, "Text features coming in v2.0", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<ImageButton>(R.id.btnAudio).setOnClickListener { 
+            Toast.makeText(this, "Audio features coming in v2.0", Toast.LENGTH_SHORT).show()
+        }
         findViewById<ImageButton>(R.id.btnCrop).setOnClickListener { cropAction() }
-        findViewById<ImageButton>(R.id.btnMerge).setOnClickListener { mergeAction() }
+        findViewById<ImageButton>(R.id.btnMerge).setOnClickListener { mergePickerLauncher.launch("video/*") }
         
         switchLossless = findViewById(R.id.switchLossless)
         switchLossless.setOnCheckedChangeListener { _, isChecked ->
@@ -146,67 +116,46 @@ class VideoEditingActivity : AppCompatActivity() {
         }
     }
 
-    private fun mergeAction() {
-        mergePickerLauncher.launch("video/*")
+    private fun observeViewModel() {
+        lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                when (state) {
+                    is VideoEditingUiState.Loading -> loadingScreen.visibility = View.VISIBLE
+                    is VideoEditingUiState.Success -> {
+                        loadingScreen.visibility = View.GONE
+                        if (player.currentMediaItem?.localConfiguration?.uri != state.videoUri) {
+                            initializePlayer(state.videoUri)
+                        }
+                        if (state.keyframes.isNotEmpty()) {
+                            val durationSec = player.duration / 1000.0
+                            if (durationSec > 0) {
+                                val normalizedKeyframes = state.keyframes.map { (it / durationSec).toFloat() }
+                                customVideoSeeker.setKeyframes(normalizedKeyframes)
+                            }
+                        }
+                    }
+                    is VideoEditingUiState.Error -> {
+                        loadingScreen.visibility = View.GONE
+                        Toast.makeText(this@VideoEditingActivity, state.message, Toast.LENGTH_LONG).show()
+                    }
+                    else -> {}
+                }
+            }
+        }
     }
 
-    private fun mergeVideos(currentVideoUri: Uri, selectedVideoUris: List<Uri>) {
-        if (selectedVideoUris.isEmpty()) return
-        Toast.makeText(this, "Merge disabled in this version (Coming v2.0)", Toast.LENGTH_SHORT).show()
+    private fun setupExoPlayer() {
+        player = ExoPlayer.Builder(this).build().apply {
+            playerView.player = this
+            addListener(playerListener)
+        }
     }
 
-    @SuppressLint("InflateParams")
-    private fun cropAction() {
-        val bottomSheetDialog = BottomSheetDialog(this)
-        val sheetView = layoutInflater.inflate(R.layout.crop_bottom_sheet_dialog, null)
-        sheetView.findViewById<TextView>(R.id.tvTitleCrop).text = getString(R.string.select_aspect_ratio)
-
-        sheetView.findViewById<FrameLayout>(R.id.frameAspectRatio1).setOnClickListener {
-            cropVideo("16:9")
-            bottomSheetDialog.dismiss()
-        }
-        sheetView.findViewById<FrameLayout>(R.id.frameAspectRatio2).setOnClickListener {
-            cropVideo("9:16")
-            bottomSheetDialog.dismiss()
-        }
-        sheetView.findViewById<FrameLayout>(R.id.frameAspectRatio3).setOnClickListener {
-            cropVideo("1:1")
-            bottomSheetDialog.dismiss()
-        }
-        sheetView.findViewById<Button>(R.id.btnCancelCrop).setOnClickListener {
-            bottomSheetDialog.dismiss()
-        }
-        bottomSheetDialog.setContentView(sheetView)
-        bottomSheetDialog.show()
-    }
-
-    private fun cropVideo(aspectRatio: String) {
-        Toast.makeText(this@VideoEditingActivity, "Crop disabled in this version (Coming v2.0)", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun audioAction() {
-        Toast.makeText(this, "Audio features coming in v2.0", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun textAction() {
-        val bottomSheetDialog = BottomSheetDialog(this)
-        val view = layoutInflater.inflate(R.layout.text_bottom_sheet_dialog, null)
-        val etTextInput = view.findViewById<TextInputEditText>(R.id.etTextInput)
-        val fontSizeInput = view.findViewById<TextInputEditText>(R.id.fontSize)
-        val spinnerTextPosition = view.findViewById<Spinner>(R.id.spinnerTextPosition)
-        val btnDone = view.findViewById<Button>(R.id.btnDoneText)
-
-        val positionOptions = arrayOf("Bottom Right", "Top Right", "Top Left", "Bottom Left", "Center Bottom", "Center Top", "Center Align")
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, positionOptions)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinnerTextPosition.adapter = adapter
-
-        btnDone.setOnClickListener {
-            Toast.makeText(this@VideoEditingActivity, "Text features coming in v2.0", Toast.LENGTH_SHORT).show()
-            bottomSheetDialog.dismiss()
-        }
-        bottomSheetDialog.setContentView(view)
-        bottomSheetDialog.show()
+    private fun initializePlayer(uri: Uri) {
+        player.setMediaItem(MediaItem.fromUri(uri))
+        player.prepare()
+        player.playWhenReady = false
+        player.seekTo(0)
     }
 
     @SuppressLint("InflateParams")
@@ -217,111 +166,39 @@ class VideoEditingActivity : AppCompatActivity() {
             return
         }
 
-        val bottomSheetDialog = BottomSheetDialog(this@VideoEditingActivity)
+        val bottomSheetDialog = BottomSheetDialog(this)
         val sheetView = layoutInflater.inflate(R.layout.trim_bottom_sheet_dialog, null)
         val rangeSlider: RangeSlider = sheetView.findViewById(R.id.rangeSlider)
 
-        val formattedValueTo = videoDuration.toFloat()
         rangeSlider.valueFrom = 0f
-        rangeSlider.valueTo = formattedValueTo
-        rangeSlider.values = listOf(0f, formattedValueTo)
+        rangeSlider.valueTo = videoDuration.toFloat()
+        rangeSlider.values = listOf(0f, videoDuration.toFloat())
 
         rangeSlider.addOnChangeListener { slider, value, fromUser ->
-            val start = slider.values[0].toLong()
-            val end = slider.values[1].toLong()
             if (fromUser) {
+                val start = slider.values[0].toLong()
+                val end = slider.values[1].toLong()
                 if (value == slider.values[0]) player.seekTo(start)
                 else if (value == slider.values[1]) player.seekTo(end)
             }
         }
 
         sheetView.findViewById<Button>(R.id.btnDoneTrim).setOnClickListener {
-            trimVideo(rangeSlider.values[0].toLong(), rangeSlider.values[1].toLong())
+            viewModel.trimVideo(this, rangeSlider.values[0].toLong(), rangeSlider.values[1].toLong(), switchLossless.isChecked)
             bottomSheetDialog.dismiss()
         }
-
         bottomSheetDialog.setContentView(sheetView)
         bottomSheetDialog.show()
     }
 
-    private fun trimVideo(trimBeginningTime: Long, trimEndTime: Long) {
-        lifecycleScope.launch {
-            val currentUri = videoUri ?: return@launch
-            val outputDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            if (!outputDir.exists()) outputDir.mkdirs()
-            
-            val isLossless = switchLossless.isChecked
-            val prefix = if (isLossless) "lossless_" else "precise_"
-            val outputPath = File(outputDir, "${prefix}trimmed_${System.currentTimeMillis()}.mp4").absolutePath
-            
-            if (isLossless) {
-                 val success = LosslessEngine.executeLosslessCut(this@VideoEditingActivity, currentUri, File(outputPath), trimBeginningTime, trimEndTime)
-                 if (success) {
-                     val newFile = File(outputPath)
-                     videoUri = FileProvider.getUriForFile(this@VideoEditingActivity, "$packageName.provider", newFile)
-                     videoFileName = newFile.name
-                     initializePlayer() // Re-initialize player with new file
-                     Toast.makeText(this@VideoEditingActivity, "Video saved to Downloads", Toast.LENGTH_SHORT).show()
-                 } else {
-                     showError("Lossless cut failed.")
-                 }
-            } else {
-                showError("Precise mode (Re-encoding) is coming in v2.0")
-            }
-        }
-    }
-
-    private fun showError(error: String) {
-        Log.e("VideoEditingError", error)
-        Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun saveAction() {
-        Toast.makeText(this, "Video is auto-saved to Downloads after trim", Toast.LENGTH_LONG).show()
-    }
-
-    private fun setupExoPlayer() {
-        videoUri = intent.getParcelableExtra("VIDEO_URI")
-        if (videoUri != null) {
-            initializePlayer()
-            initializeVideoData()
-        } else {
-            showError("Error loading video")
-        }
-    }
-
-    private fun initializePlayer() {
-        if (::player.isInitialized) {
-            player.release()
-        }
-        player = ExoPlayer.Builder(this).build().apply {
-            playerView.player = this
-            videoUri?.let { setMediaItem(MediaItem.fromUri(it)) }
-            prepare()
-            playWhenReady = false
-            seekTo(0)
-            addListener(playerListener)
-        }
-        loadingScreen.visibility = View.VISIBLE
-    }
-
-    private fun initializeVideoData() {
-        lifecycleScope.launch {
-            try {
-                videoUri?.let { uri ->
-                    val retriever = MediaMetadataRetriever()
-                    try {
-                        retriever.setDataSource(this@VideoEditingActivity, uri)
-                        videoFileName = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE) 
-                            ?: uri.lastPathSegment ?: "video.mp4"
-                    } finally {
-                        retriever.release()
-                    }
-                }
-            } catch (e: Exception) {
-                showError("Error initializing video: ${e.message}")
-            }
-        }
+    @SuppressLint("InflateParams")
+    private fun cropAction() {
+        val bottomSheetDialog = BottomSheetDialog(this)
+        val sheetView = layoutInflater.inflate(R.layout.crop_bottom_sheet_dialog, null)
+        sheetView.findViewById<Button>(R.id.btnCancelCrop).setOnClickListener { bottomSheetDialog.dismiss() }
+        bottomSheetDialog.setContentView(sheetView)
+        bottomSheetDialog.show()
+        Toast.makeText(this, "Crop coming in v2.0", Toast.LENGTH_SHORT).show()
     }
 
     private fun setupCustomSeeker() {
@@ -343,13 +220,10 @@ class VideoEditingActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val retriever = MediaMetadataRetriever()
             try {
-                videoUri?.let { uri -> retriever.setDataSource(this@VideoEditingActivity, uri) } ?: return@launch
+                val uri = player.currentMediaItem?.localConfiguration?.uri ?: return@launch
+                retriever.setDataSource(this@VideoEditingActivity, uri)
                 
-                // Wait for duration to be valid
-                val duration = withContext(Dispatchers.Main) { 
-                    if (player.duration > 0) player.duration else 0L 
-                }
-                
+                val duration = withContext(Dispatchers.Main) { if (player.duration > 0) player.duration else 0L }
                 if (duration <= 0) return@launch
 
                 val frameInterval = duration / 10
@@ -380,16 +254,8 @@ class VideoEditingActivity : AppCompatActivity() {
         tvDuration.text = "${TimeUtils.formatDuration(current.toLong())} / ${TimeUtils.formatDuration(total.toLong())}"
     }
 
-
     override fun onDestroy() {
         super.onDestroy()
-        if (::player.isInitialized) player.release()
-        coroutineScope.cancel()
-    }
-
-    data class Media(val uri: Uri, val name: String, val size: Long, val mimeType: String)
-
-    companion object {
-        private const val TAG = "VideoMetadata"
+        player.release()
     }
 }

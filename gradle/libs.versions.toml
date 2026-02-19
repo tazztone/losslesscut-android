@@ -10,6 +10,8 @@ espressoIntents = "3.6.1"
 robolectric = "4.11.1"
 lifecycleRuntimeKtx = "2.8.6"
 activityCompose = "1.9.2"
+activityKtx = "1.9.3"
+fragmentKtx = "1.8.4"
 composeBom = "2024.04.01"
 appcompat = "1.7.0"
 constraintlayout = "2.1.4"
@@ -26,6 +28,8 @@ androidx-espresso-intents = { group = "androidx.test.espresso", name = "espresso
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activityKtx" }
+androidx-fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragmentKtx" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-ui = { group = "androidx.compose.ui", name = "ui" }
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
