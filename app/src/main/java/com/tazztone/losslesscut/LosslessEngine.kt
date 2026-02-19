@@ -5,6 +5,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.media.MediaMetadataRetriever
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.util.Log
@@ -38,14 +39,12 @@ object LosslessEngine {
 
             if (videoTrackIndex >= 0) {
                 extractor.selectTrack(videoTrackIndex)
-                var timeUs = 0L
-                while (timeUs >= 0) {
-                    extractor.seekTo(timeUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
-                    val nextKeyframe = extractor.sampleTime
-                    if (nextKeyframe < 0 || (keyframes.isNotEmpty() && nextKeyframe <= timeUs)) break
-                    
-                    keyframes.add(nextKeyframe / 1_000_000.0)
-                    timeUs = nextKeyframe + 1 // Advance past this keyframe
+                while (extractor.sampleTime >= 0) {
+                    val sampleTime = extractor.sampleTime
+                    if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                        keyframes.add(sampleTime / 1_000_000.0)
+                    }
+                    if (!extractor.advance()) break
                 }
             }
         } catch (e: Exception) {
@@ -111,6 +110,12 @@ object LosslessEngine {
             val startUs = startMs * 1000
             val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
 
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, inputUri)
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            mMuxer.setOrientationHint(rotation)
+            retriever.release()
+
             mMuxer.start()
             
             // Use allocateDirect to reduce memory copy overhead between Java heap and Native layer
@@ -123,6 +128,8 @@ object LosslessEngine {
             }
 
             extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+
+            var effectiveStartUs = -1L
 
             // Single loop — let MediaExtractor decide which track is next
             while (true) {
@@ -139,14 +146,16 @@ object LosslessEngine {
                     continue
                 }
 
-                if (sampleTime >= startUs) {
-                    bufferInfo.presentationTimeUs = sampleTime - startUs
-                    bufferInfo.offset = 0
-                    bufferInfo.size = sampleSize
-                    bufferInfo.flags = extractor.sampleFlags
-                    if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
-                    mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
+                if (effectiveStartUs == -1L) {
+                    effectiveStartUs = sampleTime
                 }
+
+                bufferInfo.presentationTimeUs = sampleTime - effectiveStartUs
+                bufferInfo.offset = 0
+                bufferInfo.size = sampleSize
+                bufferInfo.flags = extractor.sampleFlags
+                if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
+                mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
 
                 if (!extractor.advance()) break
             }
