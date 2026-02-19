@@ -12,7 +12,7 @@ on:
       publish_to_play_store:
         description: 'Publish to Play Store'
         type: boolean
-        default: true
+        default: false
         required: false
 
 jobs:
@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
 
     steps:
       - uses: actions/checkout@v4
@@ -101,7 +103,7 @@ jobs:
 
       # 6. Publish to Google Play Store (Production Track)
       - name: Publish to Google Play Store
-        if: github.event.inputs.publish_to_play_store != 'false' && secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != '' 
+        if: github.event.inputs.publish_to_play_store != 'false' && env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != ''
         # Note: You might need to change 'false' check depending on how the input is passed, 
         # but for boolean inputs usually 'true' is string
         uses: r0adkll/upload-google-play@v1
