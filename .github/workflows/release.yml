@@ -35,35 +35,51 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      # 2. Prepare Keystore
-      - name: Decode Keystore & Create Properties
+      # 2. Prepare Keystore (Conditional)
+      - name: Decode Keystore
+        id: decode_keystore
         run: |
-          # Decode keystore file
-          # outputting to a temporary file first to avoid empty file creation on failure
-          if ! echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.jks; then
-             echo "::error::Failed to decode keystore. Check ANDROID_KEYSTORE_BASE64 secret."
-             exit 1
-          fi
-          
-          if [ ! -s keystore.jks ]; then
-             echo "::error::Keystore file is empty. Check ANDROID_KEYSTORE_BASE64 secret."
-             exit 1
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+            echo "storeFile=../keystore.jks" > keystore.properties
+            echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> keystore.properties
+            echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> keystore.properties
+            echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+            echo "has_keystore=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_keystore=false" >> $GITHUB_OUTPUT
           fi
 
-          # Create keystore.properties file referenced in build.gradle
-          echo "storeFile=../keystore.jks" > keystore.properties
-          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> keystore.properties
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> keystore.properties
-          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
-          
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
         
-      # 3. Build Release Artifacts
-      - name: Build Release App Bundle & APK
-        run: ./gradlew bundleRelease assembleRelease
+      # 3. Determine Build Variant
+      - name: Determine Build Variant
+        id: variant
+        run: |
+           if [ "${{ github.event.inputs.publish_to_play_store }}" == "true" ]; then
+              if [ "${{ steps.decode_keystore.outputs.has_keystore }}" == "false" ]; then
+                 echo "::error::Cannot publish to Play Store without keystore!"
+                 exit 1
+              fi
+              echo "name=Release" >> $GITHUB_OUTPUT
+              echo "lower=release" >> $GITHUB_OUTPUT
+           else
+              if [ "${{ steps.decode_keystore.outputs.has_keystore }}" == "true" ]; then
+                 echo "name=Release" >> $GITHUB_OUTPUT
+                 echo "lower=release" >> $GITHUB_OUTPUT
+              else
+                 echo "::notice::No keystore found. Falling back to Debug build."
+                 echo "name=Debug" >> $GITHUB_OUTPUT
+                 echo "lower=debug" >> $GITHUB_OUTPUT
+              fi
+           fi
+
+      # 4. Build Artifacts
+      - name: Build App Bundle & APK
+        run: ./gradlew bundle${{ steps.variant.outputs.name }} assemble${{ steps.variant.outputs.name }}
           
-      # 4. Prepare Release Info
+      # 5. Prepare Release Info
       - name: Set Release Variables
         id: vars
         run: |
@@ -71,8 +87,6 @@ jobs:
           if [ "${{ github.event_name }}" == "push" ]; then
             TAG_NAME=${GITHUB_REF#refs/tags/}
           else
-            # For manual dispatch, use a generated tag or extracted version from build.gradle if possible
-            # But simpler to just use run number for fallback
             TAG_NAME="v1.0-build.${{ github.run_number }}"
           fi
           
@@ -86,7 +100,7 @@ jobs:
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "title=$RELEASE_TITLE" >> $GITHUB_OUTPUT
       
-      # 5. Create GitHub Release & Upload Artifacts
+      # 6. Create GitHub Release & Upload Artifacts
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@v1
         with:
@@ -96,16 +110,14 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/bundle/release/app-release.aab
-            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/${{ steps.variant.outputs.lower }}/app-${{ steps.variant.outputs.lower }}.aab
+            app/build/outputs/apk/${{ steps.variant.outputs.lower }}/app-${{ steps.variant.outputs.lower }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 6. Publish to Google Play Store (Production Track)
+      # 7. Publish to Google Play Store (Production Track)
       - name: Publish to Google Play Store
-        if: github.event.inputs.publish_to_play_store != 'false' && env.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON != ''
-        # Note: You might need to change 'false' check depending on how the input is passed, 
-        # but for boolean inputs usually 'true' is string
+        if: github.event.inputs.publish_to_play_store == 'true' && steps.variant.outputs.name == 'Release'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
