@@ -9,31 +9,89 @@ This project is a lightweight, open-source Android application designed for **lo
 
 ## Core Architecture (v2.0 MVVM)
 
-### 1. Engine Layer (`LosslessEngine.kt`)
-The heart of the application. It replaces the heavy FFmpeg dependency with native Android APIs.
+### 1. High-Level Architecture
+The application is structured into three primary layers to ensure a responsive UI, better testability, and a clean separation of concerns:
+1. **UI Layer**: Responsbile for rendering the interface and capturing user inputs.
+2. **Presentation Layer (ViewModel)**: Manages UI state, handles user intents, and coordinates with the Domain/Data layer.
+3. **Domain/Data Layer (Engine & Storage)**: Encapsulates the core business logic (video processing) and handles file I/O operations via Scoped Storage.
 
-*   **Logic**: Uses `MediaExtractor` to read encoded sample data and `MediaMuxer` to write it to a new container (MP4).
-*   **Key Functions**:
-    *   `probeKeyframes(context, uri)`: Scans the video file to identify **Sync Frames** (I-frames). These timestamps are crucial for accurate cutting, as we can only cut at these points without re-encoding.
-    *   `executeLosslessCut(context, uri, outputUri, startMs, endMs)`: Performs the actual trim operation. Returns a `Result<Uri>` for robust error handling.
-*   **Resource Management**: Uses Kotlin's `.use {}` pattern for `MediaExtractor` and `MediaMuxer` to ensure resources are always released, even on failure.
-*   **Constraints**: Cuts are currently limited to Keyframe boundaries (GOP structure).
+### Component Diagram
+```mermaid
+graph TD
+    subgraph UI Layer
+        VEA[VideoEditingActivity]
+        CVS[CustomVideoSeeker]
+    end
 
-### 2. ViewModel Layer (`VideoEditingViewModel.kt`) [NEW in v2.0]
-Centralizes business logic and manages the UI state.
-*   **State Management**: Uses `StateFlow<VideoEditingUiState>` to represent Loading, Success, and Error states.
-*   **Threading**: Leverages `viewModelScope` and `Dispatchers.IO` for non-blocking engine operations.
-*   **Storage**: Coordinates with `StorageUtils` to handle `MediaStore` URIs for output files.
+    subgraph Presentation Layer
+        VM[VideoEditingViewModel]
+        State[VideoEditingUiState]
+    end
 
-### 3. UI Layer (`VideoEditingActivity.kt`)
-Observer-based activity that handles user interaction and timeline visualization.
-*   **Observation**: Observes the `ViewModel` state flow and updates UI components (Player, Seekbar, Loading screen) accordingly.
-*   **Player**: Uses `androidx.media3.exoplayer` for playback.
-*   **Timeline**: `CustomVideoSeeker` draws the timeline and overlays white ticks representing keyframes found by the engine.
+    subgraph Domain & Data Layer
+        LE[LosslessEngine]
+        SU[StorageUtils]
+        MediaStore[(MediaStore)]
+    end
 
-### 4. Storage Utility (`StorageUtils.kt`) [NEW in v2.0]
-*   Handles modern Android `MediaStore` integration.
-*   Enables Scoped Storage compliance by creating output URIs in public folders (e.g., `Movies/LosslessCut`) without requiring legacy storage permissions.
+    VEA -- Observes --> State
+    VM -- Updates --> State
+    VEA -- User Actions --> VM
+    CVS -- Seek Events --> VEA
+
+    VM -- Probe Keyframes --> LE
+    VM -- Trim Video --> LE
+    VM -- Request Output URI --> SU
+    SU -- Create File --> MediaStore
+    LE -- Read/Write --> MediaStore
+```
+
+### 2. Component Deep Dive
+
+#### 2.1 UI Layer ([VideoEditingActivity.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingActivity.kt) & [CustomVideoSeeker.kt](app/src/main/java/com/tazztone/losslesscut/customviews/CustomVideoSeeker.kt))
+- **VideoEditingActivity**: Initializes the ExoPlayer, binds UI components to the [ViewModel](app/src/main/java/com/tazztone/losslesscut/VideoEditingActivity.kt) state flow, and manages dialogs (like the BottomSheet for trimming).
+- **CustomVideoSeeker**: A custom View that draws the timeline. It receives normalized keyframe positions from the Activity and draws "snap" markers. It implements logic to **snap the playhead to the nearest keyframe** when "Lossless Mode" is active.
+- **State Observation**: The Activity observes [VideoEditingUiState](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) via `lifecycleScope.launch`. State changes trigger UI updates like showing loading spinners, playing video, or displaying error toasts.
+
+#### 2.2 Presentation Layer ([VideoEditingViewModel.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt))
+- **State Flow**: Uses a sealed class `VideoEditingUiState` (Initial, Loading, Success, Error) to represent the current screen state predictably.
+- **Coroutines**: Launches non-blocking operations via `viewModelScope` allowing heavy video processing to happen on `Dispatchers.IO` without freezing the main thread.
+- **Initialization**: Upon receiving a Video URI, it orchestrates metadata extraction and keyframe probing through the engine.
+
+#### 2.3 Domain/Data Layer ([LosslessEngine.kt](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt) & [StorageUtils.kt](app/src/main/java/com/tazztone/losslesscut/StorageUtils.kt))
+- **LosslessEngine**: The core powerhouse. It completely drops FFmpeg in favor of native `MediaExtractor` and `MediaMuxer`.
+  - [probeKeyframes()](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt): Fast-forwards through the video using `SEEK_TO_NEXT_SYNC` to map all I-frames.
+  - [executeLosslessCut()](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt): Reads samples from the start index (snapped to a sync frame) to the end index, multiplexing them directly into a new container. Returns standard Kotlin `Result<Uri>` objects for clean error propagation.
+- **StorageUtils**: Adapts the app for Android 11+ Scoped Storage restrictions. Creates `pending` inserts in the `MediaStore.Video.Media.EXTERNAL_CONTENT_URI` and finalizes them upon engine completion, avoiding legay file permission issues.
+
+## 3. Data Flow: Trimming a Video
+The sequence below illustrates the flow when a user confirms a trim action:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as VideoEditingActivity
+    participant VM as VideoEditingViewModel
+    participant Storage as StorageUtils
+    participant Engine as LosslessEngine
+
+    User->>UI: Clicks "Done" on Trim Slider
+    UI->>VM: trimVideo(startMs, endMs, isLossless)
+    VM->>UI: Emit State.Loading
+    
+    VM->>Storage: createVideoOutputUri()
+    Storage-->>VM: outputUri
+    
+    VM->>Engine: executeLosslessCut(input, output, start, end)
+    activate Engine
+    Engine->>Engine: Extract and Mux samples
+    Engine->>Storage: finalizeVideo(outputUri)
+    Engine-->>VM: Result.success(outputUri)
+    deactivate Engine
+    
+    VM->>UI: Emit State.Success(newUri)
+    UI->>UI: Reinitialize Player with new output
+```
 
 ## Key Design Decisions
 
@@ -50,7 +108,6 @@ Observer-based activity that handles user interaction and timeline visualization
 *   **Instrumented Tests**: Run `./gradlew connectedAndroidTest` to verify UI on a device/emulator.
 
 ## CI/CD (GitHub Actions)
-
 The project includes a `release.yml` workflow that automatically builds and publishes the app when a tag starting with `v` (e.g., `v1.0.0`) is pushed.
 
 ### Secrets Required
@@ -69,8 +126,10 @@ Configure the following secrets in your GitHub Repository settings:
 
 1.  **Phase 1 [COMPLETED]**: Architectural Foundation (MVVM), MediaStore integration, and Engine robustness.
 2.  **Phase 2 [DEFERRED]**: Smart Cut (Precise Mode), Video Merging, and Overlays.
-    *   Precise Trim: Decode and re-encode only the frames between the cut point and the nearest keyframe.
-    *   Merging: Sequence multiplexing of multiple MP4 sources.
+    *   **Precise Trim**: Decode and re-encode *only* the frames between the cut point and the nearest keyframe, then concatenate with the losslessly muxed middle segment.
+    *   **Merging**: Sequence multiplexing of multiple MP4 sources.
+3.  **Phase 3 [PLANNED]**: Background Processing.
+    *   **Service Worker / WorkManager**: For very large files or slow devices, processing might outlive the Activity lifecycle. Migrating the Engine work to a Foreground Service or `WorkManager` would prevent the OS from killing the process if the user backgrounds the app.
 
 ## Code Style & Conventions
 *   **Kotlin**: Use idiomatic Kotlin (coroutines for async work, extension functions).
