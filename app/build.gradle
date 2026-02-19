@@ -40,7 +40,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
@@ -66,8 +67,6 @@ android {
 }
 
 dependencies {
-    implementation("com.arthenica:smart-exception-java:0.2.1")
-
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'com.airbnb.android:lottie:3.4.0'
     implementation libs.androidx.core.ktx

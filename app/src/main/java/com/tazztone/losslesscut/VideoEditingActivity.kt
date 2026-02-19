@@ -61,6 +61,43 @@ class VideoEditingActivity : AppCompatActivity() {
         }
     }
 
+    private val playerListener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            if (state == Player.STATE_READY) {
+                isVideoLoaded = true
+                customVideoSeeker.setVideoDuration(player.duration)
+                updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
+
+                // Probe keyframes and extract frames on load
+                videoUri?.let { uri ->
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        try {
+                            val keyframes = LosslessEngine.probeKeyframes(this@VideoEditingActivity, uri)
+                            val durationSec = player.duration / 1000.0
+                            if (durationSec > 0) {
+                                val normalizedKeyframes = keyframes.map { (it / durationSec).toFloat() }
+                                withContext(Dispatchers.Main) {
+                                    customVideoSeeker.setKeyframes(normalizedKeyframes)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            Log.e("KeyframeProbe", "Failed to probe keyframes: ${e.message}")
+                        }
+                    }
+                    
+                    // Refresh frame strip
+                    extractVideoFrames()
+                }
+            }
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying && isVideoLoaded) {
+                updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_editing)
@@ -172,8 +209,6 @@ class VideoEditingActivity : AppCompatActivity() {
         bottomSheetDialog.show()
     }
 
-    private fun addTextToVideo(text: String, fontSize: Int, position: String) {}
-
     @SuppressLint("InflateParams")
     private fun trimAction() {
         val videoDuration = player.duration
@@ -225,8 +260,7 @@ class VideoEditingActivity : AppCompatActivity() {
                      val newFile = File(outputPath)
                      videoUri = FileProvider.getUriForFile(this@VideoEditingActivity, "$packageName.provider", newFile)
                      videoFileName = newFile.name
-                     refreshPlayer()
-                     refreshUI()
+                     initializePlayer() // Re-initialize player with new file
                      Toast.makeText(this@VideoEditingActivity, "Video saved to Downloads", Toast.LENGTH_SHORT).show()
                  } else {
                      showError("Lossless cut failed.")
@@ -237,38 +271,9 @@ class VideoEditingActivity : AppCompatActivity() {
         }
     }
 
-    private fun executeFFmpegCommand(command: String, outputPath: String) {
-        showError("FFmpeg commands are disabled in this version.")
-    }
-
     private fun showError(error: String) {
         Log.e("VideoEditingError", error)
         Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun refreshUI() {
-        player.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) {
-                    updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
-                    extractVideoFrames()
-                }
-            }
-        })
-        extractVideoFrames()
-    }
-
-    private fun refreshPlayer() {
-        player.release()
-        player = ExoPlayer.Builder(this).build().apply {
-            playerView.player = this
-            setMediaItem(MediaItem.fromUri(videoUri!!))
-            prepare()
-            playWhenReady = false
-            seekTo(0)
-        }
-        customVideoSeeker.setVideoDuration(player.duration)
-        updateDurationDisplay(0, player.duration.toInt())
     }
 
     private fun saveAction() {
@@ -278,42 +283,26 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun setupExoPlayer() {
         videoUri = intent.getParcelableExtra("VIDEO_URI")
         if (videoUri != null) {
-            player = ExoPlayer.Builder(this).build()
-            playerView.player = player
-            player.setMediaItem(MediaItem.fromUri(videoUri!!))
-            loadingScreen.visibility = View.VISIBLE
-            player.prepare()
-
-            player.addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    if (state == Player.STATE_READY) {
-                        isVideoLoaded = true
-                        customVideoSeeker.setVideoDuration(player.duration)
-                        updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
-                        
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            val keyframes = LosslessEngine.probeKeyframes(this@VideoEditingActivity, videoUri!!)
-                            val durationSec = player.duration / 1000.0
-                            if (durationSec > 0) {
-                                val normalizedKeyframes = keyframes.map { (it / durationSec).toFloat() }
-                                withContext(Dispatchers.Main) {
-                                    customVideoSeeker.setKeyframes(normalizedKeyframes)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isPlaying && isVideoLoaded) {
-                        updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
-                    }
-                }
-            })
+            initializePlayer()
             initializeVideoData()
         } else {
             showError("Error loading video")
         }
+    }
+
+    private fun initializePlayer() {
+        if (::player.isInitialized) {
+            player.release()
+        }
+        player = ExoPlayer.Builder(this).build().apply {
+            playerView.player = this
+            videoUri?.let { setMediaItem(MediaItem.fromUri(it)) }
+            prepare()
+            playWhenReady = false
+            seekTo(0)
+            addListener(playerListener)
+        }
+        loadingScreen.visibility = View.VISIBLE
     }
 
     private fun initializeVideoData() {
@@ -328,7 +317,6 @@ class VideoEditingActivity : AppCompatActivity() {
                     } finally {
                         retriever.release()
                     }
-                    extractVideoFrames()
                 }
             } catch (e: Exception) {
                 showError("Error initializing video: ${e.message}")
@@ -356,7 +344,14 @@ class VideoEditingActivity : AppCompatActivity() {
             val retriever = MediaMetadataRetriever()
             try {
                 videoUri?.let { uri -> retriever.setDataSource(this@VideoEditingActivity, uri) } ?: return@launch
-                val duration = withContext(Dispatchers.Main) { player.duration }
+                
+                // Wait for duration to be valid
+                val duration = withContext(Dispatchers.Main) { 
+                    if (player.duration > 0) player.duration else 0L 
+                }
+                
+                if (duration <= 0) return@launch
+
                 val frameInterval = duration / 10
                 val frameBitmaps = mutableListOf<Bitmap>()
                 for (i in 0 until 10) {
@@ -386,9 +381,15 @@ class VideoEditingActivity : AppCompatActivity() {
     }
 
     private fun formatDuration(milliseconds: Int): String {
-        val minutes = milliseconds / 60000
-        val seconds = (milliseconds % 60000) / 1000
-        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        val secondsTotal = milliseconds / 1000
+        val hours = secondsTotal / 3600
+        val minutes = (secondsTotal % 3600) / 60
+        val seconds = secondsTotal % 60
+        return if (hours > 0) {
+            String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        }
     }
 
     override fun onDestroy() {
@@ -401,6 +402,5 @@ class VideoEditingActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "VideoMetadata"
-        private const val PICK_VIDEO_REQUEST = 1
     }
 }
