@@ -135,9 +135,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
         isAutoPanning = false
         removeCallbacks(autoPanRunnable)
     }
-
-
-
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             val scaleFactor = detector.scaleFactor
@@ -331,6 +328,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 } else if (currentTouchTarget == TouchTarget.PLAYHEAD) {
                     seekPositionMs = touchTimeMs
+                    onSeekListener?.invoke(seekPositionMs)
                     invalidate()
                 }
             }
