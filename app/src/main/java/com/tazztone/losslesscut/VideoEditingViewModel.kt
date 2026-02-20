@@ -49,6 +49,7 @@ class VideoEditingViewModel(
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
 
     private var currentVideoUri: Uri? = null
+    private var videoFileName: String = "video.mp4"
     private var videoDurationMs: Long = 0
     private var history = mutableListOf<List<TrimSegment>>()
     private var currentSegments = listOf<TrimSegment>()
@@ -68,7 +69,7 @@ class VideoEditingViewModel(
                 val keyframes = engine.probeKeyframes(context, videoUri)
                 
                 val metadata = StorageUtils.getVideoMetadata(context, videoUri)
-                val fileName = metadata.first
+                videoFileName = metadata.first
                 videoDurationMs = metadata.second
 
                 // Initial segment covering the whole video
@@ -89,7 +90,7 @@ class VideoEditingViewModel(
         
         _uiState.value = VideoEditingUiState.Success(
             videoUri = currentVideoUri!!,
-            videoFileName = (currentState as? VideoEditingUiState.Success)?.videoFileName ?: "video.mp4",
+            videoFileName = videoFileName,
             keyframes = kf,
             segments = currentSegments.map { it.copy() }, // Deep copy
             selectedSegmentId = selectedSegmentId,
@@ -201,16 +202,16 @@ class VideoEditingViewModel(
 
                 if (errors.isEmpty() && successCount > 0) {
                     _uiEvents.emit("Successfully exported $successCount clip(s) to Movies/LosslessCut")
-                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
+                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, videoFileName, _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
                 } else if (successCount > 0) {
                     _uiEvents.emit("Exported $successCount clips. Errors: ${errors.joinToString()}")
-                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
+                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, videoFileName, _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
                 } else {
                     _uiState.value = VideoEditingUiState.Error("Export failed: ${errors.joinToString()}")
                 }
             } else {
-                _uiEvents.emit("Precise mode coming in v2.0")
-                _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
+                _uiEvents.emit(getApplication<Application>().getString(R.string.precise_mode_coming_soon))
+                _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, videoFileName, _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
             }
         }
     }

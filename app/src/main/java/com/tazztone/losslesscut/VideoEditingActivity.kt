@@ -29,7 +29,6 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
-@Suppress("DEPRECATION")
 class VideoEditingActivity : AppCompatActivity() {
 
     companion object {
@@ -40,7 +39,14 @@ class VideoEditingActivity : AppCompatActivity() {
         private const val TAG = "VideoEditingActivity"
     }
 
-    private val viewModel: VideoEditingViewModel by viewModels()
+    private val viewModel: VideoEditingViewModel by viewModels {
+        object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return VideoEditingViewModel(application) as T
+            }
+        }
+    }
     private lateinit var binding: ActivityVideoEditingBinding
     private lateinit var player: ExoPlayer
 
@@ -132,6 +138,7 @@ class VideoEditingActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun hideSystemUI() {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             window.insetsController?.let {
@@ -216,7 +223,7 @@ class VideoEditingActivity : AppCompatActivity() {
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
 
         if (binding.switchLossless.isChecked && currentState.keyframes.isNotEmpty()) {
-            val keyframesMs = currentState.keyframes.map { it.toLong() }.sorted()
+            val keyframesMs = currentState.keyframes.sorted()
             val currentPos = player.currentPosition
             
             val targetKf = if (direction > 0) {
@@ -245,7 +252,7 @@ class VideoEditingActivity : AppCompatActivity() {
                             initializePlayer(state.videoUri)
                         }
                         
-                        binding.customVideoSeeker.setKeyframes(state.keyframes.map { it.toLong() })
+                        binding.customVideoSeeker.setKeyframes(state.keyframes)
                         binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
                         binding.btnUndo.isEnabled = state.canUndo
                         binding.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
@@ -278,8 +285,24 @@ class VideoEditingActivity : AppCompatActivity() {
             try {
                 retriever.setDataSource(this@VideoEditingActivity, videoUri)
                 val fpsStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-                fpsStr?.toFloatOrNull()?.let { fps ->
+                val fps = fpsStr?.toFloatOrNull()
+                if (fps != null && fps > 0f) {
                     videoFps = fps
+                } else {
+                    val extractor = android.media.MediaExtractor()
+                    extractor.setDataSource(this@VideoEditingActivity, videoUri, null)
+                    for (i in 0 until extractor.trackCount) {
+                        val format = extractor.getTrackFormat(i)
+                        val mime = format.getString(android.media.MediaFormat.KEY_MIME)
+                        if (mime?.startsWith("video/") == true && format.containsKey(android.media.MediaFormat.KEY_FRAME_RATE)) {
+                            val frameRate = format.getInteger(android.media.MediaFormat.KEY_FRAME_RATE).toFloat()
+                            if (frameRate > 0f) {
+                                videoFps = frameRate
+                            }
+                            break
+                        }
+                    }
+                    extractor.release()
                 }
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to extract FPS", e)

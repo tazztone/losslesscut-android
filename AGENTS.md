@@ -1,163 +1,60 @@
-# Developer Guide & Knowledge Base (`AGENTS.md`)
+# Developer Guide & PRD (`AGENTS.md`)
 
-## Project Overview
-**Name**: Lossless Video Cut
-**Package**: `com.tazztone.losslesscut`
-**Tech Stack**: Kotlin, Android SDK (API 31+ target), Media3 (ExoPlayer), Lottie.
+## 1. Product Vision & Requirements
+**Lossless Video Cut** is a lightweight Android app for **lossless video trimming**. 
+**Core Value**: Speed and zero generational quality loss by manipulating the video container (`MediaExtractor`/`MediaMuxer`) without re-encoding the actual video/audio streams.
 
-This project is a lightweight, open-source Android application designed for **lossless video trimming**. It avoids re-encoding the video stream, preserving original quality and ensuring near-instant processing speeds.
+**User Stories & Capabilities**:
+- **Lossless Trimming**: Precisely define start/end points and save segments instantly.
+- **Multi-Segment Export**: Split video, discard parts (ads/silences), and export remaining segments as individual files in one pass.
+- **Precision Seeking**: Zoomable timeline (up to 20x) for frame-accurate cuts based on keyframes.
+- **Undo/Redo Workflow**: Non-destructive workflow via an in-memory snapshot stack.
 
-## Core Architecture (v2.0 MVVM)
+**Non-Goals (Do Not Implement)**:
+- ❌ Video re-encoding or compression.
+- ❌ Visual filters, text overlays, or color grading.
+- ❌ Advanced audio mixing or effects.
 
-### 1. High-Level Architecture
-The application is structured into three primary layers to ensure a responsive UI, better testability, and a clean separation of concerns:
-1. **UI Layer**: Responsbile for rendering the interface and capturing user inputs.
-2. **Presentation Layer (ViewModel)**: Manages UI state, handles user intents, and coordinates with the Domain/Data layer.
-3. **Domain/Data Layer (Engine & Storage)**: Encapsulates the core business logic (video processing) and handles file I/O operations via Scoped Storage.
+## 2. Environment & Stack
+- **Stack**: Kotlin 1.9+, Android SDK (Min API 31, Target 34+), Media3 (ExoPlayer).
+- **Architecture**: MVVM, single-Activity, Scoped Storage (`MediaStore`).
 
-### Component Diagram
-```mermaid
-graph TD
-    subgraph UI Layer
-        VEA[VideoEditingActivity]
-        CVS[CustomVideoSeeker]
-    end
+## 3. Core Architecture
 
-    subgraph Presentation Layer
-        VM[VideoEditingViewModel]
-        State[VideoEditingUiState]
-    end
+### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`)
+- `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states.
+- `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, and haptic snapping to keyframes.
 
-    subgraph Domain & Data Layer
-        LE[LosslessEngine]
-        SU[StorageUtils]
-        MediaStore[(MediaStore)]
-    end
+### Presentation (`VideoEditingViewModel.kt`)
+- `TrimSegment`: Data model holding `startMs`, `endMs`, and `SegmentAction` (KEEP/DISCARD).
+- `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions (capped at 30 items for memory safety).
+- Automates the multi-clip export orchestration.
 
-    VEA -- Observes --> State
-    VM -- Updates --> State
-    VEA -- User Actions --> VM
-    CVS -- Seek Events --> VEA
+### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`)
+- `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix (syncs written video vs. audio samples to prevent "frozen last frame" bugs) and export params (rotation override, audio-only).
+- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation and file finalization.
 
-    VM -- Probe Keyframes --> LE
-    VM -- Trim Video --> LE
-    VM -- Request Output URI --> SU
-    SU -- Create File --> MediaStore
-    LE -- Read/Write --> MediaStore
-```
+### Data Flow (Trim Action)
+1. User confirms trim -> `Activity` calls `ViewModel.trimVideo()`.
+2. `ViewModel` emits Loading state -> calls `StorageUtils.createVideoOutputUri()`.
+3. `ViewModel` calls `LosslessEngine.executeLosslessCut(input, outputUri, start, end)`.
+4. `LosslessEngine` processes samples -> calls `StorageUtils.finalizeVideo()` -> returns `Result.success(uri)`.
+5. `ViewModel` emits Success state -> `Activity` reloads ExoPlayer with the new output URI.
 
-### 2. Component Deep Dive
+## 4. Developer Workflows & CI/CD
+- **Testing**: `./gradlew test` (runs JVM/Robolectric `LosslessEngine` tests), `./gradlew connectedAndroidTest` (UI tests).
+- **CI/CD (`release.yml`)**: GitHub Action auto-builds/publishes APKs on `v*` tags. Requires repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`.
 
-#### 2.1 UI Layer ([VideoEditingActivity.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingActivity.kt) & [CustomVideoSeeker.kt](app/src/main/java/com/tazztone/losslesscut/customviews/CustomVideoSeeker.kt))
-- **VideoEditingActivity**: Initializes the ExoPlayer, binds UI components to the [ViewModel](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) state flow, and manages the segment editing workflow (Split, Delete, Undo).
-- **CustomVideoSeeker**: A high-performance custom View for the NLE timeline. 
-  - **Zoom & Pan**: Supports up to 20x magnification for frame-perfect edits.
-  - **Gesture Logic**: Uses `TouchTarget` objects (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD) to manage drag interactions.
-  - **Auto-Pan**: Smoothly scrolls the timeline when dragging segment boundaries near the screen edges.
-  - **Haptic Snapping**: Triggers `CLOCK_TICK` haptics when boundaries align with keyframes.
-- **State Observation**: The Activity observes [VideoEditingUiState](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) to handle segment highlights, undo availability, and loading overlays.
+## 5. Roadmap (v3.0+)
+1. **Precise Trim (Smart Cut)**: Decode and re-encode *only* the frames between a cut point and the nearest keyframe.
+2. **Merging**: Lossless concatenation of segments via PTS alignment.
+3. **Background/AI**: `WorkManager` for large background exports; AI-based automatic silence/motion detection.
 
-#### 2.2 Presentation Layer ([VideoEditingViewModel.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt))
-- **`TrimSegment` Model**: Segments are represented as objects with `startMs`, `endMs`, and a `SegmentAction` (KEEP/DISCARD).
-- **Undo/Redo History**: Implements a `Stack` of `List<TrimSegment>` snapshots. Each destructive action (drag, split, discard) pushes a deep copy to the stack (capped at 30 items for memory safety).
-- **Multi-Clip Export**: Coordinates the iterative export of individual "KEEP" segments through the engine.
-
-#### 2.3 Domain/Data Layer ([LosslessEngine.kt](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt) & [StorageUtils.kt](app/src/main/java/com/tazztone/losslesscut/StorageUtils.kt))
-- **LosslessEngine**:
-  - **EOS Duration Fix**: Tracks exact written video vs audio samples to prevent "frozen last frame" bugs in the container footer.
-  - **Export Parameters**: Supports rotation overrides, track removal (Mute/Audio-Only), and start/end window clipping.
-- **StorageUtils**: Manages `MediaStore` URI generation and file finalization for Scoped Storage compliance.
-
-## 3. Data Flow: Trimming a Video
-The sequence below illustrates the flow when a user confirms a trim action:
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant UI as VideoEditingActivity
-    participant VM as VideoEditingViewModel
-    participant Storage as StorageUtils
-    participant Engine as LosslessEngine
-
-    User->>UI: Clicks "Done" on Trim Slider
-    UI->>VM: trimVideo(startMs, endMs, isLossless)
-    VM->>UI: Emit State.Loading
-    
-    VM->>Storage: createVideoOutputUri()
-    Storage-->>VM: outputUri
-    
-    VM->>Engine: executeLosslessCut(input, output, start, end)
-    activate Engine
-    Engine->>Engine: Extract and Mux samples
-    Engine->>Storage: finalizeVideo(outputUri)
-    Engine-->>VM: Result.success(outputUri)
-    deactivate Engine
-    
-    VM->>UI: Emit State.Success(newUri)
-    UI->>UI: Reinitialize Player with new output
-```
-
-## Key Design Decisions
-
-*   **MVVM Migration (v2.0)**: Transitioned from a monolithic Activity to MVVM to separate playback logic from file processing, making the codebase more testable (Robolectric) and maintainable.
-*   **MediaStore over File API**: Adopted `MediaStore` for all output operations to ensure seamless operation on Android 11+ and avoid the deprecated `Environment.getExternalStoragePublicDirectory`.
-*   **Result Types**: Switched engine APIs from `Boolean` to `Result<T>` to provide meaningful error messages to the UI.
-*   **Native SDK vs FFmpeg**: Maintained the decision to use `MediaExtractor`/`MediaMuxer` to keep APK size low (~20MB).
-
-## Developer Workflow
-
-### Building & Testing
-*   Standard Android Gradle build.
-*   **Unit Tests**: Run `./gradlew test` to execute JVM-based unit tests (including Robolectric engine tests).
-*   **Instrumented Tests**: Run `./gradlew connectedAndroidTest` to verify UI on a device/emulator.
-
-## CI/CD (GitHub Actions)
-The project includes a `release.yml` workflow that automatically builds and publishes the app when a tag starting with `v` (e.g., `v1.0.0`) is pushed.
-
-### Secrets Required
-Configure the following secrets in your GitHub Repository settings:
-*   `ANDROID_KEYSTORE_BASE64`: Base64 encoded content of your `keystore.jks`.
-*   `ANDROID_KEYSTORE_PASSWORD`: Keystore password.
-*   `ANDROID_KEY_ALIAS`: Key alias.
-*   `ANDROID_KEY_PASSWORD`: Key password.
-*   `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`: Service account JSON for Play Store publishing.
-
-### Debugging
-*   **Logs**: Filter Logcat by `LosslessEngine`, `VideoEditingActivity`, or `ExoPlayer`.
-*   **Visual Debugging**: Keyframes are visualized as white ticks on the timeline. If these are missing, `probeKeyframes` might be failing or the video has a strange GOP structure.
-
-## Future Roadmap (v3.0+)
-
-1.  **Phase 1 [COMPLETED]**: NLE Timeline (v2.0), Zoom/Pan, Undo Stack, and Multi-Segment Export.
-2.  **Phase 2 [PLANNED]**: Smart Cut (Precise Mode) & Video Merging.
-    *   **Precise Trim**: Decode and re-encode *only* the frames between the cut point and the nearest keyframe.
-    *   **Merging (Concatenation)**: Lossless concatenation of multiple segments into a single file by aligning PTS.
-3.  **Phase 3 [PLANNED]**: Background Processing & AI.
-    *   **Foreground Service / WorkManager**: Large exports in background.
-    *   **AI Auto-Cut**: Automatic silence or motion removal.
-
-## Code Style & Conventions
-*   **Kotlin**: Use idiomatic Kotlin (coroutines for async work, extension functions).
-*   **Async**: UI operations on Main thread, heavy lifting (probing, cutting) on IO dispatchers.
-*   **Permissions**: Handle runtime permissions gracefully (especially Android 13+ media permissions).
-
-## AI-Assisted Development (Context7)
-
-When using AI assistants, leverage the `/mcp-context7` workflow for high-fidelity documentation and code examples.
-
-### 1. Library IDs for This Stack
-Use these exact IDs with the `query-docs` tool to get relevant context:
-
-| Component | Context7 Library ID |
-| :--- | :--- |
-| **Media3 (ExoPlayer)** | `/androidx/media` |
-| **Kotlin Coroutines** | `/kotlin/kotlinx.coroutines` |
-| **AndroidX / Jetpack** | `/androidx/androidx` |
-| **Material Components** | `/material-components/material-components-android` |
-| **Lottie Android** | `/airbnb/lottie-android` |
-| **Robolectric** | `/robolectric/robolectric` |
-| **Kotlin Language** | `/websites/kotlinlang` |
-
-### 2. Best Practices
-> [!TIP]
-> use `### 2. query-docs` to retrieve documentation and code examples from Context7 during planning. This ensures you are following the latest best practices and API surfaces for the specific library.
+## 6. Context7 Library IDs
+Use the `query-docs` tool with these IDs for up-to-date documentation and code examples:
+- Media3 (ExoPlayer): `/androidx/media`
+- Coroutines: `/kotlin/kotlinx.coroutines`
+- AndroidX: `/androidx/androidx`
+- Material: `/material-components/material-components-android`
+- Lottie: `/airbnb/lottie-android`
+- Robolectric: `/robolectric/robolectric`

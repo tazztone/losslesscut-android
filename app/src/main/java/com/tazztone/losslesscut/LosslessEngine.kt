@@ -70,7 +70,6 @@ object LosslessEngineImpl : LosslessEngineInterface {
         keyframes
     }
 
-    @android.annotation.SuppressLint("WrongConstant")
     override suspend fun executeLosslessCut(
         context: Context,
         inputUri: Uri,
@@ -183,7 +182,7 @@ object LosslessEngineImpl : LosslessEngineInterface {
                 bufferInfo.presentationTimeUs = sampleTime - effectiveStartUs
                 bufferInfo.offset = 0
                 bufferInfo.size = sampleSize
-                bufferInfo.flags = extractor.sampleFlags
+                bufferInfo.flags = extractor.sampleFlags and (MediaCodec.BUFFER_FLAG_KEY_FRAME or MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
                 
                 // EOS Tracking

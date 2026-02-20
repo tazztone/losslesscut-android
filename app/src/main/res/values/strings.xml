@@ -42,4 +42,5 @@
     <string name="snapshot_failed">Failed to capture snapshot</string>
     <string name="select_track_export">Select at least one track to export</string>
     <string name="export_options">Export Options</string>
+    <string name="precise_mode_coming_soon">Precise mode coming in v2.0</string>
 </resources>
