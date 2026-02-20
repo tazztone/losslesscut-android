@@ -54,7 +54,6 @@ class VideoEditingActivity : AppCompatActivity() {
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
     private var currentRotation = 0
-    @Volatile private var videoFps = 30f
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -101,7 +100,6 @@ class VideoEditingActivity : AppCompatActivity() {
         observeViewModel()
 
         viewModel.initialize(videoUri)
-        extractVideoFps(videoUri)
         
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
@@ -260,7 +258,7 @@ class VideoEditingActivity : AppCompatActivity() {
             }
             player.seekTo(targetKf)
         } else {
-            val step = if (videoFps > 0f) (1000L / videoFps).toLong() else 33L
+            val step = if (currentState.videoFps > 0f) (1000L / currentState.videoFps).toLong() else 33L
             val target = (player.currentPosition + (direction * step)).coerceIn(0, player.duration)
             player.seekTo(target)
         }
@@ -306,39 +304,6 @@ class VideoEditingActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractVideoFps(videoUri: Uri) {
-        lifecycleScope.launch(Dispatchers.IO) {
-            val retriever = MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(this@VideoEditingActivity, videoUri)
-                val fpsStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
-                val fps = fpsStr?.toFloatOrNull()
-                if (fps != null && fps > 0f) {
-                    videoFps = fps
-                } else {
-                    val extractor = android.media.MediaExtractor()
-                    extractor.setDataSource(this@VideoEditingActivity, videoUri, null)
-                    for (i in 0 until extractor.trackCount) {
-                        val format = extractor.getTrackFormat(i)
-                        val mime = format.getString(android.media.MediaFormat.KEY_MIME)
-                        if (mime?.startsWith("video/") == true && format.containsKey(android.media.MediaFormat.KEY_FRAME_RATE)) {
-                            val frameRate = format.getInteger(android.media.MediaFormat.KEY_FRAME_RATE).toFloat()
-                            if (frameRate > 0f) {
-                                videoFps = frameRate
-                            }
-                            break
-                        }
-                    }
-                    extractor.release()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to extract FPS", e)
-            } finally {
-                retriever.release()
-            }
-        }
-    }
-
     private fun setupExoPlayer() {
         player = ExoPlayer.Builder(this).build().apply {
             binding.playerView.player = this
@@ -378,35 +343,7 @@ class VideoEditingActivity : AppCompatActivity() {
 
     private fun extractSnapshot() {
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        lifecycleScope.launch(Dispatchers.IO) {
-            val retriever = MediaMetadataRetriever()
-            try {
-                withContext(Dispatchers.Main) { binding.loadingScreen.root.visibility = View.VISIBLE }
-                retriever.setDataSource(this@VideoEditingActivity, currentState.videoUri)
-                
-                val bitmap = retriever.getFrameAtTime(player.currentPosition * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-                
-                if (bitmap != null) {
-                    val file = File(getExternalFilesDir(null), "snapshot_${System.currentTimeMillis()}.png")
-                    val fos = FileOutputStream(file)
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-                    fos.close()
-                    bitmap.recycle()
-                    
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@VideoEditingActivity, getString(R.string.snapshot_saved, file.name), Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    withContext(Dispatchers.Main) { Toast.makeText(this@VideoEditingActivity, getString(R.string.snapshot_failed), Toast.LENGTH_SHORT).show() }
-                }
-
-            } catch (e: Exception) {
-                Log.e("VideoEditingActivity", "Snapshot error", e)
-            } finally {
-                retriever.release()
-                withContext(Dispatchers.Main) { binding.loadingScreen.root.visibility = View.GONE }
-            }
-        }
+        viewModel.extractSnapshot(player.currentPosition)
     }
 
     private fun showExportOptionsDialog() {

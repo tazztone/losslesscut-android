@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut
 
 import android.app.Application
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -31,14 +32,16 @@ sealed class VideoEditingUiState {
         val keyframes: List<Long>,
         val segments: List<TrimSegment>,
         val selectedSegmentId: UUID? = null,
-        val canUndo: Boolean = false
+        val canUndo: Boolean = false,
+        val videoFps: Float = 30f
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
 
 class VideoEditingViewModel(
     application: Application,
-    private val engine: LosslessEngineInterface = LosslessEngineImpl
+    private val engine: LosslessEngineInterface = LosslessEngineImpl,
+    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
@@ -50,6 +53,7 @@ class VideoEditingViewModel(
     private var currentVideoUri: Uri? = null
     private var videoFileName: String = "video.mp4"
     private var videoDurationMs: Long = 0
+    private var videoFps: Float = 30f
     private var currentKeyframes: List<Long> = emptyList()
     private var history = mutableListOf<List<TrimSegment>>()
     private var currentSegments = listOf<TrimSegment>()
@@ -73,6 +77,8 @@ class VideoEditingViewModel(
                 videoFileName = metadata.first
                 videoDurationMs = metadata.second
 
+                videoFps = extractVideoFps(context, videoUri)
+
                 // Initial segment covering the whole video
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))
                 history.clear()
@@ -86,6 +92,39 @@ class VideoEditingViewModel(
         }
     }
 
+    private suspend fun extractVideoFps(context: Context, videoUri: Uri): Float = kotlinx.coroutines.withContext(ioDispatcher) {
+        var fps = 30f
+        val retriever = android.media.MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, videoUri)
+            val fpsStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+            val extractedFps = fpsStr?.toFloatOrNull()
+            if (extractedFps != null && extractedFps > 0f) {
+                fps = extractedFps
+            } else {
+                val extractor = android.media.MediaExtractor()
+                extractor.setDataSource(context, videoUri, null)
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(android.media.MediaFormat.KEY_MIME)
+                    if (mime?.startsWith("video/") == true && format.containsKey(android.media.MediaFormat.KEY_FRAME_RATE)) {
+                        val frameRate = format.getInteger(android.media.MediaFormat.KEY_FRAME_RATE).toFloat()
+                        if (frameRate > 0f) {
+                            fps = frameRate
+                        }
+                        break
+                    }
+                }
+                extractor.release()
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("VideoEditingViewModel", "Failed to extract FPS", e)
+        } finally {
+            retriever.release()
+        }
+        fps
+    }
+
     private fun updateSuccessState() {
         
         _uiState.value = VideoEditingUiState.Success(
@@ -94,7 +133,8 @@ class VideoEditingViewModel(
             keyframes = currentKeyframes,
             segments = currentSegments.map { it.copy() }, // Deep copy
             selectedSegmentId = selectedSegmentId,
-            canUndo = history.size > 1
+            canUndo = history.size > 1,
+            videoFps = videoFps
         )
     }
 
@@ -211,6 +251,39 @@ class VideoEditingViewModel(
                 }
             } else {
                 _uiEvents.emit(getApplication<Application>().getString(R.string.precise_mode_coming_soon))
+                updateSuccessState()
+            }
+        }
+    }
+
+    fun extractSnapshot(currentPositionMs: Long) {
+        val uri = currentVideoUri ?: return
+        viewModelScope.launch(ioDispatcher) {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+                _uiState.value = VideoEditingUiState.Loading
+                val context = getApplication<Application>()
+                retriever.setDataSource(context, uri)
+                
+                // Retriever times are in microseconds
+                val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                
+                if (bitmap != null) {
+                    val file = java.io.File(context.getExternalFilesDir(null), "snapshot_${System.currentTimeMillis()}.png")
+                    val fos = java.io.FileOutputStream(file)
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
+                    fos.close()
+                    bitmap.recycle()
+                    
+                    _uiEvents.emit(context.getString(R.string.snapshot_saved, file.name))
+                } else {
+                    _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("VideoEditingViewModel", "Snapshot error", e)
+                _uiEvents.emit("Failed to create snapshot.")
+            } finally {
+                retriever.release()
                 updateSuccessState()
             }
         }

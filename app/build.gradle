@@ -27,7 +27,7 @@ android {
 
     defaultConfig {
         applicationId "com.tazztone.losslesscut"
-        minSdk 26
+        minSdk 31
         targetSdk 35
         versionCode 2
         versionName "2.0.0"

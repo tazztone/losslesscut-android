@@ -32,12 +32,19 @@ class VideoEditingViewModelTest {
         Dispatchers.setMain(testDispatcher)
         mockEngine = mockk()
         val application = ApplicationProvider.getApplicationContext<android.app.Application>()
-        viewModel = VideoEditingViewModel(application, mockEngine)
+        viewModel = VideoEditingViewModel(application, mockEngine, testDispatcher)
         mockkObject(StorageUtils)
         
         // Default mocks
         coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
         every { StorageUtils.getVideoMetadata(any(), any()) } returns Pair("mock_video.mp4", 10000L)
+
+        val shadowRetriever = org.robolectric.Shadows.shadowOf(android.media.MediaMetadataRetriever())
+        org.robolectric.shadows.ShadowMediaMetadataRetriever.addMetadata(
+            "content://mock/video.mp4",
+            android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE,
+            "30"
+        )
     }
 
     @After
@@ -49,15 +56,11 @@ class VideoEditingViewModelTest {
     @Test
     fun testInitialization_createsInitialSegment() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
-        
-        // We need to mock MediaMetadataRetriever as it's used in initialize
-        // For simplicity in this env, we might just test the logic that follows
-        
         viewModel.initialize(uri)
         advanceUntilIdle()
         
         val state = viewModel.uiState.value
-        assertTrue(state is VideoEditingUiState.Success)
+        assertTrue("State is not Success: $state", state is VideoEditingUiState.Success)
         val success = state as VideoEditingUiState.Success
         assertEquals(1, success.segments.size)
         assertEquals(0L, success.segments[0].startMs)
@@ -65,13 +68,12 @@ class VideoEditingViewModelTest {
 
     @Test
     fun testSplitSegment() = runTest {
-        // Setup initial success state manually to avoid full initialize dependencies if possible
-        // But initialize is better for integration-style unit test
         val uri = Uri.parse("content://mock/video.mp4")
         viewModel.initialize(uri)
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
@@ -88,6 +90,7 @@ class VideoEditingViewModelTest {
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
+        advanceUntilIdle()
         viewModel.undo()
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
@@ -121,14 +124,11 @@ class VideoEditingViewModelTest {
         for (i in 1..35) {
             viewModel.splitSegmentAt(i.toLong() * 100)
         }
+        advanceUntilIdle()
         
-        // History should be capped at 30. Initial + 35 splits = 36 states. 
-        // If capped at 30, only 30 remain.
-        // canUndo checks history.size > 1
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertTrue(state.canUndo)
         
-        // Theoretically it should survive 30 pops.
         repeat(29) { viewModel.undo() }
         val finalState = viewModel.uiState.value as VideoEditingUiState.Success
         assertFalse("Should be at the bottom of the capped stack", finalState.canUndo)
