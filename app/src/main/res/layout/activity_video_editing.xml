@@ -84,7 +84,8 @@
         android:background="#1A1A1A"
         android:gravity="center"
         android:layout_alignParentBottom="true"
-        android:padding="12dp">
+        android:padding="12dp"
+        android:animateLayoutChanges="true">
 
         <ImageButton
         
@@ -216,7 +217,8 @@
         android:gravity="center_vertical"
         android:layout_above="@+id/seekerContainer"
         android:background="#80000000"
-        android:padding="8dp">
+        android:padding="8dp"
+        android:animateLayoutChanges="true">
 
         <TextView
             android:id="@+id/tvDuration"
