@@ -1,34 +1,24 @@
 <resources>
 
     <!-- Base application theme -->
-    <style name="AppTheme" parent="Theme.Material3.Dark">
-        <item name="colorPrimary">@color/colorOnSecondary</item>
-        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+    <!-- Base application theme -->
+    <style name="AppTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorOnPrimary">@color/colorOnPrimary</item>
         <item name="colorSecondary">@color/colorSecondary</item>
-        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
         <item name="colorOnSecondary">@color/colorOnSecondary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorOnSurface">@color/colorOnSurface</item>
+        <item name="colorOnSurfaceVariant">@color/colorOnSurfaceVariant</item>
+        <item name="colorAccent">@color/colorAccent</item>
         <item name="android:windowBackground">@color/background</item>
         <item name="android:textColor">@color/textColor</item>
         <item name="android:navigationBarColor">@color/navigationBarColor</item>
         <item name="android:statusBarColor">@color/statusBarColor</item>
     </style>
 
-    <style name="Editor" parent="Theme.Material3.Dark.NoActionBar">
+    <style name="Editor" parent="AppTheme">
         <item name="colorBackground">@color/colorPrimary</item>
-        <item name="shapeAppearanceOverlay">@style/DialogShapeAppearance</item> <!-- Custom shape -->
-        <item name="colorPrimary">@color/colorOnSecondary</item>
-        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
-        <item name="colorOnPrimary">@color/colorOnPrimary</item>
-        <item name="colorSecondary">@color/colorSecondary</item>
-        <item name="colorSecondaryVariant">@color/colorSecondaryVariant</item>
-        <item name="colorOnSecondary">@color/colorOnSecondary</item>
-        <item name="android:windowBackground">@color/background</item>
-        <item name="android:textColor">@color/textColor</item>
-        <item name="android:navigationBarColor">@color/navigationBarColor</item>
-        <item name="android:statusBarColor">@color/statusBarColor</item>
-        <item name="colorSegmentKeep">@color/segmentKeep</item>
-        <item name="colorSegmentDiscard">@color/segmentDiscard</item>
     </style>
 
     <style name="DialogShapeAppearance" parent="">

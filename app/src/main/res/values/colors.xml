@@ -1,16 +1,20 @@
 <resources>
-    <color name="colorPrimary">#000000</color> <!-- Pure black -->
-    <color name="colorPrimaryVariant">#1A1A1A</color> <!-- Dark variant of black -->
-    <color name="colorOnPrimary">#FF4081</color> <!-- Pink on primary -->
-    <color name="colorSecondary">#000000</color> <!-- Black -->
-    <color name="colorSecondaryVariant">#1A1A1A</color> <!-- Dark variant of black -->
-    <color name="colorOnSecondary">#FFFFFF</color> <!-- White on secondary -->
-    <color name="background">#121212</color> <!-- Background color -->
-    <color name="textColor">#E0E0E0</color> <!-- Text color -->
-    <color name="navigationBarColor">#121212</color> <!-- Navigation bar color -->
-    <color name="statusBarColor">#121212</color> <!-- Status bar color -->
+    <color name="colorPrimary">#121212</color>
+    <color name="colorPrimaryVariant">#1E1E1E</color>
+    <color name="colorAccent">#00C8FF</color>       <!-- cyan accent, video-editor feel -->
+    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorSecondary">#1E1E2E</color>     <!-- deep blue-tinted dark -->
+    <color name="colorSecondaryVariant">#2E2E3E</color>
+    <color name="colorOnSecondary">#FFFFFF</color>
+    <color name="colorSurface">#121212</color>
+    <color name="colorOnSurface">#F0F0F0</color>
+    <color name="colorOnSurfaceVariant">#AAAAAA</color>
+    <color name="background">#0D0D0D</color>
+    <color name="textColor">#F0F0F0</color>
+    <color name="navigationBarColor">#0D0D0D</color>
+    <color name="statusBarColor">#0D0D0D</color>
 
     <!-- Video Seeker Colors -->
-    <color name="segmentKeep">#8000FF00</color>
-    <color name="segmentDiscard">#80808080</color>
+    <color name="segmentKeep">#9900E676</color>       <!-- more saturated green -->
+    <color name="segmentDiscard">#99FF4444</color>   <!-- red for discarded -->
 </resources>

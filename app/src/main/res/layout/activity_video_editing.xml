@@ -12,7 +12,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#99000000"
+        android:background="?attr/colorSurface"
         android:padding="8dp"
         android:layout_alignParentTop="true">
 
@@ -81,107 +81,160 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#1A1A1A"
+        android:background="?attr/colorSurface"
         android:gravity="center"
         android:layout_alignParentBottom="true"
         android:padding="12dp"
         android:animateLayoutChanges="true">
 
-        <ImageButton
-        
-            android:tooltipText="@string/set_in_point"
-            android:id="@+id/btnSetIn"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:src="@drawable/ic_trim_left_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/set_in_point"/>
-
-        <ImageButton
-        
-            android:tooltipText="@string/set_out_point"
-            android:id="@+id/btnSetOut"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@drawable/ic_trim_right_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/set_out_point"/>
-
-        <ImageButton
-        
-            android:tooltipText="@string/split"
-            android:id="@+id/btnSplit"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@drawable/ic_split_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/split"/>
-
-        <ImageButton
-        
-            android:tooltipText="@string/discard_segment"
-            android:id="@+id/btnDelete"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@drawable/ic_delete_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/discard_segment"/>
-
-        <ImageButton
-        
-            android:tooltipText="@string/snapshot"
-            android:id="@+id/btnSnapshot"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@android:drawable/ic_menu_camera"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/snapshot"/>
-            
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
+            android:orientation="vertical"
+            android:gravity="center">
             <ImageButton
-        
-                android:tooltipText="@string/rotate"
-            android:id="@+id/btnRotate"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:src="@android:drawable/ic_menu_rotate"
+                android:id="@+id/btnSetIn"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_trim_left_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/rotate"/>
-            
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="@string/set_in_point"/>
             <TextView
-                android:id="@+id/badgeRotate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="top|end"
-                android:layout_marginTop="4dp"
-                android:layout_marginEnd="12dp"
-                android:background="#DD000000"
-                android:textColor="@android:color/white"
+                android:text="In"
                 android:textSize="10sp"
-                android:padding="2dp"
-                android:visibility="gone"
-                android:text="90°"/>
-        </FrameLayout>
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btnSetOut"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_trim_right_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="@string/set_out_point"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Out"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btnSplit"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_split_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="@string/split"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Split"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btnDelete"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_delete_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="@string/discard_segment"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Discard"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <ImageButton
+                android:id="@+id/btnSnapshot"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_camera_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="?attr/colorOnSurface"
+                android:contentDescription="@string/snapshot"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Snap"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
+            
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+                <ImageButton
+                    android:id="@+id/btnRotate"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:src="@drawable/ic_rotate_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="?attr/colorOnSurface"
+                    android:contentDescription="@string/rotate"/>
+                <TextView
+                    android:id="@+id/badgeRotate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:layout_marginTop="0dp"
+                    android:layout_marginEnd="0dp"
+                    android:background="#DD000000"
+                    android:textColor="@android:color/white"
+                    android:textSize="10sp"
+                    android:padding="2dp"
+                    android:visibility="gone"
+                    android:text="90°"/>
+            </FrameLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rotate"
+                android:textSize="10sp"
+                android:textColor="?attr/colorOnSurfaceVariant"/>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Timeline Area -->
@@ -189,7 +242,7 @@
         android:id="@+id/seekerContainer"
         android:layout_width="match_parent"
         android:layout_height="120dp"
-        android:background="#CC000000"
+        android:background="?attr/colorSurface"
         android:orientation="vertical"
         android:layout_above="@+id/editingControls"
         android:paddingTop="8dp"
@@ -216,7 +269,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:layout_above="@+id/seekerContainer"
-        android:background="#80000000"
+        android:background="?attr/colorSurface"
         android:padding="8dp"
         android:animateLayoutChanges="true">
 
@@ -227,33 +280,32 @@
             android:layout_weight="1"
             android:text="00:00:00.000 / 00:00:00.000"
             android:textSize="14sp"
-            android:textColor="@android:color/white"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginStart="16dp"/>
 
         <ImageButton
-        
-            android:tooltipText="@string/nudge_backward"
             android:id="@+id/btnNudgeBack"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_previous"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:src="@drawable/ic_skip_previous_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
 
         <ImageButton
             android:id="@+id/btnPlayPauseControls"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:src="@drawable/ic_play_24"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
 
         <ImageButton
-        
-            android:tooltipText="@string/nudge_forward"
             android:id="@+id/btnNudgeForward"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@android:drawable/ic_media_next"
-            android:background="?attr/selectableItemBackgroundBorderless"/>
+            android:src="@drawable/ic_skip_next_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
     </LinearLayout>
 
     <!-- Player Area (Takes remaining top space) -->
@@ -272,14 +324,12 @@
             app:use_controller="false" />
 
         <ImageButton
-        
-            android:tooltipText="@string/play_pause"
             android:id="@+id/btnPlayPause"
             android:layout_width="72dp"
             android:layout_height="72dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_play_24"
-            android:background="#80000000"
+            android:background="@drawable/play_button_bg"
             android:padding="16dp"
             android:contentDescription="@string/play_pause" />
     </FrameLayout>

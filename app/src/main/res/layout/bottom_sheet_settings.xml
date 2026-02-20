@@ -2,15 +2,23 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#2E2E2E"
+    android:background="?attr/colorSurface"
     android:orientation="vertical"
     android:padding="24dp">
+
+    <View
+        android:layout_width="32dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bottom_sheet_handle"
+        android:backgroundTint="?attr/colorOnSurfaceVariant"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/settings"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginBottom="16dp"/>
@@ -20,14 +28,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/lossless_mode_snap"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:layout_marginBottom="8dp"/>
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/lossless_mode_desc"
-        android:textColor="#AAAAAA"
+        android:textColor="?attr/colorOnSurfaceVariant"
         android:textSize="14sp"
         android:layout_marginBottom="16dp"/>
 
@@ -36,7 +44,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Save Snapshots as JPEG"
-        android:textColor="@android:color/white"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="16sp"
         android:layout_marginBottom="8dp"/>
 
@@ -57,14 +65,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="JPG Quality"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"/>
             <TextView
                 android:id="@+id/tvJpgQualityValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="95"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"/>
         </LinearLayout>
         
@@ -92,14 +100,14 @@
                 android:layout_weight="1"
                 android:layout_height="wrap_content"
                 android:text="Undo Limit"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"/>
             <TextView
                 android:id="@+id/tvUndoValue"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="30"
-                android:textColor="@android:color/white"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="16sp"/>
         </LinearLayout>
         
