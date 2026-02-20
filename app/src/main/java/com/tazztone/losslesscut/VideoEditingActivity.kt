@@ -32,6 +32,7 @@ import java.io.FileOutputStream
 class VideoEditingActivity : AppCompatActivity() {
 
     companion object {
+        const val EXTRA_VIDEO_URI = "com.tazztone.losslesscut.EXTRA_VIDEO_URI"
         private const val KEY_PLAYHEAD = "playhead_pos"
         private const val KEY_PLAY_WHEN_READY = "play_when_ready"
         private const val KEY_ROTATION = "rotation_offset"
@@ -85,7 +86,12 @@ class VideoEditingActivity : AppCompatActivity() {
         binding = ActivityVideoEditingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val videoUri: Uri? = intent.getParcelableExtra("VIDEO_URI")
+        val videoUri: Uri? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_VIDEO_URI, Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_VIDEO_URI)
+        }
         if (videoUri == null) {
             Toast.makeText(this, getString(R.string.invalid_video_uri), Toast.LENGTH_LONG).show()
             finish()
