@@ -60,8 +60,17 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
+    
+    private var currentVideoWidth = 0
+    private var currentVideoHeight = 0
 
     private val playerListener = object : Player.Listener {
+        override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+            currentVideoWidth = videoSize.width
+            currentVideoHeight = videoSize.height
+            applyVideoTransform(currentVideoWidth, currentVideoHeight)
+        }
+
         override fun onPlaybackStateChanged(state: Int) {
             if (state == Player.STATE_READY && !isVideoLoaded) {
                 isVideoLoaded = true
@@ -243,24 +252,41 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.badgeRotate?.text = "${currentRotation}°"
         binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
         
-        val isPortraitRotation = currentRotation % 180 != 0
+        // Reset old View-level scaling/rotation hacks as we now use TextureView transforms
+        binding.playerView.scaleX = 1.0f
+        binding.playerView.scaleY = 1.0f
+        binding.playerView.rotation = 0f
         
         binding.playerView.post {
-            val viewWidth = binding.playerView.width.toFloat()
-            val viewHeight = binding.playerView.height.toFloat()
-            
-            if (viewWidth > 0 && viewHeight > 0) {
-                if (isPortraitRotation) {
-                    val scale = minOf(viewWidth / viewHeight, viewHeight / viewWidth)
-                    binding.playerView.scaleX = scale
-                    binding.playerView.scaleY = scale
-                } else {
-                    binding.playerView.scaleX = 1.0f
-                    binding.playerView.scaleY = 1.0f
-                }
-                binding.playerView.rotation = currentRotation.toFloat()
+            if (currentVideoWidth > 0 && currentVideoHeight > 0) {
+                applyVideoTransform(currentVideoWidth, currentVideoHeight)
+                
+                // Force a frame refresh by seeking slightly and back
+                val currentPos = player.currentPosition
+                player.seekTo(currentPos + 1)
+                player.seekTo(currentPos)
+                
+                // Invalidate the surface to be extra sure
+                (binding.playerView.videoSurfaceView as? android.view.TextureView)?.invalidate()
             }
         }
+    }
+
+    private fun applyVideoTransform(videoWidth: Int, videoHeight: Int) {
+        val tv = binding.playerView.videoSurfaceView as? android.view.TextureView ?: return
+        val vw = binding.playerView.width.toFloat()
+        val vh = binding.playerView.height.toFloat()
+        if (vw == 0f || vh == 0f) return
+
+        val isPortrait = currentRotation % 180 != 0
+        val effectiveW = if (isPortrait) videoHeight.toFloat() else videoWidth.toFloat()
+        val effectiveH = if (isPortrait) videoWidth.toFloat() else videoHeight.toFloat()
+        val scale = minOf(vw / effectiveW, vh / effectiveH)
+
+        val matrix = android.graphics.Matrix()
+        matrix.postRotate(currentRotation.toFloat(), videoWidth / 2f, videoHeight / 2f)
+        matrix.postScale(scale, scale, vw / 2f, vh / 2f)
+        tv.setTransform(matrix)
     }
 
     private fun setInPoint() {

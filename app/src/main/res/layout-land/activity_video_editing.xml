@@ -47,6 +47,7 @@
                 android:id="@+id/playerView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                app:surface_type="texture_view"
                 app:use_controller="false" />
 
             <ImageButton
