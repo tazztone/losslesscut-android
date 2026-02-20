@@ -54,7 +54,7 @@
     <string name="set_in_point">Set In Point</string>
     <string name="set_out_point">Set Out Point</string>
     <string name="about_title">About</string>
-    <string name="about_message"><![CDATA[<b>Lossless Video Cut v%1$s</b><br><br>Fast, lossless video trimming using native Android APIs.<br><br><b>Open Source Licenses:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br>- Lottie (Apache 2.0)<br><br><b>Privacy Policy:</b><br>This app does not collect any personal data. Processing happens entirely on-device.<br><a href="https://example.com/privacy">Read full policy</a>]]></string>
+    <string name="about_message"><![CDATA[<b>LosslessCut v%1$s</b><br><br>Fast, lossless video trimming using native Android APIs.<br><br><b>Open Source Licenses:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br>- Lottie (Apache 2.0)<br><br><b>Privacy Policy:</b><br>This app does not collect any personal data. Processing happens entirely on-device.<br><a href="https://example.com/privacy">Read full policy</a>]]></string>
     <string name="permissions_required_title">Permissions Required</string>
     <string name="permissions_required_message">This app needs permissions to access media files and show notifications.</string>
     <string name="grant_permission">Grant</string>
