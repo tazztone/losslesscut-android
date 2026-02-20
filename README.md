@@ -1,6 +1,6 @@
-# Lossless Video Cut
+# LosslessCut
 
-Lossless Video Cut is a lightweight, open-source Android application designed for **fast, lossless video trimming**. By leveraging native Android APIs (`MediaExtractor` and `MediaMuxer`), it avoids re-encoding the video stream, preserving the original quality and ensuring lightning-fast processing speeds.
+LosslessCut is a lightweight, open-source Android application designed for **fast, lossless video trimming**. By leveraging native Android APIs (`MediaExtractor` and `MediaMuxer`), it avoids re-encoding the video stream, preserving the original quality and ensuring lightning-fast processing speeds.
 
 ## Features
 
@@ -37,7 +37,7 @@ Lossless Video Cut is a lightweight, open-source Android application designed fo
 
 ## How it Works
 
-Unlike traditional video editors that transcode the entire clip, Lossless Video Cut identifies **Sync Frames** (I-frames) in your video. 
+Unlike traditional video editors that transcode the entire clip, LosslessCut identifies **Sync Frames** (I-frames) in your video.
 
 1. **Probing**: The app scans the video for keyframes.
 2. **Visualizing**: These keyframes are displayed on the seek bar as white ticks.

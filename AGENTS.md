@@ -1,7 +1,7 @@
 # Developer Guide & PRD (`AGENTS.md`)
 
 ## 1. Product Vision & Requirements
-**Lossless Video Cut** is a lightweight Android app for **lossless video trimming**. 
+**LosslessCut** is a lightweight Android app for **lossless video trimming**.
 **Core Value**: Speed and zero generational quality loss by manipulating the video container (`MediaExtractor`/`MediaMuxer`) without re-encoding the actual video/audio streams.
 
 **User Stories & Capabilities**:

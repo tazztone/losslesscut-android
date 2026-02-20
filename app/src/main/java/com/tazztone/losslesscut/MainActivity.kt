@@ -53,7 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAboutDialog() {
         val message = """
-            <b>Lossless Video Cut v1.0</b><br><br>
+            <b>LosslessCut v1.0</b><br><br>
             Fast, lossless video trimming using native Android APIs.<br><br>
             <b>Open Source Licenses:</b><br>
             - AndroidX Media3 (Apache 2.0)<br>
