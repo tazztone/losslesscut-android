@@ -260,7 +260,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         val segment = state.segments.find { it.id == state.selectedSegmentId }
             ?: state.segments.find { snapPos in it.startMs..it.endMs }
-            ?: state.segments.minByOrNull { kotlin.math.min(kotlin.math.abs(it.startMs - snapPos), kotlin.math.abs(it.endMs - snapPos)) }
+            ?: state.segments.filter { it.startMs > snapPos }.minByOrNull { it.startMs }
             ?: return
 
         if (snapPos < segment.endMs) {
@@ -283,7 +283,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         val segment = state.segments.find { it.id == state.selectedSegmentId }
             ?: state.segments.find { snapPos in it.startMs..it.endMs }
-            ?: state.segments.minByOrNull { kotlin.math.min(kotlin.math.abs(it.startMs - snapPos), kotlin.math.abs(it.endMs - snapPos)) }
+            ?: state.segments.filter { it.endMs < snapPos }.maxByOrNull { it.endMs }
             ?: return
 
         if (snapPos > segment.startMs) {

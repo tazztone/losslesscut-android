@@ -141,10 +141,17 @@ class VideoEditingViewModel(
     }
 
     private fun pushToHistory() {
-        if (history.size >= 30) {
+        val newState = currentSegments.map { it.copy() }
+        
+        // Prevent storing duplicate consecutive states
+        if (history.isNotEmpty() && history.last() == newState) return
+        
+        history.add(newState)
+        
+        val limit = AppPreferences.getUndoLimit(getApplication<Application>())
+        while (history.size > limit) {
             history.removeAt(0)
         }
-        history.add(currentSegments.map { it.copy() })
     }
 
     fun undo() {
@@ -181,6 +188,15 @@ class VideoEditingViewModel(
     }
 
     fun toggleSegmentAction(id: UUID) {
+        val segment = currentSegments.find { it.id == id } ?: return
+        if (segment.action == SegmentAction.KEEP) {
+            val keepCount = currentSegments.count { it.action == SegmentAction.KEEP }
+            if (keepCount <= 1) {
+                viewModelScope.launch { _uiEvents.emit(getApplication<Application>().getString(R.string.error_cannot_delete_last)) }
+                return
+            }
+        }
+        
         currentSegments = currentSegments.map {
             if (it.id == id) {
                 it.copy(action = if (it.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP)
@@ -193,6 +209,15 @@ class VideoEditingViewModel(
     }
 
     fun deleteSegment(id: UUID) {
+        val segment = currentSegments.find { it.id == id } ?: return
+        if (segment.action == SegmentAction.KEEP) {
+            val keepCount = currentSegments.count { it.action == SegmentAction.KEEP }
+            if (keepCount <= 1) {
+                viewModelScope.launch { _uiEvents.emit(getApplication<Application>().getString(R.string.error_cannot_delete_last)) }
+                return
+            }
+        }
+        
         currentSegments = currentSegments.map {
             if (it.id == id) it.copy(action = SegmentAction.DISCARD) else it
         }
@@ -271,13 +296,19 @@ class VideoEditingViewModel(
                 val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
                 
                 if (bitmap != null) {
-                    val fileName = "snapshot_${System.currentTimeMillis()}.png"
+                    val formatSetting = AppPreferences.getSnapshotFormat(context)
+                    val isJpeg = formatSetting == "JPEG"
+                    val ext = if (isJpeg) "jpeg" else "png"
+                    val compressFormat = if (isJpeg) android.graphics.Bitmap.CompressFormat.JPEG else android.graphics.Bitmap.CompressFormat.PNG
+                    val quality = if (isJpeg) 95 else 100
+
+                    val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = StorageUtils.createImageOutputUri(context, fileName)
                     if (outputUri != null) {
                         val resolver = context.contentResolver
                         val outputStream = resolver.openOutputStream(outputUri)
                         if (outputStream != null) {
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+                            bitmap.compress(compressFormat, quality, outputStream)
                             outputStream.close()
                             StorageUtils.finalizeImage(context, outputUri)
                             _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))

@@ -23,7 +23,9 @@
             android:layout_alignParentTop="true">
 
             <ImageButton
-                android:id="@+id/btnHome"
+        
+                android:tooltipText="@string/home"
+            android:id="@+id/btnHome"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -48,7 +50,9 @@
                 app:use_controller="false" />
 
             <ImageButton
-                android:id="@+id/btnPlayPause"
+        
+                android:tooltipText="@string/play_pause"
+            android:id="@+id/btnPlayPause"
                 android:layout_width="72dp"
                 android:layout_height="72dp"
                 android:layout_gravity="center"
@@ -76,7 +80,9 @@
             android:padding="16dp">
 
             <ImageButton
-                android:id="@+id/btnSettings"
+        
+                android:tooltipText="@string/settings"
+            android:id="@+id/btnSettings"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -87,7 +93,9 @@
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
-                android:id="@+id/btnSave"
+        
+                android:tooltipText="@string/export"
+            android:id="@+id/btnSave"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -123,14 +131,18 @@
                 android:layout_marginStart="8dp"/>
 
             <ImageButton
-                android:id="@+id/btnNudgeBack"
+        
+                android:tooltipText="@string/nudge_backward"
+            android:id="@+id/btnNudgeBack"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@android:drawable/ic_media_previous"
                 android:background="?attr/selectableItemBackgroundBorderless"/>
 
             <ImageButton
-                android:id="@+id/btnNudgeForward"
+        
+                android:tooltipText="@string/nudge_forward"
+            android:id="@+id/btnNudgeForward"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@android:drawable/ic_media_next"
@@ -166,7 +178,9 @@
             android:padding="8dp">
 
             <ImageButton
-                android:id="@+id/btnUndo"
+        
+                android:tooltipText="@string/undo"
+            android:id="@+id/btnUndo"
                 android:minWidth="40dp"
                 android:minHeight="40dp"
                 android:layout_width="0dp"
@@ -177,7 +191,9 @@
                 android:contentDescription="Undo"/>
 
             <ImageButton
-                android:id="@+id/btnSplit"
+        
+                android:tooltipText="@string/split"
+            android:id="@+id/btnSplit"
                 android:minWidth="40dp"
                 android:minHeight="40dp"
                 android:layout_width="0dp"
@@ -188,7 +204,9 @@
                 android:contentDescription="Split"/>
 
             <ImageButton
-                android:id="@+id/btnDelete"
+        
+                android:tooltipText="@string/discard_segment"
+            android:id="@+id/btnDelete"
                 android:minWidth="40dp"
                 android:minHeight="40dp"
                 android:layout_width="0dp"
@@ -199,7 +217,9 @@
                 android:contentDescription="Discard Segment"/>
 
             <ImageButton
-                android:id="@+id/btnSnapshot"
+        
+                android:tooltipText="@string/snapshot"
+            android:id="@+id/btnSnapshot"
                 android:minWidth="40dp"
                 android:minHeight="40dp"
                 android:layout_width="0dp"
@@ -210,7 +230,9 @@
                 android:contentDescription="Snapshot"/>
                 
             <ImageButton
-                android:id="@+id/btnRotate"
+        
+                android:tooltipText="@string/rotate"
+            android:id="@+id/btnRotate"
                 android:minWidth="40dp"
                 android:minHeight="40dp"
                 android:layout_width="0dp"

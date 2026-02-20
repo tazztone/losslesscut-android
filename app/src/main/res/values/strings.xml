@@ -45,8 +45,9 @@
     <string name="precise_mode_coming_soon">Precise mode coming in v2.0</string>
     <string name="error_load_video">Failed to load video: %1$s</string>
     <string name="error_no_segments_export">No segments to export</string>
-    <string name="error_create_file">Failed to create file</string>
+    <string name="error_create_file">Cannot create output file</string>
     <string name="error_segment_failed">Segment %1$d failed: %2$s</string>
+    <string name="error_cannot_delete_last">Cannot delete the last remaining clip</string>
     <string name="error_export_failed">Export failed: %1$s</string>
     <string name="export_partial_success">Exported %1$d clips. Errors: %2$s</string>
     <string name="export_success">Successfully exported %1$d clip(s) to Movies/LosslessCut</string>
@@ -61,6 +62,9 @@
     <string name="permissions_denied">Some permissions were denied</string>
     <string name="ok">OK</string>
     <string name="settings">Settings</string>
-    <string name="nudge_forward">Nudge Forward</string>
-    <string name="nudge_backward">Nudge Backward</string>
+    <string name="nudge_backward">Previous Keyframe</string>
+    <string name="nudge_forward">Next Keyframe</string>
+    <string name="hint_pinch_to_zoom">Pinch to zoom timeline</string>
+    <string name="lossless_mode_snap">Snap to Keyframes</string>
+    <string name="lossless_mode_desc">Locks cuts to keyframes for lossless export without re-encoding.</string>
 </resources>

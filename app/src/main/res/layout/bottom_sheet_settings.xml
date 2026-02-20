@@ -2,9 +2,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="#2E2E2E"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:background="#1A1A1A">
+    android:padding="24dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -13,23 +13,78 @@
         android:textColor="@android:color/white"
         android:textSize="20sp"
         android:textStyle="bold"
-        android:layout_marginBottom="24dp" />
+        android:layout_marginBottom="16dp"/>
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switchLossless"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/snap"
+        android:text="@string/lossless_mode_snap"
         android:textColor="@android:color/white"
-        android:textSize="16sp"
-        android:checked="true" />
-        
+        android:layout_marginBottom="8dp"/>
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Locks cuts to keyframes for lossless export without re-encoding."
+        android:text="@string/lossless_mode_desc"
         android:textColor="#AAAAAA"
-        android:textSize="12sp"
+        android:textSize="14sp"
         android:layout_marginBottom="16dp"/>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="Snapshot Format"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"/>
+
+        <Spinner
+            android:id="@+id/spinnerSnapshotFormat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/white"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="Undo Limit"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+            <TextView
+                android:id="@+id/tvUndoValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="30"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+        </LinearLayout>
+        
+        <SeekBar
+            android:id="@+id/seekBarUndoLimit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="40"
+            android:progress="20"
+            android:layout_marginTop="8dp"/>
+    </LinearLayout>
 </LinearLayout>

@@ -104,6 +104,10 @@ class VideoEditingViewModelTest {
         viewModel.initialize(uri)
         advanceUntilIdle()
         
+        // Split first so there are two segments, bypassing the "cannot delete last segment" protection
+        viewModel.splitSegmentAt(5000L)
+        advanceUntilIdle()
+        
         val segmentId = (viewModel.uiState.value as VideoEditingUiState.Success).segments[0].id
         viewModel.toggleSegmentAction(segmentId)
         

@@ -51,16 +51,23 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
     private val keepColors = arrayOf(
-        Color.parseColor("#8000FF00"), // Green
-        Color.parseColor("#80FF0000"), // Red
-        Color.parseColor("#800000FF"), // Blue
-        Color.parseColor("#80FFFF00"), // Yellow
-        Color.parseColor("#8000FFFF"), // Cyan
-        Color.parseColor("#80FF00FF")  // Magenta
+        Color.parseColor("#6688FF88"), // Pastel Green
+        Color.parseColor("#66FF8888"), // Pastel Red
+        Color.parseColor("#668888FF"), // Pastel Blue
+        Color.parseColor("#66FFFF88"), // Pastel Yellow
+        Color.parseColor("#6688FFFF"), // Pastel Cyan
+        Color.parseColor("#66FF88FF")  // Pastel Magenta
     )
     private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
+    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 5f }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
+    private val zoomHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { 
+        color = Color.parseColor("#80FFFFFF")
+        textSize = 48f
+        textAlign = Paint.Align.CENTER
+    }
+
+    private var showZoomHint = true
 
     private val segmentRect = RectF()
 
@@ -135,7 +142,11 @@ class CustomVideoSeeker @JvmOverloads constructor(
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             val scaleFactor = detector.scaleFactor
             val prevZoom = zoomFactor
-            zoomFactor = (zoomFactor * scaleFactor).coerceIn(minZoom, maxZoom)
+            val newFactor = zoomFactor * detector.scaleFactor
+            if (kotlin.math.abs(newFactor - zoomFactor) > 0.01f) {
+                showZoomHint = false
+            }
+            zoomFactor = newFactor.coerceIn(1f, 20f)
             
             // Adjust scroll offset to zoom around the focal point
             val focusX = detector.focusX
@@ -210,13 +221,16 @@ class CustomVideoSeeker @JvmOverloads constructor(
             canvas.drawRect(segmentRect, keepSegmentPaint)
             keepSegmentIndex++
 
+            // Draw handles for ALL keep segments
+            canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
+            canvas.drawCircle(startX, height.toFloat() - 25f, 25f, handlePaint)
+
+            canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
+            canvas.drawCircle(endX, height.toFloat() - 25f, 25f, handlePaint)
+
+            // Draw highlight border if selected
             if (segment.id == selectedSegmentId) {
                 canvas.drawRect(segmentRect, selectedBorderPaint)
-                canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
-                canvas.drawCircle(startX, height.toFloat() - 15f, 15f, handlePaint)
-
-                canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
-                canvas.drawCircle(endX, height.toFloat() - 15f, 15f, handlePaint)
             }
         }
 
@@ -240,6 +254,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
         canvas.drawPath(playheadPath, playheadTrianglePaint)
 
         canvas.restore()
+
+        if (showZoomHint) {
+            canvas.drawText(context.getString(R.string.hint_pinch_to_zoom), width / 2f, height / 2f, zoomHintPaint)
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -259,17 +277,24 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 val logicalWidth = width * zoomFactor
                 val hitTestThresholdMs = if (logicalWidth > 0) ((60f / logicalWidth) * videoDurationMs).toLong() else 0L
 
-                selectedSegmentId?.let { selId ->
-                    val segment = segments.find { it.id == selId }
-                    if (segment != null) {
-                        if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
-                            currentTouchTarget = TouchTarget.HANDLE_LEFT
-                            activeSegmentId = selId
-                            return true
-                        } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
-                            currentTouchTarget = TouchTarget.HANDLE_RIGHT
-                            activeSegmentId = selId
-                            return true
+                // Only allow dragging handles if touched near the bottom where the circle is
+                val isTouchingBottom = event.y > height - 80f
+
+                showZoomHint = false // hide hint on any interaction
+
+                if (isTouchingBottom) {
+                    selectedSegmentId?.let { selId ->
+                        val segment = segments.find { it.id == selId }
+                        if (segment != null) {
+                            if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
+                                currentTouchTarget = TouchTarget.HANDLE_LEFT
+                                activeSegmentId = selId
+                                return true
+                            } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
+                                currentTouchTarget = TouchTarget.HANDLE_RIGHT
+                                activeSegmentId = selId
+                                return true
+                            }
                         }
                     }
                 }

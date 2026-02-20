@@ -17,6 +17,8 @@
         android:layout_alignParentTop="true">
 
         <ImageButton
+        
+            android:tooltipText="@string/home"
             android:id="@+id/btnHome"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -34,7 +36,9 @@
             android:gravity="end">
 
             <ImageButton
-                android:id="@+id/btnUndo"
+        
+                android:tooltipText="@string/undo"
+            android:id="@+id/btnUndo"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -45,7 +49,9 @@
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
-                android:id="@+id/btnSettings"
+        
+                android:tooltipText="@string/settings"
+            android:id="@+id/btnSettings"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -56,7 +62,9 @@
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
-                android:id="@+id/btnSave"
+        
+                android:tooltipText="@string/export"
+            android:id="@+id/btnSave"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
@@ -79,6 +87,8 @@
         android:padding="12dp">
 
         <ImageButton
+        
+            android:tooltipText="@string/set_in_point"
             android:id="@+id/btnSetIn"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -90,6 +100,8 @@
             android:contentDescription="@string/set_in_point"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/set_out_point"
             android:id="@+id/btnSetOut"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -101,6 +113,8 @@
             android:contentDescription="@string/set_out_point"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/split"
             android:id="@+id/btnSplit"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -112,6 +126,8 @@
             android:contentDescription="@string/split"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/discard_segment"
             android:id="@+id/btnDelete"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -123,6 +139,8 @@
             android:contentDescription="@string/discard_segment"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/snapshot"
             android:id="@+id/btnSnapshot"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -138,7 +156,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1">
             <ImageButton
-                android:id="@+id/btnRotate"
+        
+                android:tooltipText="@string/rotate"
+            android:id="@+id/btnRotate"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="match_parent"
@@ -209,6 +229,8 @@
             android:layout_marginStart="16dp"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/nudge_backward"
             android:id="@+id/btnNudgeBack"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -216,6 +238,8 @@
             android:background="?attr/selectableItemBackgroundBorderless"/>
 
         <ImageButton
+        
+            android:tooltipText="@string/nudge_forward"
             android:id="@+id/btnNudgeForward"
             android:layout_width="48dp"
             android:layout_height="48dp"
@@ -238,6 +262,8 @@
             app:use_controller="false" />
 
         <ImageButton
+        
+            android:tooltipText="@string/play_pause"
             android:id="@+id/btnPlayPause"
             android:layout_width="72dp"
             android:layout_height="72dp"
