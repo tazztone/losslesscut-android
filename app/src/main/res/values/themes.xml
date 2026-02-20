@@ -27,6 +27,8 @@
         <item name="android:textColor">@color/textColor</item>
         <item name="android:navigationBarColor">@color/navigationBarColor</item>
         <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="colorSegmentKeep">@color/segmentKeep</item>
+        <item name="colorSegmentDiscard">@color/segmentDiscard</item>
     </style>
 
     <style name="DialogShapeAppearance" parent="">

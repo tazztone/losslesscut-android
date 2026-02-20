@@ -73,9 +73,11 @@ class VideoEditingViewModel(
                 val keyframes = engine.probeKeyframes(context, videoUri)
                 currentKeyframes = keyframes
                 
-                val metadata = StorageUtils.getVideoMetadata(context, videoUri)
-                videoFileName = metadata.first
-                videoDurationMs = metadata.second
+                val metadata = StorageUtils.getVideoMetadata(getApplication(), videoUri)
+                val fileName = metadata.fileName
+                val durationMs = metadata.durationMs
+                videoFileName = fileName
+                videoDurationMs = durationMs
 
                 videoFps = extractVideoFps(context, videoUri)
 
