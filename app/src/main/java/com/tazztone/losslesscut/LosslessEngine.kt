@@ -69,6 +69,7 @@ object LosslessEngine {
     ): Result<Uri> = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
+        var isMuxerStarted = false
         var pfd: android.os.ParcelFileDescriptor? = null
 
         try {
@@ -129,6 +130,7 @@ object LosslessEngine {
             retriever.release()
 
             mMuxer.start()
+            isMuxerStarted = true
             
             // Use allocateDirect to reduce memory copy overhead between Java heap and Native layer
             val buffer = ByteBuffer.allocateDirect(bufferSize)
@@ -192,7 +194,9 @@ object LosslessEngine {
             Result.failure(e)
         } finally {
             try {
-                muxer?.stop()
+                if (isMuxerStarted) {
+                    muxer?.stop()
+                }
                 muxer?.release()
             } catch (e: Exception) {
                  Log.e(TAG, "Error releasing muxer", e)

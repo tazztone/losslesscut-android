@@ -19,7 +19,12 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -29,6 +34,9 @@ class VideoEditingActivity : AppCompatActivity() {
     companion object {
         private const val KEY_PLAYHEAD = "playhead_pos"
         private const val KEY_PLAY_WHEN_READY = "play_when_ready"
+        private const val KEY_ROTATION = "rotation_offset"
+        private const val KEY_LOSSLESS_MODE = "lossless_mode"
+        private const val TAG = "VideoEditingActivity"
     }
 
     private val viewModel: VideoEditingViewModel by viewModels()
@@ -103,6 +111,10 @@ class VideoEditingActivity : AppCompatActivity() {
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
+            currentRotation = it.getInt(KEY_ROTATION, 0)
+            if (::switchLossless.isInitialized) {
+                switchLossless.isChecked = it.getBoolean(KEY_LOSSLESS_MODE, true)
+            }
         }
     }
 
@@ -123,6 +135,10 @@ class VideoEditingActivity : AppCompatActivity() {
         if (::player.isInitialized) {
             outState.putLong(KEY_PLAYHEAD, player.currentPosition)
             outState.putBoolean(KEY_PLAY_WHEN_READY, player.playWhenReady)
+        }
+        outState.putInt(KEY_ROTATION, currentRotation)
+        if (::switchLossless.isInitialized) {
+            outState.putBoolean(KEY_LOSSLESS_MODE, switchLossless.isChecked)
         }
     }
 
@@ -154,7 +170,11 @@ class VideoEditingActivity : AppCompatActivity() {
             if (player.isPlaying) player.pause() else player.play()
         }
         
-        try { lottieAnimationView.playAnimation() } catch (e: Exception) {}
+        try { 
+            lottieAnimationView.playAnimation() 
+        } catch (e: Exception) {
+            Log.e(TAG, "Lottie animation failed to play", e)
+        }
 
         findViewById<ImageButton>(R.id.btnHome).setOnClickListener { onBackPressedDispatcher.onBackPressed()}
         findViewById<ImageButton>(R.id.btnSave).setOnClickListener { 

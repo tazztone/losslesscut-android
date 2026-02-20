@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
-import java.util.Stack
 
 enum class SegmentAction { KEEP, DISCARD }
 
@@ -42,7 +41,7 @@ class VideoEditingViewModel : ViewModel() {
 
     private var currentVideoUri: Uri? = null
     private var videoDurationMs: Long = 0
-    private var history = Stack<List<TrimSegment>>()
+    private var history = mutableListOf<List<TrimSegment>>()
     private var currentSegments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
 
@@ -90,15 +89,15 @@ class VideoEditingViewModel : ViewModel() {
 
     private fun pushToHistory() {
         if (history.size >= 30) {
-            history.removeElementAt(0)
+            history.removeAt(0)
         }
-        history.push(currentSegments.map { it.copy() })
+        history.add(currentSegments.map { it.copy() })
     }
 
     fun undo() {
         if (history.size > 1) {
-            history.pop() // Remove current
-            currentSegments = history.peek().map { it.copy() }
+            history.removeAt(history.size - 1) // Remove current
+            currentSegments = history.last().map { it.copy() }
             selectedSegmentId = null
             updateSuccessState()
         }

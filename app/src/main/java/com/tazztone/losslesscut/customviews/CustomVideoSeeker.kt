@@ -52,6 +52,8 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
 
+    private val segmentRect = RectF()
+
     // Hit testing
     enum class TouchTarget { NONE, HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD }
     private var currentTouchTarget = TouchTarget.NONE
@@ -184,13 +186,13 @@ class CustomVideoSeeker @JvmOverloads constructor(
         for (segment in segments) {
             val startX = timeToX(segment.startMs)
             val endX = timeToX(segment.endMs)
-            val rect = RectF(startX, 0f, endX, height.toFloat())
+            segmentRect.set(startX, 0f, endX, height.toFloat())
             
             val paint = if (segment.action == SegmentAction.KEEP) keepSegmentPaint else discardSegmentPaint
-            canvas.drawRect(rect, paint)
+            canvas.drawRect(segmentRect, paint)
 
             if (segment.id == selectedSegmentId) {
-                canvas.drawRect(rect, selectedBorderPaint)
+                canvas.drawRect(segmentRect, selectedBorderPaint)
                 canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
                 canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
             }
