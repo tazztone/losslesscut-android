@@ -46,6 +46,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     // Paints
     private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 5f }
+    private val playheadTrianglePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.RED; style = Paint.Style.FILL }
+    private val playheadPath = android.graphics.Path()
+
     private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
     private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8000FF00") }
     private val discardSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#80808080") }
@@ -150,10 +153,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val tappedSegment = segments.find { timeMs in it.startMs..it.endMs }
             onSegmentSelected?.invoke(tappedSegment?.id)
             
-            if (tappedSegment == null) {
-                seekPositionMs = timeMs
-                onSeekListener?.invoke(seekPositionMs)
-            }
+            seekPositionMs = timeMs
+            onSeekListener?.invoke(seekPositionMs)
+
             invalidate()
             return true
         }
@@ -194,7 +196,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
             if (segment.id == selectedSegmentId) {
                 canvas.drawRect(segmentRect, selectedBorderPaint)
                 canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
+                canvas.drawCircle(startX, height.toFloat() - 15f, 15f, handlePaint)
+
                 canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
+                canvas.drawCircle(endX, height.toFloat() - 15f, 15f, handlePaint)
             }
         }
 
@@ -209,6 +214,13 @@ class CustomVideoSeeker @JvmOverloads constructor(
         // Draw Playhead
         val seekX = timeToX(seekPositionMs)
         canvas.drawLine(seekX, 0f, seekX, height.toFloat(), playheadPaint)
+
+        playheadPath.reset()
+        playheadPath.moveTo(seekX - 20f, 0f)
+        playheadPath.lineTo(seekX + 20f, 0f)
+        playheadPath.lineTo(seekX, 30f)
+        playheadPath.close()
+        canvas.drawPath(playheadPath, playheadTrianglePaint)
 
         canvas.restore()
     }
@@ -227,7 +239,8 @@ class CustomVideoSeeker @JvmOverloads constructor(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 currentTouchTarget = TouchTarget.NONE
-                val hitTestThresholdMs = xToTime(event.x + 40f) - xToTime(event.x) // ~40px pixels wide
+                val logicalWidth = width * zoomFactor
+                val hitTestThresholdMs = if (logicalWidth > 0) ((60f / logicalWidth) * videoDurationMs).toLong() else 0L
 
                 selectedSegmentId?.let { selId ->
                     val segment = segments.find { it.id == selId }

@@ -177,6 +177,8 @@ class VideoEditingActivity : AppCompatActivity() {
         }
 
         binding.btnUndo.setOnClickListener { viewModel.undo() }
+        binding.btnSetIn?.setOnClickListener { setInPoint() }
+        binding.btnSetOut?.setOnClickListener { setOutPoint() }
         binding.btnSplit.setOnClickListener { viewModel.splitSegmentAt(player.currentPosition) }
         binding.btnDelete.setOnClickListener { 
             val state = viewModel.uiState.value
@@ -199,6 +201,32 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun updateRotationBadge() {
         binding.badgeRotate?.text = "${currentRotation}°"
         binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
+    }
+
+    private fun setInPoint() {
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val currentPos = player.currentPosition
+        val segment = state.segments.find { it.id == state.selectedSegmentId }
+            ?: state.segments.find { currentPos in it.startMs..it.endMs }
+            ?: return
+
+        if (currentPos < segment.endMs) {
+            viewModel.updateSegmentBounds(segment.id, currentPos, segment.endMs)
+            viewModel.commitSegmentBounds()
+        }
+    }
+
+    private fun setOutPoint() {
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val currentPos = player.currentPosition
+        val segment = state.segments.find { it.id == state.selectedSegmentId }
+            ?: state.segments.find { currentPos in it.startMs..it.endMs }
+            ?: return
+
+        if (currentPos > segment.startMs) {
+            viewModel.updateSegmentBounds(segment.id, segment.startMs, currentPos)
+            viewModel.commitSegmentBounds()
+        }
     }
 
     private fun startProgressUpdate() {

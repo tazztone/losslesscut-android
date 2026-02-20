@@ -33,6 +33,17 @@
             android:orientation="horizontal"
             android:gravity="end">
 
+            <ImageButton
+                android:id="@+id/btnUndo"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_undo_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/undo"
+                android:layout_marginEnd="16dp"/>
+
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switchLossless"
                 android:layout_width="wrap_content"
@@ -66,15 +77,26 @@
         android:padding="12dp">
 
         <ImageButton
-            android:id="@+id/btnUndo"
+            android:id="@+id/btnSetIn"
             android:minWidth="48dp"
             android:minHeight="48dp"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:src="@drawable/ic_undo_24"
+            android:src="@drawable/ic_trim_left_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/undo"/>
+            android:contentDescription="@string/set_in_point"/>
+
+        <ImageButton
+            android:id="@+id/btnSetOut"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:src="@drawable/ic_trim_right_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/set_out_point"/>
 
         <ImageButton
             android:id="@+id/btnSplit"
