@@ -49,20 +49,24 @@ graph TD
 ### 2. Component Deep Dive
 
 #### 2.1 UI Layer ([VideoEditingActivity.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingActivity.kt) & [CustomVideoSeeker.kt](app/src/main/java/com/tazztone/losslesscut/customviews/CustomVideoSeeker.kt))
-- **VideoEditingActivity**: Initializes the ExoPlayer, binds UI components to the [ViewModel](app/src/main/java/com/tazztone/losslesscut/VideoEditingActivity.kt) state flow, and manages dialogs (like the BottomSheet for trimming).
-- **CustomVideoSeeker**: A custom View that draws the timeline. It receives normalized keyframe positions from the Activity and draws "snap" markers. It implements logic to **snap the playhead to the nearest keyframe** when "Lossless Mode" is active.
-- **State Observation**: The Activity observes [VideoEditingUiState](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) via `lifecycleScope.launch`. State changes trigger UI updates like showing loading spinners, playing video, or displaying error toasts.
+- **VideoEditingActivity**: Initializes the ExoPlayer, binds UI components to the [ViewModel](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) state flow, and manages the segment editing workflow (Split, Delete, Undo).
+- **CustomVideoSeeker**: A high-performance custom View for the NLE timeline. 
+  - **Zoom & Pan**: Supports up to 20x magnification for frame-perfect edits.
+  - **Gesture Logic**: Uses `TouchTarget` objects (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD) to manage drag interactions.
+  - **Auto-Pan**: Smoothly scrolls the timeline when dragging segment boundaries near the screen edges.
+  - **Haptic Snapping**: Triggers `CLOCK_TICK` haptics when boundaries align with keyframes.
+- **State Observation**: The Activity observes [VideoEditingUiState](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt) to handle segment highlights, undo availability, and loading overlays.
 
 #### 2.2 Presentation Layer ([VideoEditingViewModel.kt](app/src/main/java/com/tazztone/losslesscut/VideoEditingViewModel.kt))
-- **State Flow**: Uses a sealed class `VideoEditingUiState` (Initial, Loading, Success, Error) to represent the current screen state predictably.
-- **Coroutines**: Launches non-blocking operations via `viewModelScope` allowing heavy video processing to happen on `Dispatchers.IO` without freezing the main thread.
-- **Initialization**: Upon receiving a Video URI, it orchestrates metadata extraction and keyframe probing through the engine.
+- **`TrimSegment` Model**: Segments are represented as objects with `startMs`, `endMs`, and a `SegmentAction` (KEEP/DISCARD).
+- **Undo/Redo History**: Implements a `Stack` of `List<TrimSegment>` snapshots. Each destructive action (drag, split, discard) pushes a deep copy to the stack (capped at 30 items for memory safety).
+- **Multi-Clip Export**: Coordinates the iterative export of individual "KEEP" segments through the engine.
 
 #### 2.3 Domain/Data Layer ([LosslessEngine.kt](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt) & [StorageUtils.kt](app/src/main/java/com/tazztone/losslesscut/StorageUtils.kt))
-- **LosslessEngine**: The core powerhouse. It completely drops FFmpeg in favor of native `MediaExtractor` and `MediaMuxer`.
-  - [probeKeyframes()](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt): Fast-forwards through the video using `SEEK_TO_NEXT_SYNC` to map all I-frames.
-  - [executeLosslessCut()](app/src/main/java/com/tazztone/losslesscut/LosslessEngine.kt): Reads samples from the start index (snapped to a sync frame) to the end index, multiplexing them directly into a new container. Returns standard Kotlin `Result<Uri>` objects for clean error propagation.
-- **StorageUtils**: Adapts the app for Android 11+ Scoped Storage restrictions. Creates `pending` inserts in the `MediaStore.Video.Media.EXTERNAL_CONTENT_URI` and finalizes them upon engine completion, avoiding legay file permission issues.
+- **LosslessEngine**:
+  - **EOS Duration Fix**: Tracks exact written video vs audio samples to prevent "frozen last frame" bugs in the container footer.
+  - **Export Parameters**: Supports rotation overrides, track removal (Mute/Audio-Only), and start/end window clipping.
+- **StorageUtils**: Manages `MediaStore` URI generation and file finalization for Scoped Storage compliance.
 
 ## 3. Data Flow: Trimming a Video
 The sequence below illustrates the flow when a user confirms a trim action:
@@ -122,14 +126,15 @@ Configure the following secrets in your GitHub Repository settings:
 *   **Logs**: Filter Logcat by `LosslessEngine`, `VideoEditingActivity`, or `ExoPlayer`.
 *   **Visual Debugging**: Keyframes are visualized as white ticks on the timeline. If these are missing, `probeKeyframes` might be failing or the video has a strange GOP structure.
 
-## Future Roadmap (v2.0+)
+## Future Roadmap (v3.0+)
 
-1.  **Phase 1 [COMPLETED]**: Architectural Foundation (MVVM), MediaStore integration, and Engine robustness.
-2.  **Phase 2 [DEFERRED]**: Smart Cut (Precise Mode), Video Merging, and Overlays.
-    *   **Precise Trim**: Decode and re-encode *only* the frames between the cut point and the nearest keyframe, then concatenate with the losslessly muxed middle segment.
-    *   **Merging**: Sequence multiplexing of multiple MP4 sources.
-3.  **Phase 3 [PLANNED]**: Background Processing.
-    *   **Service Worker / WorkManager**: For very large files or slow devices, processing might outlive the Activity lifecycle. Migrating the Engine work to a Foreground Service or `WorkManager` would prevent the OS from killing the process if the user backgrounds the app.
+1.  **Phase 1 [COMPLETED]**: NLE Timeline (v2.0), Zoom/Pan, Undo Stack, and Multi-Segment Export.
+2.  **Phase 2 [PLANNED]**: Smart Cut (Precise Mode) & Video Merging.
+    *   **Precise Trim**: Decode and re-encode *only* the frames between the cut point and the nearest keyframe.
+    *   **Merging (Concatenation)**: Lossless concatenation of multiple segments into a single file by aligning PTS.
+3.  **Phase 3 [PLANNED]**: Background Processing & AI.
+    *   **Foreground Service / WorkManager**: Large exports in background.
+    *   **AI Auto-Cut**: Automatic silence or motion removal.
 
 ## Code Style & Conventions
 *   **Kotlin**: Use idiomatic Kotlin (coroutines for async work, extension functions).

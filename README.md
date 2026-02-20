@@ -4,12 +4,14 @@ Lossless Video Cut is a lightweight, open-source Android application designed fo
 
 ## Features
 
-- **Lossless Trim**: Instantly cut videos at keyframe boundaries without losing any quality.
-- **Keyframe Visualization**: Automatically probes and displays keyframe (Sync Frame) positions on the timeline to help you make precise cuts.
-- **MVVM Architecture**: Robust state management using `ViewModel` and `StateFlow` for a smoother, reactive UI.
-- **Scoped Storage (MediaStore)**: Modern Android storage handling that saves videos directly to public folders without requiring legacy permissions.
-- **Pure Native SDK**: Completely removed heavy FFmpeg dependencies, resulting in a significantly smaller APK size (~20MB) and better performance.
-- **Media3 Integration**: Built on top of the modern `androidx.media3` (ExoPlayer) stack for robust playback.
+- **Desktop-Class NLE Timeline**: A fully interactive timeline supporting multi-segment editing (Split, Discard, and Drag).
+- **Pinch-to-Zoom & Pan**: Smoothly zoom in up to 20x for frame-perfect edits and pan across long videos with ease.
+- **Haptic Keyframe Snapping**: Tactile feedback (Clock Tick) whenever a segment boundary snaps to a keyframe in Lossless Mode.
+- **Undo/Redo History**: Robust edit history managed by a ViewModel stack, allowing you to revert segment changes instantly.
+- **Multi-Segment Export**: Split a video into multiple "KEEP" regions and export them as individual clips in one click.
+- **Lossless Trim & Extraction**: Native `MediaExtractor` and `MediaMuxer` logic ensures lightning-fast processing without re-encoding.
+- **MVVM Architecture**: Clean state management using `ViewModel` and `StateFlow` for a reactive UI.
+- **Scoped Storage & Modern SDK**: Modern Android storage handling saving to `Movies/LosslessCut` without heavy FFmpeg dependencies.
 
 ## Getting Started
 

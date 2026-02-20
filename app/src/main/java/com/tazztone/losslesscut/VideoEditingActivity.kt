@@ -26,6 +26,11 @@ import java.io.FileOutputStream
 @Suppress("DEPRECATION")
 class VideoEditingActivity : AppCompatActivity() {
 
+    companion object {
+        private const val KEY_PLAYHEAD = "playhead_pos"
+        private const val KEY_PLAY_WHEN_READY = "play_when_ready"
+    }
+
     private val viewModel: VideoEditingViewModel by viewModels()
     private lateinit var player: ExoPlayer
     private lateinit var playerView: PlayerView
@@ -49,6 +54,9 @@ class VideoEditingActivity : AppCompatActivity() {
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
     private var currentRotation = 0
+    
+    private var savedPlayheadPos = 0L
+    private var savedPlayWhenReady = false
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -91,6 +99,11 @@ class VideoEditingActivity : AppCompatActivity() {
         observeViewModel()
 
         viewModel.initialize(this, videoUri)
+        
+        savedInstanceState?.let {
+            savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
+            savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
+        }
     }
 
     override fun onResume() {
@@ -103,6 +116,14 @@ class VideoEditingActivity : AppCompatActivity() {
         super.onPause()
         if (::player.isInitialized) player.pause()
         stopProgressUpdate()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        if (::player.isInitialized) {
+            outState.putLong(KEY_PLAYHEAD, player.currentPosition)
+            outState.putBoolean(KEY_PLAY_WHEN_READY, player.playWhenReady)
+        }
     }
 
     private fun hideSystemUI() {
@@ -262,8 +283,8 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun initializePlayer(uri: Uri) {
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
-        player.playWhenReady = false
-        player.seekTo(0)
+        player.playWhenReady = savedPlayWhenReady
+        player.seekTo(savedPlayheadPos)
     }
 
     private fun setupCustomSeeker() {
