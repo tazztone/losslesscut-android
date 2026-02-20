@@ -58,20 +58,9 @@ class VideoEditingViewModel : ViewModel() {
             try {
                 val keyframes = LosslessEngine.probeKeyframes(context, videoUri)
                 
-                var fileName = "video.mp4"
-                val retriever = android.media.MediaMetadataRetriever()
-                try {
-                    retriever.setDataSource(context, videoUri)
-                    fileName = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
-                        ?: videoUri.lastPathSegment ?: "video.mp4"
-                    
-                    val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-                    videoDurationMs = durationStr?.toLong() ?: 0
-                } catch (e: Exception) {
-                    android.util.Log.w("ViewModel", "Failed to extract metadata: ${e.message}")
-                } finally {
-                    retriever.release()
-                }
+                val metadata = StorageUtils.getVideoMetadata(context, videoUri)
+                val fileName = metadata.first
+                videoDurationMs = metadata.second
 
                 // Initial segment covering the whole video
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))

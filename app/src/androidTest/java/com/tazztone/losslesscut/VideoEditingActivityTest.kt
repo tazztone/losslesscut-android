@@ -31,12 +31,20 @@ class VideoEditingActivityTest {
         onView(withId(R.id.toolbar)).check(matches(isDisplayed()))
         onView(withId(R.id.btnHome)).check(matches(isDisplayed()))
         onView(withId(R.id.btnSave)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnTrim)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnText)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnAudio)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnCrop)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnMerge)).check(matches(isDisplayed()))
+        onView(withId(R.id.btnUndo)).check(matches(isDisplayed()))
+        onView(withId(R.id.btnSplit)).check(matches(isDisplayed()))
+        onView(withId(R.id.btnDelete)).check(matches(isDisplayed()))
         onView(withId(R.id.tvDuration)).check(matches(isDisplayed()))
         onView(withId(R.id.customVideoSeeker)).check(matches(isDisplayed()))
+    }
+
+    @Test
+    fun testNLEButtonsAreClickable() {
+        onView(withId(R.id.btnSplit)).check(matches(isClickable()))
+        onView(withId(R.id.btnDelete)).check(matches(isClickable()))
+        onView(withId(R.id.btnUndo)).check(matches(isClickable()))
+        
+        // Ensure action performs without crashing
+        onView(withId(R.id.btnSplit)).perform(androidx.test.espresso.action.ViewActions.click())
     }
 }

@@ -24,10 +24,11 @@ class LosslessEngineTest {
     }
 
     @Test
-    fun executeLosslessCut_withInvalidUri_returnsFalse() = runBlocking {
+    fun executeLosslessCut_withInvalidUri_returnsFailure() = runBlocking {
         val invalidUri = Uri.parse("content://invalid/video.mp4")
         val outputFile = File(context.cacheDir, "output.mp4")
-        val success = LosslessEngine.executeLosslessCut(context, invalidUri, outputFile, 0, 1000)
-        assertFalse("Lossless cut should fail for invalid URI", success)
+        val outputUri = Uri.fromFile(outputFile)
+        val result = LosslessEngine.executeLosslessCut(context, invalidUri, outputUri, 0, 1000)
+        assertTrue("Lossless cut should fail for invalid URI", result.isFailure)
     }
 }
