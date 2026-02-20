@@ -74,6 +74,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (::binding.isInitialized) {
                 binding.btnPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
+                binding.btnPlayPauseControls.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
                 if (isPlaying) {
                     binding.btnPlayPause.animate().alpha(0f).setStartDelay(500).setDuration(300).start()
                 } else {
@@ -222,6 +223,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnNudgeForward.setOnClickListener { performNudge(1) }
         TooltipCompat.setTooltipText(binding.btnNudgeForward, getString(R.string.nudge_forward))
 
+        binding.btnPlayPauseControls.setOnClickListener {
+            if (player.isPlaying) player.pause() else player.play()
+        }
+        TooltipCompat.setTooltipText(binding.btnPlayPauseControls, getString(R.string.play_pause))
+
         binding.btnSnapshot.setOnClickListener { extractSnapshot() }
         TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
         
@@ -236,15 +242,24 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private fun updateRotationBadge() {
         binding.badgeRotate?.text = "${currentRotation}°"
         binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
-        binding.playerView.rotation = currentRotation.toFloat()
         
-        // Scale down slightly if rotated 90 or 270 to prevent aggressive clipping on portrait devices
-        if (currentRotation % 180 != 0) {
-            binding.playerView.scaleX = 0.5f
-            binding.playerView.scaleY = 0.5f
-        } else {
-            binding.playerView.scaleX = 1.0f
-            binding.playerView.scaleY = 1.0f
+        val isPortraitRotation = currentRotation % 180 != 0
+        
+        binding.playerView.post {
+            val viewWidth = binding.playerView.width.toFloat()
+            val viewHeight = binding.playerView.height.toFloat()
+            
+            if (viewWidth > 0 && viewHeight > 0) {
+                if (isPortraitRotation) {
+                    val scale = minOf(viewWidth / viewHeight, viewHeight / viewWidth)
+                    binding.playerView.scaleX = scale
+                    binding.playerView.scaleY = scale
+                } else {
+                    binding.playerView.scaleX = 1.0f
+                    binding.playerView.scaleY = 1.0f
+                }
+                binding.playerView.rotation = currentRotation.toFloat()
+            }
         }
     }
 
@@ -258,16 +273,24 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             currentPos
         }
 
-        val segment = state.segments.find { it.id == state.selectedSegmentId }
-            ?: state.segments.find { snapPos in it.startMs..it.endMs }
-            ?: state.segments.filter { it.startMs > snapPos }.minByOrNull { it.startMs }
+        val keepSegments = state.segments.filter { it.action == SegmentAction.KEEP }.sortedBy { it.startMs }
+
+        val segment = keepSegments.find { it.id == state.selectedSegmentId }
+            ?: keepSegments.find { snapPos in it.startMs..it.endMs }
+            ?: keepSegments.filter { it.startMs > snapPos }.minByOrNull { it.startMs }
             ?: return
 
-        if (snapPos < segment.endMs) {
-            viewModel.updateSegmentBounds(segment.id, snapPos, segment.endMs)
+        val currentIndex = keepSegments.indexOfFirst { it.id == segment.id }
+        val prevSegment = if (currentIndex > 0) keepSegments[currentIndex - 1] else null
+        val minAllowed = prevSegment?.endMs ?: 0L
+        
+        val newStart = snapPos.coerceIn(minAllowed, segment.endMs - 100)
+
+        if (newStart < segment.endMs) {
+            viewModel.updateSegmentBounds(segment.id, newStart, segment.endMs)
             viewModel.commitSegmentBounds()
-            player.seekTo(snapPos)
-            binding.customVideoSeeker.setSeekPosition(snapPos)
+            player.seekTo(newStart)
+            binding.customVideoSeeker.setSeekPosition(newStart)
         }
     }
 
@@ -281,16 +304,24 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             currentPos
         }
 
-        val segment = state.segments.find { it.id == state.selectedSegmentId }
-            ?: state.segments.find { snapPos in it.startMs..it.endMs }
-            ?: state.segments.filter { it.endMs < snapPos }.maxByOrNull { it.endMs }
+        val keepSegments = state.segments.filter { it.action == SegmentAction.KEEP }.sortedBy { it.startMs }
+
+        val segment = keepSegments.find { it.id == state.selectedSegmentId }
+            ?: keepSegments.find { snapPos in it.startMs..it.endMs }
+            ?: keepSegments.filter { it.endMs < snapPos }.maxByOrNull { it.endMs }
             ?: return
 
-        if (snapPos > segment.startMs) {
-            viewModel.updateSegmentBounds(segment.id, segment.startMs, snapPos)
+        val currentIndex = keepSegments.indexOfFirst { it.id == segment.id }
+        val nextSegment = if (currentIndex >= 0 && currentIndex < keepSegments.size - 1) keepSegments[currentIndex + 1] else null
+        val maxAllowed = nextSegment?.startMs ?: Long.MAX_VALUE
+        
+        val newEnd = snapPos.coerceIn(segment.startMs + 100, maxAllowed)
+
+        if (newEnd > segment.startMs) {
+            viewModel.updateSegmentBounds(segment.id, segment.startMs, newEnd)
             viewModel.commitSegmentBounds()
-            player.seekTo(snapPos)
-            binding.customVideoSeeker.setSeekPosition(snapPos)
+            player.seekTo(newEnd)
+            binding.customVideoSeeker.setSeekPosition(newEnd)
         }
     }
 

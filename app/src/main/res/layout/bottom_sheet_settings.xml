@@ -54,6 +54,43 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/layoutJpgQuality"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="JPG Quality"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+            <TextView
+                android:id="@+id/tvJpgQualityValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="95"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"/>
+        </LinearLayout>
+        
+        <SeekBar
+            android:id="@+id/seekBarJpgQuality"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="95"
+            android:layout_marginTop="8dp"/>
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -83,8 +120,8 @@
             android:id="@+id/seekBarUndoLimit"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:max="40"
-            android:progress="20"
+            android:max="100"
+            android:progress="30"
             android:layout_marginTop="8dp"/>
     </LinearLayout>
 </LinearLayout>

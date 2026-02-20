@@ -300,7 +300,7 @@ class VideoEditingViewModel(
                     val isJpeg = formatSetting == "JPEG"
                     val ext = if (isJpeg) "jpeg" else "png"
                     val compressFormat = if (isJpeg) android.graphics.Bitmap.CompressFormat.JPEG else android.graphics.Bitmap.CompressFormat.PNG
-                    val quality = if (isJpeg) 95 else 100
+                    val quality = if (isJpeg) AppPreferences.getJpgQuality(context) else 100
 
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = StorageUtils.createImageOutputUri(context, fileName)

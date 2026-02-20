@@ -78,13 +78,32 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
         val currentFormat = AppPreferences.getSnapshotFormat(requireContext())
         val formatIndex = formats.indexOf(currentFormat)
         if (formatIndex >= 0) binding.spinnerSnapshotFormat.setSelection(formatIndex)
+        binding.layoutJpgQuality.visibility = if (currentFormat == "JPEG") View.VISIBLE else View.GONE
 
         binding.spinnerSnapshotFormat.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                AppPreferences.setSnapshotFormat(requireContext(), formats[position])
+                val format = formats[position]
+                AppPreferences.setSnapshotFormat(requireContext(), format)
+                binding.layoutJpgQuality.visibility = if (format == "JPEG") View.VISIBLE else View.GONE
             }
             override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
         }
+        
+        // Initialize JPG Quality
+        val currentJpgQuality = AppPreferences.getJpgQuality(requireContext())
+        binding.tvJpgQualityValue.text = currentJpgQuality.toString()
+        binding.seekBarJpgQuality.progress = currentJpgQuality
+        binding.seekBarJpgQuality.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val quality = progress.coerceAtLeast(1)
+                binding.tvJpgQualityValue.text = quality.toString()
+                if (fromUser) {
+                    AppPreferences.setJpgQuality(requireContext(), quality)
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
     }
 
     override fun onDestroyView() {

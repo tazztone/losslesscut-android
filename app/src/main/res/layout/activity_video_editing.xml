@@ -238,6 +238,13 @@
             android:background="?attr/selectableItemBackgroundBorderless"/>
 
         <ImageButton
+            android:id="@+id/btnPlayPauseControls"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_play_24"
+            android:background="?attr/selectableItemBackgroundBorderless"/>
+
+        <ImageButton
         
             android:tooltipText="@string/nudge_forward"
             android:id="@+id/btnNudgeForward"

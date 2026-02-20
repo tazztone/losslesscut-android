@@ -283,18 +283,22 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 showZoomHint = false // hide hint on any interaction
 
                 if (isTouchingBottom) {
-                    selectedSegmentId?.let { selId ->
-                        val segment = segments.find { it.id == selId }
-                        if (segment != null) {
-                            if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
-                                currentTouchTarget = TouchTarget.HANDLE_LEFT
-                                activeSegmentId = selId
-                                return true
-                            } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
-                                currentTouchTarget = TouchTarget.HANDLE_RIGHT
-                                activeSegmentId = selId
-                                return true
+                    val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }
+                    for (segment in keepSegments) {
+                        if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
+                            currentTouchTarget = TouchTarget.HANDLE_LEFT
+                            activeSegmentId = segment.id
+                            if (segment.id != selectedSegmentId) {
+                                onSegmentSelected?.invoke(segment.id)
                             }
+                            return true
+                        } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
+                            currentTouchTarget = TouchTarget.HANDLE_RIGHT
+                            activeSegmentId = segment.id
+                            if (segment.id != selectedSegmentId) {
+                                onSegmentSelected?.invoke(segment.id)
+                            }
+                            return true
                         }
                     }
                 }
@@ -324,12 +328,19 @@ class CustomVideoSeeker @JvmOverloads constructor(
                             }
                         }
 
+                        val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }.sortedBy { it.startMs }
+                        val currentIndex = keepSegments.indexOfFirst { it.id == segment.id }
+                        val prevSegment = if (currentIndex > 0) keepSegments[currentIndex - 1] else null
+                        val nextSegment = if (currentIndex >= 0 && currentIndex < keepSegments.size - 1) keepSegments[currentIndex + 1] else null
+
                         if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
-                            val newStart = newTimeMs.coerceAtMost(segment.endMs - 100)
+                            val minAllowed = prevSegment?.endMs ?: 0L
+                            val newStart = newTimeMs.coerceIn(minAllowed, segment.endMs - 100)
                             onSegmentBoundsChanged?.invoke(id, newStart, segment.endMs)
                             seekPositionMs = newStart
                         } else {
-                            val newEnd = newTimeMs.coerceAtLeast(segment.startMs + 100)
+                            val maxAllowed = nextSegment?.startMs ?: videoDurationMs
+                            val newEnd = newTimeMs.coerceIn(segment.startMs + 100, maxAllowed)
                             onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd)
                             seekPositionMs = newEnd
                         }
