@@ -17,11 +17,12 @@ import java.io.File
 class RobolectricEngineTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
+    private val engine = LosslessEngineImpl
 
     @Test
     fun probeKeyframes_withInvalidUri_returnsEmptyList() = runBlocking {
         val invalidUri = Uri.parse("content://invalid/video.mp4")
-        val keyframes = LosslessEngine.probeKeyframes(context, invalidUri)
+        val keyframes = engine.probeKeyframes(context, invalidUri)
         assertTrue("Keyframes should be empty for invalid URI", keyframes.isEmpty())
     }
 
@@ -29,7 +30,7 @@ class RobolectricEngineTest {
     fun executeLosslessCut_withInvalidUri_returnsFailure() = runBlocking {
         val invalidUri = Uri.parse("content://invalid/video.mp4")
         val outputUri = Uri.parse("content://invalid/output.mp4")
-        val result = LosslessEngine.executeLosslessCut(context, invalidUri, outputUri, 0, 1000)
+        val result = engine.executeLosslessCut(context, invalidUri, outputUri, 0, 1000)
         assertTrue("Lossless cut should fail for invalid URI", result.isFailure)
     }
 

@@ -19,6 +19,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
+import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -40,28 +41,14 @@ class VideoEditingActivity : AppCompatActivity() {
     }
 
     private val viewModel: VideoEditingViewModel by viewModels()
+    private lateinit var binding: ActivityVideoEditingBinding
     private lateinit var player: ExoPlayer
-    private lateinit var playerView: PlayerView
-    private lateinit var tvDuration: TextView
-    private lateinit var customVideoSeeker: CustomVideoSeeker
-    private lateinit var loadingScreen: View
-    private lateinit var lottieAnimationView: LottieAnimationView
-    private lateinit var switchLossless: com.google.android.material.switchmaterial.SwitchMaterial
-    private lateinit var btnPlayPause: ImageButton
-    
-    private lateinit var btnUndo: ImageButton
-    private lateinit var btnSplit: ImageButton
-    private lateinit var btnDelete: ImageButton
-    private lateinit var btnRotate: ImageButton
-    private lateinit var btnSnapshot: ImageButton
-
-    private lateinit var btnNudgeBack: ImageButton
-    private lateinit var btnNudgeForward: ImageButton
 
     private var isVideoLoaded = false
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
     private var currentRotation = 0
+    private var videoFps = 30f
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -70,15 +57,15 @@ class VideoEditingActivity : AppCompatActivity() {
         override fun onPlaybackStateChanged(state: Int) {
             if (state == Player.STATE_READY && !isVideoLoaded) {
                 isVideoLoaded = true
-                customVideoSeeker.setVideoDuration(player.duration)
+                binding.customVideoSeeker.setVideoDuration(player.duration)
                 updateDurationDisplay(player.currentPosition, player.duration)
-                customVideoSeeker.setSeekPosition(player.currentPosition)
+                binding.customVideoSeeker.setSeekPosition(player.currentPosition)
             }
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (::btnPlayPause.isInitialized) {
-                btnPlayPause.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+            if (::binding.isInitialized) {
+                binding.btnPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
             }
             if (isPlaying) {
                 startProgressUpdate()
@@ -90,11 +77,12 @@ class VideoEditingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_video_editing)
+        binding = ActivityVideoEditingBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
         val videoUri: Uri? = intent.getParcelableExtra("VIDEO_URI")
         if (videoUri == null) {
-            Toast.makeText(this, "Invalid Video URI", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.invalid_video_uri), Toast.LENGTH_LONG).show()
             finish()
             return
         }
@@ -106,14 +94,16 @@ class VideoEditingActivity : AppCompatActivity() {
         setupCustomSeeker()
         observeViewModel()
 
-        viewModel.initialize(this, videoUri)
+        viewModel.initialize(videoUri)
+        extractVideoFps(videoUri)
         
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
             currentRotation = it.getInt(KEY_ROTATION, 0)
-            if (::switchLossless.isInitialized) {
-                switchLossless.isChecked = it.getBoolean(KEY_LOSSLESS_MODE, true)
+            updateRotationBadge()
+            if (::binding.isInitialized) {
+                binding.switchLossless.isChecked = it.getBoolean(KEY_LOSSLESS_MODE, true)
             }
         }
     }
@@ -137,8 +127,8 @@ class VideoEditingActivity : AppCompatActivity() {
             outState.putBoolean(KEY_PLAY_WHEN_READY, player.playWhenReady)
         }
         outState.putInt(KEY_ROTATION, currentRotation)
-        if (::switchLossless.isInitialized) {
-            outState.putBoolean(KEY_LOSSLESS_MODE, switchLossless.isChecked)
+        if (::binding.isInitialized) {
+            outState.putBoolean(KEY_LOSSLESS_MODE, binding.switchLossless.isChecked)
         }
     }
 
@@ -159,61 +149,50 @@ class VideoEditingActivity : AppCompatActivity() {
     }
 
     private fun initializeViews() {
-        playerView = findViewById(R.id.playerView)
-        tvDuration = findViewById(R.id.tvDuration)
-        customVideoSeeker = findViewById(R.id.customVideoSeeker)
-        loadingScreen = findViewById(R.id.loadingScreen)
-        lottieAnimationView = findViewById(R.id.lottieAnimation)
-        btnPlayPause = findViewById(R.id.btnPlayPause)
-
-        btnPlayPause.setOnClickListener {
+        binding.btnPlayPause.setOnClickListener {
             if (player.isPlaying) player.pause() else player.play()
         }
         
         try { 
-            lottieAnimationView.playAnimation() 
+            binding.loadingScreen.lottieAnimation.playAnimation() 
         } catch (e: Exception) {
             Log.e(TAG, "Lottie animation failed to play", e)
         }
 
-        findViewById<ImageButton>(R.id.btnHome).setOnClickListener { onBackPressedDispatcher.onBackPressed()}
-        findViewById<ImageButton>(R.id.btnSave).setOnClickListener { 
+        binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed()}
+        binding.btnSave.setOnClickListener { 
             showExportOptionsDialog()
         }
-        
-        btnUndo = findViewById(R.id.btnUndo)
-        btnSplit = findViewById(R.id.btnSplit)
-        btnDelete = findViewById(R.id.btnDelete)
-        btnSnapshot = findViewById(R.id.btnSnapshot)
-        btnRotate = findViewById(R.id.btnRotate)
 
-        btnNudgeBack = findViewById(R.id.btnNudgeBack)
-        btnNudgeForward = findViewById(R.id.btnNudgeForward)
-
-        switchLossless = findViewById(R.id.switchLossless)
-        switchLossless.setOnCheckedChangeListener { _, isChecked ->
-            customVideoSeeker.isLosslessMode = isChecked
-            customVideoSeeker.invalidate()
-            Toast.makeText(this, if (isChecked) "Snap Mode ON" else "Snap Mode OFF", Toast.LENGTH_SHORT).show()
+        binding.switchLossless.setOnCheckedChangeListener { _, isChecked ->
+            binding.customVideoSeeker.isLosslessMode = isChecked
+            binding.customVideoSeeker.invalidate()
+            Toast.makeText(this, getString(if (isChecked) R.string.snap_mode_on else R.string.snap_mode_off), Toast.LENGTH_SHORT).show()
         }
 
-        btnUndo.setOnClickListener { viewModel.undo() }
-        btnSplit.setOnClickListener { viewModel.splitSegmentAt(player.currentPosition) }
-        btnDelete.setOnClickListener { 
+        binding.btnUndo.setOnClickListener { viewModel.undo() }
+        binding.btnSplit.setOnClickListener { viewModel.splitSegmentAt(player.currentPosition) }
+        binding.btnDelete.setOnClickListener { 
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.toggleSegmentAction(it) }
             }
         }
 
-        btnNudgeBack.setOnClickListener { performNudge(-1) }
-        btnNudgeForward.setOnClickListener { performNudge(1) }
+        binding.btnNudgeBack.setOnClickListener { performNudge(-1) }
+        binding.btnNudgeForward.setOnClickListener { performNudge(1) }
 
-        btnSnapshot.setOnClickListener { extractSnapshot() }
-        btnRotate.setOnClickListener { 
+        binding.btnSnapshot.setOnClickListener { extractSnapshot() }
+        binding.btnRotate.setOnClickListener { 
             currentRotation = (currentRotation + 90) % 360
-            Toast.makeText(this, "Export rotation offset: $currentRotation°", Toast.LENGTH_SHORT).show()
+            updateRotationBadge()
+            Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun updateRotationBadge() {
+        binding.badgeRotate?.text = "${currentRotation}°"
+        binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
     }
 
     private fun startProgressUpdate() {
@@ -221,7 +200,7 @@ class VideoEditingActivity : AppCompatActivity() {
         updateJob = lifecycleScope.launch {
             while (isActive && player.isPlaying) {
                 if (!isDraggingTimeline) {
-                    customVideoSeeker.setSeekPosition(player.currentPosition)
+                    binding.customVideoSeeker.setSeekPosition(player.currentPosition)
                     updateDurationDisplay(player.currentPosition, player.duration)
                 }
                 delay(30)
@@ -236,7 +215,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun performNudge(direction: Int) {
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
 
-        if (switchLossless.isChecked && currentState.keyframes.isNotEmpty()) {
+        if (binding.switchLossless.isChecked && currentState.keyframes.isNotEmpty()) {
             val keyframesMs = currentState.keyframes.map { it.toLong() }.sorted()
             val currentPos = player.currentPosition
             
@@ -247,11 +226,11 @@ class VideoEditingActivity : AppCompatActivity() {
             }
             player.seekTo(targetKf)
         } else {
-            val step = 33L // ~1 frame at 30fps
+            val step = if (videoFps > 0f) (1000L / videoFps).toLong() else 33L
             val target = (player.currentPosition + (direction * step)).coerceIn(0, player.duration)
             player.seekTo(target)
         }
-        customVideoSeeker.setSeekPosition(player.currentPosition)
+        binding.customVideoSeeker.setSeekPosition(player.currentPosition)
         updateDurationDisplay(player.currentPosition, player.duration)
     }
 
@@ -259,43 +238,60 @@ class VideoEditingActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 when (state) {
-                    is VideoEditingUiState.Loading -> loadingScreen.visibility = View.VISIBLE
+                    is VideoEditingUiState.Loading -> binding.loadingScreen.root.visibility = View.VISIBLE
                     is VideoEditingUiState.Success -> {
-                        loadingScreen.visibility = View.GONE
+                        binding.loadingScreen.root.visibility = View.GONE
                         if (player.currentMediaItem?.localConfiguration?.uri != state.videoUri) {
                             initializePlayer(state.videoUri)
                         }
                         
-                        customVideoSeeker.setKeyframes(state.keyframes.map { it.toLong() })
-                        customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
-                        btnUndo.isEnabled = state.canUndo
-                        btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
+                        binding.customVideoSeeker.setKeyframes(state.keyframes.map { it.toLong() })
+                        binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
+                        binding.btnUndo.isEnabled = state.canUndo
+                        binding.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
 
                         val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
                         if (selectedSeg != null && selectedSeg.action == SegmentAction.DISCARD) {
-                            btnDelete.setImageResource(android.R.drawable.ic_menu_edit) // 'Restore' conceptually
+                            binding.btnDelete.setImageResource(R.drawable.ic_restore_24)
                         } else {
-                            btnDelete.setImageResource(android.R.drawable.ic_menu_delete)
+                            binding.btnDelete.setImageResource(R.drawable.ic_delete_24)
                         }
                     }
-                    is VideoEditingUiState.EventMessage -> {
-                        loadingScreen.visibility = View.GONE
-                        Toast.makeText(this@VideoEditingActivity, state.message, Toast.LENGTH_LONG).show()
-                        viewModel.acknowledgeMessage()
-                    }
                     is VideoEditingUiState.Error -> {
-                        loadingScreen.visibility = View.GONE
+                        binding.loadingScreen.root.visibility = View.GONE
                         Toast.makeText(this@VideoEditingActivity, state.message, Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
             }
         }
+        lifecycleScope.launch {
+            viewModel.uiEvents.collect { message ->
+                Toast.makeText(this@VideoEditingActivity, message, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun extractVideoFps(videoUri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(this@VideoEditingActivity, videoUri)
+                val fpsStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+                fpsStr?.toFloatOrNull()?.let { fps ->
+                    videoFps = fps
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to extract FPS", e)
+            } finally {
+                retriever.release()
+            }
+        }
     }
 
     private fun setupExoPlayer() {
         player = ExoPlayer.Builder(this).build().apply {
-            playerView.player = this
+            binding.playerView.player = this
             addListener(playerListener)
         }
     }
@@ -308,23 +304,23 @@ class VideoEditingActivity : AppCompatActivity() {
     }
 
     private fun setupCustomSeeker() {
-        customVideoSeeker.onSeekListener = { seekPositionMs ->
+        binding.customVideoSeeker.onSeekListener = { seekPositionMs ->
             isDraggingTimeline = true
             player.seekTo(seekPositionMs)
             updateDurationDisplay(seekPositionMs, player.duration)
             isDraggingTimeline = false
         }
         
-        customVideoSeeker.onSegmentSelected = { id ->
+        binding.customVideoSeeker.onSegmentSelected = { id ->
             viewModel.selectSegment(id)
         }
         
-        customVideoSeeker.onSegmentBoundsChanged = { id, start, end ->
+        binding.customVideoSeeker.onSegmentBoundsChanged = { id, start, end ->
             isDraggingTimeline = true
             viewModel.updateSegmentBounds(id, start, end)
         }
         
-        customVideoSeeker.onSegmentBoundsDragEnd = {
+        binding.customVideoSeeker.onSegmentBoundsDragEnd = {
             isDraggingTimeline = false
             viewModel.commitSegmentBounds()
         }
@@ -335,7 +331,7 @@ class VideoEditingActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val retriever = MediaMetadataRetriever()
             try {
-                withContext(Dispatchers.Main) { loadingScreen.visibility = View.VISIBLE }
+                withContext(Dispatchers.Main) { binding.loadingScreen.root.visibility = View.VISIBLE }
                 retriever.setDataSource(this@VideoEditingActivity, currentState.videoUri)
                 
                 val bitmap = retriever.getFrameAtTime(player.currentPosition * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
@@ -348,17 +344,17 @@ class VideoEditingActivity : AppCompatActivity() {
                     bitmap.recycle()
                     
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@VideoEditingActivity, "Snapshot saved: ${file.name}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@VideoEditingActivity, getString(R.string.snapshot_saved, file.name), Toast.LENGTH_SHORT).show()
                     }
                 } else {
-                    withContext(Dispatchers.Main) { Toast.makeText(this@VideoEditingActivity, "Failed to capture snapshot", Toast.LENGTH_SHORT).show() }
+                    withContext(Dispatchers.Main) { Toast.makeText(this@VideoEditingActivity, getString(R.string.snapshot_failed), Toast.LENGTH_SHORT).show() }
                 }
 
             } catch (e: Exception) {
                 Log.e("VideoEditingActivity", "Snapshot error", e)
             } finally {
                 retriever.release()
-                withContext(Dispatchers.Main) { loadingScreen.visibility = View.GONE }
+                withContext(Dispatchers.Main) { binding.loadingScreen.root.visibility = View.GONE }
             }
         }
     }
@@ -369,26 +365,25 @@ class VideoEditingActivity : AppCompatActivity() {
         val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
         
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setTitle("Export Options")
+            .setTitle(getString(R.string.export_options))
             .setView(dialogView)
-            .setPositiveButton("Export") { _, _ ->
+            .setPositiveButton(getString(R.string.export)) { _, _ ->
                 val keepVideo = cbKeepVideo.isChecked
                 val keepAudio = cbKeepAudio.isChecked
                 if (!keepVideo && !keepAudio) {
-                    Toast.makeText(this, "Select at least one track to export", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
                 } else {
                     val rotationOverride = if (currentRotation != 0) currentRotation else null
-                    viewModel.exportSegments(this, switchLossless.isChecked, keepAudio, keepVideo, rotationOverride)
+                    viewModel.exportSegments(binding.switchLossless.isChecked, keepAudio, keepVideo, rotationOverride)
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
-    @SuppressLint("SetTextI18n")
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (!isVideoLoaded || total <= 0) return
-        tvDuration.text = "${TimeUtils.formatDuration(current)} / ${TimeUtils.formatDuration(total)}"
+        binding.tvDuration.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
     }
 
     override fun onDestroy() {

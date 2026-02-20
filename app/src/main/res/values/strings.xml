@@ -27,4 +27,19 @@
     <string name="select_aspect_ratio">Select Aspect Ratio</string>
     <string name="video_timeline_description">Video timeline. Drag to seek.</string>
     <string name="play_pause">Play/Pause</string>
+    
+    <string name="snap">Snap</string>
+    <string name="undo">Undo</string>
+    <string name="discard_segment">Discard Segment</string>
+    <string name="snapshot">Snapshot</string>
+    <string name="rotate">Rotate</string>
+    <string name="duration_format">%1$s / %2$s</string>
+    <string name="snap_mode_on">Snap Mode ON</string>
+    <string name="snap_mode_off">Snap Mode OFF</string>
+    <string name="invalid_video_uri">Invalid Video URI</string>
+    <string name="export_rotation_offset">Export rotation offset: %1$d°</string>
+    <string name="snapshot_saved">Snapshot saved: %1$s</string>
+    <string name="snapshot_failed">Failed to capture snapshot</string>
+    <string name="select_track_export">Select at least one track to export</string>
+    <string name="export_options">Export Options</string>
 </resources>

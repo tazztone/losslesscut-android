@@ -15,12 +15,26 @@ import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
 
-object LosslessEngine {
+interface LosslessEngineInterface {
+    suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long>
+    suspend fun executeLosslessCut(
+        context: Context,
+        inputUri: Uri,
+        outputUri: Uri,
+        startMs: Long,
+        endMs: Long,
+        keepAudio: Boolean = true,
+        keepVideo: Boolean = true,
+        rotationOverride: Int? = null
+    ): Result<Uri>
+}
 
-    const val TAG = "LosslessEngine"
+object LosslessEngineImpl : LosslessEngineInterface {
 
-    suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Double> = withContext(Dispatchers.IO) {
-        val keyframes = mutableListOf<Double>()
+    private const val TAG = "LosslessEngine"
+
+    override suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long> = withContext(Dispatchers.IO) {
+        val keyframes = mutableListOf<Long>()
         val extractor = MediaExtractor()
 
         try {
@@ -42,7 +56,7 @@ object LosslessEngine {
                 while (extractor.sampleTime >= 0) {
                     val sampleTime = extractor.sampleTime
                     if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-                        keyframes.add(sampleTime / 1_000_000.0)
+                        keyframes.add(sampleTime / 1000)
                     }
                     if (!extractor.advance()) break
                 }
@@ -57,15 +71,15 @@ object LosslessEngine {
     }
 
     @android.annotation.SuppressLint("WrongConstant")
-    suspend fun executeLosslessCut(
+    override suspend fun executeLosslessCut(
         context: Context,
         inputUri: Uri,
         outputUri: Uri,
         startMs: Long,
         endMs: Long,
-        keepAudio: Boolean = true,
-        keepVideo: Boolean = true,
-        rotationOverride: Int? = null
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        rotationOverride: Int?
     ): Result<Uri> = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
@@ -174,9 +188,9 @@ object LosslessEngine {
                 
                 // EOS Tracking
                 if (isVideoTrackMap[currentTrack] == true) {
-                    lastVideoSampleTimeUs = Math.max(lastVideoSampleTimeUs, bufferInfo.presentationTimeUs)
+                    lastVideoSampleTimeUs = maxOf(lastVideoSampleTimeUs, bufferInfo.presentationTimeUs)
                 } else {
-                    lastAudioSampleTimeUs = Math.max(lastAudioSampleTimeUs, bufferInfo.presentationTimeUs)
+                    lastAudioSampleTimeUs = maxOf(lastAudioSampleTimeUs, bufferInfo.presentationTimeUs)
                 }
 
                 mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)

@@ -24,17 +24,19 @@ class VideoEditingViewModelTest {
 
     private lateinit var viewModel: VideoEditingViewModel
     private val context: Context = ApplicationProvider.getApplicationContext()
+    private lateinit var mockEngine: LosslessEngineInterface
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = VideoEditingViewModel()
-        mockkObject(LosslessEngine)
+        mockEngine = mockk()
+        val application = ApplicationProvider.getApplicationContext<android.app.Application>()
+        viewModel = VideoEditingViewModel(application, mockEngine)
         mockkObject(StorageUtils)
         
         // Default mocks
-        coEvery { LosslessEngine.probeKeyframes(any(), any()) } returns listOf(0.0, 5.0, 10.0)
+        coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
         every { StorageUtils.getVideoMetadata(any(), any()) } returns Pair("mock_video.mp4", 10000L)
     }
 
@@ -51,7 +53,7 @@ class VideoEditingViewModelTest {
         // We need to mock MediaMetadataRetriever as it's used in initialize
         // For simplicity in this env, we might just test the logic that follows
         
-        viewModel.initialize(context, uri)
+        viewModel.initialize(uri)
         advanceUntilIdle()
         
         val state = viewModel.uiState.value
@@ -66,7 +68,7 @@ class VideoEditingViewModelTest {
         // Setup initial success state manually to avoid full initialize dependencies if possible
         // But initialize is better for integration-style unit test
         val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(context, uri)
+        viewModel.initialize(uri)
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
@@ -82,7 +84,7 @@ class VideoEditingViewModelTest {
     @Test
     fun testUndoAfterSplit() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(context, uri)
+        viewModel.initialize(uri)
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
@@ -96,7 +98,7 @@ class VideoEditingViewModelTest {
     @Test
     fun testToggleSegmentAction() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(context, uri)
+        viewModel.initialize(uri)
         advanceUntilIdle()
         
         val segmentId = (viewModel.uiState.value as VideoEditingUiState.Success).segments[0].id
@@ -112,7 +114,7 @@ class VideoEditingViewModelTest {
     @Test
     fun testUndoStackCap() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(context, uri)
+        viewModel.initialize(uri)
         advanceUntilIdle()
         
         // Push 35 changes

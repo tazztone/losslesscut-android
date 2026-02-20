@@ -37,7 +37,7 @@
                 android:id="@+id/switchLossless"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Snap"
+                android:text="@string/snap"
                 android:textColor="@android:color/white"
                 android:checked="true"
                 android:layout_marginEnd="16dp"/>
@@ -50,7 +50,7 @@
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_save_color_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Export"/>
+                android:contentDescription="@string/export"/>
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
@@ -72,9 +72,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:src="@android:drawable/ic_menu_revert"
+            android:src="@drawable/ic_undo_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Undo"/>
+            android:contentDescription="@string/undo"/>
 
         <ImageButton
             android:id="@+id/btnSplit"
@@ -85,7 +85,7 @@
             android:layout_weight="1"
             android:src="@drawable/ic_split_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Split"/>
+            android:contentDescription="@string/split"/>
 
         <ImageButton
             android:id="@+id/btnDelete"
@@ -94,9 +94,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:src="@android:drawable/ic_menu_delete"
+            android:src="@drawable/ic_delete_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Discard Segment"/>
+            android:contentDescription="@string/discard_segment"/>
 
         <ImageButton
             android:id="@+id/btnSnapshot"
@@ -107,18 +107,36 @@
             android:layout_weight="1"
             android:src="@android:drawable/ic_menu_camera"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Snapshot"/>
+            android:contentDescription="@string/snapshot"/>
             
-        <ImageButton
-            android:id="@+id/btnRotate"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
+        <FrameLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:src="@android:drawable/ic_menu_rotate"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Rotate"/>
+            android:layout_weight="1">
+            <ImageButton
+                android:id="@+id/btnRotate"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:src="@android:drawable/ic_menu_rotate"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/rotate"/>
+            
+            <TextView
+                android:id="@+id/badgeRotate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="12dp"
+                android:background="#DD000000"
+                android:textColor="@android:color/white"
+                android:textSize="10sp"
+                android:padding="2dp"
+                android:visibility="gone"
+                android:text="90°"/>
+        </FrameLayout>
     </LinearLayout>
 
     <!-- Timeline Area -->
@@ -200,7 +218,7 @@
             android:layout_width="72dp"
             android:layout_height="72dp"
             android:layout_gravity="center"
-            android:src="@android:drawable/ic_media_play"
+            android:src="@drawable/ic_play_24"
             android:background="#80000000"
             android:padding="16dp"
             android:contentDescription="@string/play_pause" />

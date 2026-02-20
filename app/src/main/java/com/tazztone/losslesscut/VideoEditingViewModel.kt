@@ -1,11 +1,15 @@
 package com.tazztone.losslesscut
 
 import android.content.Context
+import android.app.Application
 import android.net.Uri
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -14,9 +18,9 @@ enum class SegmentAction { KEEP, DISCARD }
 
 data class TrimSegment(
     val id: UUID = UUID.randomUUID(),
-    var startMs: Long,
-    var endMs: Long,
-    var action: SegmentAction = SegmentAction.KEEP
+    val startMs: Long,
+    val endMs: Long,
+    val action: SegmentAction = SegmentAction.KEEP
 )
 
 sealed class VideoEditingUiState {
@@ -25,19 +29,24 @@ sealed class VideoEditingUiState {
     data class Success(
         val videoUri: Uri,
         val videoFileName: String,
-        val keyframes: List<Float>,
+        val keyframes: List<Long>,
         val segments: List<TrimSegment>,
         val selectedSegmentId: UUID? = null,
         val canUndo: Boolean = false
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
-    data class EventMessage(val message: String) : VideoEditingUiState()
 }
 
-class VideoEditingViewModel : ViewModel() {
+class VideoEditingViewModel(
+    application: Application,
+    private val engine: LosslessEngineInterface = LosslessEngineImpl
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
+
+    private val _uiEvents = MutableSharedFlow<String>()
+    val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
 
     private var currentVideoUri: Uri? = null
     private var videoDurationMs: Long = 0
@@ -45,7 +54,7 @@ class VideoEditingViewModel : ViewModel() {
     private var currentSegments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
 
-    fun initialize(context: Context, videoUri: Uri?) {
+    fun initialize(videoUri: Uri?) {
         if (videoUri == null) {
             _uiState.value = VideoEditingUiState.Error("Invalid video URI")
             return
@@ -55,7 +64,8 @@ class VideoEditingViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading
             try {
-                val keyframes = LosslessEngine.probeKeyframes(context, videoUri)
+                val context = getApplication<Application>()
+                val keyframes = engine.probeKeyframes(context, videoUri)
                 
                 val metadata = StorageUtils.getVideoMetadata(context, videoUri)
                 val fileName = metadata.first
@@ -64,16 +74,16 @@ class VideoEditingViewModel : ViewModel() {
                 // Initial segment covering the whole video
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))
                 history.clear()
-                pushToHistory() // Push initial state
+                history.add(currentSegments.map { it.copy() }) // Push initial state
 
-                updateSuccessState(keyframes.map { it.toFloat() })
+                updateSuccessState(keyframes)
             } catch (e: Exception) {
                 _uiState.value = VideoEditingUiState.Error("Failed to load video: ${e.message}")
             }
         }
     }
 
-    private fun updateSuccessState(keyframes: List<Float> = emptyList()) {
+    private fun updateSuccessState(keyframes: List<Long> = emptyList()) {
         val currentState = _uiState.value
         val kf = if (currentState is VideoEditingUiState.Success) currentState.keyframes else keyframes
         
@@ -128,26 +138,30 @@ class VideoEditingViewModel : ViewModel() {
     }
 
     fun toggleSegmentAction(id: UUID) {
-        currentSegments.find { it.id == id }?.let {
-            it.action = if (it.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP
-            pushToHistory()
-            updateSuccessState()
+        currentSegments = currentSegments.map {
+            if (it.id == id) {
+                it.copy(action = if (it.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP)
+            } else {
+                it
+            }
         }
+        pushToHistory()
+        updateSuccessState()
     }
 
     fun deleteSegment(id: UUID) {
-        val segment = currentSegments.find { it.id == id } ?: return
-        segment.action = SegmentAction.DISCARD
+        currentSegments = currentSegments.map {
+            if (it.id == id) it.copy(action = SegmentAction.DISCARD) else it
+        }
         pushToHistory()
         updateSuccessState()
     }
 
     fun updateSegmentBounds(id: UUID, startMs: Long, endMs: Long) {
-        currentSegments.find { it.id == id }?.let {
-            it.startMs = startMs
-            it.endMs = endMs
-            updateSuccessState()
+        currentSegments = currentSegments.map {
+            if (it.id == id) it.copy(startMs = startMs, endMs = endMs) else it
         }
+        updateSuccessState()
     }
 
     fun commitSegmentBounds() {
@@ -155,11 +169,7 @@ class VideoEditingViewModel : ViewModel() {
         updateSuccessState()
     }
 
-    fun acknowledgeMessage() {
-        updateSuccessState()
-    }
-
-    fun exportSegments(context: Context, isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null) {
+    fun exportSegments(isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null) {
         val uri = currentVideoUri ?: return
         val segmentsToExport = currentSegments.filter { it.action == SegmentAction.KEEP }
         if (segmentsToExport.isEmpty()) {
@@ -174,6 +184,7 @@ class VideoEditingViewModel : ViewModel() {
                 var successCount = 0
                 val errors = mutableListOf<String>()
 
+                val context = getApplication<Application>()
                 for ((index, segment) in segmentsToExport.withIndex()) {
                     val outputUri = StorageUtils.createVideoOutputUri(context, "clip_${System.currentTimeMillis()}_$index.mp4")
                     if (outputUri == null) {
@@ -181,7 +192,7 @@ class VideoEditingViewModel : ViewModel() {
                         continue
                     }
 
-                    val result = LosslessEngine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
+                    val result = engine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
                     result.fold(
                         onSuccess = { successCount++ },
                         onFailure = { errors.add("Segment $index failed: ${it.message}") }
@@ -189,14 +200,17 @@ class VideoEditingViewModel : ViewModel() {
                 }
 
                 if (errors.isEmpty() && successCount > 0) {
-                    _uiState.value = VideoEditingUiState.EventMessage("Successfully exported $successCount clip(s) to Movies/LosslessCut")
+                    _uiEvents.emit("Successfully exported $successCount clip(s) to Movies/LosslessCut")
+                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
                 } else if (successCount > 0) {
-                    _uiState.value = VideoEditingUiState.EventMessage("Exported $successCount clips. Errors: ${errors.joinToString()}")
+                    _uiEvents.emit("Exported $successCount clips. Errors: ${errors.joinToString()}")
+                    _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
                 } else {
                     _uiState.value = VideoEditingUiState.Error("Export failed: ${errors.joinToString()}")
                 }
             } else {
-                _uiState.value = VideoEditingUiState.Error("Precise mode coming in v2.0")
+                _uiEvents.emit("Precise mode coming in v2.0")
+                _uiState.value = VideoEditingUiState.Success(currentVideoUri!!, "video.mp4", _uiState.value.let { if (it is VideoEditingUiState.Success) it.keyframes else emptyList() }, currentSegments, selectedSegmentId, history.size > 1)
             }
         }
     }
