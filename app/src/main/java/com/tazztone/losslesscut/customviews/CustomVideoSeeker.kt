@@ -5,11 +5,17 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.GestureDetector
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.SegmentAction
+import com.tazztone.losslesscut.TrimSegment
+import java.util.UUID
 
 class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
@@ -17,84 +23,250 @@ class CustomVideoSeeker @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG) // Paint object for drawing
-    private var seekPosition = 0f // Normalized seek position (0 to 1)
-    private var videoDuration = 0L // Total video duration in milliseconds
-    var onSeekListener: ((Float) -> Unit)? = null // Listener for seek events
+    private var seekPositionMs = 0L
+    private var videoDurationMs = 0L
 
-    private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.YELLOW
-        strokeWidth = 2f
-    }
-    private var keyframes = listOf<Float>() // Normalized positions (0..1)
-    var isLosslessMode = true // Enable snapping
-    private var lastSnappedKeyframe: Float? = null
+    var onSeekListener: ((Long) -> Unit)? = null
+    var onSegmentSelected: ((UUID?) -> Unit)? = null
+    var onSegmentBoundsChanged: ((UUID, Long, Long) -> Unit)? = null
+    var onSegmentBoundsDragEnd: (() -> Unit)? = null
+
+    private var keyframes = listOf<Long>() // milliseconds
+    var isLosslessMode = true
+    private var lastSnappedKeyframe: Long? = null
+
+    private var segments = listOf<TrimSegment>()
+    private var selectedSegmentId: UUID? = null
+
+    // Zoom and Pan
+    private var zoomFactor = 1f
+    private val minZoom = 1f
+    private val maxZoom = 20f
+    private var scrollOffsetX = 0f
+
+    // Paints
+    private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 5f }
+    private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
+    private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8000FF00") }
+    private val discardSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#80808080") }
+    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
+
+    // Hit testing
+    enum class TouchTarget { NONE, HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD }
+    private var currentTouchTarget = TouchTarget.NONE
+    private var activeSegmentId: UUID? = null
 
     init {
-        paint.color = Color.WHITE // Set the color of the line to white
-        paint.strokeWidth = 5f // Set the stroke width for the line
         contentDescription = context.getString(R.string.video_timeline_description)
     }
 
-    // Method to draw the seek line based on the current seek position
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+    private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            val scaleFactor = detector.scaleFactor
+            val prevZoom = zoomFactor
+            zoomFactor = (zoomFactor * scaleFactor).coerceIn(minZoom, maxZoom)
+            
+            // Adjust scroll offset to zoom around the focal point
+            val focusX = detector.focusX
+            val contentFocusX = (scrollOffsetX + focusX) / prevZoom
+            scrollOffsetX = (contentFocusX * zoomFactor - focusX).coerceIn(0f, maxScrollOffset())
+            
+            invalidate()
+            return true
+        }
+    })
 
-        // Draw keyframes
-        keyframes.forEach { kf ->
-            val kfX = width * kf
-            canvas.drawLine(kfX, 0f, kfX, height.toFloat() / 2, keyframePaint) // Draw tick marks
+    private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
+        override fun onScroll(e1: MotionEvent?, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
+            if (currentTouchTarget == TouchTarget.NONE) {
+                scrollOffsetX = (scrollOffsetX + distanceX).coerceIn(0f, maxScrollOffset())
+                invalidate()
+                return true
+            }
+            return false
         }
 
-        val seekX = width * seekPosition // Calculate the X position for the seek line
-        canvas.drawLine(seekX, 0f, seekX, height.toFloat(), paint) // Draw the seek line
+        override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            val contentX = e.x + scrollOffsetX
+            val timeMs = xToTime(contentX)
+            
+            // Find if a segment was tapped
+            val tappedSegment = segments.find { timeMs in it.startMs..it.endMs }
+            onSegmentSelected?.invoke(tappedSegment?.id)
+            
+            if (tappedSegment == null) {
+                seekPositionMs = timeMs
+                onSeekListener?.invoke(seekPositionMs)
+            }
+            invalidate()
+            return true
+        }
+    })
+
+    private fun maxScrollOffset(): Float {
+        val logicalWidth = width * zoomFactor
+        return (logicalWidth - width).coerceAtLeast(0f)
+    }
+
+    private fun timeToX(timeMs: Long): Float {
+        if (videoDurationMs == 0L) return 0f
+        return (timeMs.toFloat() / videoDurationMs) * (width * zoomFactor)
+    }
+
+    private fun xToTime(x: Float): Long {
+        val logicalWidth = width * zoomFactor
+        if (logicalWidth == 0f) return 0L
+        return ((x / logicalWidth) * videoDurationMs).toLong().coerceIn(0L, videoDurationMs)
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        if (videoDurationMs <= 0L) return
+
+        canvas.save()
+        canvas.translate(-scrollOffsetX, 0f)
+
+        // Draw Segments
+        for (segment in segments) {
+            val startX = timeToX(segment.startMs)
+            val endX = timeToX(segment.endMs)
+            val rect = RectF(startX, 0f, endX, height.toFloat())
+            
+            val paint = if (segment.action == SegmentAction.KEEP) keepSegmentPaint else discardSegmentPaint
+            canvas.drawRect(rect, paint)
+
+            if (segment.id == selectedSegmentId) {
+                canvas.drawRect(rect, selectedBorderPaint)
+                canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
+                canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
+            }
+        }
+
+        // Draw keyframes
+        for (kfMs in keyframes) {
+            val kfX = timeToX(kfMs)
+            if (kfX >= scrollOffsetX && kfX <= scrollOffsetX + width) {
+                canvas.drawLine(kfX, 0f, kfX, height.toFloat() / 2, keyframePaint)
+            }
+        }
+
+        // Draw Playhead
+        val seekX = timeToX(seekPositionMs)
+        canvas.drawLine(seekX, 0f, seekX, height.toFloat(), playheadPaint)
+
+        canvas.restore()
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    // Handle touch events to update seek position
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
-                // Update the normalized seek position based on touch event
-                var newSeekPosition = (event.x / width).coerceIn(0f, 1f)
+        scaleGestureDetector.onTouchEvent(event)
+        if (scaleGestureDetector.isInProgress) return true
 
-                // Snap to keyframe if in Lossless Mode
-                // Also update onSeekListener with the SNAPPED position
-                var snapped = false
-                if (isLosslessMode && keyframes.isNotEmpty()) {
-                    val snapThreshold = 0.05f // Snap if within 5% logic width
-                    // Find nearest keyframe
-                    val nearest = keyframes.minByOrNull { kotlin.math.abs(it - newSeekPosition) }
-                    if (nearest != null && kotlin.math.abs(nearest - newSeekPosition) < snapThreshold) {
-                         newSeekPosition = nearest
-                         snapped = true
-                         if (lastSnappedKeyframe != nearest) {
-                             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                             lastSnappedKeyframe = nearest
-                         }
+        gestureDetector.onTouchEvent(event)
+
+        val contentX = event.x + scrollOffsetX
+        val touchTimeMs = xToTime(contentX)
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                currentTouchTarget = TouchTarget.NONE
+                val hitTestThresholdMs = xToTime(event.x + 40f) - xToTime(event.x) // ~40px pixels wide
+
+                selectedSegmentId?.let { selId ->
+                    val segment = segments.find { it.id == selId }
+                    if (segment != null) {
+                        if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
+                            currentTouchTarget = TouchTarget.HANDLE_LEFT
+                            activeSegmentId = selId
+                            return true
+                        } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
+                            currentTouchTarget = TouchTarget.HANDLE_RIGHT
+                            activeSegmentId = selId
+                            return true
+                        }
                     }
                 }
-
-                if (!snapped) {
-                    lastSnappedKeyframe = null
+                
+                if (kotlin.math.abs(seekPositionMs - touchTimeMs) < hitTestThresholdMs) {
+                    currentTouchTarget = TouchTarget.PLAYHEAD
+                    return true
                 }
-
-                seekPosition = newSeekPosition
-                onSeekListener?.invoke(seekPosition) // Notify listener of the normalized position
-                invalidate() // Redraw the view to update the seek line
                 return true
             }
+            MotionEvent.ACTION_MOVE -> {
+                if (currentTouchTarget == TouchTarget.HANDLE_LEFT || currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
+                    activeSegmentId?.let { id ->
+                        val segment = segments.find { it.id == id } ?: return@let
+                        var newTimeMs = touchTimeMs
+
+                        if (isLosslessMode && keyframes.isNotEmpty()) {
+                            val snapTimeMs = keyframes.minByOrNull { kotlin.math.abs(it - newTimeMs) }
+                            if (snapTimeMs != null && timeToX(kotlin.math.abs(snapTimeMs - newTimeMs)) < 30f) {
+                                newTimeMs = snapTimeMs
+                                if (lastSnappedKeyframe != snapTimeMs) {
+                                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                    lastSnappedKeyframe = snapTimeMs
+                                }
+                            } else {
+                                lastSnappedKeyframe = null
+                            }
+                        }
+
+                        if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
+                            val newStart = newTimeMs.coerceAtMost(segment.endMs - 100)
+                            onSegmentBoundsChanged?.invoke(id, newStart, segment.endMs)
+                            seekPositionMs = newStart
+                        } else {
+                            val newEnd = newTimeMs.coerceAtLeast(segment.startMs + 100)
+                            onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd)
+                            seekPositionMs = newEnd
+                        }
+                        onSeekListener?.invoke(seekPositionMs)
+                    }
+                } else if (currentTouchTarget == TouchTarget.PLAYHEAD) {
+                    seekPositionMs = touchTimeMs
+                    onSeekListener?.invoke(seekPositionMs)
+                    invalidate()
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (currentTouchTarget == TouchTarget.HANDLE_LEFT || currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
+                    onSegmentBoundsDragEnd?.invoke()
+                }
+                currentTouchTarget = TouchTarget.NONE
+                activeSegmentId = null
+            }
         }
-        return super.onTouchEvent(event) // Handle other touch events normally
+        return true
     }
 
-    // Method to set the total video duration
-    fun setVideoDuration(duration: Long) {
-        videoDuration = duration // Store the video duration
+    fun setVideoDuration(durationMs: Long) {
+        if (durationMs > 0) {
+            videoDurationMs = durationMs
+            invalidate()
+        }
     }
 
-    fun setKeyframes(frames: List<Float>) {
-        this.keyframes = frames
+    fun setKeyframes(framesMs: List<Long>) {
+        this.keyframes = framesMs
+        invalidate()
+    }
+
+    fun setSegments(segs: List<TrimSegment>, selectedId: UUID?) {
+        this.segments = segs
+        this.selectedSegmentId = selectedId
+        invalidate()
+    }
+
+    fun setSeekPosition(positionMs: Long) {
+        this.seekPositionMs = positionMs
+        
+        val playheadX = timeToX(positionMs)
+        if (playheadX < scrollOffsetX || playheadX > scrollOffsetX + width) {
+            scrollOffsetX = (playheadX - width / 2).coerceIn(0f, maxScrollOffset())
+        }
+        
         invalidate()
     }
 }

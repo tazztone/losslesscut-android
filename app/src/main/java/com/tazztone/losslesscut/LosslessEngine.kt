@@ -80,6 +80,7 @@ object LosslessEngine {
             // Validate start/end times & get duration from track format
             var durationUs = -1L
             val trackMap = mutableMapOf<Int, Int>()
+            val isVideoTrackMap = mutableMapOf<Int, Boolean>()
             var bufferSize = -1
 
             for (i in 0 until extractor.trackCount) {
@@ -96,6 +97,7 @@ object LosslessEngine {
                     }
                     
                     trackMap[i] = mMuxer.addTrack(format)
+                    isVideoTrackMap[i] = mime.startsWith("video/")
                     
                     if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
                          val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
@@ -130,6 +132,8 @@ object LosslessEngine {
             extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
 
             var effectiveStartUs = -1L
+            var lastVideoSampleTimeUs = -1L
+            var lastAudioSampleTimeUs = -1L
 
             // Single loop — let MediaExtractor decide which track is next
             while (true) {
@@ -155,10 +159,20 @@ object LosslessEngine {
                 bufferInfo.size = sampleSize
                 bufferInfo.flags = extractor.sampleFlags
                 if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
+                
+                // EOS Tracking
+                if (isVideoTrackMap[currentTrack] == true) {
+                    lastVideoSampleTimeUs = Math.max(lastVideoSampleTimeUs, bufferInfo.presentationTimeUs)
+                } else {
+                    lastAudioSampleTimeUs = Math.max(lastAudioSampleTimeUs, bufferInfo.presentationTimeUs)
+                }
+
                 mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
 
                 if (!extractor.advance()) break
             }
+            
+            Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")
             
             StorageUtils.finalizeVideo(context, outputUri)
             Result.success(outputUri)

@@ -135,3 +135,24 @@ Configure the following secrets in your GitHub Repository settings:
 *   **Kotlin**: Use idiomatic Kotlin (coroutines for async work, extension functions).
 *   **Async**: UI operations on Main thread, heavy lifting (probing, cutting) on IO dispatchers.
 *   **Permissions**: Handle runtime permissions gracefully (especially Android 13+ media permissions).
+
+## AI-Assisted Development (Context7)
+
+When using AI assistants, leverage the `/mcp-context7` workflow for high-fidelity documentation and code examples.
+
+### 1. Library IDs for This Stack
+Use these exact IDs with the `query-docs` tool to get relevant context:
+
+| Component | Context7 Library ID |
+| :--- | :--- |
+| **Media3 (ExoPlayer)** | `/androidx/media` |
+| **Kotlin Coroutines** | `/kotlin/kotlinx.coroutines` |
+| **AndroidX / Jetpack** | `/androidx/androidx` |
+| **Material Components** | `/material-components/material-components-android` |
+| **Lottie Android** | `/airbnb/lottie-android` |
+| **Robolectric** | `/robolectric/robolectric` |
+| **Kotlin Language** | `/websites/kotlinlang` |
+
+### 2. Best Practices
+> [!TIP]
+> use `### 2. query-docs` to retrieve documentation and code examples from Context7 during planning. This ensures you are following the latest best practices and API surfaces for the specific library.
