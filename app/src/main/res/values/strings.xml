@@ -50,4 +50,6 @@
     <string name="error_export_failed">Export failed: %1$s</string>
     <string name="export_partial_success">Exported %1$d clips. Errors: %2$s</string>
     <string name="export_success">Successfully exported %1$d clip(s) to Movies/LosslessCut</string>
+    <string name="set_in_point">Set In Point</string>
+    <string name="set_out_point">Set Out Point</string>
 </resources>
