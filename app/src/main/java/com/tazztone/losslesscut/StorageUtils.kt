@@ -40,6 +40,36 @@ object StorageUtils {
         }
     }
 
+    fun createImageOutputUri(context: Context, fileName: String): Uri? {
+        val resolver = context.contentResolver
+        val imageCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val newImageDetails = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, fileName)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/LosslessCut")
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+        }
+
+        return resolver.insert(imageCollection, newImageDetails)
+    }
+
+    fun finalizeImage(context: Context, uri: Uri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val resolver = context.contentResolver
+            val updatedDetails = ContentValues().apply {
+                put(MediaStore.Images.Media.IS_PENDING, 0)
+            }
+            resolver.update(uri, updatedDetails, null, null)
+        }
+    }
+
     data class VideoMetadata(val fileName: String, val durationMs: Long)
     
     fun getVideoMetadata(context: Context, videoUri: Uri): VideoMetadata {

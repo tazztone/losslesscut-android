@@ -44,13 +44,15 @@
                 android:contentDescription="@string/undo"
                 android:layout_marginEnd="16dp"/>
 
-            <com.google.android.material.switchmaterial.SwitchMaterial
-                android:id="@+id/switchLossless"
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/snap"
-                android:textColor="@android:color/white"
-                android:checked="true"
+                android:src="@drawable/ic_settings_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings"
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton

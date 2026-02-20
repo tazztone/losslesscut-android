@@ -60,4 +60,7 @@
     <string name="permissions_granted">Permissions granted</string>
     <string name="permissions_denied">Some permissions were denied</string>
     <string name="ok">OK</string>
+    <string name="settings">Settings</string>
+    <string name="nudge_forward">Nudge Forward</string>
+    <string name="nudge_backward">Nudge Backward</string>
 </resources>

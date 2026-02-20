@@ -12,6 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.TooltipCompat
 import androidx.lifecycle.lifecycleScope
 import com.airbnb.lottie.LottieAnimationView
 import androidx.media3.common.MediaItem
@@ -29,7 +30,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
-class VideoEditingActivity : AppCompatActivity() {
+class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
 
     companion object {
         const val EXTRA_VIDEO_URI = "com.tazztone.losslesscut.EXTRA_VIDEO_URI"
@@ -55,6 +56,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
     private var currentRotation = 0
+    private var isLosslessMode = true
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -72,6 +74,12 @@ class VideoEditingActivity : AppCompatActivity() {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (::binding.isInitialized) {
                 binding.btnPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
+                if (isPlaying) {
+                    binding.btnPlayPause.animate().alpha(0f).setStartDelay(500).setDuration(300).start()
+                } else {
+                    binding.btnPlayPause.animate().cancel()
+                    binding.btnPlayPause.alpha = 1f
+                }
             }
             if (isPlaying) {
                 startProgressUpdate()
@@ -112,8 +120,9 @@ class VideoEditingActivity : AppCompatActivity() {
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
             currentRotation = it.getInt(KEY_ROTATION, 0)
             updateRotationBadge()
+            isLosslessMode = it.getBoolean(KEY_LOSSLESS_MODE, true)
             if (::binding.isInitialized) {
-                binding.switchLossless.isChecked = it.getBoolean(KEY_LOSSLESS_MODE, true)
+                binding.customVideoSeeker.isLosslessMode = isLosslessMode
             }
         }
     }
@@ -137,9 +146,7 @@ class VideoEditingActivity : AppCompatActivity() {
             outState.putBoolean(KEY_PLAY_WHEN_READY, player.playWhenReady)
         }
         outState.putInt(KEY_ROTATION, currentRotation)
-        if (::binding.isInitialized) {
-            outState.putBoolean(KEY_LOSSLESS_MODE, binding.switchLossless.isChecked)
-        }
+        outState.putBoolean(KEY_LOSSLESS_MODE, isLosslessMode)
     }
 
     @Suppress("DEPRECATION")
@@ -162,6 +169,11 @@ class VideoEditingActivity : AppCompatActivity() {
         binding.btnPlayPause.setOnClickListener {
             if (player.isPlaying) player.pause() else player.play()
         }
+        TooltipCompat.setTooltipText(binding.btnPlayPause, getString(R.string.play_pause))
+
+        binding.playerView.setOnClickListener {
+            if (player.isPlaying) player.pause() else player.play()
+        }
         
         try { 
             binding.loadingScreen.lottieAnimation.playAnimation() 
@@ -170,66 +182,115 @@ class VideoEditingActivity : AppCompatActivity() {
         }
 
         binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed()}
+        TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
+        
         binding.btnSave.setOnClickListener { 
             showExportOptionsDialog()
         }
+        TooltipCompat.setTooltipText(binding.btnSave, getString(R.string.export))
 
-        binding.switchLossless.setOnCheckedChangeListener { _, isChecked ->
-            binding.customVideoSeeker.isLosslessMode = isChecked
-            binding.customVideoSeeker.invalidate()
-            Toast.makeText(this, getString(if (isChecked) R.string.snap_mode_on else R.string.snap_mode_off), Toast.LENGTH_SHORT).show()
+        binding.btnSettings?.setOnClickListener {
+            val bottomSheet = SettingsBottomSheetDialogFragment()
+            bottomSheet.setInitialState(isLosslessMode)
+            bottomSheet.show(supportFragmentManager, "SettingsBottomSheet")
         }
+        binding.btnSettings?.let { TooltipCompat.setTooltipText(it, getString(R.string.settings)) }
 
         binding.btnUndo.setOnClickListener { viewModel.undo() }
+        TooltipCompat.setTooltipText(binding.btnUndo, getString(R.string.undo))
+        
         binding.btnSetIn?.setOnClickListener { setInPoint() }
+        binding.btnSetIn?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_in_point)) }
+        
         binding.btnSetOut?.setOnClickListener { setOutPoint() }
+        binding.btnSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
+        
         binding.btnSplit.setOnClickListener { viewModel.splitSegmentAt(player.currentPosition) }
+        TooltipCompat.setTooltipText(binding.btnSplit, getString(R.string.split))
+        
         binding.btnDelete.setOnClickListener { 
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.toggleSegmentAction(it) }
             }
         }
+        TooltipCompat.setTooltipText(binding.btnDelete, getString(R.string.discard_segment))
 
         binding.btnNudgeBack.setOnClickListener { performNudge(-1) }
+        TooltipCompat.setTooltipText(binding.btnNudgeBack, getString(R.string.nudge_backward))
+        
         binding.btnNudgeForward.setOnClickListener { performNudge(1) }
+        TooltipCompat.setTooltipText(binding.btnNudgeForward, getString(R.string.nudge_forward))
 
         binding.btnSnapshot.setOnClickListener { extractSnapshot() }
+        TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
+        
         binding.btnRotate.setOnClickListener { 
             currentRotation = (currentRotation + 90) % 360
             updateRotationBadge()
             Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
         }
+        TooltipCompat.setTooltipText(binding.btnRotate, getString(R.string.rotate))
     }
 
     private fun updateRotationBadge() {
         binding.badgeRotate?.text = "${currentRotation}°"
         binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
+        binding.playerView.rotation = currentRotation.toFloat()
+        
+        // Scale down slightly if rotated 90 or 270 to prevent aggressive clipping on portrait devices
+        if (currentRotation % 180 != 0) {
+            binding.playerView.scaleX = 0.5f
+            binding.playerView.scaleY = 0.5f
+        } else {
+            binding.playerView.scaleX = 1.0f
+            binding.playerView.scaleY = 1.0f
+        }
     }
 
     private fun setInPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
         val currentPos = player.currentPosition
+        
+        val snapPos = if (isLosslessMode && state.keyframes.isNotEmpty()) {
+            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+        } else {
+            currentPos
+        }
+
         val segment = state.segments.find { it.id == state.selectedSegmentId }
-            ?: state.segments.find { currentPos in it.startMs..it.endMs }
+            ?: state.segments.find { snapPos in it.startMs..it.endMs }
+            ?: state.segments.minByOrNull { kotlin.math.min(kotlin.math.abs(it.startMs - snapPos), kotlin.math.abs(it.endMs - snapPos)) }
             ?: return
 
-        if (currentPos < segment.endMs) {
-            viewModel.updateSegmentBounds(segment.id, currentPos, segment.endMs)
+        if (snapPos < segment.endMs) {
+            viewModel.updateSegmentBounds(segment.id, snapPos, segment.endMs)
             viewModel.commitSegmentBounds()
+            player.seekTo(snapPos)
+            binding.customVideoSeeker.setSeekPosition(snapPos)
         }
     }
 
     private fun setOutPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
         val currentPos = player.currentPosition
+        
+        val snapPos = if (isLosslessMode && state.keyframes.isNotEmpty()) {
+            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+        } else {
+            currentPos
+        }
+
         val segment = state.segments.find { it.id == state.selectedSegmentId }
-            ?: state.segments.find { currentPos in it.startMs..it.endMs }
+            ?: state.segments.find { snapPos in it.startMs..it.endMs }
+            ?: state.segments.minByOrNull { kotlin.math.min(kotlin.math.abs(it.startMs - snapPos), kotlin.math.abs(it.endMs - snapPos)) }
             ?: return
 
-        if (currentPos > segment.startMs) {
-            viewModel.updateSegmentBounds(segment.id, segment.startMs, currentPos)
+        if (snapPos > segment.startMs) {
+            viewModel.updateSegmentBounds(segment.id, segment.startMs, snapPos)
             viewModel.commitSegmentBounds()
+            player.seekTo(snapPos)
+            binding.customVideoSeeker.setSeekPosition(snapPos)
         }
     }
 
@@ -253,7 +314,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun performNudge(direction: Int) {
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
 
-        if (binding.switchLossless.isChecked && currentState.keyframes.isNotEmpty()) {
+        if (isLosslessMode && currentState.keyframes.isNotEmpty()) {
             val keyframesMs = currentState.keyframes.sorted()
             val currentPos = player.currentPosition
             
@@ -367,7 +428,7 @@ class VideoEditingActivity : AppCompatActivity() {
                     Toast.makeText(this, getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
                 } else {
                     val rotationOverride = if (currentRotation != 0) currentRotation else null
-                    viewModel.exportSegments(binding.switchLossless.isChecked, keepAudio, keepVideo, rotationOverride)
+                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride)
                 }
             }
             .setNegativeButton(getString(R.string.cancel), null)
@@ -377,6 +438,12 @@ class VideoEditingActivity : AppCompatActivity() {
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (!isVideoLoaded || total <= 0) return
         binding.tvDuration.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
+    }
+
+    override fun onLosslessModeToggled(isChecked: Boolean) {
+        isLosslessMode = isChecked
+        binding.customVideoSeeker.isLosslessMode = isChecked
+        binding.customVideoSeeker.invalidate()
     }
 
     override fun onDestroy() {

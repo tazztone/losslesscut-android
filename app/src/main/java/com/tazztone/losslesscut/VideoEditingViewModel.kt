@@ -271,13 +271,23 @@ class VideoEditingViewModel(
                 val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
                 
                 if (bitmap != null) {
-                    val file = java.io.File(context.getExternalFilesDir(null), "snapshot_${System.currentTimeMillis()}.png")
-                    val fos = java.io.FileOutputStream(file)
-                    bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fos)
-                    fos.close()
+                    val fileName = "snapshot_${System.currentTimeMillis()}.png"
+                    val outputUri = StorageUtils.createImageOutputUri(context, fileName)
+                    if (outputUri != null) {
+                        val resolver = context.contentResolver
+                        val outputStream = resolver.openOutputStream(outputUri)
+                        if (outputStream != null) {
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, outputStream)
+                            outputStream.close()
+                            StorageUtils.finalizeImage(context, outputUri)
+                            _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
+                        } else {
+                            _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                        }
+                    } else {
+                         _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                    }
                     bitmap.recycle()
-                    
-                    _uiEvents.emit(context.getString(R.string.snapshot_saved, file.name))
                 } else {
                     _uiEvents.emit(context.getString(R.string.snapshot_failed))
                 }

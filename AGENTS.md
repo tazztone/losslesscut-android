@@ -21,18 +21,19 @@
 
 ## 3. Core Architecture
 
-### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`)
-- `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states.
-- `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, and haptic snapping to keyframes.
+### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`, `SettingsBottomSheetDialogFragment.kt`)
+- `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states, and handles tooltips/rotation previews.
+- `SettingsBottomSheetDialogFragment`: Presents app preferences such as the "Snap" (Lossless) mode toggle.
+- `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, haptic snapping to keyframes, cycling colors for `KEEP` segments, and hiding `DISCARD` segments.
 
 ### Presentation (`VideoEditingViewModel.kt`)
 - `TrimSegment`: Data model holding `startMs`, `endMs`, and `SegmentAction` (KEEP/DISCARD).
 - `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions (capped at 30 items for memory safety).
-- Automates the multi-clip export orchestration.
+- Automates the multi-clip export orchestration and snapshot frame extraction.
 
 ### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`)
 - `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix (syncs written video vs. audio samples to prevent "frozen last frame" bugs) and export params (rotation override, audio-only).
-- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation and file finalization.
+- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling both video outputs and PNG frame snapshots.
 
 ### Data Flow (Trim Action)
 1. User confirms trim -> `Activity` calls `ViewModel.trimVideo()`.

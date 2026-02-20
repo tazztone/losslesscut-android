@@ -50,26 +50,22 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val playheadPath = android.graphics.Path()
 
     private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
+    private val keepColors = arrayOf(
+        Color.parseColor("#8000FF00"), // Green
+        Color.parseColor("#80FF0000"), // Red
+        Color.parseColor("#800000FF"), // Blue
+        Color.parseColor("#80FFFF00"), // Yellow
+        Color.parseColor("#8000FFFF"), // Cyan
+        Color.parseColor("#80FF00FF")  // Magenta
+    )
     private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val discardSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
 
     private val segmentRect = RectF()
 
     init {
-        context.theme.obtainStyledAttributes(
-            attrs,
-            intArrayOf(R.attr.colorSegmentKeep, R.attr.colorSegmentDiscard),
-            defStyleAttr, 0
-        ).apply {
-            try {
-                keepSegmentPaint.color = getColor(0, Color.parseColor("#8000FF00"))
-                discardSegmentPaint.color = getColor(1, Color.parseColor("#80808080"))
-            } finally {
-                recycle()
-            }
-        }
+        keepSegmentPaint.color = keepColors[0]
         contentDescription = context.getString(R.string.video_timeline_description)
     }
 
@@ -166,7 +162,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val timeMs = xToTime(contentX)
             
             // Find if a segment was tapped
-            val tappedSegment = segments.find { timeMs in it.startMs..it.endMs }
+            val tappedSegment = segments.find { it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs }
             onSegmentSelected?.invoke(tappedSegment?.id)
             
             seekPositionMs = timeMs
@@ -201,13 +197,18 @@ class CustomVideoSeeker @JvmOverloads constructor(
         canvas.translate(-scrollOffsetX, 0f)
 
         // Draw Segments
+        var keepSegmentIndex = 0
         for (segment in segments) {
+            if (segment.action == SegmentAction.DISCARD) continue
+            
             val startX = timeToX(segment.startMs)
             val endX = timeToX(segment.endMs)
             segmentRect.set(startX, 0f, endX, height.toFloat())
             
-            val paint = if (segment.action == SegmentAction.KEEP) keepSegmentPaint else discardSegmentPaint
-            canvas.drawRect(segmentRect, paint)
+            val color = keepColors[keepSegmentIndex % keepColors.size]
+            keepSegmentPaint.color = color
+            canvas.drawRect(segmentRect, keepSegmentPaint)
+            keepSegmentIndex++
 
             if (segment.id == selectedSegmentId) {
                 canvas.drawRect(segmentRect, selectedBorderPaint)
