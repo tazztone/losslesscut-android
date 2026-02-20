@@ -11,6 +11,10 @@ android {
         enabled = true
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     signingConfigs {
         release {
             def keystorePropertiesFile = rootProject.file("keystore.properties")

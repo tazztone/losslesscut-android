@@ -9,4 +9,8 @@
     <color name="textColor">#E0E0E0</color> <!-- Text color -->
     <color name="navigationBarColor">#121212</color> <!-- Navigation bar color -->
     <color name="statusBarColor">#121212</color> <!-- Status bar color -->
+
+    <!-- Video Seeker Colors -->
+    <color name="segmentKeep">#8000FF00</color>
+    <color name="segmentDiscard">#80808080</color>
 </resources>

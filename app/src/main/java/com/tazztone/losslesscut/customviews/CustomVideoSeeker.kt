@@ -50,12 +50,28 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val playheadPath = android.graphics.Path()
 
     private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
-    private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#8000FF00") }
-    private val discardSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#80808080") }
+    private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val discardSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
 
     private val segmentRect = RectF()
+
+    init {
+        context.theme.obtainStyledAttributes(
+            attrs,
+            intArrayOf(R.attr.colorSegmentKeep, R.attr.colorSegmentDiscard),
+            defStyleAttr, 0
+        ).apply {
+            try {
+                keepSegmentPaint.color = getColor(0, Color.parseColor("#8000FF00"))
+                discardSegmentPaint.color = getColor(1, Color.parseColor("#80808080"))
+            } finally {
+                recycle()
+            }
+        }
+        contentDescription = context.getString(R.string.video_timeline_description)
+    }
 
     // Hit testing
     enum class TouchTarget { NONE, HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD }
@@ -71,7 +87,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
             
             val segment = segments.find { it.id == activeSegmentId } ?: return
             
-            val panSpeed = 30f
+            val panSpeed = 30f / zoomFactor
             if (currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
                 scrollOffsetX = (scrollOffsetX + panSpeed).coerceIn(0f, maxScrollOffset())
             } else if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
@@ -103,7 +119,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd)
                 seekPositionMs = newEnd
             }
-            onSeekListener?.invoke(seekPositionMs)
             invalidate()
             
             if ((currentTouchTarget == TouchTarget.HANDLE_RIGHT && scrollOffsetX < maxScrollOffset()) ||
@@ -113,6 +128,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 isAutoPanning = false
             }
         }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        isAutoPanning = false
+        removeCallbacks(autoPanRunnable)
     }
 
     init {
@@ -339,7 +360,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     }
 
     fun setKeyframes(framesMs: List<Long>) {
-        this.keyframes = framesMs
+        this.keyframes = framesMs.sorted()
         invalidate()
     }
 

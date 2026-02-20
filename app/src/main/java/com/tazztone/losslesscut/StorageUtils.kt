@@ -40,21 +40,28 @@ object StorageUtils {
         }
     }
 
-    fun getVideoMetadata(context: Context, videoUri: Uri): Pair<String, Long> {
+    data class VideoMetadata(val fileName: String, val durationMs: Long)
+    
+    fun getVideoMetadata(context: Context, videoUri: Uri): VideoMetadata {
         var fileName = "video.mp4"
+        context.contentResolver.query(videoUri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    fileName = cursor.getString(0) ?: "video.mp4"
+                }
+            }
+
         var durationMs = 0L
         val retriever = android.media.MediaMetadataRetriever()
         try {
             retriever.setDataSource(context, videoUri)
-            fileName = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
-                ?: videoUri.lastPathSegment ?: "video.mp4"
             val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
             durationMs = durationStr?.toLong() ?: 0
-        } catch (t: Throwable) {
-            android.util.Log.w("StorageUtils", "Failed to extract metadata: ${t.message}")
+        } catch (e: Exception) {
+            android.util.Log.w("StorageUtils", "Failed to extract metadata: ${e.message}")
         } finally {
             retriever.release()
         }
-        return Pair(fileName, durationMs)
+        return VideoMetadata(fileName, durationMs)
     }
 }

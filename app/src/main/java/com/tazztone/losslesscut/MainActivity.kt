@@ -46,28 +46,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<android.widget.ImageButton>(R.id.btnInfo).setOnClickListener {
+        binding.btnInfo.setOnClickListener {
             showAboutDialog()
         }
     }
 
     private fun showAboutDialog() {
-        val message = """
-            <b>Lossless Video Cut v1.0</b><br><br>
-            Fast, lossless video trimming using native Android APIs.<br><br>
-            <b>Open Source Licenses:</b><br>
-            - AndroidX Media3 (Apache 2.0)<br>
-            - Material Components (Apache 2.0)<br>
-            - Lottie (Apache 2.0)<br><br>
-            <b>Privacy Policy:</b><br>
-            This app does not collect any personal data. Processing happens entirely on-device.<br>
-            <a href="https://example.com/privacy">Read full policy</a>
-        """.trimIndent()
+        val message = getString(R.string.about_message, com.tazztone.losslesscut.BuildConfig.VERSION_NAME)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("About")
+            .setTitle(R.string.about_title)
             .setMessage(android.text.Html.fromHtml(message, android.text.Html.FROM_HTML_MODE_COMPACT))
-            .setPositiveButton("OK", null)
+            .setPositiveButton(R.string.ok, null)
             .show()
     }
 
@@ -93,22 +83,9 @@ class MainActivity : AppCompatActivity() {
     private fun arePermissionsGranted(): Boolean {
         return when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                checkPermissions(
-                    Manifest.permission.POST_NOTIFICATIONS,
-                    Manifest.permission.READ_MEDIA_VIDEO
-                )
+                checkPermissions(Manifest.permission.POST_NOTIFICATIONS)
             }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                checkPermissions(
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                )
-            }
-            else -> {
-                checkPermissions(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
-            }
+            else -> true
         }
     }
 
@@ -123,10 +100,10 @@ class MainActivity : AppCompatActivity() {
     private fun showPermissionRequestDialog() {
         Log.i("PermissionDialog", "Displaying permission request dialog.")
         MaterialAlertDialogBuilder(this)
-            .setTitle("Permissions Required")
-            .setMessage("This app needs permissions to access media files and show notifications.")
-            .setPositiveButton("Grant") { _, _ -> requestPermissions() }
-            .setNegativeButton("Cancel") { dialog, _ ->
+            .setTitle(R.string.permissions_required_title)
+            .setMessage(R.string.permissions_required_message)
+            .setPositiveButton(R.string.grant_permission) { _, _ -> requestPermissions() }
+            .setNegativeButton(R.string.cancel) { dialog, _ ->
                 Log.i("PermissionDialog", "User canceled the permission request.")
                 dialog.dismiss()
             }
@@ -137,23 +114,18 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         val permissions = when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                arrayOf(
-                    Manifest.permission.POST_NOTIFICATIONS,
-                    Manifest.permission.READ_MEDIA_VIDEO
-                )
-            }
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
             }
             else -> {
-                arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
+                emptyArray()
             }
         }
-        Log.d("PermissionRequest", "Requesting permissions: ${permissions.joinToString()}")
-        requestPermissionsLauncher.launch(permissions)
+        if (permissions.isNotEmpty()) {
+            Log.d("PermissionRequest", "Requesting permissions: ${permissions.joinToString()}")
+            requestPermissionsLauncher.launch(permissions)
+        } else {
+            showToast(getString(R.string.permissions_granted))
+        }
     }
 
     private fun selectVideo() {
@@ -164,7 +136,7 @@ class MainActivity : AppCompatActivity() {
     private fun navigateToEditingScreen(videoUri: Uri) {
         Log.d("Navigation", "Navigating to editing screen with URI: $videoUri")
         val intent = Intent(this, VideoEditingActivity::class.java)
-        intent.putExtra("VIDEO_URI", videoUri)
+        intent.putExtra("com.tazztone.losslesscut.EXTRA_VIDEO_URI", videoUri)
         startActivity(intent)
     }
 

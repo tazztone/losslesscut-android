@@ -37,7 +37,7 @@ class VideoEditingViewModelTest {
         
         // Default mocks
         coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
-        every { StorageUtils.getVideoMetadata(any(), any()) } returns Pair("mock_video.mp4", 10000L)
+        every { StorageUtils.getVideoMetadata(any(), any()) } returns StorageUtils.VideoMetadata("mock_video.mp4", 10000L)
 
         val shadowRetriever = org.robolectric.Shadows.shadowOf(android.media.MediaMetadataRetriever())
         org.robolectric.shadows.ShadowMediaMetadataRetriever.addMetadata(
