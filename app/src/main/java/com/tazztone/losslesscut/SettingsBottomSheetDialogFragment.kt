@@ -70,23 +70,16 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
-        // Initialize Snapshot Format
-        val formats = arrayOf("PNG", "JPEG")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, formats)
-        binding.spinnerSnapshotFormat.adapter = adapter
-        
+        // Initialize Snapshot Format Toggle
         val currentFormat = AppPreferences.getSnapshotFormat(requireContext())
-        val formatIndex = formats.indexOf(currentFormat)
-        if (formatIndex >= 0) binding.spinnerSnapshotFormat.setSelection(formatIndex)
-        binding.layoutJpgQuality.visibility = if (currentFormat == "JPEG") View.VISIBLE else View.GONE
+        val isJpeg = currentFormat == "JPEG"
+        binding.switchSnapshotJpeg.isChecked = isJpeg
+        binding.layoutJpgQuality.visibility = if (isJpeg) View.VISIBLE else View.GONE
 
-        binding.spinnerSnapshotFormat.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                val format = formats[position]
-                AppPreferences.setSnapshotFormat(requireContext(), format)
-                binding.layoutJpgQuality.visibility = if (format == "JPEG") View.VISIBLE else View.GONE
-            }
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        binding.switchSnapshotJpeg.setOnCheckedChangeListener { _, isChecked ->
+            val format = if (isChecked) "JPEG" else "PNG"
+            AppPreferences.setSnapshotFormat(requireContext(), format)
+            binding.layoutJpgQuality.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
         
         // Initialize JPG Quality
