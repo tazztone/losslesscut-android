@@ -136,9 +136,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
         removeCallbacks(autoPanRunnable)
     }
 
-    init {
-        contentDescription = context.getString(R.string.video_timeline_description)
-    }
+
 
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -312,7 +310,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
                             onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd)
                             seekPositionMs = newEnd
                         }
-                        onSeekListener?.invoke(seekPositionMs)
                     }
 
                     // Auto-pan check
@@ -334,7 +331,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 } else if (currentTouchTarget == TouchTarget.PLAYHEAD) {
                     seekPositionMs = touchTimeMs
-                    onSeekListener?.invoke(seekPositionMs)
                     invalidate()
                 }
             }
@@ -344,6 +340,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 if (currentTouchTarget == TouchTarget.HANDLE_LEFT || currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
                     onSegmentBoundsDragEnd?.invoke()
+                }
+                
+                if (currentTouchTarget != TouchTarget.NONE) {
+                    onSeekListener?.invoke(seekPositionMs)
                 }
                 currentTouchTarget = TouchTarget.NONE
                 activeSegmentId = null

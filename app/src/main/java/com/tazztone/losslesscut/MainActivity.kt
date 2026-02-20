@@ -67,10 +67,10 @@ class MainActivity : AppCompatActivity() {
                 val allGranted = permissions.values.all { it }
                 if (allGranted) {
                     Log.d("PermissionResult", "All permissions granted.")
-                    showToast("Permissions granted")
+                    showToast(getString(R.string.permissions_granted))
                 } else {
                     Log.w("PermissionResult", "Some permissions were denied.")
-                    showToast("Some permissions were denied")
+                    showToast(getString(R.string.permissions_denied))
                 }
             }
 
@@ -136,7 +136,7 @@ class MainActivity : AppCompatActivity() {
     private fun navigateToEditingScreen(videoUri: Uri) {
         Log.d("Navigation", "Navigating to editing screen with URI: $videoUri")
         val intent = Intent(this, VideoEditingActivity::class.java)
-        intent.putExtra("com.tazztone.losslesscut.EXTRA_VIDEO_URI", videoUri)
+        intent.putExtra(VideoEditingActivity.EXTRA_VIDEO_URI, videoUri)
         startActivity(intent)
     }
 
