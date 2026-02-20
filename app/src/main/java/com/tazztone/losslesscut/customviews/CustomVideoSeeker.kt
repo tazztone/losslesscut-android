@@ -57,6 +57,59 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private var currentTouchTarget = TouchTarget.NONE
     private var activeSegmentId: UUID? = null
 
+    // Auto-Pan
+    private var isAutoPanning = false
+    private var lastTouchX = 0f
+    private val autoPanRunnable = object : Runnable {
+        override fun run() {
+            if (!isAutoPanning || currentTouchTarget == TouchTarget.NONE || activeSegmentId == null) return
+            
+            val segment = segments.find { it.id == activeSegmentId } ?: return
+            
+            val panSpeed = 30f
+            if (currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
+                scrollOffsetX = (scrollOffsetX + panSpeed).coerceIn(0f, maxScrollOffset())
+            } else if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
+                scrollOffsetX = (scrollOffsetX - panSpeed).coerceIn(0f, maxScrollOffset())
+            }
+            
+            val contentX = lastTouchX + scrollOffsetX
+            var touchTimeMs = xToTime(contentX)
+            
+            if (isLosslessMode && keyframes.isNotEmpty()) {
+                val snapTimeMs = keyframes.minByOrNull { kotlin.math.abs(it - touchTimeMs) }
+                if (snapTimeMs != null && timeToX(kotlin.math.abs(snapTimeMs - touchTimeMs)) < 30f) {
+                    touchTimeMs = snapTimeMs
+                    if (lastSnappedKeyframe != snapTimeMs) {
+                        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        lastSnappedKeyframe = snapTimeMs
+                    }
+                } else {
+                    lastSnappedKeyframe = null
+                }
+            }
+
+            if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
+                val newStart = touchTimeMs.coerceAtMost(segment.endMs - 100)
+                onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs)
+                seekPositionMs = newStart
+            } else {
+                val newEnd = touchTimeMs.coerceAtLeast(segment.startMs + 100)
+                onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd)
+                seekPositionMs = newEnd
+            }
+            onSeekListener?.invoke(seekPositionMs)
+            invalidate()
+            
+            if ((currentTouchTarget == TouchTarget.HANDLE_RIGHT && scrollOffsetX < maxScrollOffset()) ||
+                (currentTouchTarget == TouchTarget.HANDLE_LEFT && scrollOffsetX > 0f)) {
+                postDelayed(this, 16)
+            } else {
+                isAutoPanning = false
+            }
+        }
+    }
+
     init {
         contentDescription = context.getString(R.string.video_timeline_description)
     }
@@ -165,6 +218,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
         gestureDetector.onTouchEvent(event)
 
+        lastTouchX = event.x
         val contentX = event.x + scrollOffsetX
         val touchTimeMs = xToTime(contentX)
 
@@ -224,6 +278,24 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         }
                         onSeekListener?.invoke(seekPositionMs)
                     }
+
+                    // Auto-pan check
+                    val edgeThreshold = 100f
+                    if (event.x > width - edgeThreshold && currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
+                        if (!isAutoPanning) {
+                            isAutoPanning = true
+                            post(autoPanRunnable)
+                        }
+                    } else if (event.x < edgeThreshold && currentTouchTarget == TouchTarget.HANDLE_LEFT) {
+                        if (!isAutoPanning) {
+                            isAutoPanning = true
+                            post(autoPanRunnable)
+                        }
+                    } else {
+                        isAutoPanning = false
+                        removeCallbacks(autoPanRunnable)
+                    }
+
                 } else if (currentTouchTarget == TouchTarget.PLAYHEAD) {
                     seekPositionMs = touchTimeMs
                     onSeekListener?.invoke(seekPositionMs)
@@ -231,6 +303,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 }
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isAutoPanning = false
+                removeCallbacks(autoPanRunnable)
+
                 if (currentTouchTarget == TouchTarget.HANDLE_LEFT || currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
                     onSegmentBoundsDragEnd?.invoke()
                 }

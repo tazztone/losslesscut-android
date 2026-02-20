@@ -62,7 +62,10 @@ object LosslessEngine {
         inputUri: Uri,
         outputUri: Uri,
         startMs: Long,
-        endMs: Long
+        endMs: Long,
+        keepAudio: Boolean = true,
+        keepVideo: Boolean = true,
+        rotationOverride: Int? = null
     ): Result<Uri> = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
@@ -87,8 +90,14 @@ object LosslessEngine {
                 val format = extractor.getTrackFormat(i)
                 val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
                 
-                if (mime.startsWith("video/") || mime.startsWith("audio/")) {
-                    if (mime.startsWith("video/") && format.containsKey(MediaFormat.KEY_DURATION)) {
+                val isVideo = mime.startsWith("video/")
+                val isAudio = mime.startsWith("audio/")
+                
+                if (isVideo && !keepVideo) continue
+                if (isAudio && !keepAudio) continue
+                
+                if (isVideo || isAudio) {
+                    if (isVideo && format.containsKey(MediaFormat.KEY_DURATION)) {
                         try {
                             durationUs = format.getLong(MediaFormat.KEY_DURATION)
                         } catch (e: Exception) {
@@ -97,7 +106,7 @@ object LosslessEngine {
                     }
                     
                     trackMap[i] = mMuxer.addTrack(format)
-                    isVideoTrackMap[i] = mime.startsWith("video/")
+                    isVideoTrackMap[i] = isVideo
                     
                     if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
                          val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
@@ -114,8 +123,9 @@ object LosslessEngine {
 
             val retriever = MediaMetadataRetriever()
             retriever.setDataSource(context, inputUri)
-            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-            mMuxer.setOrientationHint(rotation)
+            val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            val finalRotation = rotationOverride ?: originalRotation
+            mMuxer.setOrientationHint(finalRotation)
             retriever.release()
 
             mMuxer.start()

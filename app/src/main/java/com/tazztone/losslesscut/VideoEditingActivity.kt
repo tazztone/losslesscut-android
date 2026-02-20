@@ -48,6 +48,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private var isVideoLoaded = false
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
+    private var currentRotation = 0
 
     private val playerListener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
@@ -136,7 +137,7 @@ class VideoEditingActivity : AppCompatActivity() {
 
         findViewById<ImageButton>(R.id.btnHome).setOnClickListener { onBackPressedDispatcher.onBackPressed()}
         findViewById<ImageButton>(R.id.btnSave).setOnClickListener { 
-            viewModel.exportSegments(this, switchLossless.isChecked)
+            showExportOptionsDialog()
         }
         
         btnUndo = findViewById(R.id.btnUndo)
@@ -168,7 +169,10 @@ class VideoEditingActivity : AppCompatActivity() {
         btnNudgeForward.setOnClickListener { performNudge(1) }
 
         btnSnapshot.setOnClickListener { extractSnapshot() }
-        btnRotate.setOnClickListener { Toast.makeText(this, "Rotate action pending...", Toast.LENGTH_SHORT).show() }
+        btnRotate.setOnClickListener { 
+            currentRotation = (currentRotation + 90) % 360
+            Toast.makeText(this, "Export rotation offset: $currentRotation°", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun startProgressUpdate() {
@@ -316,6 +320,28 @@ class VideoEditingActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) { loadingScreen.visibility = View.GONE }
             }
         }
+    }
+
+    private fun showExportOptionsDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
+        val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
+        val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
+        
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("Export Options")
+            .setView(dialogView)
+            .setPositiveButton("Export") { _, _ ->
+                val keepVideo = cbKeepVideo.isChecked
+                val keepAudio = cbKeepAudio.isChecked
+                if (!keepVideo && !keepAudio) {
+                    Toast.makeText(this, "Select at least one track to export", Toast.LENGTH_SHORT).show()
+                } else {
+                    val rotationOverride = if (currentRotation != 0) currentRotation else null
+                    viewModel.exportSegments(this, switchLossless.isChecked, keepAudio, keepVideo, rotationOverride)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     @SuppressLint("SetTextI18n")

@@ -100,6 +100,9 @@ class VideoEditingViewModel : ViewModel() {
     }
 
     private fun pushToHistory() {
+        if (history.size >= 30) {
+            history.removeElementAt(0)
+        }
         history.push(currentSegments.map { it.copy() })
     }
 
@@ -118,13 +121,13 @@ class VideoEditingViewModel : ViewModel() {
     }
 
     fun splitSegmentAt(timeMs: Long) {
-        val segmentToSplit = currentSegments.find { timeMs > it.startMs && timeMs < it.endMs } ?: return
+        val segmentToSplit = currentSegments.find { timeMs >= it.startMs && timeMs <= it.endMs } ?: return
         
         val index = currentSegments.indexOf(segmentToSplit)
         val newSegments = currentSegments.toMutableList()
         
         val left = segmentToSplit.copy(id = UUID.randomUUID(), endMs = timeMs)
-        val right = segmentToSplit.copy(id = UUID.randomUUID(), startMs = timeMs)
+        val right = segmentToSplit.copy(id = UUID.randomUUID(), startMs = timeMs + 1)
         
         newSegments.removeAt(index)
         newSegments.add(index, left)
@@ -168,7 +171,7 @@ class VideoEditingViewModel : ViewModel() {
         updateSuccessState()
     }
 
-    fun exportSegments(context: Context, isLossless: Boolean) {
+    fun exportSegments(context: Context, isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null) {
         val uri = currentVideoUri ?: return
         val segmentsToExport = currentSegments.filter { it.action == SegmentAction.KEEP }
         if (segmentsToExport.isEmpty()) {
@@ -190,7 +193,7 @@ class VideoEditingViewModel : ViewModel() {
                         continue
                     }
 
-                    val result = LosslessEngine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs)
+                    val result = LosslessEngine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
                     result.fold(
                         onSuccess = { successCount++ },
                         onFailure = { errors.add("Segment $index failed: ${it.message}") }
