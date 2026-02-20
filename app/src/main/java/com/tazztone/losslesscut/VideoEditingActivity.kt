@@ -39,6 +39,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private lateinit var loadingScreen: View
     private lateinit var lottieAnimationView: LottieAnimationView
     private lateinit var switchLossless: com.google.android.material.switchmaterial.SwitchMaterial
+    private lateinit var btnPlayPause: ImageButton
     
     private var isVideoLoaded = false
 
@@ -57,6 +58,9 @@ class VideoEditingActivity : AppCompatActivity() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (::btnPlayPause.isInitialized) {
+                btnPlayPause.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+            }
             if (isPlaying && isVideoLoaded) {
                 updateDurationDisplay(player.currentPosition.toInt(), player.duration.toInt())
             }
@@ -67,12 +71,14 @@ class VideoEditingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_video_editing)
 
-        // Set fullscreen flags
-        window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_FULLSCREEN
-                        or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                        or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                )
+        val videoUri: Uri? = intent.getParcelableExtra("VIDEO_URI")
+        if (videoUri == null) {
+            Toast.makeText(this, "Invalid Video URI", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        hideSystemUI()
 
         initializeViews()
         setupExoPlayer()
@@ -80,8 +86,35 @@ class VideoEditingActivity : AppCompatActivity() {
         setupFrameRecyclerView()
         observeViewModel()
 
-        val videoUri: Uri? = intent.getParcelableExtra("VIDEO_URI")
         viewModel.initialize(this, videoUri)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        hideSystemUI()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (::player.isInitialized) {
+            player.pause()
+        }
+    }
+
+    private fun hideSystemUI() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            window.insetsController?.let {
+                it.hide(android.view.WindowInsets.Type.statusBars() or android.view.WindowInsets.Type.navigationBars())
+                it.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = (
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                            or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    )
+        }
     }
 
     private fun initializeViews() {
@@ -91,6 +124,15 @@ class VideoEditingActivity : AppCompatActivity() {
         customVideoSeeker = findViewById(R.id.customVideoSeeker)
         loadingScreen = findViewById(R.id.loadingScreen)
         lottieAnimationView = findViewById(R.id.lottieAnimation)
+        btnPlayPause = findViewById(R.id.btnPlayPause)
+
+        btnPlayPause.setOnClickListener {
+            if (player.isPlaying) {
+                player.pause()
+            } else {
+                player.play()
+            }
+        }
         
         try { lottieAnimationView.playAnimation() } catch (e: Exception) {}
 
@@ -234,6 +276,9 @@ class VideoEditingActivity : AppCompatActivity() {
                     bitmap?.let {
                         val processedBitmap = Bitmap.createScaledBitmap(it, 200, 150, false)
                         frameBitmaps.add(processedBitmap)
+                        if (it != processedBitmap) {
+                            it.recycle()
+                        }
                     }
                 }
                 withContext(Dispatchers.Main) {

@@ -52,18 +52,35 @@
                 android:src="@drawable/ic_save_color_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/save_video"
+            android:alpha="0.5"
                 android:layout_marginEnd="16dp"/>
         </LinearLayout>
 
     </androidx.appcompat.widget.Toolbar>
 
-    <androidx.media3.ui.PlayerView
-        android:id="@+id/playerView"
+    <FrameLayout
+        android:id="@+id/playerContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_above="@+id/textConfigs"
-        android:layout_below="@+id/toolbar"
-        app:use_controller="false" />
+        android:layout_below="@+id/toolbar">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/playerView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:use_controller="false" />
+
+        <ImageButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_gravity="center"
+            android:src="@android:drawable/ic_media_play"
+            android:background="#80000000"
+            android:padding="12dp"
+            android:contentDescription="@string/play_pause" />
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/textConfigs"
@@ -142,7 +159,8 @@
             android:padding="10dp"
             android:src="@drawable/ic_text_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/add_text"/>
+            android:contentDescription="@string/add_text"
+            android:alpha="0.5"/>
 
         <ImageButton
             android:id="@+id/btnAudio"
@@ -154,7 +172,8 @@
             android:padding="10dp"
             android:src="@drawable/ic_audio_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/add_audio"/>
+            android:contentDescription="@string/add_audio"
+            android:alpha="0.5"/>
 
         <ImageButton
             android:id="@+id/btnCrop"
@@ -166,7 +185,8 @@
             android:padding="10dp"
             android:src="@drawable/ic_crop_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/crop_video"/>
+            android:contentDescription="@string/crop_video"
+            android:alpha="0.5"/>
 
         <ImageButton
             android:id="@+id/btnMerge"
@@ -178,7 +198,8 @@
             android:minHeight="48dp"
             android:src="@drawable/ic_add_photos_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/merge_video"/>
+            android:contentDescription="@string/merge_video"
+            android:alpha="0.5"/>
     </LinearLayout>
 
     <include

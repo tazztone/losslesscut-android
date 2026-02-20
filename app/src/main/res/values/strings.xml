@@ -26,4 +26,5 @@
     <string name="please_wait">Please wait, your video is being processed.</string>
     <string name="select_aspect_ratio">Select Aspect Ratio</string>
     <string name="video_timeline_description">Video timeline. Drag to seek.</string>
+    <string name="play_pause">Play/Pause</string>
 </resources>
