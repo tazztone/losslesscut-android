@@ -59,12 +59,28 @@ class CustomVideoSeeker @JvmOverloads constructor(
         Color.parseColor("#66FF88FF")  // Pastel Magenta
     )
     private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 5f }
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 10f; strokeCap = Paint.Cap.ROUND }
+    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 8f
+        setShadowLayer(10f, 0f, 0f, Color.BLACK)
+    }
+    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        strokeWidth = 10f
+        strokeCap = Paint.Cap.ROUND
+        setShadowLayer(5f, 0f, 0f, Color.DKGRAY)
+    }
     private val zoomHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { 
         color = Color.parseColor("#80FFFFFF")
         textSize = 48f
         textAlign = Paint.Align.CENTER
+    }
+    private val timeLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.LTGRAY
+        textSize = 30f
+        textAlign = Paint.Align.CENTER
+        setShadowLayer(2f, 1f, 1f, Color.BLACK)
     }
 
     private var showZoomHint = true
@@ -74,6 +90,8 @@ class CustomVideoSeeker @JvmOverloads constructor(
     init {
         keepSegmentPaint.color = keepColors[0]
         contentDescription = context.getString(R.string.video_timeline_description)
+        // Enable software layer for shadow support if needed, though most work on HW in recent Android
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
     }
 
     // Hit testing
@@ -174,6 +192,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
             
             // Find if a segment was tapped
             val tappedSegment = segments.find { it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs }
+            if (tappedSegment != null) {
+                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
             onSegmentSelected?.invoke(tappedSegment?.id)
             
             seekPositionMs = timeMs
@@ -200,12 +221,48 @@ class CustomVideoSeeker @JvmOverloads constructor(
         return ((x / logicalWidth) * videoDurationMs).toLong().coerceIn(0L, videoDurationMs)
     }
 
+    private fun formatTimeShort(ms: Long): String {
+        val totalSeconds = ms / 1000
+        val seconds = totalSeconds % 60
+        val minutes = (totalSeconds / 60) % 60
+        val hours = totalSeconds / 3600
+        return if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds)
+        else String.format("%02d:%02d", minutes, seconds)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         if (videoDurationMs <= 0L) return
 
         canvas.save()
         canvas.translate(-scrollOffsetX, 0f)
+
+        // Draw time labels background grid if needed, or just tick marks
+        if (videoDurationMs > 0) {
+            // Calculate visible time range
+            val startTime = xToTime(scrollOffsetX)
+            val endTime = xToTime(scrollOffsetX + width)
+            val visibleDuration = endTime - startTime
+
+            val stepMs = when {
+                visibleDuration < 3000 -> 500L     // < 3s visible -> every 0.5s
+                visibleDuration < 10000 -> 1000L   // < 10s visible -> every 1s
+                visibleDuration < 60000 -> 5000L   // < 1m visible -> every 5s
+                visibleDuration < 180000 -> 15000L // < 3m visible -> every 15s
+                else -> 60000L                     // > 3m visible -> every 1m
+            }
+
+            // Snap start to nearest step
+            var currentTime = (startTime / stepMs) * stepMs
+            if (currentTime < startTime) currentTime += stepMs
+
+            while (currentTime <= endTime) {
+                val x = timeToX(currentTime)
+                canvas.drawLine(x, height - 30f, x, height.toFloat(), keyframePaint)
+                canvas.drawText(formatTimeShort(currentTime), x, height - 40f, timeLabelPaint)
+                currentTime += stepMs
+            }
+        }
 
         // Draw Segments
         var keepSegmentIndex = 0
@@ -246,12 +303,22 @@ class CustomVideoSeeker @JvmOverloads constructor(
         val seekX = timeToX(seekPositionMs)
         canvas.drawLine(seekX, 0f, seekX, height.toFloat(), playheadPaint)
 
+        // Draw Playhead Handle (Rounded Rectangle)
+        val handleWidth = 40f
+        val handleHeight = 50f
+        val handleRect = RectF(seekX - handleWidth / 2, 0f, seekX + handleWidth / 2, handleHeight)
+        canvas.drawRoundRect(handleRect, 10f, 10f, playheadTrianglePaint)
+
+        // Draw a small arrow pointing down inside the handle
         playheadPath.reset()
-        playheadPath.moveTo(seekX - 20f, 0f)
-        playheadPath.lineTo(seekX + 20f, 0f)
-        playheadPath.lineTo(seekX, 30f)
+        playheadPath.moveTo(seekX - 10f, 10f)
+        playheadPath.lineTo(seekX + 10f, 10f)
+        playheadPath.lineTo(seekX, 25f)
         playheadPath.close()
-        canvas.drawPath(playheadPath, playheadTrianglePaint)
+        // We can reuse playheadPaint for white arrow inside red handle
+        playheadPaint.style = Paint.Style.FILL
+        canvas.drawPath(playheadPath, playheadPaint)
+        playheadPaint.style = Paint.Style.STROKE // restore
 
         canvas.restore()
 
@@ -288,6 +355,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
                             currentTouchTarget = TouchTarget.HANDLE_LEFT
                             activeSegmentId = segment.id
+                            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                             if (segment.id != selectedSegmentId) {
                                 onSegmentSelected?.invoke(segment.id)
                             }
@@ -295,6 +363,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
                             currentTouchTarget = TouchTarget.HANDLE_RIGHT
                             activeSegmentId = segment.id
+                            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                             if (segment.id != selectedSegmentId) {
                                 onSegmentSelected?.invoke(segment.id)
                             }
@@ -305,6 +374,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 
                 if (kotlin.math.abs(seekPositionMs - touchTimeMs) < hitTestThresholdMs) {
                     currentTouchTarget = TouchTarget.PLAYHEAD
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     return true
                 }
                 return true
