@@ -54,7 +54,7 @@ class VideoEditingActivity : AppCompatActivity() {
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
     private var currentRotation = 0
-    private var videoFps = 30f
+    @Volatile private var videoFps = 30f
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -146,7 +146,6 @@ class VideoEditingActivity : AppCompatActivity() {
                 it.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         } else {
-            @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = (
                     View.SYSTEM_UI_FLAG_FULLSCREEN
                             or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION

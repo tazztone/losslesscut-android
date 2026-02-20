@@ -43,4 +43,11 @@
     <string name="select_track_export">Select at least one track to export</string>
     <string name="export_options">Export Options</string>
     <string name="precise_mode_coming_soon">Precise mode coming in v2.0</string>
+    <string name="error_load_video">Failed to load video: %1$s</string>
+    <string name="error_no_segments_export">No segments to export</string>
+    <string name="error_create_file">Failed to create file</string>
+    <string name="error_segment_failed">Segment %1$d failed: %2$s</string>
+    <string name="error_export_failed">Export failed: %1$s</string>
+    <string name="export_partial_success">Exported %1$d clips. Errors: %2$s</string>
+    <string name="export_success">Successfully exported %1$d clip(s) to Movies/LosslessCut</string>
 </resources>
