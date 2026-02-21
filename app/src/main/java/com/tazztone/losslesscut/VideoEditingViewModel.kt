@@ -1,10 +1,14 @@
 package com.tazztone.losslesscut
 
-import android.app.Application
 import android.content.Context
 import android.net.Uri
-import androidx.lifecycle.AndroidViewModel
+import android.util.Log
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tazztone.losslesscut.di.IoDispatcher
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -14,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
+import javax.inject.Inject
 
 enum class SegmentAction { KEEP, DISCARD }
 
@@ -39,11 +44,14 @@ sealed class VideoEditingUiState {
     data class Error(val message: String) : VideoEditingUiState()
 }
 
-class VideoEditingViewModel(
-    application: Application,
-    private val engine: LosslessEngineInterface = LosslessEngineImpl,
-    private val ioDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.IO
-) : AndroidViewModel(application) {
+@HiltViewModel
+class VideoEditingViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val engine: LosslessEngineInterface,
+    private val storageUtils: StorageUtils,
+    private val preferences: AppPreferences,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
@@ -63,7 +71,6 @@ class VideoEditingViewModel(
     private var currentSegments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
     
-    private val preferences = AppPreferences(application)
     private var undoLimit = 30
     
     companion object {
@@ -80,7 +87,7 @@ class VideoEditingViewModel(
 
     fun initialize(videoUri: Uri?) {
         if (videoUri == null) {
-            _uiState.value = VideoEditingUiState.Error(getApplication<Application>().getString(R.string.error_invalid_video_uri_msg))
+            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_invalid_video_uri_msg))
             return
         }
         currentVideoUri = videoUri
@@ -88,27 +95,26 @@ class VideoEditingViewModel(
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading
             try {
-                val context = getApplication<Application>()
                 val keyframes = engine.probeKeyframes(context, videoUri)
                 currentKeyframes = keyframes
                 
-                val metadata = StorageUtils.getVideoMetadata(getApplication(), videoUri)
+                val metadata = storageUtils.getVideoMetadata(videoUri)
                 val fileName = metadata.fileName
                 val durationMs = metadata.durationMs
                 videoFileName = fileName
                 videoDurationMs = durationMs
-
+ 
                 videoFps = extractVideoFps(context, videoUri)
-
+ 
                 // Initial segment covering the whole video
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))
                 history.clear()
                 history.add(currentSegments.map { it.copy() }) // Push initial state
                 _isDirty.value = false
-
+ 
                 updateSuccessState()
             } catch (e: Exception) {
-                val msg = getApplication<Application>().getString(R.string.error_load_video, e.message)
+                val msg = context.getString(R.string.error_load_video, e.message)
                 _uiState.value = VideoEditingUiState.Error(msg)
             }
         }
@@ -198,7 +204,7 @@ class VideoEditingViewModel(
         if (timeMs - segmentToSplit.startMs < MIN_SEGMENT_DURATION_MS || 
             segmentToSplit.endMs - timeMs < MIN_SEGMENT_DURATION_MS) {
             viewModelScope.launch { 
-                _uiEvents.emit(getApplication<Application>().getString(R.string.error_segment_too_small_split)) 
+                _uiEvents.emit(context.getString(R.string.error_segment_too_small_split)) 
             }
             return
         }
@@ -224,7 +230,7 @@ class VideoEditingViewModel(
         if (segment.action == SegmentAction.KEEP) {
             val keepCount = currentSegments.count { it.action == SegmentAction.KEEP }
             if (keepCount <= 1) {
-                viewModelScope.launch { _uiEvents.emit(getApplication<Application>().getString(R.string.error_cannot_delete_last)) }
+                viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_cannot_delete_last)) }
                 return
             }
         }
@@ -245,7 +251,7 @@ class VideoEditingViewModel(
         if (segment.action == SegmentAction.KEEP) {
             val keepCount = currentSegments.count { it.action == SegmentAction.KEEP }
             if (keepCount <= 1) {
-                viewModelScope.launch { _uiEvents.emit(getApplication<Application>().getString(R.string.error_cannot_delete_last)) }
+                viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_cannot_delete_last)) }
                 return
             }
         }
@@ -289,7 +295,7 @@ class VideoEditingViewModel(
         val uri = currentVideoUri ?: return
         val segmentsToExport = currentSegments.filter { it.action == SegmentAction.KEEP }
         if (segmentsToExport.isEmpty()) {
-            _uiState.value = VideoEditingUiState.Error(getApplication<Application>().getString(R.string.error_no_segments_export))
+            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_no_segments_export))
             return
         }
 
@@ -299,10 +305,9 @@ class VideoEditingViewModel(
             if (isLossless) {
                 var successCount = 0
                 val errors = mutableListOf<String>()
-
-                val context = getApplication<Application>()
+ 
                 for ((index, segment) in segmentsToExport.withIndex()) {
-                    val outputUri = StorageUtils.createVideoOutputUri(context, "clip_${System.currentTimeMillis()}_$index.mp4")
+                    val outputUri = storageUtils.createVideoOutputUri("clip_${System.currentTimeMillis()}_$index.mp4")
                     if (outputUri == null) {
                         errors.add(context.getString(R.string.error_create_file))
                         continue
@@ -326,7 +331,7 @@ class VideoEditingViewModel(
                     _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, errors.joinToString()))
                 }
             } else {
-                _uiEvents.emit(getApplication<Application>().getString(R.string.precise_mode_coming_soon))
+                _uiEvents.emit(context.getString(R.string.precise_mode_coming_soon))
                 updateSuccessState()
             }
         }
@@ -338,7 +343,6 @@ class VideoEditingViewModel(
             val retriever = android.media.MediaMetadataRetriever()
             try {
                 _uiState.value = VideoEditingUiState.Loading
-                val context = getApplication<Application>()
                 retriever.setDataSource(context, uri)
                 
                 // Retriever times are in microseconds
@@ -352,14 +356,14 @@ class VideoEditingViewModel(
                     val quality = if (isJpeg) preferences.jpgQualityFlow.first() else 100
 
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
-                    val outputUri = StorageUtils.createImageOutputUri(context, fileName)
+                    val outputUri = storageUtils.createImageOutputUri(fileName)
                     if (outputUri != null) {
                         val resolver = context.contentResolver
                         val outputStream = resolver.openOutputStream(outputUri)
                         if (outputStream != null) {
                             bitmap.compress(compressFormat, quality, outputStream)
                             outputStream.close()
-                            StorageUtils.finalizeImage(context, outputUri)
+                            storageUtils.finalizeImage(outputUri)
                             _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
                         } else {
                             _uiEvents.emit(context.getString(R.string.snapshot_failed))
@@ -373,7 +377,7 @@ class VideoEditingViewModel(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("VideoEditingViewModel", "Snapshot error", e)
-                _uiEvents.emit(getApplication<Application>().getString(R.string.error_snapshot_failed_generic))
+                _uiEvents.emit(context.getString(R.string.error_snapshot_failed_generic))
             } finally {
                 retriever.release()
                 updateSuccessState()

@@ -10,8 +10,11 @@ import android.widget.SeekBar
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.tazztone.losslesscut.databinding.BottomSheetSettingsBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetSettingsBinding? = null
@@ -23,7 +26,9 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     private var listener: SettingsListener? = null
     private var initialLosslessState: Boolean = true
-    private lateinit var preferences: AppPreferences
+    
+    @Inject
+    lateinit var preferences: AppPreferences
 
     fun setInitialState(isLossless: Boolean) {
         this.initialLosslessState = isLossless
@@ -31,7 +36,6 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        preferences = AppPreferences(requireContext())
     }
 
     override fun onAttach(context: Context) {

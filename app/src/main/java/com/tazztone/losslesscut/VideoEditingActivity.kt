@@ -22,6 +22,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,8 +32,9 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
+@AndroidEntryPoint
 class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
-
+ 
     companion object {
         const val EXTRA_VIDEO_URI = "com.tazztone.losslesscut.EXTRA_VIDEO_URI"
         private const val KEY_PLAYHEAD = "playhead_pos"
@@ -41,15 +43,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         private const val KEY_LOSSLESS_MODE = "lossless_mode"
         private const val TAG = "VideoEditingActivity"
     }
-
-    private val viewModel: VideoEditingViewModel by viewModels {
-        object : androidx.lifecycle.ViewModelProvider.Factory {
-            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return VideoEditingViewModel(application) as T
-            }
-        }
-    }
+ 
+    private val viewModel: VideoEditingViewModel by viewModels()
     private lateinit var binding: ActivityVideoEditingBinding
     private lateinit var player: ExoPlayer
 

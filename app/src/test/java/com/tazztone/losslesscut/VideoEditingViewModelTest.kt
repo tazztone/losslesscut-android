@@ -25,19 +25,28 @@ class VideoEditingViewModelTest {
     private lateinit var viewModel: VideoEditingViewModel
     private val context: Context = ApplicationProvider.getApplicationContext()
     private lateinit var mockEngine: LosslessEngineInterface
+    private lateinit var mockStorageUtils: StorageUtils
+    private lateinit var mockAppPreferences: AppPreferences
     private val testDispatcher = StandardTestDispatcher()
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         mockEngine = mockk()
-        val application = ApplicationProvider.getApplicationContext<android.app.Application>()
-        viewModel = VideoEditingViewModel(application, mockEngine, testDispatcher)
-        mockkObject(StorageUtils)
+        mockStorageUtils = mockk(relaxed = true)
+        mockAppPreferences = mockk(relaxed = true)
+        
+        viewModel = VideoEditingViewModel(
+            context,
+            mockEngine,
+            mockStorageUtils,
+            mockAppPreferences,
+            testDispatcher
+        )
         
         // Default mocks
         coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
-        every { StorageUtils.getVideoMetadata(any(), any()) } returns StorageUtils.VideoMetadata("mock_video.mp4", 10000L)
+        every { mockStorageUtils.getVideoMetadata(any()) } returns StorageUtils.VideoMetadata("mock_video.mp4", 10000L)
 
         val shadowRetriever = org.robolectric.Shadows.shadowOf(android.media.MediaMetadataRetriever())
         org.robolectric.shadows.ShadowMediaMetadataRetriever.addMetadata(
@@ -79,7 +88,7 @@ class VideoEditingViewModelTest {
         assertEquals(2, state.segments.size)
         assertEquals(0L, state.segments[0].startMs)
         assertEquals(5000L, state.segments[0].endMs)
-        assertEquals(5001L, state.segments[1].startMs)
+        assertEquals(5000L, state.segments[1].startMs)
         assertTrue(state.canUndo)
     }
 

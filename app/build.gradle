@@ -1,5 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.google.hilt.android)
 }
 
 android {
@@ -79,6 +81,10 @@ dependencies {
     // Media3
     implementation libs.media3.exoplayer
     implementation libs.media3.ui
+
+    // Hilt
+    implementation libs.hilt.android
+    ksp libs.hilt.compiler
 
     testImplementation libs.junit
     testImplementation libs.robolectric

@@ -8,9 +8,16 @@ import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
 
-object StorageUtils {
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-    fun createVideoOutputUri(context: Context, fileName: String): Uri? {
+@Singleton
+class StorageUtils @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
+
+    fun createVideoOutputUri(fileName: String): Uri? {
         val resolver = context.contentResolver
         val videoCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -30,7 +37,7 @@ object StorageUtils {
         return resolver.insert(videoCollection, newVideoDetails)
     }
 
-    fun finalizeVideo(context: Context, uri: Uri) {
+    fun finalizeVideo(uri: Uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
             val updatedVideoDetails = ContentValues().apply {
@@ -40,7 +47,7 @@ object StorageUtils {
         }
     }
 
-    fun createImageOutputUri(context: Context, fileName: String): Uri? {
+    fun createImageOutputUri(fileName: String): Uri? {
         val resolver = context.contentResolver
         val imageCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -62,7 +69,7 @@ object StorageUtils {
         return resolver.insert(imageCollection, newImageDetails)
     }
 
-    fun finalizeImage(context: Context, uri: Uri) {
+    fun finalizeImage(uri: Uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
             val updatedDetails = ContentValues().apply {
@@ -74,7 +81,7 @@ object StorageUtils {
 
     data class VideoMetadata(val fileName: String, val durationMs: Long)
     
-    fun getVideoMetadata(context: Context, videoUri: Uri): VideoMetadata {
+    fun getVideoMetadata(videoUri: Uri): VideoMetadata {
         var fileName = "video.mp4"
         context.contentResolver.query(videoUri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor ->

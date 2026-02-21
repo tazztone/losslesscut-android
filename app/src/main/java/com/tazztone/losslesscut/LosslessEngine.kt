@@ -9,9 +9,13 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import com.tazztone.losslesscut.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.nio.ByteBuffer
+import javax.inject.Inject
+import javax.inject.Singleton
 
 interface LosslessEngineInterface {
     suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long>
@@ -27,11 +31,17 @@ interface LosslessEngineInterface {
     ): Result<Uri>
 }
 
-object LosslessEngineImpl : LosslessEngineInterface {
+@Singleton
+class LosslessEngineImpl @Inject constructor(
+    private val storageUtils: StorageUtils,
+    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+) : LosslessEngineInterface {
+    
+    companion object {
+        private const val TAG = "LosslessEngine"
+    }
 
-    private const val TAG = "LosslessEngine"
-
-    override suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long> = withContext(Dispatchers.IO) {
+    override suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long> = withContext(ioDispatcher) {
         val keyframes = mutableListOf<Long>()
         val extractor = MediaExtractor()
 
@@ -77,7 +87,7 @@ object LosslessEngineImpl : LosslessEngineInterface {
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?
-    ): Result<Uri> = withContext(Dispatchers.IO) {
+    ): Result<Uri> = withContext(ioDispatcher) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
@@ -197,7 +207,7 @@ object LosslessEngineImpl : LosslessEngineInterface {
             
             Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")
             
-            StorageUtils.finalizeVideo(context, outputUri)
+            storageUtils.finalizeVideo(outputUri)
             Result.success(outputUri)
 
         } catch (e: Exception) {

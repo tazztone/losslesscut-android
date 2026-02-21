@@ -17,7 +17,7 @@ import java.io.File
 class RobolectricEngineTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val engine = LosslessEngineImpl
+    private val engine = LosslessEngineImpl(StorageUtils(context), kotlinx.coroutines.Dispatchers.IO)
 
     @Test
     fun probeKeyframes_withInvalidUri_returnsEmptyList() = runBlocking {

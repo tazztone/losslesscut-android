@@ -12,10 +12,16 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "lossless_cut_prefs")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "lossless_cut_prefs")
 
-class AppPreferences(private val context: Context) {
+@Singleton
+class AppPreferences @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private object PreferencesKeys {
         val UNDO_LIMIT = intPreferencesKey("undo_limit")
