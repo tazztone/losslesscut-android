@@ -24,6 +24,8 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_home_24"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/home"
+            android:tooltipText="@string/home"
             android:layout_marginEnd="8dp"/>
 
         <ImageButton
@@ -34,6 +36,8 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_add_24"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/add_video"
+            android:tooltipText="@string/add_video"
             android:layout_marginEnd="16dp"/>
 
         <LinearLayout
@@ -50,6 +54,8 @@
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_undo_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/undo"
+                android:tooltipText="@string/undo"
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
@@ -60,6 +66,8 @@
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_settings_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings"
+                android:tooltipText="@string/settings"
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
@@ -69,7 +77,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_save_color_24"
-                android:background="?attr/selectableItemBackgroundBorderless"/>
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/export"
+                android:tooltipText="@string/export"/>
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
@@ -100,6 +110,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_trim_left_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/set_in_point"
+                android:tooltipText="@string/set_in_point"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
@@ -124,6 +136,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_trim_right_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/set_out_point"
+                android:tooltipText="@string/set_out_point"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
@@ -148,6 +162,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_split_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/split"
+                android:tooltipText="@string/split"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
@@ -172,6 +188,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_delete_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/discard_segment"
+                android:tooltipText="@string/discard_segment"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
@@ -196,6 +214,8 @@
                 android:layout_height="48dp"
                 android:src="@drawable/ic_camera_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/snapshot"
+                android:tooltipText="@string/snapshot"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
@@ -225,6 +245,8 @@
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_rotate_24"
                     android:background="@android:color/transparent"
+                    android:contentDescription="@string/rotate"
+                    android:tooltipText="@string/rotate"
                     app:tint="?attr/colorOnSurface"
                     android:clickable="false"
                     android:focusable="false"/>
@@ -382,7 +404,9 @@
                 android:layout_gravity="center"
                 android:src="@drawable/ic_play_24"
                 android:background="@drawable/play_button_bg"
-                android:padding="16dp" />
+                android:padding="16dp"
+                android:contentDescription="@string/play_pause"
+                android:tooltipText="@string/play_pause" />
         </FrameLayout>
 
         <!-- Clip List (Visible when multiple clips) -->
