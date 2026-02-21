@@ -1,4 +1,12 @@
 package com.tazztone.losslesscut.customviews
+import com.tazztone.losslesscut.di.*
+import com.tazztone.losslesscut.customviews.*
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.ui.*
+import com.tazztone.losslesscut.viewmodel.*
+import com.tazztone.losslesscut.engine.*
+import com.tazztone.losslesscut.data.*
+import com.tazztone.losslesscut.utils.*
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -15,10 +23,6 @@ import android.view.ScaleGestureDetector
 import android.view.View
 import android.animation.ValueAnimator
 import android.view.animation.AccelerateDecelerateInterpolator
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.SegmentAction
-import com.tazztone.losslesscut.TrimSegment
-import com.tazztone.losslesscut.VideoEditingViewModel
 import java.util.UUID
 import androidx.customview.widget.ExploreByTouchHelper
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat

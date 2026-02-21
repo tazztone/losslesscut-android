@@ -2,7 +2,7 @@
 
 # Configuration
 PACKAGE_NAME="com.tazztone.losslesscut"
-MAIN_ACTIVITY=".MainActivity"
+MAIN_ACTIVITY=".ui.MainActivity"
 ADB="/home/tazztone/Android/Sdk/platform-tools/adb"
 
 echo "⚠️ Uninstalling existing app to resolve signature/version conflicts..."

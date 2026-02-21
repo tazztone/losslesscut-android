@@ -1,4 +1,12 @@
-package com.tazztone.losslesscut
+package com.tazztone.losslesscut.ui
+import com.tazztone.losslesscut.di.*
+import com.tazztone.losslesscut.customviews.*
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.ui.*
+import com.tazztone.losslesscut.viewmodel.*
+import com.tazztone.losslesscut.engine.*
+import com.tazztone.losslesscut.data.*
+import com.tazztone.losslesscut.utils.*
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -21,7 +29,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers

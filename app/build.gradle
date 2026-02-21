@@ -103,9 +103,9 @@ import javax.imageio.ImageIO
 
 task updateAppIcons {
     doLast {
-        def logoFile = rootProject.file("logo.png")
+        def logoFile = rootProject.file("docs/logo.png")
         if (!logoFile.exists()) {
-            println "logo.png not found in project root."
+            println "logo.png not found in docs/ folder."
             return
         }
 

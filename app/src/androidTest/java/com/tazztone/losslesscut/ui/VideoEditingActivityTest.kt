@@ -1,4 +1,12 @@
-package com.tazztone.losslesscut
+package com.tazztone.losslesscut.ui
+import com.tazztone.losslesscut.di.*
+import com.tazztone.losslesscut.customviews.*
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.ui.*
+import com.tazztone.losslesscut.viewmodel.*
+import com.tazztone.losslesscut.engine.*
+import com.tazztone.losslesscut.data.*
+import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
 import android.content.Intent
@@ -22,7 +30,7 @@ class VideoEditingActivityTest {
     @get:Rule
     val activityRule = ActivityScenarioRule<VideoEditingActivity>(
         Intent(context, VideoEditingActivity::class.java).apply {
-            putExtra("VIDEO_URI", videoUri)
+            putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, arrayListOf(videoUri))
         }
     )
 

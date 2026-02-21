@@ -6,7 +6,7 @@
 **LosslessCut** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating media containers directly, it preserves original quality and processes files at lightning speed without re-encoding.
 
 <p align="center">
-  <img src="src/images/ic_banner.png" width="400" alt="LosslessCut Banner">
+  <img src="docs/images/ic_banner.png" width="400" alt="LosslessCut Banner">
 </p>
 
 ## ✨ Features

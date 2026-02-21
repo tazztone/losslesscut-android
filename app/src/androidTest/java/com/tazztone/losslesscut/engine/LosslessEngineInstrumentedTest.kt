@@ -1,4 +1,12 @@
-package com.tazztone.losslesscut
+package com.tazztone.losslesscut.engine
+import com.tazztone.losslesscut.di.*
+import com.tazztone.losslesscut.customviews.*
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.ui.*
+import com.tazztone.losslesscut.viewmodel.*
+import com.tazztone.losslesscut.engine.*
+import com.tazztone.losslesscut.data.*
+import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
 import android.net.Uri
@@ -26,7 +34,8 @@ import java.io.IOException
 class LosslessEngineInstrumentedTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val engine = LosslessEngineImpl
+    private val storageUtils = StorageUtils(context)
+    private val engine = LosslessEngineImpl(storageUtils, kotlinx.coroutines.Dispatchers.IO)
 
     @Test
     fun executeLosslessCut_validVideo_succeeds() = runBlocking {
@@ -34,14 +43,14 @@ class LosslessEngineInstrumentedTest {
         val inputUri = Uri.fromFile(testFile)
         
         val outputFileName = "test_output_${System.currentTimeMillis()}.mp4"
-        val outputUri = StorageUtils.createVideoOutputUri(context, outputFileName)
+        val outputUri = storageUtils.createVideoOutputUri(outputFileName)
         
         assertNotNull("Output URI should not be null", outputUri)
         
         // Cut the first 1 second
         val result = engine.executeLosslessCut(
             context = context,
-            videoUri = inputUri,
+            inputUri = inputUri,
             outputUri = outputUri!!,
             startMs = 0,
             endMs = 1000,
@@ -52,7 +61,7 @@ class LosslessEngineInstrumentedTest {
         assertTrue("Lossless cut should succeed: ${result.exceptionOrNull()?.message}", result.isSuccess)
         
         // Verify output exists and has some data
-        val metadata = StorageUtils.getVideoMetadata(context, outputUri)
+        val metadata = storageUtils.getDetailedMetadata(outputUri)
         assertTrue("Output video should have a duration > 0", metadata.durationMs > 0)
         
         // Clean up

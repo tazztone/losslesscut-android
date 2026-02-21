@@ -1,4 +1,12 @@
-package com.tazztone.losslesscut
+package com.tazztone.losslesscut.viewmodel
+import com.tazztone.losslesscut.di.*
+import com.tazztone.losslesscut.customviews.*
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.ui.*
+import com.tazztone.losslesscut.viewmodel.*
+import com.tazztone.losslesscut.engine.*
+import com.tazztone.losslesscut.data.*
+import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
 import android.net.Uri
@@ -207,7 +215,7 @@ class VideoEditingViewModelTest {
         advanceUntilIdle()
         
         val outputUri = Uri.parse("content://mock/output.mp4")
-        every { mockStorageUtils.createVideoOutputUri(any()) } returns outputUri
+        every { mockStorageUtils.createMediaOutputUri(any(), any()) } returns outputUri
         coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
         
         viewModel.exportSegments(isLossless = true, mergeSegments = true)

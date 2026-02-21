@@ -11,7 +11,17 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 - **Minimum SDK**: 26 (Android 8.0)
 - **Target SDK**: 35 (Android 15)
 
-## 2. Component Blueprint
+## 2. Project Structure
+The project is organized into a layer/feature-based structure within the `com.tazztone.losslesscut` package:
+- **`ui`**: Activities, Fragments, and Adapters (`MainActivity`, `VideoEditingActivity`, `MediaClipAdapter`).
+- **`viewmodel`**: Jetpack ViewModels (`VideoEditingViewModel`).
+- **`engine`**: Core media processing logic (`LosslessEngine`, `AudioWaveformExtractor`).
+- **`data`**: Data persistence and preferences (`AppPreferences`).
+- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`).
+- **`di`**: Hilt dependency injection modules (`AppModule`).
+- **`customviews`**: Complex custom UI components (`CustomVideoSeeker`).
+
+## 3. Component Blueprint
 
 ### UI & Custom Views
 - **VideoEditingActivity**: Central hub. Manages ExoPlayer lifecycle, binds ViewModel state, and coordinates UI transitions between Video and Audio modes.

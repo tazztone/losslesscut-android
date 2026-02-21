@@ -8,7 +8,7 @@ PID=$($ADB shell pidof -s $PACKAGE_NAME)
 
 if [ -z "$PID" ]; then
     echo "⚠️ $PACKAGE_NAME is not running. Starting it now..."
-    $ADB shell am start -n $PACKAGE_NAME/.MainActivity
+    $ADB shell am start -n $PACKAGE_NAME/.ui.MainActivity
     sleep 1
     PID=$($ADB shell pidof -s $PACKAGE_NAME)
 fi
