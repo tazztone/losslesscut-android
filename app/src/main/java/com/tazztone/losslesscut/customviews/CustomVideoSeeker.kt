@@ -320,16 +320,19 @@ class CustomVideoSeeker @JvmOverloads constructor(
         // Draw waveform
         waveformData?.let { data ->
             val midY = height / 2f
-            val maxBarHalf = midY * 0.7f // leave some headroom
+            val maxAvailableHeight = midY * 0.95f // Use more vertical space
             val startPx = scrollOffsetX.toInt().coerceAtLeast(0)
             val endPx = (scrollOffsetX + width).toInt().coerceAtMost((width * zoomFactor).toInt())
 
+            // Draw with global scaling (data is already normalized to 1.0 by the extractor)
             for (px in startPx..endPx) {
                 val timeMs = xToTime(px.toFloat())
                 val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
                     .toInt().coerceIn(0, data.size - 1)
                 val amp = data[bucketIdx]
-                val barHalf = amp * maxBarHalf
+                
+                // Scaled amplitude: amp * maxHeight (amp is 0.0 to 1.0)
+                val barHalf = amp * maxAvailableHeight
                 canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
             }
         }

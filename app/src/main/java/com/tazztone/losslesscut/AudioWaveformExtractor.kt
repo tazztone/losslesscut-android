@@ -119,7 +119,16 @@ object AudioWaveformExtractor {
                     // Emit progressive updates to the UI
                     if (onProgress != null && info.presentationTimeUs - lastProgressUpdateUs > progressIntervalUs) {
                         lastProgressUpdateUs = info.presentationTimeUs
-                        onProgress(buckets.clone()) // Clone so UI thread draws safely
+                        
+                        // Normalize the current view for progress (makes it visible immediately)
+                        val currentBuckets = buckets.clone()
+                        val currentMax = currentBuckets.maxOrNull() ?: 1f
+                        if (currentMax > 0f) {
+                            for (i in currentBuckets.indices) {
+                                currentBuckets[i] /= currentMax
+                            }
+                        }
+                        onProgress(currentBuckets) 
                     }
 
                     if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
