@@ -6,7 +6,7 @@
 **LosslessCut** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating media containers directly, it preserves original quality and processes files at lightning speed without re-encoding.
 
 <p align="center">
-  <img src="docs/images/ic_banner.png" width="400" alt="LosslessCut Banner">
+  <img src="docs/images/ic_banner.webp" width="400" alt="LosslessCut Banner">
 </p>
 
 ## ✨ Features
@@ -22,6 +22,13 @@
 - 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
 - 🔄 **Non-Destructive Workflow**: Robust undo/redo stack for all segment operations.
+
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/images/screenshot_landscape.webp" width="64%" alt="Main Editor UI">
+  <img src="docs/images/screenshot_portrait.webp" width="28%" alt="Portrait Mode">
+</p>
 
 ## 🛠️ How it Works
 
@@ -52,9 +59,7 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 - **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
 ## 🗺️ Roadmap
-- [ ] **Smart Cut**: Re-encode only the tiny GOP (Group of Pictures) at cut points for true frame-accurate lossless editing.
-- [ ] **AI Silence Detection**: Automatically identify and discard silent regions in audio/video.
-- [ ] **Background Processing**: Move heavy muxing tasks to `WorkManager` for large file handling.
+- [ ] **Smart Cut**: Re-encode only the tiny GOP (Group of Pictures) at cut points for true frame-accurate (partially) lossless editing.
 
 ## 📄 License
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
