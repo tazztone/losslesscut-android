@@ -1,67 +1,56 @@
-# LosslessCut
+# LosslessCut Android
 
-LosslessCut is a lightweight, open-source Android application designed for **fast, lossless video and audio trimming**. By leveraging native Android APIs (`MediaExtractor` and `MediaMuxer`), it avoids re-encoding media streams, preserving the original quality and ensuring lightning-fast processing speeds.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=26)
 
-## Features
+**LosslessCut** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating media containers directly, it preserves original quality and processes files at lightning speed without re-encoding.
 
-- **Lossless Video & Audio Trimming**: Native `MediaExtractor` and `MediaMuxer` logic ensures lightning-fast processing without re-encoding for both video (`.mp4`) and audio (`.m4a`) files.
-- **Desktop-Class NLE Timeline**: A fully interactive timeline supporting multi-segment editing (Split, Discard, and Drag).
-- **Pinch-to-Zoom & Pan**: Smoothly zoom in up to 20x for frame-perfect edits and pan across long media with ease.
-- **Audio-Only Mode**: Automatically detects audio files, providing a dedicated interface with an audio placeholder and simplified tools.
-- **Haptic Keyframe Snapping**: Tactile feedback (Clock Tick) whenever a segment boundary snaps to a keyframe in Lossless Mode (for video).
-- **Accessibility Support**: Full support for screen readers with navigable timeline handles and playhead via accessibility actions.
-- **Smart UX**: Unsaved changes confirmation, frame-accurate nudging, and keyframe-aware splitting.
-- **Undo/Redo History**: Robust edit history managed by a ViewModel stack, allowing you to revert segment changes instantly.
-- **Multi-Segment Export**: Split media into multiple "KEEP" regions and export them as individual clips in one click.
-- **MVVM Architecture**: Clean state management using `ViewModel` and `StateFlow` for a reactive UI.
-- **Modern Infrastructure**: Uses Hilt for dependency injection and DataStore for persistent app preferences.
-- **Scoped Storage & Modern SDK**: Modern Android storage handling saving to `Movies/LosslessCut` or `Music/LosslessCut` without heavy FFmpeg dependencies.
+<p align="center">
+  <img src="src/images/ic_banner.png" width="400" alt="LosslessCut Banner">
+</p>
 
-## Getting Started
+## ✨ Features
+
+- 🚀 **Zero Quality Loss**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer`—no transcoding involved.
+- 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
+- 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
+- 🧲 **Keyframe Snapping**: Haptic feedback and visual snapping to keyframes ensure cuts are perfectly aligned for lossless export.
+- 🎵 **Audio-Only Mode**: Intelligent UI adaptation for audio files with waveform visualization.
+- 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
+- ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
+- 🔄 **Non-Destructive Workflow**: Robust undo/redo stack for all segment operations.
+
+## 🛠️ How it Works
+
+Unlike traditional video editors that decode and re-encode every frame, LosslessCut operates at the **container level**:
+
+1. **Probe**: Scans the file structure to identify stream metadata and keyframe locations.
+2. **Visualize**: Renders a zoomable timeline where keyframes are marked as snapping points.
+3. **Mux**: During export, the app extracts the original encoded samples between cut points and remuxes them into a new container. This ensures 100% quality retention and near-instant processing.
+
+## 🚀 Getting Started
 
 ### Prerequisites
+- Android Studio Koala+
+- Android SDK 35 (Target) / 26 (Min)
 
-- Android Studio Koala or newer
-- Android SDK (Target API 35)
+### Development
+```bash
+# Clone the repo
+git clone https://github.com/tazztone/lossless-video-cut.git
 
-### Installation
+# Build debug APK
+./gradlew assembleDebug
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/tazztone/lossless-video-cut.git
-   ```
-   
-2. **Open the project in Android Studio**:
-   - Launch Android Studio and select "Open."
-   - Navigate to the cloned directory and select it.
+## 🔒 Permissions & Privacy
+- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` or `Music/LosslessCut`. No broad storage permissions required on modern Android.
+- **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
-3. **Build the project**:
-   - Let Gradle sync and download dependencies.
-   - Run `./gradlew assembleRelease` to generate a production build.
+## 🗺️ Roadmap
+- [ ] **Smart Cut**: Re-encode only the tiny GOP (Group of Pictures) at cut points for true frame-accurate lossless editing.
+- [ ] **AI Silence Detection**: Automatically identify and discard silent regions in audio/video.
+- [ ] **Background Processing**: Move heavy muxing tasks to `WorkManager` for large file handling.
 
-## How it Works
-
-Unlike traditional editors that transcode the entire clip, LosslessCut manipulates the media container directly.
-
-1. **Probing**: The app scans the file for tracks and keyframes (for video).
-2. **Visualizing**: Media is displayed on a zoomable timeline. For video, keyframes are shown as white ticks for snapping.
-3. **Muxing**: When you trim, the app extracts the encoded samples and remuxes them into a new container (`.mp4` for video, `.m4a` for audio). No decompression or re-compression occurs.
-
-## Permissions
-
-The app follows modern Android security best practices:
-
-- **READ_MEDIA_VIDEO & READ_MEDIA_AUDIO**: Required on Android 13+ to browse media files.
-- **Scoped Storage**: On modern Android versions, the app uses `MediaStore` to save trimmed media to the public `Movies/LosslessCut` or `Music/LosslessCut` folders, eliminating the need for `WRITE_EXTERNAL_STORAGE` for output.
-
-## Developer Guide
-
-For detailed information on the codebase, architecture (MVVM), and future roadmap, please refer to [AGENTS.md](AGENTS.md).
-
-## Contributing
-
-Contributions are welcome! Whether it's bug fixes, performance improvements, or new features (like smart-rendering for precise cuts), feel free to open a PR.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+## 📄 License
+Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
