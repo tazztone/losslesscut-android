@@ -9,6 +9,7 @@
 - **Audio-Only Mode**: Automatically adapts the UI for audio files, providing a specialized music note placeholder and hiding video-only tools (e.g., rotation, snapshots).
 - **Multi-Segment Export**: Split media, discard parts (ads/silences), and export remaining segments as individual files in one pass.
 - **Precision Seeking**: Zoomable timeline (up to 20x) for frame-accurate cuts based on keyframes (for video) or time.
+- **Accessibility**: First-class support for accessibility services via `ExploreByTouchHelper`, allowing vision-impaired users to edit media via standard talkback gestures and custom accessibility actions.
 - **Undo/Redo Workflow**: Non-destructive workflow via an in-memory snapshot stack.
 
 **Non-Goals (Do Not Implement)**:
@@ -18,6 +19,7 @@
 
 ## 2. Environment & Stack
 - **Stack**: Kotlin 1.9+, Android SDK (Min API 31, Target 35), Media3 (ExoPlayer).
+- **DI & Persistence**: Hilt for dependency injection, Jetpack DataStore for preferences.
 - **Architecture**: MVVM, single-Activity, Scoped Storage (`MediaStore`).
 
 ## 3. Core Architecture
@@ -25,23 +27,22 @@
 ### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`, `SettingsBottomSheetDialogFragment.kt`)
 - `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states, and handles tooltips/rotation previews. Adapts the UI dynamically based on `isAudioOnly` flag.
 - `SettingsBottomSheetDialogFragment`: Presents app preferences such as the "Snap" (Lossless) mode toggle.
-- `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, haptic snapping to keyframes, cycling colors for `KEEP` segments, and hiding `DISCARD` segments.
+- `CustomVideoSeeker`: High-performance custom timeline View. Features:
+    - **Gestures**: Drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD) with edge-auto-panning.
+    - **Visuals**: Haptic snapping to keyframes, cycling colors for `KEEP` segments, and animated pinch-to-zoom indicators.
+    - **Accessibility**: Implements `ExploreByTouchHelper` to expose playhead and segment handles as virtual views with support for `ACTION_SCROLL_FORWARD/BACKWARD`.
 
 ### Presentation (`VideoEditingViewModel.kt`)
 - `TrimSegment`: Data model holding `startMs`, `endMs`, and `SegmentAction` (KEEP/DISCARD).
 - `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions (capped at 30 items for memory safety).
+- **Hilt**: ViewModels are injected with `LosslessEngine`, `StorageUtils`, and `AppPreferences` (DataStore).
 - Automates the multi-clip export orchestration and snapshot frame extraction. Detects media type (video vs. audio) during initialization.
 
-### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`)
+### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`, `AppPreferences.kt`)
 - `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix and export params (rotation override, audio-only tracks). Automatically detects track types and finalizes to appropriate MediaStore collections.
 - `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling video, audio, and PNG frame snapshots. Saves video to `Movies/LosslessCut` and audio to `Music/LosslessCut`.
+- `AppPreferences`: Reactive wrapper around DataStore for managing settings like snap mode, undo limits, and snapshot formats.
 
-### Data Flow (Trim Action)
-1. User confirms trim -> `Activity` calls `ViewModel.exportSegments()`.
-2. `ViewModel` emits Loading state -> calls `StorageUtils.createVideoOutputUri()` or `createAudioOutputUri()`.
-3. `ViewModel` calls `LosslessEngine.executeLosslessCut(input, outputUri, start, end)`.
-4. `LosslessEngine` processes samples -> calls `StorageUtils.finalizeMedia()` -> returns `Result.success(uri)`.
-5. `ViewModel` emits Success state -> `Activity` reloads ExoPlayer if necessary or notifies the user.
 
 ## 4. Developer Workflows & CI/CD
 - **Testing**: `./gradlew test` (runs JVM/Robolectric `LosslessEngine` tests), `./gradlew connectedAndroidTest` (UI tests).

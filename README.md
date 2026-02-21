@@ -9,9 +9,12 @@ LosslessCut is a lightweight, open-source Android application designed for **fas
 - **Pinch-to-Zoom & Pan**: Smoothly zoom in up to 20x for frame-perfect edits and pan across long media with ease.
 - **Audio-Only Mode**: Automatically detects audio files, providing a dedicated interface with an audio placeholder and simplified tools.
 - **Haptic Keyframe Snapping**: Tactile feedback (Clock Tick) whenever a segment boundary snaps to a keyframe in Lossless Mode (for video).
+- **Accessibility Support**: Full support for screen readers with navigable timeline handles and playhead via accessibility actions.
+- **Smart UX**: Unsaved changes confirmation, frame-accurate nudging, and keyframe-aware splitting.
 - **Undo/Redo History**: Robust edit history managed by a ViewModel stack, allowing you to revert segment changes instantly.
 - **Multi-Segment Export**: Split media into multiple "KEEP" regions and export them as individual clips in one click.
 - **MVVM Architecture**: Clean state management using `ViewModel` and `StateFlow` for a reactive UI.
+- **Modern Infrastructure**: Uses Hilt for dependency injection and DataStore for persistent app preferences.
 - **Scoped Storage & Modern SDK**: Modern Android storage handling saving to `Movies/LosslessCut` or `Music/LosslessCut` without heavy FFmpeg dependencies.
 
 ## Getting Started
