@@ -268,10 +268,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
 
-        binding.btnAddClips?.setOnClickListener {
+        val addClipsAction = {
             addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
         }
+        binding.btnAddClips?.setOnClickListener { addClipsAction() }
         binding.btnAddClips?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
+
+        binding.btnAddClipsPlaylist?.setOnClickListener { addClipsAction() }
+        binding.btnAddClipsPlaylist?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
         
         binding.btnSave.setOnClickListener { 
             showExportOptionsDialog()
@@ -510,10 +514,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         
                         // Update clip list visibility and adapter
                         if (state.clips.size > 1) {
-                            binding.rvClips?.visibility = View.VISIBLE
+                            binding.playlistContainer?.visibility = View.VISIBLE
                             clipAdapter.updateClips(state.clips, state.selectedClipIndex)
                         } else {
-                            binding.rvClips?.visibility = View.GONE
+                            binding.playlistContainer?.visibility = View.GONE
                         }
                         
                         if (state.isAudioOnly) {

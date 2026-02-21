@@ -409,18 +409,39 @@
                 android:tooltipText="@string/play_pause" />
         </FrameLayout>
 
-        <!-- Clip List (Visible when multiple clips) -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rvClips"
+        <!-- Playlist Area (Visible when multiple clips) -->
+        <LinearLayout
+            android:id="@+id/playlistContainer"
             android:layout_width="80dp"
             android:layout_height="match_parent"
             android:background="?attr/colorSurface"
             android:orientation="vertical"
-            android:padding="4dp"
             android:visibility="gone"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/item_media_clip"
-            tools:visibility="visible"/>
+            tools:visibility="visible">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvClips"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:padding="4dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                tools:listitem="@layout/item_media_clip"/>
+
+            <ImageButton
+                android:id="@+id/btnAddClipsPlaylist"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_margin="12dp"
+                android:src="@drawable/ic_add_24"
+                android:background="@drawable/play_button_bg"
+                android:backgroundTint="?attr/colorPrimary"
+                android:padding="12dp"
+                android:contentDescription="@string/add_video"
+                android:tooltipText="@string/add_video"
+                app:tint="?attr/colorOnPrimary"/>
+        </LinearLayout>
     </LinearLayout>
 
     <include
