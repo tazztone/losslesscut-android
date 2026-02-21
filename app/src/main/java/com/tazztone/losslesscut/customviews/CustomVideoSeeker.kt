@@ -348,26 +348,49 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 if (isTouchingBottom) {
                     val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }
+                    var bestDist = hitTestThresholdMs + 1
+                    var bestHandle: TouchTarget = TouchTarget.NONE
+                    var bestSegmentId: UUID? = null
+
                     for (segment in keepSegments) {
-                        if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
-                            currentTouchTarget = TouchTarget.HANDLE_LEFT
-                            activeSegmentId = segment.id
-                            onSeekStart?.invoke()
-                            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            if (segment.id != selectedSegmentId) {
-                                onSegmentSelected?.invoke(segment.id)
+                        // Check Left Handle
+                        val leftDist = kotlin.math.abs(segment.startMs - touchTimeMs)
+                        if (leftDist <= hitTestThresholdMs) {
+                            val isBetter = leftDist < bestDist || 
+                                (leftDist == bestDist && touchTimeMs > segment.startMs) // Tie-breaker: touched right of handle
+                            
+                            if (isBetter) {
+                                bestDist = leftDist
+                                bestHandle = TouchTarget.HANDLE_LEFT
+                                bestSegmentId = segment.id
                             }
-                            return true
-                        } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
-                            currentTouchTarget = TouchTarget.HANDLE_RIGHT
-                            activeSegmentId = segment.id
-                            onSeekStart?.invoke()
-                            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                            if (segment.id != selectedSegmentId) {
-                                onSegmentSelected?.invoke(segment.id)
-                            }
-                            return true
                         }
+
+                        // Check Right Handle
+                        val rightDist = kotlin.math.abs(segment.endMs - touchTimeMs)
+                        if (rightDist <= hitTestThresholdMs) {
+                            val isBetter = rightDist < bestDist || 
+                                (rightDist == bestDist && touchTimeMs < segment.endMs) // Tie-breaker: touched left of handle
+
+                            if (isBetter) {
+                                bestDist = rightDist
+                                bestHandle = TouchTarget.HANDLE_RIGHT
+                                bestSegmentId = segment.id
+                            }
+                        }
+                    }
+
+                    if (bestHandle != TouchTarget.NONE) {
+                        currentTouchTarget = bestHandle
+                        activeSegmentId = bestSegmentId
+                        onSeekStart?.invoke()
+                        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                        activeSegmentId?.let { id ->
+                            if (id != selectedSegmentId) {
+                                onSegmentSelected?.invoke(id)
+                            }
+                        }
+                        return true
                     }
                 }
                 
