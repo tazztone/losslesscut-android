@@ -34,9 +34,8 @@ interface LosslessEngineInterface {
 
     suspend fun executeLosslessMerge(
         context: Context,
-        inputUri: Uri,
         outputUri: Uri,
-        segments: List<TrimSegment>,
+        clips: List<MediaClip>,
         keepAudio: Boolean = true,
         keepVideo: Boolean = true,
         rotationOverride: Int? = null
@@ -260,20 +259,22 @@ class LosslessEngineImpl @Inject constructor(
 
     override suspend fun executeLosslessMerge(
         context: Context,
-        inputUri: Uri,
         outputUri: Uri,
-        segments: List<TrimSegment>,
+        clips: List<MediaClip>,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?
     ): Result<Uri> = withContext(ioDispatcher) {
+        if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips to merge"))
+
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
         var pfd: android.os.ParcelFileDescriptor? = null
 
         try {
-            extractor.setDataSource(context, inputUri, null)
+            // Initialize muxer using the first clip
+            extractor.setDataSource(context, clips[0].uri, null)
 
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
             if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
@@ -309,83 +310,111 @@ class LosslessEngineImpl @Inject constructor(
             if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
             if (bufferSize < 0) bufferSize = 1024 * 1024
 
-            val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(context, inputUri)
-            val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-            val finalRotation = rotationOverride ?: originalRotation
+            val finalRotation = rotationOverride ?: clips[0].rotation
             mMuxer.setOrientationHint(finalRotation)
-            retriever.release()
 
             mMuxer.start()
             isMuxerStarted = true
 
             val buffer = ByteBuffer.allocateDirect(bufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
+            var globalOffsetUs = 0L
 
-            for ((extractorTrack, _) in trackMap) {
-                extractor.selectTrack(extractorTrack)
+            for (clip in clips) {
+                // For subsequent clips, we need to reset the extractor
+                if (clip != clips[0]) {
+                    extractor.setDataSource(context, clip.uri, null)
+                }
+                
+                // Note: We assume track indices in subsequent clips map similarly to the first clip 
+                // because of our validation in ViewModel. But to be safe, we should re-map tracks.
+                val clipTrackMap = mutableMapOf<Int, Int>() // Clip Track Index -> Muxer Track Index
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                    
+                    val isVideo = mime.startsWith("video/")
+                    val isAudio = mime.startsWith("audio/")
+                    
+                    if (isVideo && keepVideo) {
+                        // Find the muxer track that matches video
+                        trackMap.forEach { (firstIdx, muxIdx) ->
+                             if (isVideoTrackMap[firstIdx] == true) clipTrackMap[i] = muxIdx
+                        }
+                    } else if (isAudio && keepAudio) {
+                        // Find the muxer track that matches audio
+                        trackMap.forEach { (firstIdx, muxIdx) ->
+                             if (isVideoTrackMap[firstIdx] == false) clipTrackMap[i] = muxIdx
+                        }
+                    }
+                }
+
+                for ((clipTrack, _) in clipTrackMap) {
+                    extractor.selectTrack(clipTrack)
+                }
+
+                val keepSegments = clip.segments.filter { it.action == SegmentAction.KEEP }
+                for (segment in keepSegments) {
+                    val startUs = segment.startMs * 1000
+                    val endUs = segment.endMs * 1000
+
+                    extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+
+                    var segmentStartUs = -1L
+                    var lastSampleTimeInSegmentUs = 0L
+
+                    while (true) {
+                        val sampleSize = extractor.readSampleData(buffer, 0)
+                        if (sampleSize < 0) break
+
+                        val sampleTime = extractor.sampleTime
+                        if (sampleTime > endUs) break
+
+                        val currentTrack = extractor.sampleTrackIndex
+                        val muxerTrack = clipTrackMap[currentTrack]
+                        if (muxerTrack == null) {
+                            extractor.advance()
+                            continue
+                        }
+
+                        if (segmentStartUs == -1L) {
+                            segmentStartUs = sampleTime
+                        }
+
+                        val relativeTime = sampleTime - segmentStartUs
+                        bufferInfo.presentationTimeUs = globalOffsetUs + relativeTime
+                        bufferInfo.offset = 0
+                        bufferInfo.size = sampleSize
+
+                        var flags = 0
+                        if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                            flags = flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+                        }
+                        bufferInfo.flags = flags
+
+                        if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
+                        
+                        lastSampleTimeInSegmentUs = maxOf(lastSampleTimeInSegmentUs, relativeTime)
+
+                        mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
+
+                        if (!extractor.advance()) break
+                    }
+                    globalOffsetUs += lastSampleTimeInSegmentUs + 1000
+                }
+                
+                // Deselect tracks before moving to next clip
+                for (i in 0 until extractor.trackCount) {
+                    extractor.unselectTrack(i)
+                }
             }
 
-            var globalOffsetUs = 0L
             var hasVideoTrack = false
-            for ((_, isVideo) in isVideoTrackMap) {
-                if (isVideo) {
+            for (i in 0 until extractor.trackCount) {
+                if (extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true) {
                     hasVideoTrack = true
                     break
                 }
-            }
-
-            for (segment in segments) {
-                val startUs = segment.startMs * 1000
-                val endUs = segment.endMs * 1000
-
-                extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-
-                var segmentStartUs = -1L
-                var lastSampleTimeInSegmentUs = 0L
-
-                while (true) {
-                    val sampleSize = extractor.readSampleData(buffer, 0)
-                    if (sampleSize < 0) break
-
-                    val sampleTime = extractor.sampleTime
-                    if (sampleTime > endUs) break
-
-                    val currentTrack = extractor.sampleTrackIndex
-                    val muxerTrack = trackMap[currentTrack]
-                    if (muxerTrack == null) {
-                        extractor.advance()
-                        continue
-                    }
-
-                    if (segmentStartUs == -1L) {
-                        segmentStartUs = sampleTime
-                    }
-
-                    val relativeTime = sampleTime - segmentStartUs
-                    bufferInfo.presentationTimeUs = globalOffsetUs + relativeTime
-                    bufferInfo.offset = 0
-                    bufferInfo.size = sampleSize
-
-                    var flags = 0
-                    if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-                        flags = flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
-                    }
-                    bufferInfo.flags = flags
-
-                    if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
-                    
-                    lastSampleTimeInSegmentUs = maxOf(lastSampleTimeInSegmentUs, relativeTime)
-
-                    mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
-
-                    if (!extractor.advance()) break
-                }
-                
-                // Advance global offset for the next segment. 
-                // We add a small buffer (e.g., 1ms or based on last sample) to avoid overlapping timestamps.
-                // Ideally we'd know the frame duration, but adding lastSampleTimeInSegmentUs + 1 is a safe heuristic for remuxing.
-                globalOffsetUs += lastSampleTimeInSegmentUs + 1000 // Add 1ms gap to be safe and ensure monotonicity
             }
 
             if (hasVideoTrack) {

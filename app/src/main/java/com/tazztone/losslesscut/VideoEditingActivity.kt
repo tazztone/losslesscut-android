@@ -38,7 +38,7 @@ import java.io.FileOutputStream
 class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
  
     companion object {
-        const val EXTRA_VIDEO_URI = "com.tazztone.losslesscut.EXTRA_VIDEO_URI"
+        const val EXTRA_VIDEO_URIS = "com.tazztone.losslesscut.EXTRA_VIDEO_URIS"
         private const val KEY_PLAYHEAD = "playhead_pos"
         private const val KEY_PLAY_WHEN_READY = "play_when_ready"
         private const val KEY_ROTATION = "rotation_offset"
@@ -49,6 +49,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private val viewModel: VideoEditingViewModel by viewModels()
     private lateinit var binding: ActivityVideoEditingBinding
     private lateinit var player: ExoPlayer
+    private lateinit var clipAdapter: MediaClipAdapter
 
     private var isVideoLoaded = false
     private var updateJob: Job? = null
@@ -59,9 +60,19 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
     
+    private val addClipsLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        if (uris.isNotEmpty()) {
+            viewModel.addClips(uris)
+        }
+    }
 
     private val playerListener = object : Player.Listener {
         override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val index = player.currentMediaItemIndex
+            viewModel.selectClip(index)
         }
 
         override fun onPlaybackStateChanged(state: Int) {
@@ -75,13 +86,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (::binding.isInitialized) {
-                binding.btnPlayPause.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
-                binding.btnPlayPauseControls.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
+                binding.btnPlayPause?.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
+                binding.btnPlayPauseControls?.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
                 if (isPlaying) {
-                    binding.btnPlayPause.animate().alpha(0f).setStartDelay(500).setDuration(300).start()
+                    binding.btnPlayPause?.animate()?.alpha(0f)?.setStartDelay(500)?.setDuration(300)?.start()
                 } else {
-                    binding.btnPlayPause.animate().cancel()
-                    binding.btnPlayPause.alpha = 1f
+                    binding.btnPlayPause?.animate()?.cancel()
+                    binding.btnPlayPause?.alpha = 1f
                 }
             }
             if (isPlaying) {
@@ -97,13 +108,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding = ActivityVideoEditingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val videoUri: Uri? = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            intent.getParcelableExtra(EXTRA_VIDEO_URI, Uri::class.java)
+        val videoUris = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableArrayListExtra(EXTRA_VIDEO_URIS, Uri::class.java)
         } else {
             @Suppress("DEPRECATION")
-            intent.getParcelableExtra(EXTRA_VIDEO_URI)
+            intent.getParcelableArrayListExtra(EXTRA_VIDEO_URIS)
         }
-        if (videoUri == null) {
+        
+        if (videoUris.isNullOrEmpty()) {
             Toast.makeText(this, getString(R.string.invalid_video_uri), Toast.LENGTH_LONG).show()
             finish()
             return
@@ -116,7 +128,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         setupCustomSeeker()
         observeViewModel()
 
-        viewModel.initialize(videoUri)
+        viewModel.initialize(videoUris)
         
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
@@ -193,10 +205,37 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun initializeViews() {
-        binding.btnPlayPause.setOnClickListener {
+        clipAdapter = MediaClipAdapter(
+            onClipSelected = { index -> 
+                if (player.currentMediaItemIndex != index) {
+                    player.seekTo(index, 0)
+                    viewModel.selectClip(index)
+                }
+            },
+            onClipsReordered = { from, to -> 
+                viewModel.reorderClips(from, to)
+                // Update player playlist order
+                player.moveMediaItem(from, to)
+            }
+        )
+        binding.rvClips?.adapter = clipAdapter
+        
+        val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+            androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
+            override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
+                val from = vh.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                clipAdapter.moveItem(from, to)
+                return true
+            }
+            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
+        })
+        binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
+
+        binding.btnPlayPause?.setOnClickListener {
             if (player.isPlaying) player.pause() else player.play()
         }
-        TooltipCompat.setTooltipText(binding.btnPlayPause, getString(R.string.play_pause))
+        binding.btnPlayPause?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
         binding.playerView.setOnClickListener {
             if (player.isPlaying) player.pause() else player.play()
@@ -210,6 +249,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
+
+        binding.btnAddClips?.setOnClickListener {
+            addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
+        }
+        binding.btnAddClips?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
         
         binding.btnSave.setOnClickListener { 
             showExportOptionsDialog()
@@ -268,16 +312,16 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         TooltipCompat.setTooltipText(binding.btnDelete, getString(R.string.discard_segment))
         binding.containerDelete?.let { TooltipCompat.setTooltipText(it, getString(R.string.discard_segment)) }
 
-        binding.btnNudgeBack.setOnClickListener { performNudge(-1) }
-        TooltipCompat.setTooltipText(binding.btnNudgeBack, getString(R.string.nudge_backward))
+        binding.btnNudgeBack?.setOnClickListener { performNudge(-1) }
+        binding.btnNudgeBack?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_backward)) }
         
-        binding.btnNudgeForward.setOnClickListener { performNudge(1) }
-        TooltipCompat.setTooltipText(binding.btnNudgeForward, getString(R.string.nudge_forward))
+        binding.btnNudgeForward?.setOnClickListener { performNudge(1) }
+        binding.btnNudgeForward?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_forward)) }
 
-        binding.btnPlayPauseControls.setOnClickListener {
+        binding.btnPlayPauseControls?.setOnClickListener {
             if (player.isPlaying) player.pause() else player.play()
         }
-        TooltipCompat.setTooltipText(binding.btnPlayPauseControls, getString(R.string.play_pause))
+        binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
         val snapshotAction = { extractSnapshot() }
         binding.btnSnapshot.setOnClickListener { snapshotAction() }
@@ -428,14 +472,29 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                     is VideoEditingUiState.Loading -> binding.loadingScreen.root.visibility = View.VISIBLE
                     is VideoEditingUiState.Success -> {
                         binding.loadingScreen.root.visibility = View.GONE
-                        if (player.currentMediaItem?.localConfiguration?.uri != state.videoUri) {
-                            initializePlayer(state.videoUri)
+                        
+                        // Check if we need to initialize or update the player items
+                        val currentUris = List(player.mediaItemCount) { player.getMediaItemAt(it).localConfiguration?.uri }
+                        val newStateUris = state.clips.map { it.uri }
+                        
+                        if (currentUris != newStateUris) {
+                            initializePlayer(newStateUris, state.selectedClipIndex)
+                        } else if (player.currentMediaItemIndex != state.selectedClipIndex) {
+                            player.seekTo(state.selectedClipIndex, 0L)
+                        }
+
+                        // Update clip list visibility and adapter
+                        if (state.clips.size > 1) {
+                            binding.rvClips?.visibility = View.VISIBLE
+                            clipAdapter.updateClips(state.clips, state.selectedClipIndex)
+                        } else {
+                            binding.rvClips?.visibility = View.GONE
                         }
                         
                         if (state.isAudioOnly) {
                             binding.playerView.visibility = View.GONE
                             binding.audioPlaceholder?.visibility = View.VISIBLE
-                            binding.tvAudioFileName?.text = state.videoFileName
+                            binding.tvAudioFileName?.text = state.clips[state.selectedClipIndex].fileName
                             binding.containerRotate?.visibility = View.GONE
                             binding.containerSnapshot?.visibility = View.GONE
                         } else {
@@ -484,11 +543,12 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
     }
 
-    private fun initializePlayer(uri: Uri) {
-        player.setMediaItem(MediaItem.fromUri(uri))
+    private fun initializePlayer(uris: List<Uri>, initialIndex: Int = 0) {
+        val mediaItems = uris.map { MediaItem.fromUri(it) }
+        player.setMediaItems(mediaItems)
         player.prepare()
         player.playWhenReady = savedPlayWhenReady
-        player.seekTo(savedPlayheadPos)
+        player.seekTo(initialIndex, savedPlayheadPos)
     }
 
     private fun setupCustomSeeker() {
@@ -561,7 +621,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (!isVideoLoaded || total <= 0) return
-        binding.tvDuration.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
+        binding.tvDuration?.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
     }
 
     override fun onLosslessModeToggled(isChecked: Boolean) {

@@ -17,4 +17,6 @@
     <!-- Video Seeker Colors -->
     <color name="segmentKeep">#9900E676</color>       <!-- more saturated green -->
     <color name="segmentDiscard">#99FF4444</color>   <!-- red for discarded -->
+    <color name="surface_dark">#1E1E1E</color>
+    <color name="white">#FFFFFF</color>
 </resources>

@@ -24,6 +24,16 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_home_24"
             android:background="?attr/selectableItemBackgroundBorderless"
+            android:layout_marginEnd="8dp"/>
+
+        <ImageButton
+            android:id="@+id/btnAddClips"
+            android:minWidth="48dp"
+            android:minHeight="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_add_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:layout_marginEnd="16dp"/>
 
         <LinearLayout
@@ -275,98 +285,71 @@
         </FrameLayout>
     </LinearLayout>
 
-    <!-- Timecode & Nudge Controls (Above Timeline) -->
-    <LinearLayout
-        android:id="@+id/nudgeControlsContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_above="@+id/seekerContainer"
-        android:background="?attr/colorSurface"
-        android:padding="8dp"
-        android:animateLayoutChanges="true">
-
-        <TextView
-            android:id="@+id/tvDuration"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="00:00:00.000 / 00:00:00.000"
-            android:textSize="14sp"
-            android:textColor="?attr/colorOnSurface"
-            android:layout_marginStart="16dp"/>
-
-        <ImageButton
-            android:id="@+id/btnNudgeBack"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_skip_previous_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="?attr/colorOnSurface"/>
-
-        <ImageButton
-            android:id="@+id/btnPlayPauseControls"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_play_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="?attr/colorOnSurface"/>
-
-        <ImageButton
-            android:id="@+id/btnNudgeForward"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_skip_next_24"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            app:tint="?attr/colorOnSurface"/>
-    </LinearLayout>
-
     <!-- Player Area (Takes remaining top space) -->
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/playerContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@+id/toolbar"
-        android:layout_above="@+id/nudgeControlsContainer">
+        android:layout_above="@+id/nudgeControlsContainer"
+        android:orientation="horizontal">
 
-        <androidx.media3.ui.PlayerView
-            android:id="@+id/playerView"
-            android:layout_width="match_parent"
+        <FrameLayout
+            android:layout_width="0dp"
             android:layout_height="match_parent"
-            app:use_controller="false" />
+            android:layout_weight="1">
 
-        <LinearLayout
-            android:id="@+id/audioPlaceholder"
-            android:layout_width="match_parent"
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/playerView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:use_controller="false" />
+
+            <LinearLayout
+                android:id="@+id/audioPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+                <ImageView
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:src="@drawable/ic_audio_24"
+                    app:tint="@android:color/white"/>
+                <TextView
+                    android:id="@+id/tvAudioFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="18sp"
+                    tools:text="audio_file.m4a"/>
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnPlayPause"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_play_24"
+                android:background="@drawable/play_button_bg"
+                android:padding="16dp" />
+        </FrameLayout>
+
+        <!-- Clip List (Visible when multiple clips) -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvClips"
+            android:layout_width="140dp"
             android:layout_height="match_parent"
+            android:background="?attr/colorSurface"
             android:orientation="vertical"
-            android:gravity="center"
-            android:visibility="gone">
-            <ImageView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:src="@drawable/ic_audio_24"
-                app:tint="@android:color/white"/>
-            <TextView
-                android:id="@+id/tvAudioFileName"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:textColor="@android:color/white"
-                android:textSize="18sp"
-                tools:text="audio_file.m4a"/>
-        </LinearLayout>
-
-        <ImageButton
-            android:id="@+id/btnPlayPause"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:layout_gravity="center"
-            android:src="@drawable/ic_play_24"
-            android:background="@drawable/play_button_bg"
-            android:padding="16dp" />
-    </FrameLayout>
+            android:padding="4dp"
+            android:visibility="gone"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@layout/item_media_clip"
+            tools:visibility="visible"/>
+    </LinearLayout>
 
     <include
         layout="@layout/loading_screen"

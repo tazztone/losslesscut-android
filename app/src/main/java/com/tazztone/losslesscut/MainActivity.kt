@@ -25,10 +25,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var requestPermissionsLauncher: ActivityResultLauncher<Array<String>>
     private val selectMediaLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri != null) {
-                Log.d("MediaSelection", "Media selected: $uri")
-                navigateToEditingScreen(uri)
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
+            if (uris.isNotEmpty()) {
+                Log.d("MediaSelection", "Media selected: $uris")
+                navigateToEditingScreen(uris)
             } else {
                 Log.e("MediaSelectionError", "No media selected")
             }
@@ -138,10 +138,10 @@ class MainActivity : AppCompatActivity() {
         selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
     }
 
-    private fun navigateToEditingScreen(mediaUri: Uri) {
-        Log.d("Navigation", "Navigating to editing screen with URI: $mediaUri")
+    private fun navigateToEditingScreen(mediaUris: List<Uri>) {
+        Log.d("Navigation", "Navigating to editing screen with URIs: $mediaUris")
         val intent = Intent(this, VideoEditingActivity::class.java)
-        intent.putExtra(VideoEditingActivity.EXTRA_VIDEO_URI, mediaUri)
+        intent.putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
         startActivity(intent)
     }
 

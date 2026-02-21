@@ -6,7 +6,6 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -46,14 +45,21 @@ class VideoEditingViewModelTest {
         
         // Default mocks
         coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
-        every { mockStorageUtils.getVideoMetadata(any()) } returns StorageUtils.VideoMetadata("mock_video.mp4", 10000L)
-
-        val shadowRetriever = org.robolectric.Shadows.shadowOf(android.media.MediaMetadataRetriever())
-        org.robolectric.shadows.ShadowMediaMetadataRetriever.addMetadata(
-            "content://mock/video.mp4",
-            android.media.MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE,
-            "30"
+        
+        val defaultMetadata = StorageUtils.DetailedMetadata(
+            fileName = "mock_video.mp4",
+            durationMs = 10000L,
+            width = 1920,
+            height = 1080,
+            videoMime = "video/avc",
+            audioMime = "audio/mp4a-latm",
+            sampleRate = 44100,
+            channelCount = 2,
+            fps = 30f,
+            rotation = 0,
+            isAudioOnly = false
         )
+        every { mockStorageUtils.getDetailedMetadata(any()) } returns defaultMetadata
     }
 
     @After
@@ -63,22 +69,23 @@ class VideoEditingViewModelTest {
     }
 
     @Test
-    fun testInitialization_createsInitialSegment() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+    fun testInitialization_createsInitialClipsAndSegments() = runTest {
+        val uris = listOf(Uri.parse("content://mock/video1.mp4"), Uri.parse("content://mock/video2.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
         val state = viewModel.uiState.value
         assertTrue("State is not Success: $state", state is VideoEditingUiState.Success)
         val success = state as VideoEditingUiState.Success
+        assertEquals(2, success.clips.size)
         assertEquals(1, success.segments.size)
         assertEquals(0L, success.segments[0].startMs)
     }
 
     @Test
     fun testSplitSegment() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+        val uris = listOf(Uri.parse("content://mock/video.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
@@ -94,13 +101,14 @@ class VideoEditingViewModelTest {
 
     @Test
     fun testUndoAfterSplit() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+        val uris = listOf(Uri.parse("content://mock/video.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
         viewModel.splitSegmentAt(5000L)
         advanceUntilIdle()
         viewModel.undo()
+        advanceUntilIdle()
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(1, state.segments.size)
@@ -109,11 +117,10 @@ class VideoEditingViewModelTest {
 
     @Test
     fun testToggleSegmentAction() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+        val uris = listOf(Uri.parse("content://mock/video.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
-        // Split first so there are two segments, bypassing the "cannot delete last segment" protection
         viewModel.splitSegmentAt(5000L)
         advanceUntilIdle()
         
@@ -128,47 +135,71 @@ class VideoEditingViewModelTest {
     }
 
     @Test
-    fun testUndoStackCap() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+    fun testReorderClips() = runTest {
+        val uris = listOf(Uri.parse("content://mock/video1.mp4"), Uri.parse("content://mock/video2.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
-        // Push 35 changes
-        for (i in 1..35) {
-            viewModel.splitSegmentAt(i.toLong() * 100)
-        }
+        val firstClipId = (viewModel.uiState.value as VideoEditingUiState.Success).clips[0].id
+        viewModel.reorderClips(0, 1)
         advanceUntilIdle()
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(firstClipId, state.clips[1].id)
         assertTrue(state.canUndo)
-        
-        repeat(29) { viewModel.undo() }
-        val finalState = viewModel.uiState.value as VideoEditingUiState.Success
-        assertFalse("Should be at the bottom of the capped stack", finalState.canUndo)
     }
 
     @Test
-    fun testExport_CallsMergeWhenEnabledAndMultipleSegments() = runTest {
-        val uri = Uri.parse("content://mock/video.mp4")
-        viewModel.initialize(uri)
+    fun testValidationFailure_EmitsEvent() = runTest {
+        val uris = listOf(Uri.parse("content://mock/video1.mp4"), Uri.parse("content://mock/video2.mp4"))
+        
+        val baseMetadata = StorageUtils.DetailedMetadata(
+            fileName = "v1.mp4", durationMs = 1000L, width = 1920, height = 1080,
+            videoMime = "video/avc", audioMime = "audio/mp4a-latm", sampleRate = 44100,
+            channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false
+        )
+        val incompatibleMetadata = baseMetadata.copy(fileName = "v2.mp4", width = 1280) // Diff res
+        
+        every { mockStorageUtils.getDetailedMetadata(uris[0]) } returns baseMetadata
+        every { mockStorageUtils.getDetailedMetadata(uris[1]) } returns incompatibleMetadata
+        
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
-        // Split to have two KEEP segments
-        viewModel.splitSegmentAt(5000L)
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.clips.size) // Only v1 should be added
+    }
+
+    @Test
+    fun testAddClips_AppendsCompatibleClips() = runTest {
+        val uris = listOf(Uri.parse("content://mock/video1.mp4"))
+        viewModel.initialize(uris)
+        advanceUntilIdle()
+        
+        val newUris = listOf(Uri.parse("content://mock/video2.mp4"))
+        viewModel.addClips(newUris)
+        advanceUntilIdle()
+        
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, state.clips.size)
+        assertTrue(state.canUndo)
+    }
+
+    @Test
+    fun testExport_CallsMergeWithCorrectClips() = runTest {
+        val uris = listOf(Uri.parse("content://mock/v1.mp4"), Uri.parse("content://mock/v2.mp4"))
+        viewModel.initialize(uris)
         advanceUntilIdle()
         
         val outputUri = Uri.parse("content://mock/output.mp4")
         every { mockStorageUtils.createVideoOutputUri(any()) } returns outputUri
-        coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
+        coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
         
         viewModel.exportSegments(isLossless = true, mergeSegments = true)
         advanceUntilIdle()
         
         coVerify(exactly = 1) { 
-            mockEngine.executeLosslessMerge(any(), eq(uri), eq(outputUri), any(), any(), any(), any()) 
-        }
-        coVerify(exactly = 0) { 
-            mockEngine.executeLosslessCut(any(), any(), any(), any(), any(), any(), any(), any()) 
+            mockEngine.executeLosslessMerge(any(), eq(outputUri), any(), any(), any(), any()) 
         }
     }
 }

@@ -33,6 +33,17 @@
                 android:src="@drawable/ic_home_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/home"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageButton
+                android:id="@+id/btnAddClips"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/add_video"
                 android:layout_marginEnd="16dp"/>
 
         </androidx.appcompat.widget.Toolbar>
