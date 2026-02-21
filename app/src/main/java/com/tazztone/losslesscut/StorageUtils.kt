@@ -18,44 +18,46 @@ class StorageUtils @Inject constructor(
 ) {
 
     fun createVideoOutputUri(fileName: String): Uri? {
-        val resolver = context.contentResolver
-        val videoCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        } else {
-            MediaStore.Video.Media.EXTERNAL_CONTENT_URI
-        }
-
-        val newVideoDetails = ContentValues().apply {
-            put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
-            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/LosslessCut")
-                put(MediaStore.Video.Media.IS_PENDING, 1)
-            }
-        }
-
-        return resolver.insert(videoCollection, newVideoDetails)
+        return createMediaOutputUri(fileName, isAudioOnly = false)
     }
 
     fun createAudioOutputUri(fileName: String): Uri? {
-        val resolver = context.contentResolver
-        val audioCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        } else {
-            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        }
+        return createMediaOutputUri(fileName, isAudioOnly = true)
+    }
 
-        val newAudioDetails = ContentValues().apply {
-            put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
-            // Use audio/mp4 for .m4a files which MediaMuxer creates
-            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+    fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean): Uri? {
+        val resolver = context.contentResolver
+        val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
+        val collection = if (isAudioOnly) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/LosslessCut")
-                put(MediaStore.Audio.Media.IS_PENDING, 1)
+                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+            }
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            } else {
+                MediaStore.Video.Media.EXTERNAL_CONTENT_URI
             }
         }
 
-        return resolver.insert(audioCollection, newAudioDetails)
+        val relativePath = if (isAudioOnly) {
+            Environment.DIRECTORY_MUSIC + "/LosslessCut"
+        } else {
+            Environment.DIRECTORY_MOVIES + "/LosslessCut"
+        }
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+        }
+
+        return resolver.insert(collection, contentValues)
     }
 
     fun finalizeVideo(uri: Uri) {

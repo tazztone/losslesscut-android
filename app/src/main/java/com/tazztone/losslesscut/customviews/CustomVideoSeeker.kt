@@ -61,7 +61,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val minZoom = 1f
     private val maxZoom = 20f
     private var scrollOffsetX = 0f
-    private val timelinePadding = 20f
+    private val timelinePadding = 50f
 
     // Paints
     private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 5f }

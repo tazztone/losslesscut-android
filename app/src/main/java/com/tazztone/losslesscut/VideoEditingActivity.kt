@@ -661,6 +661,15 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             cbMergeSegments.visibility = android.view.View.VISIBLE
         }
 
+        // Disable unchecking video if there's no audio track to keep
+        if (currentState?.hasAudioTrack == false) {
+            cbKeepVideo.isEnabled = false
+            cbKeepVideo.alpha = 0.5f
+            cbKeepVideo.setOnClickListener {
+                Toast.makeText(this, getString(R.string.error_cannot_exclude_video), Toast.LENGTH_SHORT).show()
+            }
+        }
+
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.export_options))
             .setView(dialogView)

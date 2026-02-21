@@ -63,7 +63,8 @@ sealed class VideoEditingUiState {
         val selectedSegmentId: UUID? = null,
         val canUndo: Boolean = false,
         val videoFps: Float = 30f,
-        val isAudioOnly: Boolean = false
+        val isAudioOnly: Boolean = false,
+        val hasAudioTrack: Boolean = true
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
@@ -274,7 +275,8 @@ class VideoEditingViewModel @Inject constructor(
             selectedSegmentId = selectedSegmentId,
             canUndo = history.size > 1,
             videoFps = selectedClip.fps,
-            isAudioOnly = selectedClip.isAudioOnly
+            isAudioOnly = selectedClip.isAudioOnly,
+            hasAudioTrack = selectedClip.audioMime != null
         )
     }
 
@@ -456,7 +458,7 @@ class VideoEditingViewModel @Inject constructor(
                     val extension = if (exportIsAudioOnly) "m4a" else "mp4"
                     val baseName = currentClips[0].fileName.substringBeforeLast(".")
                     val fileName = "${baseName}_merged_${System.currentTimeMillis()}.$extension"
-                    val outputUri = if (exportIsAudioOnly) storageUtils.createAudioOutputUri(fileName) else storageUtils.createVideoOutputUri(fileName)
+                    val outputUri = storageUtils.createMediaOutputUri(fileName, exportIsAudioOnly)
 
                     if (outputUri == null) {
                         _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_create_file))
@@ -485,7 +487,7 @@ class VideoEditingViewModel @Inject constructor(
                     for ((index, segment) in segments.withIndex()) {
                         val extension = if (exportIsAudioOnly) "m4a" else "mp4"
                         val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
-                        val outputUri = if (exportIsAudioOnly) storageUtils.createAudioOutputUri(fileName) else storageUtils.createVideoOutputUri(fileName)
+                        val outputUri = storageUtils.createMediaOutputUri(fileName, exportIsAudioOnly)
 
                         if (outputUri == null) {
                             errors.add(context.getString(R.string.error_create_file))

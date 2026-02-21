@@ -151,6 +151,7 @@ class LosslessEngineImpl @Inject constructor(
             
             if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
             if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
+            val hasVideoTrack = isVideoTrackMap.values.any { it }
 
             val startUs = startMs * 1000
             val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
@@ -159,7 +160,9 @@ class LosslessEngineImpl @Inject constructor(
             retriever.setDataSource(context, inputUri)
             val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
             val finalRotation = rotationOverride ?: originalRotation
-            mMuxer.setOrientationHint(finalRotation)
+            if (hasVideoTrack) {
+                mMuxer.setOrientationHint(finalRotation)
+            }
             retriever.release()
 
             mMuxer.start()
@@ -179,14 +182,6 @@ class LosslessEngineImpl @Inject constructor(
             var effectiveStartUs = -1L
             var lastVideoSampleTimeUs = -1L
             var lastAudioSampleTimeUs = -1L
-            var hasVideoTrack = false
-
-            for ((_, isVideo) in isVideoTrackMap) {
-                if (isVideo) {
-                    hasVideoTrack = true
-                    break
-                }
-            }
 
             // Single loop — let MediaExtractor decide which track is next
             while (true) {
@@ -312,7 +307,9 @@ class LosslessEngineImpl @Inject constructor(
             if (bufferSize < 0) bufferSize = 1024 * 1024
 
             val finalRotation = rotationOverride ?: clips[0].rotation
-            mMuxer.setOrientationHint(finalRotation)
+            if (trackMap.any { it.value == 0 }) {
+                mMuxer.setOrientationHint(finalRotation)
+            }
 
                         mMuxer.start()
                         isMuxerStarted = true

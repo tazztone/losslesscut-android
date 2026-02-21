@@ -93,5 +93,6 @@
                     <string name="error_no_valid_clips">No valid clips were imported.</string>
                     <string name="clips_added">Added %1$d new clip(s)</string>
                     <string name="remove_clip_confirm">Are you sure you want to remove this clip from the playlist?</string>
+                    <string name="error_cannot_exclude_video">Cannot exclude video track as no audio track is available.</string>
                 </resources>
                 

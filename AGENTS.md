@@ -26,15 +26,15 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 
 ### Data & Domain Logic
 - **`LosslessEngine`**: Core muxing orchestration.
-    - `executeLosslessCut`: Trims a single file.
-    - `executeLosslessMerge`: Concatenates multiple `MediaClip` objects or segments. Handles PTS (Presentation Time Stamp) shifting to ensure seamless playback in the output container.
+    - `executeLosslessCut`: Trims a single file. Bypasses video-specific orientation hints if no video track is present.
+    - `executeLosslessMerge`: Concatenates multiple `MediaClip` objects or segments. Handles PTS shifting and validates track availability.
 - **`VideoEditingViewModel`**: State machine for the editor.
-    - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error).
+    - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error). `Success` state includes `hasAudioTrack` flag for UI constraints.
     - **Undo Stack**: In-memory list of `List<MediaClip>` snapshots.
-    - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging based on user selection.
+    - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked.
 
 ### Utilities
-- **StorageUtils**: Handles Scoped Storage. Saves to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio). Manages URI generation and MediaStore finalization.
+- **StorageUtils**: Handles Scoped Storage. Centralizes URI creation via `createMediaOutputUri`, which dynamically selects `Movies/LosslessCut` or `Music/LosslessCut` based on the requested media type and sets appropriate MIME types (`video/mp4` vs `audio/mp4`).
 - **TimeUtils**: Formatting and precision conversion between MS and microseconds.
 - **Permission Management**: The app relies primarily on the **Storage Access Framework (SAF)** and `ActivityResultContracts.OpenMultipleDocuments`. Broad runtime permissions (like `READ_MEDIA_VIDEO` or `POST_NOTIFICATIONS`) are avoided for enhanced privacy and UX.
 

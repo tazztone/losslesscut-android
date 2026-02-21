@@ -19,6 +19,7 @@
 - ➕ **Smart Playlist**: Inline "Add Media" shortcut and intelligent duplicate detection on import.
 - 🎵 **Audio-Only Mode**: Intelligent UI adaptation for audio files with waveform visualization.
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
+- 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
 - 🔄 **Non-Destructive Workflow**: Robust undo/redo stack for all segment operations.
 
@@ -26,9 +27,9 @@
 
 Unlike traditional video editors that decode and re-encode every frame, LosslessCut operates at the **container level**:
 
-1. **Probe**: Scans the file structure to identify stream metadata and keyframe locations.
+1. **Probe**: Scans the file structure to identify stream metadata and track availability.
 2. **Visualize**: Renders a zoomable timeline where keyframes are marked as snapping points.
-3. **Mux**: During export, the app extracts the original encoded samples between cut points and remuxes them into a new container. This ensures 100% quality retention and near-instant processing.
+3. **Mux**: During export, the app extracts the original encoded samples between cut points and remuxes them into a new container. If the video track is excluded, it smartly routes to an audio-only `.m4a` container to preserve original quality.
 
 ## 🚀 Getting Started
 
@@ -47,7 +48,7 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 
 ## 🔒 Permissions & Privacy
 - **Privacy-First Model**: Removed all unnecessary runtime permissions (Notifications, Media Access). The app relies on the **Storage Access Framework (SAF)** for user-initiated file selection.
-- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` or `Music/LosslessCut`. 
+- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio extraction). 
 - **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
 ## 🗺️ Roadmap
