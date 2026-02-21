@@ -51,6 +51,9 @@ class VideoEditingViewModel(
     private val _uiEvents = MutableSharedFlow<String>()
     val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
 
+    private val _isDirty = MutableStateFlow(false)
+    val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
+
     private var currentVideoUri: Uri? = null
     private var videoFileName: String = "video.mp4"
     private var videoDurationMs: Long = 0
@@ -101,6 +104,7 @@ class VideoEditingViewModel(
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))
                 history.clear()
                 history.add(currentSegments.map { it.copy() }) // Push initial state
+                _isDirty.value = false
 
                 updateSuccessState()
             } catch (e: Exception) {
@@ -167,6 +171,7 @@ class VideoEditingViewModel(
         while (history.size > undoLimit) {
             history.removeAt(0)
         }
+        _isDirty.value = true
     }
 
     fun undo() {
@@ -175,6 +180,9 @@ class VideoEditingViewModel(
             currentSegments = history.last().map { it.copy() }
             selectedSegmentId = null
             updateSuccessState()
+            if (history.size <= 1) {
+                _isDirty.value = false
+            }
         }
     }
 
@@ -309,6 +317,7 @@ class VideoEditingViewModel(
 
                 if (errors.isEmpty() && successCount > 0) {
                     _uiEvents.emit(context.getString(R.string.export_success, successCount))
+                    _isDirty.value = false
                     updateSuccessState()
                 } else if (successCount > 0) {
                     _uiEvents.emit(context.getString(R.string.export_partial_success, successCount, errors.joinToString()))

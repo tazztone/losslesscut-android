@@ -73,9 +73,14 @@ class CustomVideoSeeker @JvmOverloads constructor(
         strokeCap = Paint.Cap.ROUND
     }
     private val zoomHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { 
-        color = Color.parseColor("#80FFFFFF")
-        textSize = 48f
+        color = Color.WHITE
+        textSize = 64f
         textAlign = Paint.Align.CENTER
+        setShadowLayer(4f, 2f, 2f, Color.BLACK)
+    }
+    private val zoomHintBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#99000000") // Darker semi-transparent background
+        style = Paint.Style.FILL
     }
     private val timeLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.LTGRAY
@@ -321,7 +326,18 @@ class CustomVideoSeeker @JvmOverloads constructor(
         canvas.restore()
 
         if (showZoomHint) {
-            canvas.drawText(context.getString(R.string.hint_pinch_to_zoom), width / 2f, height / 2f, zoomHintPaint)
+            val text = context.getString(R.string.hint_pinch_to_zoom)
+            val textWidth = zoomHintPaint.measureText(text)
+            val textHeight = zoomHintPaint.textSize
+            val py = height / 2f
+            val px = width / 2f
+            
+            // Draw a rounded rect background
+            val padding = 40f
+            val bgRect = RectF(px - textWidth / 2 - padding, py - textHeight - padding / 2, px + textWidth / 2 + padding, py + padding / 2)
+            canvas.drawRoundRect(bgRect, 20f, 20f, zoomHintBgPaint)
+            
+            canvas.drawText(text, px, py, zoomHintPaint)
         }
     }
 

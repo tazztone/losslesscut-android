@@ -68,4 +68,8 @@
     <string name="lossless_mode_snap">Snap to Keyframes</string>
     <string name="lossless_mode_desc">Locks cuts to keyframes for lossless export without re-encoding.</string>
     <string name="error_segment_too_small_split">Segment too small to split further</string>
+    <string name="exit_confirm_title">Unsaved Changes</string>
+    <string name="exit_confirm_message">You have unsaved changes. Are you sure you want to discard them and exit?</string>
+    <string name="exit_confirm_discard">Discard</string>
+    <string name="exit_confirm_keep_editing">Keep Editing</string>
 </resources>

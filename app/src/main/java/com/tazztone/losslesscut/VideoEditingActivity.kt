@@ -11,6 +11,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.TooltipCompat
 import androidx.lifecycle.lifecycleScope
@@ -130,6 +131,30 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 binding.customVideoSeeker.isLosslessMode = isLosslessMode
             }
         }
+
+        setupBackPressed()
+    }
+
+    private fun setupBackPressed() {
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (viewModel.isDirty.value) {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
+                        .setTitle(R.string.exit_confirm_title)
+                        .setMessage(R.string.exit_confirm_message)
+                        .setPositiveButton(R.string.exit_confirm_discard) { _, _ ->
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
+                        .setNegativeButton(R.string.exit_confirm_keep_editing, null)
+                        .show()
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                }
+            }
+        }
+        onBackPressedDispatcher.addCallback(this, callback)
     }
 
     override fun onResume() {
@@ -186,7 +211,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             Log.e(TAG, "Lottie animation failed to play", e)
         }
 
-        binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed()}
+        binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
         
         binding.btnSave.setOnClickListener { 
