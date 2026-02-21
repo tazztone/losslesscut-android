@@ -285,6 +285,53 @@
         </FrameLayout>
     </LinearLayout>
 
+    <!-- Timecode & Nudge Controls (Above Timeline) -->
+    <LinearLayout
+        android:id="@+id/nudgeControlsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_above="@+id/seekerContainer"
+        android:background="?attr/colorSurface"
+        android:padding="8dp"
+        android:animateLayoutChanges="true">
+
+        <TextView
+            android:id="@+id/tvDuration"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="00:00:00.000 / 00:00:00.000"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginStart="16dp"/>
+
+        <ImageButton
+            android:id="@+id/btnNudgeBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_skip_previous_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
+
+        <ImageButton
+            android:id="@+id/btnPlayPauseControls"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_play_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
+
+        <ImageButton
+            android:id="@+id/btnNudgeForward"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_skip_next_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="?attr/colorOnSurface"/>
+    </LinearLayout>
+
     <!-- Player Area (Takes remaining top space) -->
     <LinearLayout
         android:id="@+id/playerContainer"
@@ -340,7 +387,7 @@
         <!-- Clip List (Visible when multiple clips) -->
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvClips"
-            android:layout_width="140dp"
+            android:layout_width="80dp"
             android:layout_height="match_parent"
             android:background="?attr/colorSurface"
             android:orientation="vertical"

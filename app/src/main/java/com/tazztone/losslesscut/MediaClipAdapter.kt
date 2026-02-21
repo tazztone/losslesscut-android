@@ -49,7 +49,7 @@ class MediaClipAdapter(
             // For now, we'll try to load it from MediaStore/ThumbnailUtils.
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    val size = android.util.Size(120, 80)
+                    val size = android.util.Size(360, 240)
                     val thumbnail = binding.root.context.contentResolver.loadThumbnail(clip.uri, size, null)
                     binding.ivThumbnail.setImageBitmap(thumbnail)
                 }
