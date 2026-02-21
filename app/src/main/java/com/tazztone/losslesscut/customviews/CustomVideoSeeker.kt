@@ -12,6 +12,8 @@ import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.SegmentAction
 import com.tazztone.losslesscut.TrimSegment
@@ -87,6 +89,14 @@ class CustomVideoSeeker @JvmOverloads constructor(
         textSize = 30f
         textAlign = Paint.Align.CENTER
     }
+    private val fingerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+    }
+
+    private var pinchAnimValue = 0f
+    private var pinchAnimator: ValueAnimator? = null
 
     private var showZoomHint = true
 
@@ -95,6 +105,26 @@ class CustomVideoSeeker @JvmOverloads constructor(
     init {
         keepSegmentPaint.color = keepColors[0]
         contentDescription = context.getString(R.string.video_timeline_description)
+        startPinchAnimation()
+    }
+
+    private fun startPinchAnimation() {
+        pinchAnimator?.cancel()
+        pinchAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 1500
+            repeatCount = ValueAnimator.INFINITE
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener {
+                pinchAnimValue = it.animatedValue as Float
+                invalidate()
+            }
+            start()
+        }
+    }
+
+    private fun stopPinchAnimation() {
+        pinchAnimator?.cancel()
+        pinchAnimator = null
     }
 
     // Hit testing
@@ -338,6 +368,16 @@ class CustomVideoSeeker @JvmOverloads constructor(
             canvas.drawRoundRect(bgRect, 20f, 20f, zoomHintBgPaint)
             
             canvas.drawText(text, px, py, zoomHintPaint)
+
+            // Draw animated "fingers"
+            val fingerSpacing = 60f + (pinchAnimValue * 100f)
+            val fingerRadius = 15f * (1f - pinchAnimValue * 0.5f)
+            fingerPaint.alpha = ((1f - pinchAnimValue) * 255).toInt()
+            
+            // Left finger
+            canvas.drawCircle(px - fingerSpacing, py - textHeight * 1.5f, fingerRadius, fingerPaint)
+            // Right finger
+            canvas.drawCircle(px + fingerSpacing, py - textHeight * 1.5f, fingerRadius, fingerPaint)
         }
     }
 
@@ -362,6 +402,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 val isTouchingBottom = event.y > height - 80f
 
                 showZoomHint = false // hide hint on any interaction
+                stopPinchAnimation()
 
                 if (isTouchingBottom) {
                     val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }
