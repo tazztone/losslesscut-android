@@ -9,7 +9,7 @@
         android:id="@+id/cbKeepVideo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Include Video Track"
+        android:text="@string/include_video_track"
         android:checked="true"
         android:textSize="16sp"/>
 
@@ -18,8 +18,18 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="Include Audio Track"
+        android:text="@string/include_audio_track"
         android:checked="true"
         android:textSize="16sp"/>
+
+    <CheckBox
+        android:id="@+id/cbMergeSegments"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/merge_keep_segments"
+        android:checked="false"
+        android:textSize="16sp"
+        android:visibility="gone"/>
 
 </LinearLayout>

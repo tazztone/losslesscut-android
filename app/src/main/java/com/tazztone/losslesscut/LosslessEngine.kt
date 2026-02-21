@@ -31,6 +31,16 @@ interface LosslessEngineInterface {
         keepVideo: Boolean = true,
         rotationOverride: Int? = null
     ): Result<Uri>
+
+    suspend fun executeLosslessMerge(
+        context: Context,
+        inputUri: Uri,
+        outputUri: Uri,
+        segments: List<TrimSegment>,
+        keepAudio: Boolean = true,
+        keepVideo: Boolean = true,
+        rotationOverride: Int? = null
+    ): Result<Uri>
 }
 
 @OptIn(UnstableApi::class)
@@ -242,6 +252,160 @@ class LosslessEngineImpl @Inject constructor(
                 muxer?.release()
             } catch (e: Exception) {
                  Log.e(TAG, "Error releasing muxer", e)
+            }
+            pfd?.close()
+            extractor.release()
+        }
+    }
+
+    override suspend fun executeLosslessMerge(
+        context: Context,
+        inputUri: Uri,
+        outputUri: Uri,
+        segments: List<TrimSegment>,
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        rotationOverride: Int?
+    ): Result<Uri> = withContext(ioDispatcher) {
+        val extractor = MediaExtractor()
+        var muxer: MediaMuxer? = null
+        var isMuxerStarted = false
+        var pfd: android.os.ParcelFileDescriptor? = null
+
+        try {
+            extractor.setDataSource(context, inputUri, null)
+
+            pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
+            if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
+
+            muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+            val mMuxer = muxer
+
+            val trackMap = mutableMapOf<Int, Int>()
+            val isVideoTrackMap = mutableMapOf<Int, Boolean>()
+            var bufferSize = -1
+
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+
+                val isVideo = mime.startsWith("video/")
+                val isAudio = mime.startsWith("audio/")
+
+                if (isVideo && !keepVideo) continue
+                if (isAudio && !keepAudio) continue
+
+                if (isVideo || isAudio) {
+                    trackMap[i] = mMuxer.addTrack(format)
+                    isVideoTrackMap[i] = isVideo
+
+                    if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                        val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
+                        if (size > bufferSize) bufferSize = size
+                    }
+                }
+            }
+
+            if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
+            if (bufferSize < 0) bufferSize = 1024 * 1024
+
+            val retriever = MediaMetadataRetriever()
+            retriever.setDataSource(context, inputUri)
+            val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+            val finalRotation = rotationOverride ?: originalRotation
+            mMuxer.setOrientationHint(finalRotation)
+            retriever.release()
+
+            mMuxer.start()
+            isMuxerStarted = true
+
+            val buffer = ByteBuffer.allocateDirect(bufferSize)
+            val bufferInfo = MediaCodec.BufferInfo()
+
+            for ((extractorTrack, _) in trackMap) {
+                extractor.selectTrack(extractorTrack)
+            }
+
+            var globalOffsetUs = 0L
+            var hasVideoTrack = false
+            for ((_, isVideo) in isVideoTrackMap) {
+                if (isVideo) {
+                    hasVideoTrack = true
+                    break
+                }
+            }
+
+            for (segment in segments) {
+                val startUs = segment.startMs * 1000
+                val endUs = segment.endMs * 1000
+
+                extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+
+                var segmentStartUs = -1L
+                var lastSampleTimeInSegmentUs = 0L
+
+                while (true) {
+                    val sampleSize = extractor.readSampleData(buffer, 0)
+                    if (sampleSize < 0) break
+
+                    val sampleTime = extractor.sampleTime
+                    if (sampleTime > endUs) break
+
+                    val currentTrack = extractor.sampleTrackIndex
+                    val muxerTrack = trackMap[currentTrack]
+                    if (muxerTrack == null) {
+                        extractor.advance()
+                        continue
+                    }
+
+                    if (segmentStartUs == -1L) {
+                        segmentStartUs = sampleTime
+                    }
+
+                    val relativeTime = sampleTime - segmentStartUs
+                    bufferInfo.presentationTimeUs = globalOffsetUs + relativeTime
+                    bufferInfo.offset = 0
+                    bufferInfo.size = sampleSize
+
+                    var flags = 0
+                    if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                        flags = flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+                    }
+                    bufferInfo.flags = flags
+
+                    if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
+                    
+                    lastSampleTimeInSegmentUs = maxOf(lastSampleTimeInSegmentUs, relativeTime)
+
+                    mMuxer.writeSampleData(muxerTrack, buffer, bufferInfo)
+
+                    if (!extractor.advance()) break
+                }
+                
+                // Advance global offset for the next segment. 
+                // We add a small buffer (e.g., 1ms or based on last sample) to avoid overlapping timestamps.
+                // Ideally we'd know the frame duration, but adding lastSampleTimeInSegmentUs + 1 is a safe heuristic for remuxing.
+                globalOffsetUs += lastSampleTimeInSegmentUs + 1000 // Add 1ms gap to be safe and ensure monotonicity
+            }
+
+            if (hasVideoTrack) {
+                storageUtils.finalizeVideo(outputUri)
+            } else {
+                storageUtils.finalizeAudio(outputUri)
+            }
+            Result.success(outputUri)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error executing lossless merge", e)
+            Result.failure(e)
+        } finally {
+            try {
+                if (isMuxerStarted) {
+                    muxer?.stop()
+                }
+                muxer?.release()
+            } catch (e: Exception) {
+                Log.e(TAG, "Error releasing muxer", e)
             }
             pfd?.close()
             extractor.release()

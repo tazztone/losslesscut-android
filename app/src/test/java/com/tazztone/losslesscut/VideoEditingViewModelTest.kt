@@ -146,4 +146,29 @@ class VideoEditingViewModelTest {
         val finalState = viewModel.uiState.value as VideoEditingUiState.Success
         assertFalse("Should be at the bottom of the capped stack", finalState.canUndo)
     }
+
+    @Test
+    fun testExport_CallsMergeWhenEnabledAndMultipleSegments() = runTest {
+        val uri = Uri.parse("content://mock/video.mp4")
+        viewModel.initialize(uri)
+        advanceUntilIdle()
+        
+        // Split to have two KEEP segments
+        viewModel.splitSegmentAt(5000L)
+        advanceUntilIdle()
+        
+        val outputUri = Uri.parse("content://mock/output.mp4")
+        every { mockStorageUtils.createVideoOutputUri(any()) } returns outputUri
+        coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
+        
+        viewModel.exportSegments(isLossless = true, mergeSegments = true)
+        advanceUntilIdle()
+        
+        coVerify(exactly = 1) { 
+            mockEngine.executeLosslessMerge(any(), eq(uri), eq(outputUri), any(), any(), any(), any()) 
+        }
+        coVerify(exactly = 0) { 
+            mockEngine.executeLosslessCut(any(), any(), any(), any(), any(), any(), any(), any()) 
+        }
+    }
 }

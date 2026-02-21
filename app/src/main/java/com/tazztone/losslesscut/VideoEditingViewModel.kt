@@ -343,7 +343,7 @@ class VideoEditingViewModel @Inject constructor(
         updateSuccessState()
     }
 
-    fun exportSegments(isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null) {
+    fun exportSegments(isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null, mergeSegments: Boolean = false) {
         val uri = currentVideoUri ?: return
         val segmentsToExport = currentSegments.filter { it.action == SegmentAction.KEEP }
         if (segmentsToExport.isEmpty()) {
@@ -359,9 +359,10 @@ class VideoEditingViewModel @Inject constructor(
                 val errors = mutableListOf<String>()
                 val exportIsAudioOnly = isAudioOnly || !keepVideo
  
-                for ((index, segment) in segmentsToExport.withIndex()) {
+                if (mergeSegments && segmentsToExport.size > 1) {
                     val extension = if (exportIsAudioOnly) "m4a" else "mp4"
-                    val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
+                    val baseName = videoFileName.substringBeforeLast(".")
+                    val fileName = "${baseName}_merged_${System.currentTimeMillis()}.$extension"
                     val outputUri = if (exportIsAudioOnly) {
                         storageUtils.createAudioOutputUri(fileName)
                     } else {
@@ -369,28 +370,57 @@ class VideoEditingViewModel @Inject constructor(
                     }
 
                     if (outputUri == null) {
-                        errors.add(context.getString(R.string.error_create_file))
-                        continue
+                        _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_create_file))
+                        return@launch
                     }
 
-                    val result = engine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
+                    val result = engine.executeLosslessMerge(context, uri, outputUri, segmentsToExport, keepAudio, keepVideo, rotationOverride)
                     result.fold(
-                        onSuccess = { successCount++ },
-                        onFailure = { errors.add(context.getString(R.string.error_segment_failed, index, it.message)) }
+                        onSuccess = {
+                            val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, 1) 
+                                     else context.getString(R.string.export_success, 1)
+                            _uiEvents.emit(msg)
+                            _isDirty.value = false
+                            updateSuccessState()
+                        },
+                        onFailure = {
+                            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, it.message))
+                        }
                     )
-                }
-
-                if (errors.isEmpty() && successCount > 0) {
-                    val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, successCount) 
-                             else context.getString(R.string.export_success, successCount)
-                    _uiEvents.emit(msg)
-                    _isDirty.value = false
-                    updateSuccessState()
-                } else if (successCount > 0) {
-                    _uiEvents.emit(context.getString(R.string.export_partial_success, successCount, errors.joinToString()))
-                    updateSuccessState()
                 } else {
-                    _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, errors.joinToString()))
+                    for ((index, segment) in segmentsToExport.withIndex()) {
+                        val extension = if (exportIsAudioOnly) "m4a" else "mp4"
+                        val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
+                        val outputUri = if (exportIsAudioOnly) {
+                            storageUtils.createAudioOutputUri(fileName)
+                        } else {
+                            storageUtils.createVideoOutputUri(fileName)
+                        }
+
+                        if (outputUri == null) {
+                            errors.add(context.getString(R.string.error_create_file))
+                            continue
+                        }
+
+                        val result = engine.executeLosslessCut(context, uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
+                        result.fold(
+                            onSuccess = { successCount++ },
+                            onFailure = { errors.add(context.getString(R.string.error_segment_failed, index, it.message)) }
+                        )
+                    }
+
+                    if (errors.isEmpty() && successCount > 0) {
+                        val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, successCount) 
+                                 else context.getString(R.string.export_success, successCount)
+                        _uiEvents.emit(msg)
+                        _isDirty.value = false
+                        updateSuccessState()
+                    } else if (successCount > 0) {
+                        _uiEvents.emit(context.getString(R.string.export_partial_success, successCount, errors.joinToString()))
+                        updateSuccessState()
+                    } else {
+                        _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, errors.joinToString()))
+                    }
                 }
             } else {
                 _uiEvents.emit(context.getString(R.string.precise_mode_coming_soon))

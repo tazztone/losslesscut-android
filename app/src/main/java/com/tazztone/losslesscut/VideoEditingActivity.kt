@@ -533,18 +533,26 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
         val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
         val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
+        val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
         
+        val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
+        val keepSegmentsCount = currentState?.segments?.count { it.action == SegmentAction.KEEP } ?: 0
+        if (keepSegmentsCount > 1) {
+            cbMergeSegments.visibility = android.view.View.VISIBLE
+        }
+
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.export_options))
             .setView(dialogView)
             .setPositiveButton(getString(R.string.export)) { _, _ ->
                 val keepVideo = cbKeepVideo.isChecked
                 val keepAudio = cbKeepAudio.isChecked
+                val mergeSegments = cbMergeSegments.isChecked
                 if (!keepVideo && !keepAudio) {
                     Toast.makeText(this, getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
                 } else {
                     val rotationOverride = if (currentRotation != 0) currentRotation else null
-                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride)
+                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments)
                 }
             }
             .setNegativeButton(getString(R.string.cancel), null)

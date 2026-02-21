@@ -85,5 +85,9 @@
     <string name="error_failed_open_pfd">Failed to open output file</string>
     <string name="error_no_tracks_found">No video or audio tracks found in file</string>
     <string name="export_success_audio">Successfully exported %1$d audio clip(s) to Music/LosslessCut</string>
-    <string name="audio_only_placeholder_desc">Audio file: %1$s</string>
-</resources>
+        <string name="audio_only_placeholder_desc">Audio file: %1$s</string>
+        <string name="include_video_track">Include Video Track</string>
+        <string name="include_audio_track">Include Audio Track</string>
+        <string name="merge_keep_segments">Merge KEEP segments into one file</string>
+    </resources>
+    
