@@ -27,8 +27,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private var videoDurationMs = 0L
 
     var onSeekListener: ((Long) -> Unit)? = null
+    var onSeekStart: (() -> Unit)? = null
+    var onSeekEnd: (() -> Unit)? = null
     var onSegmentSelected: ((UUID?) -> Unit)? = null
-    var onSegmentBoundsChanged: ((UUID, Long, Long) -> Unit)? = null
+    var onSegmentBoundsChanged: ((UUID, Long, Long, Long) -> Unit)? = null
     var onSegmentBoundsDragEnd: (() -> Unit)? = null
 
     private var keyframes = listOf<Long>() // milliseconds
@@ -63,13 +65,11 @@ class CustomVideoSeeker @JvmOverloads constructor(
         color = Color.WHITE
         style = Paint.Style.STROKE
         strokeWidth = 8f
-        setShadowLayer(10f, 0f, 0f, Color.BLACK)
     }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         strokeWidth = 10f
         strokeCap = Paint.Cap.ROUND
-        setShadowLayer(5f, 0f, 0f, Color.DKGRAY)
     }
     private val zoomHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { 
         color = Color.parseColor("#80FFFFFF")
@@ -80,7 +80,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
         color = Color.LTGRAY
         textSize = 30f
         textAlign = Paint.Align.CENTER
-        setShadowLayer(2f, 1f, 1f, Color.BLACK)
     }
 
     private var showZoomHint = true
@@ -90,8 +89,6 @@ class CustomVideoSeeker @JvmOverloads constructor(
     init {
         keepSegmentPaint.color = keepColors[0]
         contentDescription = context.getString(R.string.video_timeline_description)
-        // Enable software layer for shadow support if needed, though most work on HW in recent Android
-        setLayerType(LAYER_TYPE_SOFTWARE, null)
     }
 
     // Hit testing
@@ -133,11 +130,11 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
             if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
                 val newStart = touchTimeMs.coerceAtMost(segment.endMs - 100)
-                onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs)
+                onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
                 seekPositionMs = newStart
             } else {
                 val newEnd = touchTimeMs.coerceAtLeast(segment.startMs + 100)
-                onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd)
+                onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
                 seekPositionMs = newEnd
             }
             invalidate()
@@ -355,6 +352,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         if (kotlin.math.abs(segment.startMs - touchTimeMs) < hitTestThresholdMs) {
                             currentTouchTarget = TouchTarget.HANDLE_LEFT
                             activeSegmentId = segment.id
+                            onSeekStart?.invoke()
                             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                             if (segment.id != selectedSegmentId) {
                                 onSegmentSelected?.invoke(segment.id)
@@ -363,6 +361,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         } else if (kotlin.math.abs(segment.endMs - touchTimeMs) < hitTestThresholdMs) {
                             currentTouchTarget = TouchTarget.HANDLE_RIGHT
                             activeSegmentId = segment.id
+                            onSeekStart?.invoke()
                             performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                             if (segment.id != selectedSegmentId) {
                                 onSegmentSelected?.invoke(segment.id)
@@ -374,6 +373,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 
                 if (kotlin.math.abs(seekPositionMs - touchTimeMs) < hitTestThresholdMs) {
                     currentTouchTarget = TouchTarget.PLAYHEAD
+                    onSeekStart?.invoke()
                     performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                     return true
                 }
@@ -406,12 +406,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
                         if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
                             val minAllowed = prevSegment?.endMs ?: 0L
                             val newStart = newTimeMs.coerceIn(minAllowed, segment.endMs - 100)
-                            onSegmentBoundsChanged?.invoke(id, newStart, segment.endMs)
+                            onSegmentBoundsChanged?.invoke(id, newStart, segment.endMs, newStart)
                             seekPositionMs = newStart
                         } else {
                             val maxAllowed = nextSegment?.startMs ?: videoDurationMs
                             val newEnd = newTimeMs.coerceIn(segment.startMs + 100, maxAllowed)
-                            onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd)
+                            onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd, newEnd)
                             seekPositionMs = newEnd
                         }
                     }
@@ -444,10 +444,14 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 removeCallbacks(autoPanRunnable)
 
                 if (currentTouchTarget == TouchTarget.HANDLE_LEFT || currentTouchTarget == TouchTarget.HANDLE_RIGHT) {
+                    onSeekEnd?.invoke()
                     onSegmentBoundsDragEnd?.invoke()
                 }
                 
                 if (currentTouchTarget != TouchTarget.NONE) {
+                    if (currentTouchTarget == TouchTarget.PLAYHEAD) {
+                        onSeekEnd?.invoke()
+                    }
                     onSeekListener?.invoke(seekPositionMs)
                 }
                 currentTouchTarget = TouchTarget.NONE

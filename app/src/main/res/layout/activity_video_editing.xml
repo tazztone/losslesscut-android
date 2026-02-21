@@ -210,7 +210,7 @@
                     android:id="@+id/btnRotate"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:src="@drawable/ic_rotate_24"
+                    android:src="@drawable/ic_crop_portrait_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="?attr/colorOnSurface"
                     android:contentDescription="@string/rotate"/>
@@ -320,7 +320,6 @@
             android:id="@+id/playerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:surface_type="texture_view"
             app:use_controller="false" />
 
         <ImageButton

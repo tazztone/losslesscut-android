@@ -47,7 +47,6 @@
                 android:id="@+id/playerView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                app:surface_type="texture_view"
                 app:use_controller="false" />
 
             <ImageButton
@@ -248,7 +247,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:src="@android:drawable/ic_menu_rotate"
+                android:src="@drawable/ic_crop_portrait_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Rotate"/>
         </LinearLayout>

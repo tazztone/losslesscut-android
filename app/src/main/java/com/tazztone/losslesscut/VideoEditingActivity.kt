@@ -61,14 +61,9 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
     
-    private var currentVideoWidth = 0
-    private var currentVideoHeight = 0
 
     private val playerListener = object : Player.Listener {
         override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
-            currentVideoWidth = videoSize.width
-            currentVideoHeight = videoSize.height
-            applyVideoTransform(currentVideoWidth, currentVideoHeight)
         }
 
         override fun onPlaybackStateChanged(state: Int) {
@@ -129,7 +124,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
             currentRotation = it.getInt(KEY_ROTATION, 0)
-            updateRotationBadge()
+            updateRotationPreview(animate = false)
             isLosslessMode = it.getBoolean(KEY_LOSSLESS_MODE, true)
             if (::binding.isInitialized) {
                 binding.customVideoSeeker.isLosslessMode = isLosslessMode
@@ -242,51 +237,30 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         
         binding.btnRotate.setOnClickListener { 
             currentRotation = (currentRotation + 90) % 360
-            updateRotationBadge()
+            updateRotationPreview(animate = true)
             Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
         }
         TooltipCompat.setTooltipText(binding.btnRotate, getString(R.string.rotate))
     }
 
-    private fun updateRotationBadge() {
-        binding.badgeRotate?.text = "${currentRotation}°"
-        binding.badgeRotate?.visibility = if (currentRotation == 0) View.GONE else View.VISIBLE
+    private fun updateRotationPreview(animate: Boolean = true) {
+        // Hide the degree text badge since the icon is now the visual indicator
+        binding.badgeRotate?.visibility = View.GONE
         
-        // Reset old View-level scaling/rotation hacks as we now use TextureView transforms
-        binding.playerView.scaleX = 1.0f
-        binding.playerView.scaleY = 1.0f
-        binding.playerView.rotation = 0f
-        
-        binding.playerView.post {
-            if (currentVideoWidth > 0 && currentVideoHeight > 0) {
-                applyVideoTransform(currentVideoWidth, currentVideoHeight)
-                
-                // Force a frame refresh by seeking slightly and back
-                val currentPos = player.currentPosition
-                player.seekTo(currentPos + 1)
-                player.seekTo(currentPos)
-                
-                // Invalidate the surface to be extra sure
-                (binding.playerView.videoSurfaceView as? android.view.TextureView)?.invalidate()
-            }
+        // Rotate the button itself to show the export orientation
+        if (animate) {
+            binding.btnRotate.animate()
+                .rotation(currentRotation.toFloat())
+                .setDuration(250)
+                .start()
+        } else {
+            binding.btnRotate.rotation = currentRotation.toFloat()
         }
-    }
 
-    private fun applyVideoTransform(videoWidth: Int, videoHeight: Int) {
-        val tv = binding.playerView.videoSurfaceView as? android.view.TextureView ?: return
-        val vw = binding.playerView.width.toFloat()
-        val vh = binding.playerView.height.toFloat()
-        if (vw == 0f || vh == 0f) return
-
-        val isPortrait = currentRotation % 180 != 0
-        val effectiveW = if (isPortrait) videoHeight.toFloat() else videoWidth.toFloat()
-        val effectiveH = if (isPortrait) videoWidth.toFloat() else videoHeight.toFloat()
-        val scale = minOf(vw / effectiveW, vh / effectiveH)
-
-        val matrix = android.graphics.Matrix()
-        matrix.postRotate(currentRotation.toFloat(), videoWidth / 2f, videoHeight / 2f)
-        matrix.postScale(scale, scale, vw / 2f, vh / 2f)
-        tv.setTransform(matrix)
+        // Ensure the video player stays completely un-squished and un-rotated
+        binding.playerView.rotation = 0f
+        binding.playerView.scaleX = 1f
+        binding.playerView.scaleY = 1f
     }
 
     private fun setInPoint() {
@@ -443,20 +417,30 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun setupCustomSeeker() {
-        binding.customVideoSeeker.onSeekListener = { seekPositionMs ->
+        binding.customVideoSeeker.onSeekStart = {
             isDraggingTimeline = true
+            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
+        }
+        
+        binding.customVideoSeeker.onSeekEnd = {
+            isDraggingTimeline = false
+            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.DEFAULT)
+        }
+
+        binding.customVideoSeeker.onSeekListener = { seekPositionMs ->
             player.seekTo(seekPositionMs)
             updateDurationDisplay(seekPositionMs, player.duration)
-            isDraggingTimeline = false
         }
         
         binding.customVideoSeeker.onSegmentSelected = { id ->
             viewModel.selectSegment(id)
         }
         
-        binding.customVideoSeeker.onSegmentBoundsChanged = { id, start, end ->
+        binding.customVideoSeeker.onSegmentBoundsChanged = { id, start, end, seekPos ->
             isDraggingTimeline = true
             viewModel.updateSegmentBounds(id, start, end)
+            player.seekTo(seekPos)
+            updateDurationDisplay(seekPos, player.duration)
         }
         
         binding.customVideoSeeker.onSegmentBoundsDragEnd = {
