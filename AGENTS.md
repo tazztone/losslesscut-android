@@ -52,10 +52,13 @@
 3. **Background/AI**: `WorkManager` for large background exports; AI-based automatic silence/motion detection.
 
 ## 6. Context7 Library IDs
-Use the `query-docs` tool with these IDs for up-to-date documentation and code examples:
+Use the Context7 MCP server's `query-docs` tool with these IDs for up-to-date documentation and code examples:
 - Media3 (ExoPlayer): `/androidx/media`
 - Coroutines: `/kotlin/kotlinx.coroutines`
 - AndroidX: `/androidx/androidx`
 - Material: `/material-components/material-components-android`
 - Lottie: `/airbnb/lottie-android`
 - Robolectric: `/robolectric/robolectric`
+
+**Example Usage**:
+`mcp_context7_query-docs(libraryId="/androidx/media", query="How to initialize ExoPlayer with Media3?")`

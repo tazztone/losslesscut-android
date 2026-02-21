@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -58,6 +59,17 @@ class VideoEditingViewModel(
     private var history = mutableListOf<List<TrimSegment>>()
     private var currentSegments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
+    
+    private val preferences = AppPreferences(application)
+    private var undoLimit = 30
+
+    init {
+        viewModelScope.launch {
+            preferences.undoLimitFlow.collect {
+                undoLimit = it
+            }
+        }
+    }
 
     fun initialize(videoUri: Uri?) {
         if (videoUri == null) {
@@ -148,8 +160,7 @@ class VideoEditingViewModel(
         
         history.add(newState)
         
-        val limit = AppPreferences.getUndoLimit(getApplication<Application>())
-        while (history.size > limit) {
+        while (history.size > undoLimit) {
             history.removeAt(0)
         }
     }
@@ -296,11 +307,11 @@ class VideoEditingViewModel(
                 val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
                 
                 if (bitmap != null) {
-                    val formatSetting = AppPreferences.getSnapshotFormat(context)
+                    val formatSetting = preferences.snapshotFormatFlow.first()
                     val isJpeg = formatSetting == "JPEG"
                     val ext = if (isJpeg) "jpeg" else "png"
                     val compressFormat = if (isJpeg) android.graphics.Bitmap.CompressFormat.JPEG else android.graphics.Bitmap.CompressFormat.PNG
-                    val quality = if (isJpeg) AppPreferences.getJpgQuality(context) else 100
+                    val quality = if (isJpeg) preferences.jpgQualityFlow.first() else 100
 
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = StorageUtils.createImageOutputUri(context, fileName)

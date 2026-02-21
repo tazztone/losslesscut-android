@@ -7,8 +7,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
+import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.tazztone.losslesscut.databinding.BottomSheetSettingsBinding
+import kotlinx.coroutines.launch
 
 class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
@@ -21,9 +23,15 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     private var listener: SettingsListener? = null
     private var initialLosslessState: Boolean = true
+    private lateinit var preferences: AppPreferences
 
     fun setInitialState(isLossless: Boolean) {
         this.initialLosslessState = isLossless
+    }
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        preferences = AppPreferences(requireContext())
     }
 
     override fun onAttach(context: Context) {
@@ -55,15 +63,21 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
         }
 
         // Initialize Undo Limit
-        val currentLimit = AppPreferences.getUndoLimit(requireContext())
-        binding.tvUndoValue.text = currentLimit.toString()
-        binding.seekBarUndoLimit.progress = currentLimit
+        viewLifecycleOwner.lifecycleScope.launch {
+            preferences.undoLimitFlow.collect { currentLimit ->
+                binding.tvUndoValue.text = currentLimit.toString()
+                binding.seekBarUndoLimit.progress = currentLimit
+            }
+        }
+        
         binding.seekBarUndoLimit.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val limit = progress.coerceAtLeast(1)
-                binding.tvUndoValue.text = limit.toString()
                 if (fromUser) {
-                    AppPreferences.setUndoLimit(requireContext(), limit)
+                    val limit = progress.coerceAtLeast(1)
+                    binding.tvUndoValue.text = limit.toString()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        preferences.setUndoLimit(limit)
+                    }
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -71,27 +85,38 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
         })
 
         // Initialize Snapshot Format Toggle
-        val currentFormat = AppPreferences.getSnapshotFormat(requireContext())
-        val isJpeg = currentFormat == "JPEG"
-        binding.switchSnapshotJpeg.isChecked = isJpeg
-        binding.layoutJpgQuality.visibility = if (isJpeg) View.VISIBLE else View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            preferences.snapshotFormatFlow.collect { currentFormat ->
+                val isJpeg = currentFormat == "JPEG"
+                binding.switchSnapshotJpeg.isChecked = isJpeg
+                binding.layoutJpgQuality.visibility = if (isJpeg) View.VISIBLE else View.GONE
+            }
+        }
 
         binding.switchSnapshotJpeg.setOnCheckedChangeListener { _, isChecked ->
             val format = if (isChecked) "JPEG" else "PNG"
-            AppPreferences.setSnapshotFormat(requireContext(), format)
+            viewLifecycleOwner.lifecycleScope.launch {
+                preferences.setSnapshotFormat(format)
+            }
             binding.layoutJpgQuality.visibility = if (isChecked) View.VISIBLE else View.GONE
         }
         
         // Initialize JPG Quality
-        val currentJpgQuality = AppPreferences.getJpgQuality(requireContext())
-        binding.tvJpgQualityValue.text = currentJpgQuality.toString()
-        binding.seekBarJpgQuality.progress = currentJpgQuality
+        viewLifecycleOwner.lifecycleScope.launch {
+            preferences.jpgQualityFlow.collect { currentJpgQuality ->
+                binding.tvJpgQualityValue.text = currentJpgQuality.toString()
+                binding.seekBarJpgQuality.progress = currentJpgQuality
+            }
+        }
+        
         binding.seekBarJpgQuality.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val quality = progress.coerceAtLeast(1)
-                binding.tvJpgQualityValue.text = quality.toString()
                 if (fromUser) {
-                    AppPreferences.setJpgQuality(requireContext(), quality)
+                    val quality = progress.coerceAtLeast(1)
+                    binding.tvJpgQualityValue.text = quality.toString()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        preferences.setJpgQuality(quality)
+                    }
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}

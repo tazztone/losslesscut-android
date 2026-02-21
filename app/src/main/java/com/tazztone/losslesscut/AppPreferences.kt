@@ -1,39 +1,79 @@
 package com.tazztone.losslesscut
 
 import android.content.Context
-import android.content.SharedPreferences
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import java.io.IOException
 
-object AppPreferences {
-    private const val PREFS_NAME = "lossless_cut_prefs"
-    private const val KEY_UNDO_LIMIT = "undo_limit"
-    private const val KEY_SNAPSHOT_FORMAT = "snapshot_format"
-    private const val KEY_JPG_QUALITY = "jpg_quality"
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "lossless_cut_prefs")
 
-    private fun getPrefs(context: Context): SharedPreferences {
-        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class AppPreferences(private val context: Context) {
+
+    private object PreferencesKeys {
+        val UNDO_LIMIT = intPreferencesKey("undo_limit")
+        val SNAPSHOT_FORMAT = stringPreferencesKey("snapshot_format")
+        val JPG_QUALITY = intPreferencesKey("jpg_quality")
     }
 
-    fun getUndoLimit(context: Context): Int {
-        return getPrefs(context).getInt(KEY_UNDO_LIMIT, 30) // Default 30
+    val undoLimitFlow: Flow<Int> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.UNDO_LIMIT] ?: 30
+        }
+
+    val snapshotFormatFlow: Flow<String> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.SNAPSHOT_FORMAT] ?: "PNG"
+        }
+
+    val jpgQualityFlow: Flow<Int> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.JPG_QUALITY] ?: 95
+        }
+
+    suspend fun setUndoLimit(limit: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.UNDO_LIMIT] = limit
+        }
     }
 
-    fun setUndoLimit(context: Context, limit: Int) {
-        getPrefs(context).edit().putInt(KEY_UNDO_LIMIT, limit).apply()
+    suspend fun setSnapshotFormat(format: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SNAPSHOT_FORMAT] = format
+        }
     }
 
-    fun getSnapshotFormat(context: Context): String {
-        return getPrefs(context).getString(KEY_SNAPSHOT_FORMAT, "PNG") ?: "PNG"
-    }
-
-    fun setSnapshotFormat(context: Context, format: String) {
-        getPrefs(context).edit().putString(KEY_SNAPSHOT_FORMAT, format).apply()
-    }
-
-    fun getJpgQuality(context: Context): Int {
-        return getPrefs(context).getInt(KEY_JPG_QUALITY, 95) // Default 95
-    }
-
-    fun setJpgQuality(context: Context, quality: Int) {
-        getPrefs(context).edit().putInt(KEY_JPG_QUALITY, quality).apply()
+    suspend fun setJpgQuality(quality: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.JPG_QUALITY] = quality
+        }
     }
 }
