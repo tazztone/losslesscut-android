@@ -235,26 +235,30 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnSnapshot.setOnClickListener { extractSnapshot() }
         TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
         
-        binding.btnRotate.setOnClickListener { 
+        binding.btnRotateContainer.setOnClickListener { 
             currentRotation = (currentRotation + 90) % 360
             updateRotationPreview(animate = true)
             Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
         }
-        TooltipCompat.setTooltipText(binding.btnRotate, getString(R.string.rotate))
+        TooltipCompat.setTooltipText(binding.btnRotateContainer, getString(R.string.rotate))
     }
 
     private fun updateRotationPreview(animate: Boolean = true) {
         // Hide the degree text badge since the icon is now the visual indicator
         binding.badgeRotate?.visibility = View.GONE
         
-        // Rotate the button itself to show the export orientation
+        val isZero = currentRotation == 0
+        binding.btnRotate.visibility = if (isZero) View.VISIBLE else View.GONE
+        binding.tvRotateEmoji.visibility = if (isZero) View.GONE else View.VISIBLE
+        
+        // Always rotate the container. This makes the logic much simpler and more robust.
         if (animate) {
-            binding.btnRotate.animate()
+            binding.btnRotateContainer.animate()
                 .rotation(currentRotation.toFloat())
                 .setDuration(250)
                 .start()
         } else {
-            binding.btnRotate.rotation = currentRotation.toFloat()
+            binding.btnRotateContainer.rotation = currentRotation.toFloat()
         }
 
         // Ensure the video player stays completely un-squished and un-rotated

@@ -238,18 +238,36 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="Snapshot"/>
                 
-            <ImageButton
-        
-                android:tooltipText="@string/rotate"
-            android:id="@+id/btnRotate"
-                android:minWidth="40dp"
-                android:minHeight="40dp"
+            <FrameLayout
+                android:id="@+id/btnRotateContainer"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:src="@drawable/ic_crop_portrait_24"
+                android:gravity="center"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Rotate"/>
+                android:clickable="true"
+                android:focusable="true">
+                <ImageButton
+                    android:id="@+id/btnRotate"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_rotate_24"
+                    android:background="@android:color/transparent"
+                    android:contentDescription="Rotate"
+                    android:clickable="false"
+                    android:focusable="false"/>
+                <TextView
+                    android:id="@+id/tvRotateEmoji"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="👤"
+                    android:textSize="24sp"
+                    android:visibility="gone"
+                    android:clickable="false"
+                    android:focusable="false"/>
+            </FrameLayout>
         </LinearLayout>
 
     </LinearLayout>
