@@ -301,6 +301,28 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch { loadClipData(selectedClipIndex) }
     }
 
+    fun removeClip(index: Int) {
+        if (currentClips.size <= 1 || index < 0 || index >= currentClips.size) return
+        
+        val newClips = currentClips.toMutableList()
+        newClips.removeAt(index)
+        
+        if (selectedClipIndex >= newClips.size) {
+            selectedClipIndex = newClips.size - 1
+        } else if (selectedClipIndex == index) {
+            // If we removed the currently selected clip, stay at the same index 
+            // (which is now the next clip) unless we were at the end.
+            selectedClipIndex = selectedClipIndex.coerceAtMost(newClips.size - 1)
+        } else if (selectedClipIndex > index) {
+            selectedClipIndex--
+        }
+
+        currentClips = newClips
+        pushToHistory()
+        selectedSegmentId = null
+        viewModelScope.launch { loadClipData(selectedClipIndex) }
+    }
+
     fun reorderClips(fromIndex: Int, toIndex: Int) {
         val newClips = currentClips.toMutableList()
         val clip = newClips.removeAt(fromIndex)

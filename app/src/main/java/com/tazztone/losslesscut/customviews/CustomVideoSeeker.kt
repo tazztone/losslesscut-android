@@ -762,4 +762,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
         this.waveformData = data
         invalidate()
     }
+
+    fun resetView() {
+        zoomFactor = 1f
+        scrollOffsetX = 0f
+        invalidate()
+    }
 }

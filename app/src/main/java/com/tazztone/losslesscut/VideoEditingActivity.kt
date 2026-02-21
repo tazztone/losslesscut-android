@@ -216,6 +216,18 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 viewModel.reorderClips(from, to)
                 // Update player playlist order
                 player.moveMediaItem(from, to)
+            },
+            onClipLongPressed = { index ->
+                val clip = (viewModel.uiState.value as? VideoEditingUiState.Success)?.clips?.getOrNull(index) ?: return@MediaClipAdapter
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                    .setTitle(getString(R.string.delete))
+                    .setMessage(getString(R.string.remove_clip_confirm))
+                    .setPositiveButton(getString(R.string.delete)) { _, _ ->
+                        viewModel.removeClip(index)
+                        player.removeMediaItem(index)
+                    }
+                    .setNegativeButton(getString(R.string.cancel), null)
+                    .show()
             }
         )
         binding.rvClips?.adapter = clipAdapter
@@ -473,16 +485,23 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                     is VideoEditingUiState.Success -> {
                         binding.loadingScreen.root.visibility = View.GONE
                         
+                        val selectedClip = state.clips[state.selectedClipIndex]
+                        
                         // Check if we need to initialize or update the player items
                         val currentUris = List(player.mediaItemCount) { player.getMediaItemAt(it).localConfiguration?.uri }
                         val newStateUris = state.clips.map { it.uri }
                         
                         if (currentUris != newStateUris) {
                             initializePlayer(newStateUris, state.selectedClipIndex)
+                            binding.customVideoSeeker.resetView()
                         } else if (player.currentMediaItemIndex != state.selectedClipIndex) {
                             player.seekTo(state.selectedClipIndex, 0L)
+                            binding.customVideoSeeker.resetView()
                         }
 
+                        // Update timeline duration for the selected clip
+                        binding.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
+                        
                         // Update clip list visibility and adapter
                         if (state.clips.size > 1) {
                             binding.rvClips?.visibility = View.VISIBLE

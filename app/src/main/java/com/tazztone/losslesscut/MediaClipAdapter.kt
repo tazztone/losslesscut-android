@@ -11,7 +11,8 @@ import java.util.Collections
 
 class MediaClipAdapter(
     private val onClipSelected: (Int) -> Unit,
-    private val onClipsReordered: (Int, Int) -> Unit
+    private val onClipsReordered: (Int, Int) -> Unit,
+    private val onClipLongPressed: (Int) -> Unit
 ) : RecyclerView.Adapter<MediaClipAdapter.ClipViewHolder>() {
 
     private var clips: MutableList<MediaClip> = mutableListOf()
@@ -49,7 +50,7 @@ class MediaClipAdapter(
             // For now, we'll try to load it from MediaStore/ThumbnailUtils.
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    val size = android.util.Size(360, 240)
+                    val size = android.util.Size(512, 512)
                     val thumbnail = binding.root.context.contentResolver.loadThumbnail(clip.uri, size, null)
                     binding.ivThumbnail.setImageBitmap(thumbnail)
                 }
@@ -58,6 +59,10 @@ class MediaClipAdapter(
             }
 
             binding.root.setOnClickListener { onClipSelected(bindingAdapterPosition) }
+            binding.root.setOnLongClickListener { 
+                onClipLongPressed(bindingAdapterPosition)
+                true
+            }
         }
     }
 }

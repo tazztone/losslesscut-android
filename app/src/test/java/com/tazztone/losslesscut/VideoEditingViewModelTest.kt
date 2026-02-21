@@ -186,6 +186,21 @@ class VideoEditingViewModelTest {
     }
 
     @Test
+    fun testRemoveClip() = runTest {
+        val uris = listOf(Uri.parse("content://mock/v1.mp4"), Uri.parse("content://mock/v2.mp4"))
+        viewModel.initialize(uris)
+        advanceUntilIdle()
+        
+        viewModel.removeClip(0)
+        advanceUntilIdle()
+        
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.clips.size)
+        assertEquals("mock_video.mp4", state.clips[0].fileName) // v2 because v1 was removed
+        assertTrue(state.canUndo)
+    }
+
+    @Test
     fun testExport_CallsMergeWithCorrectClips() = runTest {
         val uris = listOf(Uri.parse("content://mock/v1.mp4"), Uri.parse("content://mock/v2.mp4"))
         viewModel.initialize(uris)
