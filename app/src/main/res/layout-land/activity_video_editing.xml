@@ -210,7 +210,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:src="@drawable/ic_skip_previous_24"
-                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:background="@drawable/glow_button_bg"
                         android:contentDescription="@string/nudge_backward"
                         android:tooltipText="@string/nudge_backward"
                         app:tint="@android:color/white"/>
@@ -220,7 +220,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:src="@drawable/ic_play_24"
-                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:background="@drawable/glow_button_bg"
                         android:contentDescription="@string/play_pause"
                         android:tooltipText="@string/play_pause"
                         app:tint="@android:color/white"/>
@@ -230,7 +230,7 @@
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:src="@drawable/ic_skip_next_24"
-                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:background="@drawable/glow_button_bg"
                         android:contentDescription="@string/nudge_forward"
                         android:tooltipText="@string/nudge_forward"
                         app:tint="@android:color/white"/>

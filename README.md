@@ -15,6 +15,8 @@
 - 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
 - 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
 - 🧲 **Keyframe Snapping**: Haptic feedback and visual snapping to keyframes ensure cuts are perfectly aligned for lossless export.
+- 📱 **Adaptive UI**: Ergonomic landscape sidebars and a unified floating player overlay for maximum screen real estate.
+- ➕ **Smart Playlist**: Inline "Add Media" shortcut and intelligent duplicate detection on import.
 - 🎵 **Audio-Only Mode**: Intelligent UI adaptation for audio files with waveform visualization.
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
@@ -44,7 +46,8 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 ```
 
 ## 🔒 Permissions & Privacy
-- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` or `Music/LosslessCut`. No broad storage permissions required on modern Android.
+- **Privacy-First Model**: Removed all unnecessary runtime permissions (Notifications, Media Access). The app relies on the **Storage Access Framework (SAF)** for user-initiated file selection.
+- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` or `Music/LosslessCut`. 
 - **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
 ## 🗺️ Roadmap

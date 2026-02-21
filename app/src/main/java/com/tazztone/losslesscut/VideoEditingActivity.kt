@@ -62,7 +62,36 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     
     private val addClipsLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) {
-            viewModel.addClips(uris)
+            val currentState = viewModel.uiState.value
+            if (currentState is VideoEditingUiState.Success) {
+                val existingUris = currentState.clips.map { it.uri }.toSet()
+                val duplicateUris = uris.filter { it in existingUris }
+                val nonDuplicateUris = uris.filter { it !in existingUris }
+
+                if (duplicateUris.isEmpty()) {
+                    viewModel.addClips(uris)
+                } else if (nonDuplicateUris.isEmpty()) {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.add_video)
+                        .setMessage("Selected files are already in the playlist.")
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                } else {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(R.string.add_video)
+                        .setMessage("${duplicateUris.size} selected file(s) are already in the playlist. Skip duplicates?")
+                        .setPositiveButton("Skip Duplicates") { _, _ ->
+                            viewModel.addClips(nonDuplicateUris)
+                        }
+                        .setNegativeButton("Import All") { _, _ ->
+                            viewModel.addClips(uris)
+                        }
+                        .setNeutralButton(android.R.string.cancel, null)
+                        .show()
+                }
+            } else {
+                viewModel.addClips(uris)
+            }
         }
     }
 

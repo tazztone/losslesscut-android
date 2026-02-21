@@ -99,6 +99,7 @@ class MediaClipAdapter(
 
     inner class AddViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         fun bind() {
+            androidx.appcompat.widget.TooltipCompat.setTooltipText(itemView, itemView.context.getString(R.string.add_video))
             itemView.setOnClickListener { onAddClicked() }
         }
     }
