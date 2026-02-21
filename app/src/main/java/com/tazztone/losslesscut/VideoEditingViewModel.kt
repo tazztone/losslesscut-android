@@ -134,10 +134,12 @@ class VideoEditingViewModel @Inject constructor(
                     if (cachedWaveform != null) {
                         _waveformData.value = cachedWaveform
                     } else {
-                        val waveform = AudioWaveformExtractor.extract(context, videoUri, bucketCount = 1000)
-                        if (waveform != null) {
-                            saveWaveformToCache(cacheKey, waveform)
-                            _waveformData.value = waveform
+                        val finalWaveform = AudioWaveformExtractor.extract(context, videoUri, bucketCount = 1000) { progressiveWaveform ->
+                            _waveformData.value = progressiveWaveform
+                        }
+                        if (finalWaveform != null) {
+                            saveWaveformToCache(cacheKey, finalWaveform)
+                            _waveformData.value = finalWaveform
                         }
                     }
                 }
