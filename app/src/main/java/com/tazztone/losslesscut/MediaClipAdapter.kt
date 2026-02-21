@@ -12,7 +12,8 @@ import java.util.Collections
 class MediaClipAdapter(
     private val onClipSelected: (Int) -> Unit,
     private val onClipsReordered: (Int, Int) -> Unit,
-    private val onClipLongPressed: (Int) -> Unit
+    private val onClipLongPressed: (Int) -> Unit,
+    private val onStartDrag: (RecyclerView.ViewHolder) -> Unit
 ) : RecyclerView.Adapter<MediaClipAdapter.ClipViewHolder>() {
 
     private var clips: MutableList<MediaClip> = mutableListOf()
@@ -37,6 +38,8 @@ class MediaClipAdapter(
 
     fun moveItem(from: Int, to: Int) {
         if (from == to) return
+        Collections.swap(clips, from, to)
+        notifyItemMoved(from, to)
         onClipsReordered(from, to)
     }
 
@@ -50,7 +53,7 @@ class MediaClipAdapter(
             // For now, we'll try to load it from MediaStore/ThumbnailUtils.
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                    val size = android.util.Size(512, 512)
+                    val size = android.util.Size(128, 128)
                     val thumbnail = binding.root.context.contentResolver.loadThumbnail(clip.uri, size, null)
                     binding.ivThumbnail.setImageBitmap(thumbnail)
                 }
@@ -62,6 +65,12 @@ class MediaClipAdapter(
             binding.root.setOnLongClickListener { 
                 onClipLongPressed(bindingAdapterPosition)
                 true
+            }
+            binding.ivDragHandle.setOnTouchListener { _, event ->
+                if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+                    onStartDrag(this)
+                }
+                false
             }
         }
     }

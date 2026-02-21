@@ -41,6 +41,16 @@
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 android:textStyle="bold" />
+
+            <ImageView
+                android:id="@+id/ivDragHandle"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="bottom|end"
+                android:layout_margin="4dp"
+                android:src="@drawable/ic_drag_handle_24"
+                app:tint="@color/white"
+                android:alpha="0.7"/>
         </FrameLayout>
 
         <TextView

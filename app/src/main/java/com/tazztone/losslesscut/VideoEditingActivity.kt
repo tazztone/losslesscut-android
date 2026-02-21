@@ -205,6 +205,18 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun initializeViews() {
+        val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+            androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
+            override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
+                val from = vh.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                clipAdapter.moveItem(from, to)
+                return true
+            }
+            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
+            override fun isLongPressDragEnabled(): Boolean = false
+        })
+
         clipAdapter = MediaClipAdapter(
             onClipSelected = { index -> 
                 if (player.currentMediaItemIndex != index) {
@@ -218,30 +230,24 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 player.moveMediaItem(from, to)
             },
             onClipLongPressed = { index ->
-                val clip = (viewModel.uiState.value as? VideoEditingUiState.Success)?.clips?.getOrNull(index) ?: return@MediaClipAdapter
-                com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                    .setTitle(getString(R.string.delete))
-                    .setMessage(getString(R.string.remove_clip_confirm))
-                    .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                        viewModel.removeClip(index)
-                        player.removeMediaItem(index)
-                    }
-                    .setNegativeButton(getString(R.string.cancel), null)
-                    .show()
+                val clip = (viewModel.uiState.value as? VideoEditingUiState.Success)?.clips?.getOrNull(index)
+                if (clip != null) {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                        .setTitle(getString(R.string.delete))
+                        .setMessage(getString(R.string.remove_clip_confirm))
+                        .setPositiveButton(getString(R.string.delete)) { _, _ ->
+                            viewModel.removeClip(index)
+                            player.removeMediaItem(index)
+                        }
+                        .setNegativeButton(getString(R.string.cancel), null)
+                        .show()
+                }
+            },
+            onStartDrag = { viewHolder ->
+                itemTouchHelper.startDrag(viewHolder)
             }
         )
         binding.rvClips?.adapter = clipAdapter
-        
-        val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
-            androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
-            override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
-                val from = vh.bindingAdapterPosition
-                val to = target.bindingAdapterPosition
-                clipAdapter.moveItem(from, to)
-                return true
-            }
-            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
-        })
         binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
 
         binding.btnPlayPause?.setOnClickListener {
