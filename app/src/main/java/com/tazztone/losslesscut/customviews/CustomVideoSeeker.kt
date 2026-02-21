@@ -61,6 +61,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val minZoom = 1f
     private val maxZoom = 20f
     private var scrollOffsetX = 0f
+    private val timelinePadding = 20f
 
     // Paints
     private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 5f }
@@ -264,14 +265,18 @@ class CustomVideoSeeker @JvmOverloads constructor(
     }
 
     private fun timeToX(timeMs: Long): Float {
-        if (videoDurationMs == 0L) return 0f
-        return (timeMs.toFloat() / videoDurationMs) * (width * zoomFactor)
+        if (videoDurationMs == 0L || width == 0) return timelinePadding
+        val logicalWidthRaw = width * zoomFactor
+        val availableWidth = logicalWidthRaw - 2 * timelinePadding
+        return timelinePadding + (timeMs.toFloat() / videoDurationMs) * availableWidth
     }
 
     private fun xToTime(x: Float): Long {
-        val logicalWidth = width * zoomFactor
-        if (logicalWidth == 0f) return 0L
-        return ((x / logicalWidth) * videoDurationMs).toLong().coerceIn(0L, videoDurationMs)
+        if (width == 0) return 0L
+        val logicalWidthRaw = width * zoomFactor
+        val availableWidth = logicalWidthRaw - 2 * timelinePadding
+        if (availableWidth <= 0f) return 0L
+        return (((x - timelinePadding) / availableWidth) * videoDurationMs).toLong().coerceIn(0L, videoDurationMs)
     }
 
     private fun formatTimeShort(ms: Long): String {
@@ -321,8 +326,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
         waveformData?.let { data ->
             val midY = height / 2f
             val maxAvailableHeight = midY * 0.95f // Use more vertical space
-            val startPx = scrollOffsetX.toInt().coerceAtLeast(0)
-            val endPx = (scrollOffsetX + width).toInt().coerceAtMost((width * zoomFactor).toInt())
+            
+            val timelineStart = timeToX(0).toInt()
+            val timelineEnd = timeToX(videoDurationMs).toInt()
+            
+            val startPx = (scrollOffsetX.toInt()).coerceAtLeast(timelineStart)
+            val endPx = (scrollOffsetX + width).toInt().coerceAtMost(timelineEnd)
 
             // Draw with global scaling (data is already normalized to 1.0 by the extractor)
         for (px in startPx..endPx) {
@@ -385,7 +394,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
         for (kfMs in keyframes) {
             val kfX = timeToX(kfMs)
             if (kfX >= scrollOffsetX && kfX <= scrollOffsetX + width) {
-                canvas.drawLine(kfX, 0f, kfX, height.toFloat() / 2, keyframePaint)
+                canvas.drawLine(kfX, 0f, kfX, height.toFloat() / 4, keyframePaint)
             }
         }
 
