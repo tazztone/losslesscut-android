@@ -1,46 +1,47 @@
 # Developer Guide & PRD (`AGENTS.md`)
 
 ## 1. Product Vision & Requirements
-**LosslessCut** is a lightweight Android app for **lossless video trimming**.
-**Core Value**: Speed and zero generational quality loss by manipulating the video container (`MediaExtractor`/`MediaMuxer`) without re-encoding the actual video/audio streams.
+**LosslessCut** is a lightweight Android app for **lossless media trimming (video and audio)**.
+**Core Value**: Speed and zero generational quality loss by manipulating the media container (`MediaExtractor`/`MediaMuxer`) without re-encoding the actual video/audio streams.
 
 **User Stories & Capabilities**:
-- **Lossless Trimming**: Precisely define start/end points and save segments instantly.
-- **Multi-Segment Export**: Split video, discard parts (ads/silences), and export remaining segments as individual files in one pass.
-- **Precision Seeking**: Zoomable timeline (up to 20x) for frame-accurate cuts based on keyframes.
+- **Lossless Video/Audio Trimming**: Precisely define start/end points and save segments instantly without transcoding.
+- **Audio-Only Mode**: Automatically adapts the UI for audio files, providing a specialized music note placeholder and hiding video-only tools (e.g., rotation, snapshots).
+- **Multi-Segment Export**: Split media, discard parts (ads/silences), and export remaining segments as individual files in one pass.
+- **Precision Seeking**: Zoomable timeline (up to 20x) for frame-accurate cuts based on keyframes (for video) or time.
 - **Undo/Redo Workflow**: Non-destructive workflow via an in-memory snapshot stack.
 
 **Non-Goals (Do Not Implement)**:
-- ❌ Video re-encoding or compression.
+- ❌ Lossy video re-encoding or compression.
 - ❌ Visual filters, text overlays, or color grading.
-- ❌ Advanced audio mixing or effects.
+- ❌ Advanced audio mixing or effects beyond lossless cuts.
 
 ## 2. Environment & Stack
-- **Stack**: Kotlin 1.9+, Android SDK (Min API 31, Target 34+), Media3 (ExoPlayer).
+- **Stack**: Kotlin 1.9+, Android SDK (Min API 31, Target 35), Media3 (ExoPlayer).
 - **Architecture**: MVVM, single-Activity, Scoped Storage (`MediaStore`).
 
 ## 3. Core Architecture
 
 ### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`, `SettingsBottomSheetDialogFragment.kt`)
-- `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states, and handles tooltips/rotation previews.
+- `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states, and handles tooltips/rotation previews. Adapts the UI dynamically based on `isAudioOnly` flag.
 - `SettingsBottomSheetDialogFragment`: Presents app preferences such as the "Snap" (Lossless) mode toggle.
 - `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, haptic snapping to keyframes, cycling colors for `KEEP` segments, and hiding `DISCARD` segments.
 
 ### Presentation (`VideoEditingViewModel.kt`)
 - `TrimSegment`: Data model holding `startMs`, `endMs`, and `SegmentAction` (KEEP/DISCARD).
 - `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions (capped at 30 items for memory safety).
-- Automates the multi-clip export orchestration and snapshot frame extraction.
+- Automates the multi-clip export orchestration and snapshot frame extraction. Detects media type (video vs. audio) during initialization.
 
 ### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`)
-- `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix (syncs written video vs. audio samples to prevent "frozen last frame" bugs) and export params (rotation override, audio-only).
-- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling both video outputs and PNG frame snapshots.
+- `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix and export params (rotation override, audio-only tracks). Automatically detects track types and finalizes to appropriate MediaStore collections.
+- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling video, audio, and PNG frame snapshots. Saves video to `Movies/LosslessCut` and audio to `Music/LosslessCut`.
 
 ### Data Flow (Trim Action)
-1. User confirms trim -> `Activity` calls `ViewModel.trimVideo()`.
-2. `ViewModel` emits Loading state -> calls `StorageUtils.createVideoOutputUri()`.
+1. User confirms trim -> `Activity` calls `ViewModel.exportSegments()`.
+2. `ViewModel` emits Loading state -> calls `StorageUtils.createVideoOutputUri()` or `createAudioOutputUri()`.
 3. `ViewModel` calls `LosslessEngine.executeLosslessCut(input, outputUri, start, end)`.
-4. `LosslessEngine` processes samples -> calls `StorageUtils.finalizeVideo()` -> returns `Result.success(uri)`.
-5. `ViewModel` emits Success state -> `Activity` reloads ExoPlayer with the new output URI.
+4. `LosslessEngine` processes samples -> calls `StorageUtils.finalizeMedia()` -> returns `Result.success(uri)`.
+5. `ViewModel` emits Success state -> `Activity` reloads ExoPlayer if necessary or notifies the user.
 
 ## 4. Developer Workflows & CI/CD
 - **Testing**: `./gradlew test` (runs JVM/Robolectric `LosslessEngine` tests), `./gradlew connectedAndroidTest` (UI tests).
