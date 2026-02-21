@@ -49,6 +49,28 @@
                 android:layout_height="match_parent"
                 app:use_controller="false" />
 
+            <LinearLayout
+                android:id="@+id/audioPlaceholder"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:visibility="gone">
+                <ImageView
+                    android:layout_width="80dp"
+                    android:layout_height="80dp"
+                    android:src="@drawable/ic_audio_24"
+                    app:tint="@android:color/white"/>
+                <TextView
+                    android:id="@+id/tvAudioFileName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    tools:text="audio_file.m4a"/>
+            </LinearLayout>
+
             <ImageButton
         
                 android:tooltipText="@string/play_pause"

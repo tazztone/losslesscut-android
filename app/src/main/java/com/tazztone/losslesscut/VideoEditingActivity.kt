@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.airbnb.lottie.LottieAnimationView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
@@ -32,6 +33,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
+@UnstableApi
 @AndroidEntryPoint
 class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
  
@@ -432,13 +434,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         
                         if (state.isAudioOnly) {
                             binding.playerView.visibility = View.GONE
-                            binding.audioPlaceholder.visibility = View.VISIBLE
-                            binding.tvAudioFileName.text = state.videoFileName
+                            binding.audioPlaceholder?.visibility = View.VISIBLE
+                            binding.tvAudioFileName?.text = state.videoFileName
                             binding.containerRotate?.visibility = View.GONE
                             binding.containerSnapshot?.visibility = View.GONE
                         } else {
                             binding.playerView.visibility = View.VISIBLE
-                            binding.audioPlaceholder.visibility = View.GONE
+                            binding.audioPlaceholder?.visibility = View.GONE
                             binding.containerRotate?.visibility = View.VISIBLE
                             binding.containerSnapshot?.visibility = View.VISIBLE
                         }

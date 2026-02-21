@@ -8,6 +8,8 @@ import android.media.MediaMuxer
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import kotlinx.coroutines.Dispatchers
 import com.tazztone.losslesscut.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,6 +33,7 @@ interface LosslessEngineInterface {
     ): Result<Uri>
 }
 
+@OptIn(UnstableApi::class)
 @Singleton
 class LosslessEngineImpl @Inject constructor(
     private val storageUtils: StorageUtils,
@@ -198,7 +201,13 @@ class LosslessEngineImpl @Inject constructor(
                 bufferInfo.presentationTimeUs = sampleTime - effectiveStartUs
                 bufferInfo.offset = 0
                 bufferInfo.size = sampleSize
-                bufferInfo.flags = extractor.sampleFlags and (MediaCodec.BUFFER_FLAG_KEY_FRAME or MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                
+                var flags = 0
+                if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                    flags = flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+                }
+                bufferInfo.flags = flags
+
                 if (bufferInfo.presentationTimeUs < 0) bufferInfo.presentationTimeUs = 0
                 
                 // EOS Tracking

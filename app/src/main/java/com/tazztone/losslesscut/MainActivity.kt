@@ -12,10 +12,13 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
 
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
