@@ -596,8 +596,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
         
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
-        val keepSegmentsCount = currentState?.segments?.count { it.action == SegmentAction.KEEP } ?: 0
-        if (keepSegmentsCount > 1) {
+        val totalKeepSegments = currentState?.clips?.sumOf { clip -> 
+            clip.segments.count { it.action == SegmentAction.KEEP } 
+        } ?: 0
+        
+        if (totalKeepSegments > 1 || (currentState?.clips?.size ?: 0) > 1) {
             cbMergeSegments.visibility = android.view.View.VISIBLE
         }
 
