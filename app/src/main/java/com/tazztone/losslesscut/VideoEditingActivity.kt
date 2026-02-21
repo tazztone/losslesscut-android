@@ -476,6 +476,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         player.seekTo(savedPlayheadPos)
     }
 
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     private fun setupCustomSeeker() {
         binding.customVideoSeeker.onSeekStart = {
             isDraggingTimeline = true

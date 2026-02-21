@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.customviews
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Bundle
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint

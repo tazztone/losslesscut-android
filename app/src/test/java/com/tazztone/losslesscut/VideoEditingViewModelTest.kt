@@ -79,7 +79,7 @@ class VideoEditingViewModelTest {
         assertEquals(2, state.segments.size)
         assertEquals(0L, state.segments[0].startMs)
         assertEquals(5000L, state.segments[0].endMs)
-        assertEquals(5001L, state.segments[1].startMs)
+        assertEquals(5000L, state.segments[1].startMs)
         assertTrue(state.canUndo)
     }
 

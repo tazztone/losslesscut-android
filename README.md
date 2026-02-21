@@ -18,7 +18,7 @@ LosslessCut is a lightweight, open-source Android application designed for **fas
 ### Prerequisites
 
 - Android Studio Koala or newer
-- Android SDK (Target API 35)
+- Android SDK (Min API 26, Target API 35)
 
 ### Installation
 

@@ -16,24 +16,25 @@
 - ❌ Advanced audio mixing or effects.
 
 ## 2. Environment & Stack
-- **Stack**: Kotlin 1.9+, Android SDK (Min API 31, Target 34+), Media3 (ExoPlayer).
+- **Stack**: Kotlin 2.2+, Android SDK (Min API 26, Target 35), Media3 (ExoPlayer).
 - **Architecture**: MVVM, single-Activity, Scoped Storage (`MediaStore`).
 
 ## 3. Core Architecture
 
 ### UI Layer (`VideoEditingActivity.kt`, `CustomVideoSeeker.kt`, `SettingsBottomSheetDialogFragment.kt`)
 - `VideoEditingActivity`: Exoplayer initialization, binds to ViewModel state (`VideoEditingUiState`), manages the split/delete/undo UI states, and handles tooltips/rotation previews.
-- `SettingsBottomSheetDialogFragment`: Presents app preferences such as the "Snap" (Lossless) mode toggle.
+- `SettingsBottomSheetDialogFragment`: Presents app preferences such as the "Snap" (Lossless) mode toggle, Undo Limit, Snapshot Format (JPEG/PNG), and JPG Quality.
 - `CustomVideoSeeker`: High-performance custom timeline View. Features: drag gesture `TouchTarget` logic (HANDLE_LEFT, HANDLE_RIGHT, PLAYHEAD), auto-pan near edges, haptic snapping to keyframes, cycling colors for `KEEP` segments, and hiding `DISCARD` segments.
 
 ### Presentation (`VideoEditingViewModel.kt`)
 - `TrimSegment`: Data model holding `startMs`, `endMs`, and `SegmentAction` (KEEP/DISCARD).
-- `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions (capped at 30 items for memory safety).
-- Automates the multi-clip export orchestration and snapshot frame extraction.
+- `Undo Stack`: Deep copies of `List<TrimSegment>` state pushed on destructive actions. The stack limit is configurable (default 30) via `AppPreferences` to balance memory usage.
+- Automates the multi-clip export orchestration and snapshot frame extraction (supporting both PNG and JPEG formats).
 
-### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`)
-- `LosslessEngine`: Core extraction/muxing logic. Handles the EOS duration fix (syncs written video vs. audio samples to prevent "frozen last frame" bugs) and export params (rotation override, audio-only).
-- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling both video outputs and PNG frame snapshots.
+### Domain / Data (`LosslessEngine.kt`, `StorageUtils.kt`, `AppPreferences.kt`)
+- `LosslessEngine`: Core extraction/muxing logic. Tracks EOS timestamps for debugging/verification (last video/audio sample time) and handles export params (rotation override, audio-only).
+- `StorageUtils`: Scoped Storage utility for `MediaStore` URI generation, handling both video outputs and image frame snapshots.
+- `AppPreferences`: Persists user settings (Undo Limit, Snapshot Format, JPG Quality) using Jetpack DataStore.
 
 ### Data Flow (Trim Action)
 1. User confirms trim -> `Activity` calls `ViewModel.trimVideo()`.
@@ -50,15 +51,3 @@
 1. **Precise Trim (Smart Cut)**: Decode and re-encode *only* the frames between a cut point and the nearest keyframe.
 2. **Merging**: Lossless concatenation of segments via PTS alignment.
 3. **Background/AI**: `WorkManager` for large background exports; AI-based automatic silence/motion detection.
-
-## 6. Context7 Library IDs
-Use the Context7 MCP server's `query-docs` tool with these IDs for up-to-date documentation and code examples:
-- Media3 (ExoPlayer): `/androidx/media`
-- Coroutines: `/kotlin/kotlinx.coroutines`
-- AndroidX: `/androidx/androidx`
-- Material: `/material-components/material-components-android`
-- Lottie: `/airbnb/lottie-android`
-- Robolectric: `/robolectric/robolectric`
-
-**Example Usage**:
-`mcp_context7_query-docs(libraryId="/androidx/media", query="How to initialize ExoPlayer with Media3?")`
