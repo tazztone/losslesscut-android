@@ -264,19 +264,6 @@
                     app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                     tools:listitem="@layout/item_media_clip"/>
 
-                <ImageButton
-                    android:id="@+id/btnAddClipsPlaylist"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_gravity="center_horizontal"
-                    android:layout_margin="12dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="@drawable/play_button_bg"
-                    android:backgroundTint="?attr/colorPrimary"
-                    android:padding="12dp"
-                    android:contentDescription="@string/add_video"
-                    android:tooltipText="@string/add_video"
-                    app:tint="?attr/colorOnPrimary"/>
             </LinearLayout>
         </LinearLayout>
 

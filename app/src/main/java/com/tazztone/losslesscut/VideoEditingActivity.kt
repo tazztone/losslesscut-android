@@ -205,6 +205,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun initializeViews() {
+        val addClipsAction = {
+            addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
+        }
+
         val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
             androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
             override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
@@ -245,7 +249,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             },
             onStartDrag = { viewHolder ->
                 itemTouchHelper.startDrag(viewHolder)
-            }
+            },
+            onAddClicked = { addClipsAction() }
         )
         binding.rvClips?.adapter = clipAdapter
         binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
@@ -268,14 +273,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
 
-        val addClipsAction = {
-            addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
-        }
         binding.btnAddClips?.setOnClickListener { addClipsAction() }
         binding.btnAddClips?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
-
-        binding.btnAddClipsPlaylist?.setOnClickListener { addClipsAction() }
-        binding.btnAddClipsPlaylist?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
         
         binding.btnSave.setOnClickListener { 
             showExportOptionsDialog()

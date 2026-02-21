@@ -13,8 +13,14 @@ class MediaClipAdapter(
     private val onClipSelected: (Int) -> Unit,
     private val onClipsReordered: (Int, Int) -> Unit,
     private val onClipLongPressed: (Int) -> Unit,
-    private val onStartDrag: (RecyclerView.ViewHolder) -> Unit
-) : RecyclerView.Adapter<MediaClipAdapter.ClipViewHolder>() {
+    private val onStartDrag: (RecyclerView.ViewHolder) -> Unit,
+    private val onAddClicked: () -> Unit
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    companion object {
+        private const val VIEW_TYPE_CLIP = 0
+        private const val VIEW_TYPE_ADD = 1
+    }
 
     private var clips: MutableList<MediaClip> = mutableListOf()
     private var selectedIndex: Int = 0
@@ -25,19 +31,36 @@ class MediaClipAdapter(
         notifyDataSetChanged()
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ClipViewHolder {
-        val binding = ItemMediaClipBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return ClipViewHolder(binding)
+    override fun getItemViewType(position: Int): Int {
+        return if (position < clips.size) VIEW_TYPE_CLIP else VIEW_TYPE_ADD
     }
 
-    override fun onBindViewHolder(holder: ClipViewHolder, position: Int) {
-        holder.bind(clips[position], position == selectedIndex, position + 1)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return if (viewType == VIEW_TYPE_CLIP) {
+            val binding = ItemMediaClipBinding.inflate(inflater, parent, false)
+            ClipViewHolder(binding)
+        } else {
+            val view = inflater.inflate(R.layout.item_playlist_add, parent, false)
+            AddViewHolder(view)
+        }
     }
 
-    override fun getItemCount(): Int = clips.size
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        if (holder is ClipViewHolder) {
+            holder.bind(clips[position], position == selectedIndex, position + 1)
+        } else if (holder is AddViewHolder) {
+            holder.bind()
+        }
+    }
+
+    override fun getItemCount(): Int = clips.size + 1
 
     fun moveItem(from: Int, to: Int) {
         if (from == to) return
+        // Don't allow moving the "Add" placeholder
+        if (from >= clips.size || to >= clips.size) return
+        
         Collections.swap(clips, from, to)
         notifyItemMoved(from, to)
         onClipsReordered(from, to)
@@ -49,8 +72,6 @@ class MediaClipAdapter(
             binding.tvOrder.text = order.toString()
             binding.vSelection.visibility = if (isSelected) View.VISIBLE else View.INVISIBLE
             
-            // In a real app, use Glide or Coil to load the thumbnail asynchronously.
-            // For now, we'll try to load it from MediaStore/ThumbnailUtils.
             try {
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                     val size = android.util.Size(128, 128)
@@ -72,6 +93,12 @@ class MediaClipAdapter(
                 }
                 false
             }
+        }
+    }
+
+    inner class AddViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        fun bind() {
+            itemView.setOnClickListener { onAddClicked() }
         }
     }
 }
