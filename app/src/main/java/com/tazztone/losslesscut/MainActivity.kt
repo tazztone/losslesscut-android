@@ -39,16 +39,9 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupPermissions()
-
         binding.addVideoButton.setOnClickListener {
-            if (arePermissionsGranted()) {
-                Log.d("ButtonClick", "Permissions granted, launching media selection.")
-                selectMedia()
-            } else {
-                Log.w("PermissionCheck", "Permissions not granted, showing request dialog.")
-                showPermissionRequestDialog()
-            }
+            Log.d("ButtonClick", "Launching media selection.")
+            selectMedia()
         }
 
         binding.btnInfo.setOnClickListener {
@@ -64,73 +57,6 @@ class MainActivity : AppCompatActivity() {
             .setMessage(android.text.Html.fromHtml(message, android.text.Html.FROM_HTML_MODE_COMPACT))
             .setPositiveButton(R.string.ok, null)
             .show()
-    }
-
-    private fun setupPermissions() {
-        requestPermissionsLauncher =
-            registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-                val allGranted = permissions.values.all { it }
-                if (allGranted) {
-                    Log.d("PermissionResult", "All permissions granted.")
-                    showToast(getString(R.string.permissions_granted))
-                } else {
-                    Log.w("PermissionResult", "Some permissions were denied.")
-                    showToast(getString(R.string.permissions_denied))
-                }
-            }
-
-        if (!arePermissionsGranted()) {
-            Log.i("PermissionSetup", "Requesting permissions.")
-            showPermissionRequestDialog()
-        }
-    }
-
-    private fun arePermissionsGranted(): Boolean {
-        return when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                checkPermissions(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            else -> true
-        }
-    }
-
-    private fun checkPermissions(vararg permissions: String): Boolean {
-        return permissions.all { permission ->
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-        }.also { result ->
-            Log.d("PermissionCheck", "Permissions checked: $result")
-        }
-    }
-
-    private fun showPermissionRequestDialog() {
-        Log.i("PermissionDialog", "Displaying permission request dialog.")
-        MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.permissions_required_title)
-            .setMessage(R.string.permissions_required_message)
-            .setPositiveButton(R.string.grant_permission) { _, _ -> requestPermissions() }
-            .setNegativeButton(R.string.cancel) { dialog, _ ->
-                Log.i("PermissionDialog", "User canceled the permission request.")
-                dialog.dismiss()
-            }
-            .setCancelable(false)
-            .show()
-    }
-
-    private fun requestPermissions() {
-        val permissions = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            else -> {
-                emptyArray()
-            }
-        }
-        if (permissions.isNotEmpty()) {
-            Log.d("PermissionRequest", "Requesting permissions: ${permissions.joinToString()}")
-            requestPermissionsLauncher.launch(permissions)
-        } else {
-            showToast(getString(R.string.permissions_granted))
-        }
     }
 
     private fun selectMedia() {

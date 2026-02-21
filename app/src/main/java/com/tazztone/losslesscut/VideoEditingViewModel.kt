@@ -110,6 +110,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun initialize(uris: List<Uri>) {
+        if (currentClips.isNotEmpty()) return
         if (uris.isEmpty()) {
             _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_invalid_video_uri_msg))
             return
