@@ -470,6 +470,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 Toast.makeText(this@VideoEditingActivity, message, Toast.LENGTH_LONG).show()
             }
         }
+        lifecycleScope.launch {
+            viewModel.waveformData.collect { waveform ->
+                binding.customVideoSeeker.setWaveformData(waveform)
+            }
+        }
     }
 
     private fun setupExoPlayer() {

@@ -49,6 +49,13 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private var segments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
 
+    private var waveformData: FloatArray? = null
+    private val waveformPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#55FFFFFF") // 33% white, sits under segments
+        strokeWidth = 2f
+        style = Paint.Style.STROKE
+    }
+
     // Zoom and Pan
     private var zoomFactor = 1f
     private val minZoom = 1f
@@ -307,6 +314,23 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 canvas.drawLine(x, height - 30f, x, height.toFloat(), keyframePaint)
                 canvas.drawText(formatTimeShort(currentTime), x, height - 40f, timeLabelPaint)
                 currentTime += stepMs
+            }
+        }
+
+        // Draw waveform
+        waveformData?.let { data ->
+            val midY = height / 2f
+            val maxBarHalf = midY * 0.7f // leave some headroom
+            val startPx = scrollOffsetX.toInt().coerceAtLeast(0)
+            val endPx = (scrollOffsetX + width).toInt().coerceAtMost((width * zoomFactor).toInt())
+
+            for (px in startPx..endPx) {
+                val timeMs = xToTime(px.toFloat())
+                val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
+                    .toInt().coerceIn(0, data.size - 1)
+                val amp = data[bucketIdx]
+                val barHalf = amp * maxBarHalf
+                canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
             }
         }
 
@@ -731,6 +755,11 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
         
         accessibilityHelper.invalidateVirtualView(0) // VIRTUAL_ID_PLAYHEAD
+        invalidate()
+    }
+
+    fun setWaveformData(data: FloatArray?) {
+        this.waveformData = data
         invalidate()
     }
 }

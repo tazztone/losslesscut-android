@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.UUID
 import javax.inject.Inject
 
@@ -63,6 +68,9 @@ class VideoEditingViewModel @Inject constructor(
 
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
+
+    private val _waveformData = MutableStateFlow<FloatArray?>(null)
+    val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
 
     private var currentVideoUri: Uri? = null
     private var videoFileName: String = "video.mp4"
@@ -117,6 +125,22 @@ class VideoEditingViewModel @Inject constructor(
                 _isDirty.value = false
  
                 updateSuccessState()
+
+                // Background extraction of audio waveforms
+                viewModelScope.launch(ioDispatcher) {
+                    val cacheKey = waveformCacheKey(videoUri, videoDurationMs)
+                    val cachedWaveform = loadWaveformFromCache(cacheKey)
+                    
+                    if (cachedWaveform != null) {
+                        _waveformData.value = cachedWaveform
+                    } else {
+                        val waveform = AudioWaveformExtractor.extract(context, videoUri, bucketCount = 1000)
+                        if (waveform != null) {
+                            saveWaveformToCache(cacheKey, waveform)
+                            _waveformData.value = waveform
+                        }
+                    }
+                }
             } catch (e: Exception) {
                 val msg = context.getString(R.string.error_load_video, e.message)
                 _uiState.value = VideoEditingUiState.Error(msg)
@@ -418,6 +442,37 @@ class VideoEditingViewModel @Inject constructor(
                 retriever.release()
                 updateSuccessState()
             }
+        }
+    }
+
+    private fun waveformCacheKey(uri: Uri, durationMs: Long): String {
+        return "waveform_${uri.hashCode()}_${durationMs}.bin"
+    }
+
+    private fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {
+        try {
+            val cacheFile = File(context.cacheDir, cacheKey)
+            DataOutputStream(FileOutputStream(cacheFile)).use { out ->
+                out.writeInt(waveform.size)
+                waveform.forEach { out.writeFloat(it) }
+            }
+        } catch (e: Exception) {
+            Log.e("VideoEditingViewModel", "Failed to save waveform to cache", e)
+        }
+    }
+
+    private fun loadWaveformFromCache(cacheKey: String): FloatArray? {
+        val cacheFile = File(context.cacheDir, cacheKey)
+        if (!cacheFile.exists()) return null
+        
+        return try {
+            DataInputStream(FileInputStream(cacheFile)).use { input ->
+                val size = input.readInt()
+                FloatArray(size) { input.readFloat() }
+            }
+        } catch (e: Exception) {
+            Log.e("VideoEditingViewModel", "Failed to load waveform from cache", e)
+            null
         }
     }
 }
