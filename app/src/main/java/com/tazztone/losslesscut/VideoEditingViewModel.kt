@@ -80,7 +80,7 @@ class VideoEditingViewModel(
 
     fun initialize(videoUri: Uri?) {
         if (videoUri == null) {
-            _uiState.value = VideoEditingUiState.Error("Invalid video URI")
+            _uiState.value = VideoEditingUiState.Error(getApplication<Application>().getString(R.string.error_invalid_video_uri_msg))
             return
         }
         currentVideoUri = videoUri
@@ -373,7 +373,7 @@ class VideoEditingViewModel(
                 }
             } catch (e: Exception) {
                 android.util.Log.e("VideoEditingViewModel", "Snapshot error", e)
-                _uiEvents.emit("Failed to create snapshot.")
+                _uiEvents.emit(getApplication<Application>().getString(R.string.error_snapshot_failed_generic))
             } finally {
                 retriever.release()
                 updateSuccessState()

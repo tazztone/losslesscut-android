@@ -19,6 +19,11 @@ import com.tazztone.losslesscut.SegmentAction
 import com.tazztone.losslesscut.TrimSegment
 import com.tazztone.losslesscut.VideoEditingViewModel
 import java.util.UUID
+import androidx.customview.widget.ExploreByTouchHelper
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
+import android.view.accessibility.AccessibilityEvent
+import android.graphics.Rect
+import androidx.core.view.ViewCompat
 
 class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
@@ -101,6 +106,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     private var pinchAnimValue = 0f
     private var pinchAnimator: ValueAnimator? = null
+    private val accessibilityHelper = SeekerAccessibilityHelper(this)
 
     private var showZoomHint = true
     private var showHandleHint = true
@@ -110,6 +116,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     init {
         keepSegmentPaint.color = keepColors[0]
         contentDescription = context.getString(R.string.video_timeline_description)
+        ViewCompat.setAccessibilityDelegate(this, accessibilityHelper)
         startPinchAnimation()
     }
 
@@ -394,6 +401,108 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
     }
 
+    override fun dispatchHoverEvent(event: MotionEvent): Boolean {
+        return accessibilityHelper.dispatchHoverEvent(event) || super.dispatchHoverEvent(event)
+    }
+
+    private inner class SeekerAccessibilityHelper(view: View) : ExploreByTouchHelper(view) {
+        private val VIRTUAL_ID_PLAYHEAD = 0
+        private val VIRTUAL_ID_HANDLE_START = 100
+
+        override fun getVirtualViewAt(x: Float, y: Float): Int {
+            val contentX = x + scrollOffsetX
+            val touchTimeMs = xToTime(contentX)
+            val logicalWidth = width * zoomFactor
+            val thresholdMs = if (logicalWidth > 0) ((60f / logicalWidth) * videoDurationMs).toLong() else 0L
+
+            // Playhead check
+            if (kotlin.math.abs(seekPositionMs - touchTimeMs) < thresholdMs) {
+                return VIRTUAL_ID_PLAYHEAD
+            }
+
+            // Handles check
+            val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
+            for ((index, segment) in keepSegments.withIndex()) {
+                if (kotlin.math.abs(segment.startMs - touchTimeMs) < thresholdMs) return VIRTUAL_ID_HANDLE_START + (index * 2)
+                if (kotlin.math.abs(segment.endMs - touchTimeMs) < thresholdMs) return VIRTUAL_ID_HANDLE_START + (index * 2) + 1
+            }
+
+            return INVALID_ID
+        }
+
+        override fun getVisibleVirtualViews(virtualViewIds: MutableList<Int>) {
+            virtualViewIds.add(VIRTUAL_ID_PLAYHEAD)
+            val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
+            for (i in keepSegments.indices) {
+                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2))
+                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2) + 1)
+            }
+        }
+
+        override fun onPopulateNodeForVirtualView(virtualViewId: Int, node: AccessibilityNodeInfoCompat) {
+            if (virtualViewId == VIRTUAL_ID_PLAYHEAD) {
+                node.contentDescription = context.getString(R.string.accessibility_playhead_pos_format, formatTimeShort(seekPositionMs))
+                val x = timeToX(seekPositionMs) - scrollOffsetX
+                val rect = Rect((x - 20).toInt(), 0, (x + 20).toInt(), height)
+                node.setBoundsInParent(rect)
+                node.isFocusable = true
+                node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
+                node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD)
+            } else {
+                val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
+                val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
+                val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
+                if (index < keepSegments.size) {
+                    val segment = keepSegments[index]
+                    val timeMs = if (isStart) segment.startMs else segment.endMs
+                    val type = context.getString(if (isStart) R.string.accessibility_handle_type_start else R.string.accessibility_handle_type_end)
+                    node.contentDescription = context.getString(R.string.accessibility_segment_handle_format, index + 1, type, formatTimeShort(timeMs))
+                    
+                    val x = timeToX(timeMs) - scrollOffsetX
+                    val rect = Rect((x - 25).toInt(), height - 60, (x + 25).toInt(), height)
+                    node.setBoundsInParent(rect)
+                    node.isFocusable = true
+                    node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
+                    node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD)
+                }
+            }
+        }
+
+        override fun onPerformActionForVirtualView(virtualViewId: Int, action: Int, arguments: Bundle?): Boolean {
+            val stepMs = 1000L // 1 second step for accessibility
+            if (action == AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD || action == AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD) {
+                val direction = if (action == AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD) 1 else -1
+                if (virtualViewId == VIRTUAL_ID_PLAYHEAD) {
+                    seekPositionMs = (seekPositionMs + direction * stepMs).coerceIn(0, videoDurationMs)
+                    onSeekListener?.invoke(seekPositionMs)
+                    invalidate()
+                    invalidateVirtualView(VIRTUAL_ID_PLAYHEAD)
+                    return true
+                } else {
+                    val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
+                    val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
+                    val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
+                    if (index < keepSegments.size) {
+                        val segment = keepSegments[index]
+                        if (isStart) {
+                            val newStart = (segment.startMs + direction * stepMs).coerceIn(0, segment.endMs - VideoEditingViewModel.MIN_SEGMENT_DURATION_MS)
+                            onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
+                            onSegmentBoundsDragEnd?.invoke()
+                        } else {
+                            val newEnd = (segment.endMs + direction * stepMs).coerceIn(segment.startMs + VideoEditingViewModel.MIN_SEGMENT_DURATION_MS, videoDurationMs)
+                            onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
+                            onSegmentBoundsDragEnd?.invoke()
+                        }
+                        invalidate()
+                        invalidateVirtualView(virtualViewId)
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+    }
+
     private fun drawHandleArrow(canvas: Canvas, cx: Float, cy: Float, isLeft: Boolean) {
         val arrowSize = 30f
         val offset = 60f + (pinchAnimValue * 30f)
@@ -608,6 +717,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     fun setSegments(segs: List<TrimSegment>, selectedId: UUID?) {
         this.segments = segs
         this.selectedSegmentId = selectedId
+        accessibilityHelper.invalidateRoot()
         invalidate()
     }
 
@@ -619,6 +729,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
             scrollOffsetX = (playheadX - width / 2).coerceIn(0f, maxScrollOffset())
         }
         
+        accessibilityHelper.invalidateVirtualView(0) // VIRTUAL_ID_PLAYHEAD
         invalidate()
     }
 }

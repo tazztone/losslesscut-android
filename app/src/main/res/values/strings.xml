@@ -72,4 +72,16 @@
     <string name="exit_confirm_message">You have unsaved changes. Are you sure you want to discard them and exit?</string>
     <string name="exit_confirm_discard">Discard</string>
     <string name="exit_confirm_keep_editing">Keep Editing</string>
+    <string name="accessibility_seek_forward">Seek forward</string>
+    <string name="accessibility_seek_backward">Seek backward</string>
+    <string name="accessibility_next_segment_handle">Next segment handle</string>
+    <string name="accessibility_prev_segment_handle">Previous segment handle</string>
+    <string name="accessibility_playhead_pos_format">Playhead at %1$s</string>
+    <string name="accessibility_segment_handle_format">Segment %1$d %2$s handle at %3$s</string>
+    <string name="accessibility_handle_type_start">start</string>
+    <string name="accessibility_handle_type_end">end</string>
+    <string name="error_snapshot_failed_generic">Failed to create snapshot.</string>
+    <string name="error_invalid_video_uri_msg">Invalid video URI</string>
+    <string name="error_failed_open_pfd">Failed to open output file</string>
+    <string name="error_no_tracks_found">No video or audio tracks found in file</string>
 </resources>

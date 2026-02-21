@@ -87,7 +87,7 @@ object LosslessEngineImpl : LosslessEngineInterface {
             extractor.setDataSource(context, inputUri, null)
             
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
-            if (pfd == null) return@withContext Result.failure(IOException("Failed to open PFD for $outputUri"))
+            if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
 
             muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val mMuxer = muxer
@@ -127,7 +127,7 @@ object LosslessEngineImpl : LosslessEngineInterface {
                 }
             }
             
-            if (trackMap.isEmpty()) return@withContext Result.failure(IOException("No video/audio tracks found"))
+            if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
             if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
 
             val startUs = startMs * 1000
