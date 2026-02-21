@@ -214,8 +214,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
                 val from = vh.bindingAdapterPosition
                 val to = target.bindingAdapterPosition
-                clipAdapter.moveItem(from, to)
-                return true
+                val success = clipAdapter.moveItem(from, to)
+                return success
             }
             override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
             override fun isLongPressDragEnabled(): Boolean = false

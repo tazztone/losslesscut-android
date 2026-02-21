@@ -56,14 +56,15 @@ class MediaClipAdapter(
 
     override fun getItemCount(): Int = clips.size + 1
 
-    fun moveItem(from: Int, to: Int) {
-        if (from == to) return
-        // Don't allow moving the "Add" placeholder
-        if (from >= clips.size || to >= clips.size) return
+    fun moveItem(from: Int, to: Int): Boolean {
+        if (from == to) return true
+        // Don't allow moving the "Add" placeholder or moving items to its position
+        if (from >= clips.size || to >= clips.size) return false
         
         Collections.swap(clips, from, to)
         notifyItemMoved(from, to)
         onClipsReordered(from, to)
+        return true
     }
 
     inner class ClipViewHolder(private val binding: ItemMediaClipBinding) : RecyclerView.ViewHolder(binding.root) {

@@ -14,11 +14,15 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 ## 2. Component Blueprint
 
 ### UI & Custom Views
-- **`VideoEditingActivity`**: Central hub. Manages ExoPlayer lifecycle, binds ViewModel state, and coordinates UI transitions between Video and Audio modes.
-- **`CustomVideoSeeker`**: A high-performance custom `View` for the NLE timeline.
+- **VideoEditingActivity**: Central hub. Manages ExoPlayer lifecycle, binds ViewModel state, and coordinates UI transitions between Video and Audio modes.
+- **CustomVideoSeeker**: A high-performance custom `View` for the NLE timeline.
     - **Logic**: Handles multi-touch (zoom), drag gestures for playhead and segments, and edge-auto-panning.
     - **Accessibility**: Implements `ExploreByTouchHelper` to expose virtual nodes for playhead and segment handles. Supports standard accessibility actions (Scroll Forward/Backward).
     - **Visuals**: Draws segment colors, keyframe ticks, and zoom levels directly on the canvas for performance.
+- **Layout System**: Uses orientation-specific layouts (`layout` vs `layout-land`) to maintain ergonomics. 
+    - **Sidebars**: Landscape mode uses vertical sidebars for primary toolbar actions.
+    - **Playlist Sidebar**: Synced with ExoPlayer's `currentMediaItemIndex`. Uses a `RecyclerView` with an inline "Add Media" placeholder. Visibility is tied to `clips.size > 1`.
+    - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations.
 
 ### Data & Domain Logic
 - **`LosslessEngine`**: Core muxing orchestration.
@@ -30,8 +34,9 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
     - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging based on user selection.
 
 ### Utilities
-- **`StorageUtils`**: Handles Scoped Storage. Saves to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio). Manages URI generation and MediaStore finalization.
-- **`TimeUtils`**: Formatting and precision conversion between MS and microseconds.
+- **StorageUtils**: Handles Scoped Storage. Saves to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio). Manages URI generation and MediaStore finalization.
+- **TimeUtils**: Formatting and precision conversion between MS and microseconds.
+- **Permission Management**: The app relies primarily on the **Storage Access Framework (SAF)** and `ActivityResultContracts.OpenMultipleDocuments`. Broad runtime permissions (like `READ_MEDIA_VIDEO` or `POST_NOTIFICATIONS`) are avoided for enhanced privacy and UX.
 
 ## 3. Key Workflows
 

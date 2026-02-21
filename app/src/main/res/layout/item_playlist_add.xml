@@ -14,13 +14,16 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false">
 
         <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:layout_gravity="center"
             android:src="@drawable/ic_add_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
             app:tint="@color/white" />
 
     </FrameLayout>
