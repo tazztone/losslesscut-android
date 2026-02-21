@@ -17,8 +17,6 @@
         android:layout_alignParentTop="true">
 
         <ImageButton
-        
-            android:tooltipText="@string/home"
             android:id="@+id/btnHome"
             android:minWidth="48dp"
             android:minHeight="48dp"
@@ -26,7 +24,6 @@
             android:layout_height="wrap_content"
             android:src="@drawable/ic_home_24"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/home"
             android:layout_marginEnd="16dp"/>
 
         <LinearLayout
@@ -36,42 +33,33 @@
             android:gravity="end">
 
             <ImageButton
-        
-                android:tooltipText="@string/undo"
-            android:id="@+id/btnUndo"
+                android:id="@+id/btnUndo"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_undo_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/undo"
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
-        
-                android:tooltipText="@string/settings"
-            android:id="@+id/btnSettings"
+                android:id="@+id/btnSettings"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_settings_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/settings"
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
-        
-                android:tooltipText="@string/export"
-            android:id="@+id/btnSave"
+                android:id="@+id/btnSave"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:src="@drawable/ic_save_color_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/export"/>
+                android:background="?attr/selectableItemBackgroundBorderless"/>
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
@@ -88,19 +76,21 @@
         android:animateLayoutChanges="true">
 
         <LinearLayout
+            android:id="@+id/containerSetIn"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
             <ImageButton
                 android:id="@+id/btnSetIn"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_trim_left_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="?attr/colorOnSurface"
-                android:contentDescription="@string/set_in_point"/>
+                app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -110,19 +100,21 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/containerSetOut"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
             <ImageButton
                 android:id="@+id/btnSetOut"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_trim_right_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="?attr/colorOnSurface"
-                android:contentDescription="@string/set_out_point"/>
+                app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -132,19 +124,21 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/containerSplit"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
             <ImageButton
                 android:id="@+id/btnSplit"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_split_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="?attr/colorOnSurface"
-                android:contentDescription="@string/split"/>
+                app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -154,19 +148,21 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/containerDelete"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
             <ImageButton
                 android:id="@+id/btnDelete"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_delete_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="?attr/colorOnSurface"
-                android:contentDescription="@string/discard_segment"/>
+                app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -176,19 +172,21 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/containerSnapshot"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
             <ImageButton
                 android:id="@+id/btnSnapshot"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_camera_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                app:tint="?attr/colorOnSurface"
-                android:contentDescription="@string/snapshot"/>
+                app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -198,6 +196,7 @@
         </LinearLayout>
             
         <LinearLayout
+            android:id="@+id/containerRotate"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -217,7 +216,6 @@
                     android:src="@drawable/ic_rotate_24"
                     android:background="@android:color/transparent"
                     app:tint="?attr/colorOnSurface"
-                    android:contentDescription="@string/rotate"
                     android:clickable="false"
                     android:focusable="false"/>
                 <TextView
@@ -345,8 +343,7 @@
             android:layout_gravity="center"
             android:src="@drawable/ic_play_24"
             android:background="@drawable/play_button_bg"
-            android:padding="16dp"
-            android:contentDescription="@string/play_pause" />
+            android:padding="16dp" />
     </FrameLayout>
 
     <include

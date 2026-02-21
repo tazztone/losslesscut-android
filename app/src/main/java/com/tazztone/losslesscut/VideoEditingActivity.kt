@@ -204,13 +204,19 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnUndo.setOnClickListener { viewModel.undo() }
         TooltipCompat.setTooltipText(binding.btnUndo, getString(R.string.undo))
         
-        binding.btnSetIn?.setOnClickListener { setInPoint() }
+        val setInAction = { setInPoint() }
+        binding.btnSetIn?.setOnClickListener { setInAction() }
+        binding.containerSetIn?.setOnClickListener { setInAction() }
         binding.btnSetIn?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_in_point)) }
+        binding.containerSetIn?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_in_point)) }
         
-        binding.btnSetOut?.setOnClickListener { setOutPoint() }
+        val setOutAction = { setOutPoint() }
+        binding.btnSetOut?.setOnClickListener { setOutAction() }
+        binding.containerSetOut?.setOnClickListener { setOutAction() }
         binding.btnSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
+        binding.containerSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
         
-        binding.btnSplit.setOnClickListener { 
+        val splitAction = { 
             val currentPos = player.currentPosition
             val state = viewModel.uiState.value as? VideoEditingUiState.Success
             
@@ -224,15 +230,21 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             player.seekTo(splitPos)
             binding.customVideoSeeker.setSeekPosition(splitPos)
         }
+        binding.btnSplit.setOnClickListener { splitAction() }
+        binding.containerSplit?.setOnClickListener { splitAction() }
         TooltipCompat.setTooltipText(binding.btnSplit, getString(R.string.split))
+        binding.containerSplit?.let { TooltipCompat.setTooltipText(it, getString(R.string.split)) }
         
-        binding.btnDelete.setOnClickListener { 
+        val deleteAction = { 
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.toggleSegmentAction(it) }
             }
         }
+        binding.btnDelete.setOnClickListener { deleteAction() }
+        binding.containerDelete?.setOnClickListener { deleteAction() }
         TooltipCompat.setTooltipText(binding.btnDelete, getString(R.string.discard_segment))
+        binding.containerDelete?.let { TooltipCompat.setTooltipText(it, getString(R.string.discard_segment)) }
 
         binding.btnNudgeBack.setOnClickListener { performNudge(-1) }
         TooltipCompat.setTooltipText(binding.btnNudgeBack, getString(R.string.nudge_backward))
@@ -245,15 +257,21 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
         TooltipCompat.setTooltipText(binding.btnPlayPauseControls, getString(R.string.play_pause))
 
-        binding.btnSnapshot.setOnClickListener { extractSnapshot() }
+        val snapshotAction = { extractSnapshot() }
+        binding.btnSnapshot.setOnClickListener { snapshotAction() }
+        binding.containerSnapshot?.setOnClickListener { snapshotAction() }
         TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
+        binding.containerSnapshot?.let { TooltipCompat.setTooltipText(it, getString(R.string.snapshot)) }
         
-        binding.btnRotateContainer.setOnClickListener { 
+        val rotateAction = { 
             currentRotation = (currentRotation + 90) % 360
             updateRotationPreview(animate = true)
             Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
         }
+        binding.btnRotateContainer.setOnClickListener { rotateAction() }
+        binding.containerRotate?.setOnClickListener { rotateAction() }
         TooltipCompat.setTooltipText(binding.btnRotateContainer, getString(R.string.rotate))
+        binding.containerRotate?.let { TooltipCompat.setTooltipText(it, getString(R.string.rotate)) }
     }
 
     private fun updateRotationPreview(animate: Boolean = true) {
