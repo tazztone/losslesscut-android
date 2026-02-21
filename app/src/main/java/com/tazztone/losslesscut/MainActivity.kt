@@ -21,13 +21,13 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var requestPermissionsLauncher: ActivityResultLauncher<Array<String>>
-    private val selectVideoLauncher =
-        registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+    private val selectMediaLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri != null) {
-                Log.d("VideoSelection", "Video selected: $uri")
+                Log.d("MediaSelection", "Media selected: $uri")
                 navigateToEditingScreen(uri)
             } else {
-                Log.e("VideoSelectionError", "No video selected")
+                Log.e("MediaSelectionError", "No media selected")
             }
         }
 
@@ -40,8 +40,8 @@ class MainActivity : AppCompatActivity() {
 
         binding.addVideoButton.setOnClickListener {
             if (arePermissionsGranted()) {
-                Log.d("ButtonClick", "Permissions granted, launching video selection.")
-                selectVideo()
+                Log.d("ButtonClick", "Permissions granted, launching media selection.")
+                selectMedia()
             } else {
                 Log.w("PermissionCheck", "Permissions not granted, showing request dialog.")
                 showPermissionRequestDialog()
@@ -130,15 +130,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun selectVideo() {
-        Log.d("VideoSelection", "Launching video selector.")
-        selectVideoLauncher.launch("video/*")
+    private fun selectMedia() {
+        Log.d("MediaSelection", "Launching media selector.")
+        selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
     }
 
-    private fun navigateToEditingScreen(videoUri: Uri) {
-        Log.d("Navigation", "Navigating to editing screen with URI: $videoUri")
+    private fun navigateToEditingScreen(mediaUri: Uri) {
+        Log.d("Navigation", "Navigating to editing screen with URI: $mediaUri")
         val intent = Intent(this, VideoEditingActivity::class.java)
-        intent.putExtra(VideoEditingActivity.EXTRA_VIDEO_URI, videoUri)
+        intent.putExtra(VideoEditingActivity.EXTRA_VIDEO_URI, mediaUri)
         startActivity(intent)
     }
 

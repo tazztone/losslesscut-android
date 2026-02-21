@@ -430,6 +430,19 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                             initializePlayer(state.videoUri)
                         }
                         
+                        if (state.isAudioOnly) {
+                            binding.playerView.visibility = View.GONE
+                            binding.audioPlaceholder.visibility = View.VISIBLE
+                            binding.tvAudioFileName.text = state.videoFileName
+                            binding.containerRotate?.visibility = View.GONE
+                            binding.containerSnapshot?.visibility = View.GONE
+                        } else {
+                            binding.playerView.visibility = View.VISIBLE
+                            binding.audioPlaceholder.visibility = View.GONE
+                            binding.containerRotate?.visibility = View.VISIBLE
+                            binding.containerSnapshot?.visibility = View.VISIBLE
+                        }
+
                         binding.customVideoSeeker.setKeyframes(state.keyframes)
                         binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
                         binding.btnUndo.isEnabled = state.canUndo

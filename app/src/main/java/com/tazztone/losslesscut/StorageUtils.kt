@@ -37,13 +37,42 @@ class StorageUtils @Inject constructor(
         return resolver.insert(videoCollection, newVideoDetails)
     }
 
+    fun createAudioOutputUri(fileName: String): Uri? {
+        val resolver = context.contentResolver
+        val audioCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        }
+
+        val newAudioDetails = ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+            // Use audio/mp4 for .m4a files which MediaMuxer creates
+            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/LosslessCut")
+                put(MediaStore.Audio.Media.IS_PENDING, 1)
+            }
+        }
+
+        return resolver.insert(audioCollection, newAudioDetails)
+    }
+
     fun finalizeVideo(uri: Uri) {
+        finalizeMedia(uri)
+    }
+
+    fun finalizeAudio(uri: Uri) {
+        finalizeMedia(uri)
+    }
+
+    private fun finalizeMedia(uri: Uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
-            val updatedVideoDetails = ContentValues().apply {
-                put(MediaStore.Video.Media.IS_PENDING, 0)
+            val updatedDetails = ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
-            resolver.update(uri, updatedVideoDetails, null, null)
+            resolver.update(uri, updatedDetails, null, null)
         }
     }
 

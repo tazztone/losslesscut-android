@@ -1,31 +1,31 @@
 <resources>
     <string name="app_name">LosslessCut</string>
-    <string name="add_video">Add Video</string>
-    <string name="create_engaging_videos">Free. Open-Source. Limitless Creativity!</string>
+    <string name="add_video">Add Media</string>
+    <string name="create_engaging_videos">Fast. Lossless. On-device.</string>
     <string name="home">Home</string>
     <string name="trim">Trim</string>
     <string name="split">Split</string>
     <string name="effects">Effects</string>
     <string name="export">Export</string>
     <string name="delete">Delete</string>
-    <string name="trim_video">Trim video</string>
-    <string name="save_video">Save the video to device</string>
-    <string name="add_overly">Add overly to video</string>
-    <string name="add_text">Add text to the video</string>
-    <string name="add_audio">Add audio to the music</string>
-    <string name="crop_video">Crop the video</string>
-    <string name="merge_video">Add another video or image</string>
-    <string name="loading">Importing Video…</string>
+    <string name="trim_video">Trim Media</string>
+    <string name="save_video">Save to device</string>
+    <string name="add_overly">Add overlay</string>
+    <string name="add_text">Add text</string>
+    <string name="add_audio">Add audio</string>
+    <string name="crop_video">Crop</string>
+    <string name="merge_video">Merge</string>
+    <string name="loading">Importing Media…</string>
     <string name="default_time_stamp">00:00 / 00:00</string>
-    <string name="trim_your_video">Trim your video</string>
+    <string name="trim_your_video">Trim Media</string>
     <string name="cancel">Cancel</string>
     <string name="keep_right_portion">Remove left</string>
     <string name="keep_left_portion">Remove right</string>
-    <string name="loading_tag">Buckle up! Your video is loading</string>
+    <string name="loading_tag">Buckle up! Your media is loading</string>
     <string name="done">Done</string>
-    <string name="please_wait">Please wait, your video is being processed.</string>
+    <string name="please_wait">Please wait, your media is being processed.</string>
     <string name="select_aspect_ratio">Select Aspect Ratio</string>
-    <string name="video_timeline_description">Video timeline. Drag to seek.</string>
+    <string name="video_timeline_description">Media timeline. Drag to seek.</string>
     <string name="play_pause">Play/Pause</string>
     
     <string name="snap">Snap</string>
@@ -84,4 +84,6 @@
     <string name="error_invalid_video_uri_msg">Invalid video URI</string>
     <string name="error_failed_open_pfd">Failed to open output file</string>
     <string name="error_no_tracks_found">No video or audio tracks found in file</string>
+    <string name="export_success_audio">Successfully exported %1$d audio clip(s) to Music/LosslessCut</string>
+    <string name="audio_only_placeholder_desc">Audio file: %1$s</string>
 </resources>

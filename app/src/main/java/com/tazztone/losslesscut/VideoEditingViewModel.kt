@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
@@ -39,7 +40,8 @@ sealed class VideoEditingUiState {
         val segments: List<TrimSegment>,
         val selectedSegmentId: UUID? = null,
         val canUndo: Boolean = false,
-        val videoFps: Float = 30f
+        val videoFps: Float = 30f,
+        val isAudioOnly: Boolean = false
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
@@ -70,6 +72,7 @@ class VideoEditingViewModel @Inject constructor(
     private var history = mutableListOf<List<TrimSegment>>()
     private var currentSegments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
+    private var isAudioOnly: Boolean = false
     
     private var undoLimit = 30
     
@@ -97,6 +100,7 @@ class VideoEditingViewModel @Inject constructor(
             try {
                 val keyframes = engine.probeKeyframes(context, videoUri)
                 currentKeyframes = keyframes
+                isAudioOnly = keyframes.isEmpty() && withContext(ioDispatcher) { isMediaAudioOnly(context, videoUri) }
                 
                 val metadata = storageUtils.getVideoMetadata(videoUri)
                 val fileName = metadata.fileName
@@ -104,7 +108,7 @@ class VideoEditingViewModel @Inject constructor(
                 videoFileName = fileName
                 videoDurationMs = durationMs
  
-                videoFps = extractVideoFps(context, videoUri)
+                videoFps = if (isAudioOnly) 0f else extractVideoFps(context, videoUri)
  
                 // Initial segment covering the whole video
                 currentSegments = listOf(TrimSegment(startMs = 0, endMs = videoDurationMs))
@@ -117,6 +121,27 @@ class VideoEditingViewModel @Inject constructor(
                 val msg = context.getString(R.string.error_load_video, e.message)
                 _uiState.value = VideoEditingUiState.Error(msg)
             }
+        }
+    }
+
+    private fun isMediaAudioOnly(context: Context, uri: Uri): Boolean {
+        val extractor = android.media.MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            var hasVideo = false
+            for (i in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(i)
+                val mime = format.getString(android.media.MediaFormat.KEY_MIME)
+                if (mime?.startsWith("video/") == true) {
+                    hasVideo = true
+                    break
+                }
+            }
+            !hasVideo
+        } catch (e: Exception) {
+            false
+        } finally {
+            extractor.release()
         }
     }
 
@@ -162,7 +187,8 @@ class VideoEditingViewModel @Inject constructor(
             segments = currentSegments.map { it.copy() }, // Deep copy
             selectedSegmentId = selectedSegmentId,
             canUndo = history.size > 1,
-            videoFps = videoFps
+            videoFps = videoFps,
+            isAudioOnly = isAudioOnly
         )
     }
 
@@ -305,9 +331,17 @@ class VideoEditingViewModel @Inject constructor(
             if (isLossless) {
                 var successCount = 0
                 val errors = mutableListOf<String>()
+                val exportIsAudioOnly = isAudioOnly || !keepVideo
  
                 for ((index, segment) in segmentsToExport.withIndex()) {
-                    val outputUri = storageUtils.createVideoOutputUri("clip_${System.currentTimeMillis()}_$index.mp4")
+                    val extension = if (exportIsAudioOnly) "m4a" else "mp4"
+                    val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
+                    val outputUri = if (exportIsAudioOnly) {
+                        storageUtils.createAudioOutputUri(fileName)
+                    } else {
+                        storageUtils.createVideoOutputUri(fileName)
+                    }
+
                     if (outputUri == null) {
                         errors.add(context.getString(R.string.error_create_file))
                         continue
@@ -321,7 +355,9 @@ class VideoEditingViewModel @Inject constructor(
                 }
 
                 if (errors.isEmpty() && successCount > 0) {
-                    _uiEvents.emit(context.getString(R.string.export_success, successCount))
+                    val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, successCount) 
+                             else context.getString(R.string.export_success, successCount)
+                    _uiEvents.emit(msg)
                     _isDirty.value = false
                     updateSuccessState()
                 } else if (successCount > 0) {

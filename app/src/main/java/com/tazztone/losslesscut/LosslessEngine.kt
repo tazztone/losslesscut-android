@@ -167,6 +167,14 @@ class LosslessEngineImpl @Inject constructor(
             var effectiveStartUs = -1L
             var lastVideoSampleTimeUs = -1L
             var lastAudioSampleTimeUs = -1L
+            var hasVideoTrack = false
+
+            for ((_, isVideo) in isVideoTrackMap) {
+                if (isVideo) {
+                    hasVideoTrack = true
+                    break
+                }
+            }
 
             // Single loop — let MediaExtractor decide which track is next
             while (true) {
@@ -207,7 +215,11 @@ class LosslessEngineImpl @Inject constructor(
             
             Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")
             
-            storageUtils.finalizeVideo(outputUri)
+            if (hasVideoTrack) {
+                storageUtils.finalizeVideo(outputUri)
+            } else {
+                storageUtils.finalizeAudio(outputUri)
+            }
             Result.success(outputUri)
 
         } catch (e: Exception) {
