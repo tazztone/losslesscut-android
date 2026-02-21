@@ -210,7 +210,20 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnSetOut?.setOnClickListener { setOutPoint() }
         binding.btnSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
         
-        binding.btnSplit.setOnClickListener { viewModel.splitSegmentAt(player.currentPosition) }
+        binding.btnSplit.setOnClickListener { 
+            val currentPos = player.currentPosition
+            val state = viewModel.uiState.value as? VideoEditingUiState.Success
+            
+            val splitPos = if (isLosslessMode && state?.keyframes?.isNotEmpty() == true) {
+                state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+            } else {
+                currentPos
+            }
+
+            viewModel.splitSegmentAt(splitPos)
+            player.seekTo(splitPos)
+            binding.customVideoSeeker.setSeekPosition(splitPos)
+        }
         TooltipCompat.setTooltipText(binding.btnSplit, getString(R.string.split))
         
         binding.btnDelete.setOnClickListener { 
