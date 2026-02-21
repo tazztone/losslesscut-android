@@ -94,11 +94,16 @@ class CustomVideoSeeker @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = 4f
     }
+    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+    }
 
     private var pinchAnimValue = 0f
     private var pinchAnimator: ValueAnimator? = null
 
     private var showZoomHint = true
+    private var showHandleHint = true
 
     private val segmentRect = RectF()
 
@@ -315,8 +320,16 @@ class CustomVideoSeeker @JvmOverloads constructor(
             canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
             canvas.drawCircle(startX, height.toFloat() - 25f, 25f, handlePaint)
 
+            if (showHandleHint) {
+                drawHandleArrow(canvas, startX, height.toFloat() - 25f, isLeft = true)
+            }
+
             canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
             canvas.drawCircle(endX, height.toFloat() - 25f, 25f, handlePaint)
+
+            if (showHandleHint) {
+                drawHandleArrow(canvas, endX, height.toFloat() - 25f, isLeft = false)
+            }
 
             // Draw highlight border if selected
             if (segment.id == selectedSegmentId) {
@@ -381,6 +394,23 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
     }
 
+    private fun drawHandleArrow(canvas: Canvas, cx: Float, cy: Float, isLeft: Boolean) {
+        val arrowSize = 30f
+        val offset = 60f + (pinchAnimValue * 30f)
+        val alpha = ((1f - pinchAnimValue) * 255).toInt()
+        arrowPaint.alpha = alpha
+        
+        val direction = if (isLeft) 1 else -1
+        val tipX = cx + offset * direction
+        
+        val path = android.graphics.Path()
+        path.moveTo(tipX, cy - arrowSize)
+        path.lineTo(tipX + arrowSize * direction, cy)
+        path.lineTo(tipX, cy + arrowSize)
+        path.close()
+        canvas.drawPath(path, arrowPaint)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleGestureDetector.onTouchEvent(event)
@@ -402,6 +432,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 val isTouchingBottom = event.y > height - 80f
 
                 showZoomHint = false // hide hint on any interaction
+                showHandleHint = false
                 stopPinchAnimation()
 
                 if (isTouchingBottom) {
