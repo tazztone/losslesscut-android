@@ -67,4 +67,5 @@
     <string name="hint_pinch_to_zoom">Pinch to zoom timeline</string>
     <string name="lossless_mode_snap">Snap to Keyframes</string>
     <string name="lossless_mode_desc">Locks cuts to keyframes for lossless export without re-encoding.</string>
+    <string name="error_segment_too_small_split">Segment too small to split further</string>
 </resources>

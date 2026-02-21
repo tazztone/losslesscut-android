@@ -15,6 +15,7 @@ import android.view.View
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.SegmentAction
 import com.tazztone.losslesscut.TrimSegment
+import com.tazztone.losslesscut.VideoEditingViewModel
 import java.util.UUID
 
 class CustomVideoSeeker @JvmOverloads constructor(
@@ -129,11 +130,11 @@ class CustomVideoSeeker @JvmOverloads constructor(
             }
 
             if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
-                val newStart = touchTimeMs.coerceAtMost(segment.endMs - 100)
+                val newStart = touchTimeMs.coerceAtMost(segment.endMs - VideoEditingViewModel.MIN_SEGMENT_DURATION_MS)
                 onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
                 seekPositionMs = newStart
             } else {
-                val newEnd = touchTimeMs.coerceAtLeast(segment.startMs + 100)
+                val newEnd = touchTimeMs.coerceAtLeast(segment.startMs + VideoEditingViewModel.MIN_SEGMENT_DURATION_MS)
                 onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
                 seekPositionMs = newEnd
             }
@@ -428,12 +429,32 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                         if (currentTouchTarget == TouchTarget.HANDLE_LEFT) {
                             val minAllowed = prevSegment?.endMs ?: 0L
-                            val newStart = newTimeMs.coerceIn(minAllowed, segment.endMs - 100)
+                            
+                            // Keyframe awareness: prevent snapping to the same keyframe as the end point
+                            if (isLosslessMode && keyframes.isNotEmpty()) {
+                                if (newTimeMs >= segment.endMs) {
+                                    newTimeMs = keyframes.filter { it < segment.endMs }.lastOrNull() ?: 0L
+                                }
+                            }
+
+                            val maxAllowed = segment.endMs - VideoEditingViewModel.MIN_SEGMENT_DURATION_MS
+                            val newStart = newTimeMs.coerceIn(minAllowed, maxAllowed)
+                            
                             onSegmentBoundsChanged?.invoke(id, newStart, segment.endMs, newStart)
                             seekPositionMs = newStart
                         } else {
+                            val minAllowed = segment.startMs + VideoEditingViewModel.MIN_SEGMENT_DURATION_MS
                             val maxAllowed = nextSegment?.startMs ?: videoDurationMs
-                            val newEnd = newTimeMs.coerceIn(segment.startMs + 100, maxAllowed)
+                            
+                            // Keyframe awareness: prevent snapping to the same keyframe as the start point
+                            if (isLosslessMode && keyframes.isNotEmpty()) {
+                                if (newTimeMs <= segment.startMs) {
+                                    newTimeMs = keyframes.filter { it > segment.startMs }.firstOrNull() ?: videoDurationMs
+                                }
+                            }
+
+                            val newEnd = newTimeMs.coerceIn(minAllowed, maxAllowed)
+
                             onSegmentBoundsChanged?.invoke(id, segment.startMs, newEnd, newEnd)
                             seekPositionMs = newEnd
                         }

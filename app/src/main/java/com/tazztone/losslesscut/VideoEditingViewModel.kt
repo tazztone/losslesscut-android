@@ -62,6 +62,10 @@ class VideoEditingViewModel(
     
     private val preferences = AppPreferences(application)
     private var undoLimit = 30
+    
+    companion object {
+        const val MIN_SEGMENT_DURATION_MS = 100L
+    }
 
     init {
         viewModelScope.launch {
@@ -182,11 +186,20 @@ class VideoEditingViewModel(
     fun splitSegmentAt(timeMs: Long) {
         val segmentToSplit = currentSegments.find { timeMs >= it.startMs && timeMs <= it.endMs } ?: return
         
+        // Ensure both resulting segments have at least MIN_SEGMENT_DURATION_MS
+        if (timeMs - segmentToSplit.startMs < MIN_SEGMENT_DURATION_MS || 
+            segmentToSplit.endMs - timeMs < MIN_SEGMENT_DURATION_MS) {
+            viewModelScope.launch { 
+                _uiEvents.emit(getApplication<Application>().getString(R.string.error_segment_too_small_split)) 
+            }
+            return
+        }
+
         val index = currentSegments.indexOf(segmentToSplit)
         val newSegments = currentSegments.toMutableList()
         
         val left = segmentToSplit.copy(id = UUID.randomUUID(), endMs = timeMs)
-        val right = segmentToSplit.copy(id = UUID.randomUUID(), startMs = timeMs + 1)
+        val right = segmentToSplit.copy(id = UUID.randomUUID(), startMs = timeMs) // Removed +1 to avoid sub-millisecond gaps if they ever arise, or just to keep it clean
         
         newSegments.removeAt(index)
         newSegments.add(index, left)
@@ -238,7 +251,23 @@ class VideoEditingViewModel(
 
     fun updateSegmentBounds(id: UUID, startMs: Long, endMs: Long) {
         currentSegments = currentSegments.map {
-            if (it.id == id) it.copy(startMs = startMs, endMs = endMs) else it
+            if (it.id == id) {
+                // Final safety check to prevent zero or sub-minimum segments
+                if (endMs - startMs < MIN_SEGMENT_DURATION_MS) {
+                    val current = it
+                    if (startMs != current.startMs) {
+                        // Left handle was moved
+                        it.copy(startMs = (endMs - MIN_SEGMENT_DURATION_MS).coerceAtLeast(0))
+                    } else {
+                        // Right handle was moved
+                        it.copy(endMs = startMs + MIN_SEGMENT_DURATION_MS)
+                    }
+                } else {
+                    it.copy(startMs = startMs, endMs = endMs)
+                }
+            } else {
+                it
+            }
         }
         updateSuccessState()
     }

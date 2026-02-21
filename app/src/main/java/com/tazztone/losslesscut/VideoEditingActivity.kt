@@ -288,7 +288,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val prevSegment = if (currentIndex > 0) keepSegments[currentIndex - 1] else null
         val minAllowed = prevSegment?.endMs ?: 0L
         
-        val newStart = snapPos.coerceIn(minAllowed, segment.endMs - 100)
+        val newStart = snapPos.coerceIn(minAllowed, segment.endMs - VideoEditingViewModel.MIN_SEGMENT_DURATION_MS)
 
         if (newStart < segment.endMs) {
             viewModel.updateSegmentBounds(segment.id, newStart, segment.endMs)
@@ -319,7 +319,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val nextSegment = if (currentIndex >= 0 && currentIndex < keepSegments.size - 1) keepSegments[currentIndex + 1] else null
         val maxAllowed = nextSegment?.startMs ?: Long.MAX_VALUE
         
-        val newEnd = snapPos.coerceIn(segment.startMs + 100, maxAllowed)
+        val newEnd = snapPos.coerceIn(segment.startMs + VideoEditingViewModel.MIN_SEGMENT_DURATION_MS, maxAllowed)
 
         if (newEnd > segment.startMs) {
             viewModel.updateSegmentBounds(segment.id, segment.startMs, newEnd)
