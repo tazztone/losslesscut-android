@@ -325,17 +325,26 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val endPx = (scrollOffsetX + width).toInt().coerceAtMost((width * zoomFactor).toInt())
 
             // Draw with global scaling (data is already normalized to 1.0 by the extractor)
-            for (px in startPx..endPx) {
-                val timeMs = xToTime(px.toFloat())
-                val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
-                    .toInt().coerceIn(0, data.size - 1)
-                val amp = data[bucketIdx]
-                
-                // Scaled amplitude: amp * maxHeight (amp is 0.0 to 1.0)
-                val barHalf = amp * maxAvailableHeight
-                canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
-            }
+        for (px in startPx..endPx) {
+            val timeMs = xToTime(px.toFloat())
+            val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
+                .toInt().coerceIn(0, data.size - 1)
+            val amp = data[bucketIdx]
+            
+            // 1. Noise Floor & Baseline: Ensure at least a tiny baseline is visible
+            // Threshold for amplification is still 2%, but we map everything to a min height
+            val baseAmp = if (amp < 0.02f) 0.01f else amp
+
+            // 2. Peak Scale: Amplify by 1.25x
+            val amplifiedAmp = baseAmp * 1.25f
+            
+            // 3. Draw with Clipping & Min Height
+            // maxAvailableHeight corresponds to 95% of view area
+            val barHalf = (amplifiedAmp * maxAvailableHeight).coerceIn(2f, maxAvailableHeight)
+            canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
         }
+    }
+        
 
         // Draw Segments
         var keepSegmentIndex = 0
