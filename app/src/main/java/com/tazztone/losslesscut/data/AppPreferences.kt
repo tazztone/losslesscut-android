@@ -1,12 +1,4 @@
 package com.tazztone.losslesscut.data
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -74,6 +66,7 @@ class AppPreferences @Inject constructor(
         }
 
     suspend fun setUndoLimit(limit: Int) {
+        require(limit in 1..100) { "Undo limit must be between 1 and 100" }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.UNDO_LIMIT] = limit
         }
@@ -86,6 +79,7 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun setJpgQuality(quality: Int) {
+        require(quality in 1..100) { "JPG quality must be between 1 and 100" }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.JPG_QUALITY] = quality
         }

@@ -16,6 +16,7 @@ import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -103,12 +104,13 @@ class VideoEditingViewModel @Inject constructor(
     private var history = mutableListOf<List<MediaClip>>()
     private var selectedSegmentId: UUID? = null
     
-    private val keyframeCache = object : LinkedHashMap<Uri, List<Long>>(20, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Uri, List<Long>>?): Boolean {
+    private val keyframeCache = object : LinkedHashMap<String, List<Long>>(20, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Long>>?): Boolean {
             return size > 20
         }
     }
     @Volatile private var isSnapshotInProgress = false
+    private var waveformJob: Job? = null
     
     private var undoLimit = 30
     
@@ -260,14 +262,18 @@ class VideoEditingViewModel @Inject constructor(
     private suspend fun loadClipData(index: Int) {
         val clip = currentClips[index]
         
-        val keyframes = keyframeCache.getOrPut(clip.uri) {
-            engine.probeKeyframes(context, clip.uri)
+        val key = clip.uri.toString()
+        val keyframes = keyframeCache.get(key) ?: run {
+            val results = engine.probeKeyframes(context, clip.uri)
+            keyframeCache[key] = results
+            results
         }
         currentKeyframes = keyframes
         
         updateSuccessState()
 
-        viewModelScope.launch(ioDispatcher) {
+        waveformJob?.cancel()
+        waveformJob = viewModelScope.launch(ioDispatcher) {
             val cacheKey = waveformCacheKey(clip.uri, clip.durationMs)
             val cachedWaveform = loadWaveformFromCache(cacheKey)
             
@@ -291,7 +297,7 @@ class VideoEditingViewModel @Inject constructor(
         _uiState.value = VideoEditingUiState.Success(
             clips = currentClips.map { it.copy() },
             selectedClipIndex = selectedClipIndex,
-            keyframes = currentKeyframes,
+            keyframes = keyframeCache[selectedClip.uri.toString()] ?: emptyList(),
             segments = selectedClip.segments.map { it.copy() },
             selectedSegmentId = selectedSegmentId,
             canUndo = history.size > 1,

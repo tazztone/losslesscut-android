@@ -16,8 +16,23 @@ on:
         required: false
 
 jobs:
+  test-gate:
+    name: Test Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up JDK 17
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+      - name: Run Unit Tests
+        run: ./gradlew test
+
   build-and-release:
     name: Build APK/AAB & Create Release
+    needs: test-gate
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,11 +40,11 @@ jobs:
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       
       # 1. Setup Environment
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
           distribution: 'zulu'
           java-version: '21'

@@ -22,10 +22,12 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
-import com.tazztone.losslesscut.utils.TimeUtils
-import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.SegmentAction
+import com.tazztone.losslesscut.viewmodel.TrimSegment
+import com.tazztone.losslesscut.utils.TimeUtils
+import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -151,7 +153,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         hideSystemUI()
 
         initializeViews()
-        setupExoPlayer()
+        initializePlayer()
         setupCustomSeeker()
         observeViewModel()
 
@@ -250,8 +252,9 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         clipAdapter = MediaClipAdapter(
             onClipSelected = { index -> 
-                if (player.currentMediaItemIndex != index) {
-                    player.seekTo(index, 0)
+                val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
+                if (currentState != null && index != currentState.selectedClipIndex) {
+                    currentRotation = 0
                     viewModel.selectClip(index)
                 }
             },
@@ -505,13 +508,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             }
             player.seekTo(targetKf)
             binding.customVideoSeeker.setSeekPosition(targetKf)
+            updateDurationDisplay(targetKf, player.duration)
         } else {
             val step = if (currentState.videoFps > 0f) (1000L / currentState.videoFps).toLong() else 33L
             val target = (player.currentPosition + (direction * step)).coerceIn(0, player.duration)
             player.seekTo(target)
             binding.customVideoSeeker.setSeekPosition(target)
+            updateDurationDisplay(target, player.duration)
         }
-        updateDurationDisplay(player.currentPosition, player.duration)
     }
 
     private fun observeViewModel() {
@@ -542,7 +546,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         // Update clip list visibility and adapter
                         if (state.clips.size > 1) {
                             binding.playlistContainer?.visibility = View.VISIBLE
-                            clipAdapter.updateClips(state.clips, state.selectedClipIndex)
+                            clipAdapter.submitList(state.clips)
+                            clipAdapter.updateSelection(state.selectedClipIndex)
                         } else {
                             binding.playlistContainer?.visibility = View.GONE
                         }
@@ -592,7 +597,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
     }
 
-    private fun setupExoPlayer() {
+    private fun initializePlayer() {
+        isVideoLoaded = false
         player = ExoPlayer.Builder(this).build().apply {
             binding.playerView.player = this
             addListener(playerListener)

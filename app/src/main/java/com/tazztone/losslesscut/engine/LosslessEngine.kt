@@ -81,12 +81,14 @@ class LosslessEngineImpl @Inject constructor(
             if (videoTrackIndex >= 0) {
                 extractor.selectTrack(videoTrackIndex)
                 var count = 0
-                while (extractor.sampleTime >= 0 && count < 3000 && currentCoroutineContext().isActive) {
+                var totalSamples = 0
+                while (extractor.sampleTime >= 0 && count < 3000 && totalSamples < 15000 && currentCoroutineContext().isActive) {
                     val sampleTime = extractor.sampleTime
                     if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
                         keyframes.add(sampleTime / 1000)
                         count++
                     }
+                    totalSamples++
                     if (!extractor.advance()) break
                 }
             }

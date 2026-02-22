@@ -116,6 +116,8 @@ class CustomVideoSeeker @JvmOverloads constructor(
         color = Color.WHITE
         style = Paint.Style.FILL
     }
+    private val arrowPath = android.graphics.Path()
+    private val timeStringBuilder = StringBuilder()
 
     private var pinchAnimValue = 0f
     private var pinchAnimator: ValueAnimator? = null
@@ -295,8 +297,19 @@ class CustomVideoSeeker @JvmOverloads constructor(
         val seconds = totalSeconds % 60
         val minutes = (totalSeconds / 60) % 60
         val hours = totalSeconds / 3600
-        return if (hours > 0) String.format("%d:%02d:%02d", hours, minutes, seconds)
-        else String.format("%02d:%02d", minutes, seconds)
+        
+        timeStringBuilder.setLength(0)
+        if (hours > 0) {
+            timeStringBuilder.append(hours).append(':')
+            if (minutes < 10) timeStringBuilder.append('0')
+            timeStringBuilder.append(minutes).append(':')
+        } else {
+            if (minutes < 10) timeStringBuilder.append('0')
+            timeStringBuilder.append(minutes).append(':')
+        }
+        if (seconds < 10) timeStringBuilder.append('0')
+        timeStringBuilder.append(seconds)
+        return timeStringBuilder.toString()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -569,12 +582,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
         val direction = if (isLeft) 1 else -1
         val tipX = cx + offset * direction
         
-        val path = android.graphics.Path()
-        path.moveTo(tipX, cy - arrowSize)
-        path.lineTo(tipX + arrowSize * direction, cy)
-        path.lineTo(tipX, cy + arrowSize)
-        path.close()
-        canvas.drawPath(path, arrowPaint)
+        arrowPath.reset()
+        arrowPath.moveTo(tipX, cy - arrowSize)
+        arrowPath.lineTo(tipX + arrowSize * direction, cy)
+        arrowPath.lineTo(tipX, cy + arrowSize)
+        arrowPath.close()
+        canvas.drawPath(arrowPath, arrowPaint)
     }
 
     @SuppressLint("ClickableViewAccessibility")
