@@ -98,4 +98,5 @@
     <string name="duplicate_files_confirm_msg">%1$d selected file(s) are already in the playlist. Skip duplicates?</string>
     <string name="skip_duplicates">Skip Duplicates</string>
     <string name="import_all">Import All</string>
+    <string name="speed_format">%.1fx</string>
 </resources>

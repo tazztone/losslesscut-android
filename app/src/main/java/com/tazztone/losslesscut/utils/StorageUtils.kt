@@ -22,8 +22,13 @@ class StorageUtils @Inject constructor(
 ) {
 
 
-    fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean): Uri? {
+    fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean, suffix: String? = null): Uri? {
         val resolver = context.contentResolver
+        
+        val baseName = fileName.substringBeforeLast(".")
+        val extension = fileName.substringAfterLast(".", "mp4")
+        val finalFileName = if (suffix != null) "${baseName}${suffix}.${extension}" else fileName
+
         val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
         val collection = if (isAudioOnly) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

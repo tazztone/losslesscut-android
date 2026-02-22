@@ -59,6 +59,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private var isDraggingTimeline = false
     private var currentRotation = 0
     private var isLosslessMode = true
+    private var currentPlaybackSpeed = 1.0f
     
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -333,20 +334,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
         binding.containerSetOut?.let { TooltipCompat.setTooltipText(it, getString(R.string.set_out_point)) }
         
-        val splitAction = { 
-            val currentPos = player.currentPosition
-            val state = viewModel.uiState.value as? VideoEditingUiState.Success
-            
-            val splitPos = if (isLosslessMode && state?.keyframes?.isNotEmpty() == true) {
-                state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
-            } else {
-                currentPos
-            }
-
-            viewModel.splitSegmentAt(splitPos)
-            player.seekTo(splitPos)
-            binding.customVideoSeeker.setSeekPosition(splitPos)
-        }
+        val splitAction = { splitCurrentSegment() }
         binding.btnSplit.setOnClickListener { splitAction() }
         binding.containerSplit?.setOnClickListener { splitAction() }
         TooltipCompat.setTooltipText(binding.btnSplit, getString(R.string.split))
@@ -373,6 +361,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             if (player.isPlaying) player.pause() else player.play()
         }
         binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
+
+        binding.btnPlaybackSpeed?.setOnClickListener {
+            cyclePlaybackSpeed()
+        }
 
         val snapshotAction = { extractSnapshot() }
         binding.btnSnapshot.setOnClickListener { snapshotAction() }
@@ -410,9 +402,63 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
 
         // Ensure the video player stays completely un-squished and un-rotated
-        binding.playerView.rotation = 0f
         binding.playerView.scaleX = 1f
         binding.playerView.scaleY = 1f
+    }
+
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                android.view.KeyEvent.KEYCODE_SPACE -> {
+                    if (player.isPlaying) player.pause() else player.play()
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_I -> {
+                    setInPoint()
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_O -> {
+                    setOutPoint()
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_S -> {
+                    splitCurrentSegment()
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (event.isAltPressed) {
+                        performNudge(-1)
+                    } else {
+                        player.seekToPrevious()
+                    }
+                    return true
+                }
+                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (event.isAltPressed) {
+                        performNudge(1)
+                    } else {
+                        player.seekToNext()
+                    }
+                    return true
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun splitCurrentSegment() {
+        val currentPos = player.currentPosition
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success
+        
+        val splitPos = if (isLosslessMode && state?.keyframes?.isNotEmpty() == true) {
+            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+        } else {
+            currentPos
+        }
+
+        viewModel.splitSegmentAt(splitPos)
+        player.seekTo(splitPos)
+        binding.customVideoSeeker.setSeekPosition(splitPos)
     }
 
     private fun setInPoint() {
@@ -611,6 +657,27 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         player.prepare()
         player.playWhenReady = savedPlayWhenReady
         player.seekTo(initialIndex, savedPlayheadPos)
+        
+        // Reset speed to 1.0x when loading new media
+        currentPlaybackSpeed = 1.0f
+        updatePlaybackSpeedUI()
+    }
+
+    private fun cyclePlaybackSpeed() {
+        currentPlaybackSpeed = when (currentPlaybackSpeed) {
+            1.0f -> 1.5f
+            1.5f -> 2.0f
+            2.0f -> 0.5f
+            else -> 1.0f
+        }
+        updatePlaybackSpeedUI()
+    }
+
+    private fun updatePlaybackSpeedUI() {
+        binding.btnPlaybackSpeed?.text = getString(R.string.speed_format, currentPlaybackSpeed)
+        if (::player.isInitialized) {
+            player.playbackParameters = androidx.media3.common.PlaybackParameters(currentPlaybackSpeed)
+        }
     }
 
     private fun setupCustomSeeker() {

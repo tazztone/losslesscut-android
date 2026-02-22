@@ -13,6 +13,7 @@ import com.tazztone.losslesscut.di.IoDispatcher
 import com.tazztone.losslesscut.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.engine.LosslessEngineInterface
 import com.tazztone.losslesscut.utils.StorageUtils
+import com.tazztone.losslesscut.utils.TimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -516,8 +517,9 @@ class VideoEditingViewModel @Inject constructor(
 
                     for ((index, segment) in segments.withIndex()) {
                         val extension = if (exportIsAudioOnly) "m4a" else "mp4"
+                        val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"
                         val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
-                        val outputUri = storageUtils.createMediaOutputUri(fileName, exportIsAudioOnly)
+                        val outputUri = storageUtils.createMediaOutputUri(selectedClip.fileName, exportIsAudioOnly, timeSuffix)
 
                         if (outputUri == null) {
                             errors.add(context.getString(R.string.error_create_file))

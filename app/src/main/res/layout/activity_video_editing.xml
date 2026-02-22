@@ -375,6 +375,18 @@
                     android:shadowRadius="20"
                     android:layout_marginStart="16dp"/>
 
+                <Button
+                    android:id="@+id/btnPlaybackSpeed"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:text="1.0x"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="8dp"
+                    tools:ignore="HardcodedText" />
+
                 <ImageButton
                     android:id="@+id/btnNudgeBack"
                     android:layout_width="48dp"
