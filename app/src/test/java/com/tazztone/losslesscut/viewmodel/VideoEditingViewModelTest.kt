@@ -166,7 +166,7 @@ class VideoEditingViewModelTest {
             videoMime = "video/avc", audioMime = "audio/mp4a-latm", sampleRate = 44100,
             channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false
         )
-        val incompatibleMetadata = baseMetadata.copy(fileName = "v2.mp4", width = 1280) // Diff res
+        val incompatibleMetadata = baseMetadata.copy(fileName = "v2.mp4", videoMime = "video/hevc") // Codec mismatch
         
         every { mockStorageUtils.getDetailedMetadata(uris[0]) } returns baseMetadata
         every { mockStorageUtils.getDetailedMetadata(uris[1]) } returns incompatibleMetadata

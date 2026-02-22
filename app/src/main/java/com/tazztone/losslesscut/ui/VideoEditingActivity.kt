@@ -1,12 +1,4 @@
 package com.tazztone.losslesscut.ui
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -18,25 +10,27 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.viewModels
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.TooltipCompat
 import androidx.lifecycle.lifecycleScope
-import com.airbnb.lottie.LottieAnimationView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
+import com.tazztone.losslesscut.utils.TimeUtils
+import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
+import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.viewmodel.SegmentAction
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -80,17 +74,17 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 } else if (nonDuplicateUris.isEmpty()) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.add_video)
-                        .setMessage("Selected files are already in the playlist.")
+                        .setMessage(R.string.duplicate_files_msg)
                         .setPositiveButton(android.R.string.ok, null)
                         .show()
                 } else {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.add_video)
-                        .setMessage("${duplicateUris.size} selected file(s) are already in the playlist. Skip duplicates?")
-                        .setPositiveButton("Skip Duplicates") { _, _ ->
+                        .setMessage(getString(R.string.duplicate_files_confirm_msg, duplicateUris.size))
+                        .setPositiveButton(R.string.skip_duplicates) { _, _ ->
                             viewModel.addClips(nonDuplicateUris)
                         }
-                        .setNegativeButton("Import All") { _, _ ->
+                        .setNegativeButton(R.string.import_all) { _, _ ->
                             viewModel.addClips(uris)
                         }
                         .setNeutralButton(android.R.string.cancel, null)
@@ -103,9 +97,6 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private val playerListener = object : Player.Listener {
-        override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
-        }
-
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val index = player.currentMediaItemIndex
             viewModel.selectClip(index)
@@ -513,12 +504,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 keyframesMs.lastOrNull { it < currentPos - 10 } ?: 0L
             }
             player.seekTo(targetKf)
+            binding.customVideoSeeker.setSeekPosition(targetKf)
         } else {
             val step = if (currentState.videoFps > 0f) (1000L / currentState.videoFps).toLong() else 33L
             val target = (player.currentPosition + (direction * step)).coerceIn(0, player.duration)
             player.seekTo(target)
+            binding.customVideoSeeker.setSeekPosition(target)
         }
-        binding.customVideoSeeker.setSeekPosition(player.currentPosition)
         updateDurationDisplay(player.currentPosition, player.duration)
     }
 
@@ -649,7 +641,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun extractSnapshot() {
-        val currentState = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        if (viewModel.uiState.value !is VideoEditingUiState.Success) return
         viewModel.extractSnapshot(player.currentPosition)
     }
 

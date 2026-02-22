@@ -18,6 +18,8 @@ import com.tazztone.losslesscut.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.currentCoroutineContext
 import java.io.IOException
 import java.nio.ByteBuffer
 import javax.inject.Inject
@@ -77,10 +79,12 @@ class LosslessEngineImpl @Inject constructor(
 
             if (videoTrackIndex >= 0) {
                 extractor.selectTrack(videoTrackIndex)
-                while (extractor.sampleTime >= 0) {
+                var count = 0
+                while (extractor.sampleTime >= 0 && count < 3000) {
                     val sampleTime = extractor.sampleTime
                     if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
                         keyframes.add(sampleTime / 1000)
+                        count++
                     }
                     if (!extractor.advance()) break
                 }
@@ -191,7 +195,7 @@ class LosslessEngineImpl @Inject constructor(
             var lastAudioSampleTimeUs = -1L
 
             // Single loop — let MediaExtractor decide which track is next
-            while (true) {
+            while (currentCoroutineContext().isActive) {
                 val sampleSize = extractor.readSampleData(buffer, 0)
                 if (sampleSize < 0) break
 
@@ -373,7 +377,7 @@ class LosslessEngineImpl @Inject constructor(
                         var segmentStartUs = -1L
                         var lastSampleTimeInSegmentUs = 0L
 
-                        while (true) {
+                        while (currentCoroutineContext().isActive) {
                             val sampleSize = clipExtractor.readSampleData(buffer, 0)
                             if (sampleSize < 0) break
 

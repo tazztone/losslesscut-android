@@ -248,9 +248,8 @@ class VideoEditingViewModel @Inject constructor(
         if (base.isAudioOnly != target.isAudioOnly) return CompatibilityResult.Incompatible("Audio-only mismatch")
         if (base.videoMime != target.videoMime) return CompatibilityResult.Incompatible("Video codec mismatch: ${base.videoMime} vs ${target.videoMime}")
         if (base.audioMime != target.audioMime) return CompatibilityResult.Incompatible("Audio codec mismatch: ${base.audioMime} vs ${target.audioMime}")
-        if (base.width != target.width || base.height != target.height) return CompatibilityResult.Incompatible("Resolution mismatch: ${base.width}x${base.height} vs ${target.width}x${target.height}")
+        // Relaxed: resolution and rotation can differ as engine handles them
         if (base.sampleRate != target.sampleRate || base.channelCount != target.channelCount) return CompatibilityResult.Incompatible("Audio format mismatch (Sample rate/Channels)")
-        if (base.rotation != target.rotation) return CompatibilityResult.Incompatible("Rotation mismatch")
         return CompatibilityResult.Compatible
     }
 
@@ -426,7 +425,7 @@ class VideoEditingViewModel @Inject constructor(
         updateSuccessState()
     }
 
-    fun deleteSegment(id: UUID) {
+    fun markSegmentDiscarded(id: UUID) {
         toggleSegmentAction(id)
     }
 
@@ -495,6 +494,7 @@ class VideoEditingViewModel @Inject constructor(
                         },
                         onFailure = {
                             _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, it.message))
+                            updateSuccessState()
                         }
                     )
                 } else {
@@ -531,6 +531,7 @@ class VideoEditingViewModel @Inject constructor(
                         updateSuccessState()
                     } else {
                         _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, errors.joinToString()))
+                        updateSuccessState()
                     }
                 }
             } else {
