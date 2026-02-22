@@ -79,7 +79,7 @@ class StorageUtils @Inject constructor(
         }
 
         val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.DISPLAY_NAME, finalFileName)
             put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
@@ -208,7 +208,11 @@ class StorageUtils @Inject constructor(
                     width = format.getInteger(android.media.MediaFormat.KEY_WIDTH)
                     height = format.getInteger(android.media.MediaFormat.KEY_HEIGHT)
                     if (format.containsKey(android.media.MediaFormat.KEY_FRAME_RATE)) {
-                        fps = format.getInteger(android.media.MediaFormat.KEY_FRAME_RATE).toFloat()
+                        fps = try {
+                            format.getInteger(android.media.MediaFormat.KEY_FRAME_RATE).toFloat()
+                        } catch (_: Exception) {
+                            try { format.getFloat(android.media.MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                        }
                     }
                 } else if (mime.startsWith("audio/")) {
                     audioMime = mime

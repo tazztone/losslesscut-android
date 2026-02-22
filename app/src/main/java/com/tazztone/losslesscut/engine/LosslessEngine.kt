@@ -157,7 +157,11 @@ class LosslessEngineImpl @Inject constructor(
                     if (isVideo) {
                         videoMime = mime
                         if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                            fps = format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                            fps = try {
+                                format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                            } catch (_: Exception) {
+                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                            }
                         }
                     } else if (isAudio) {
                         audioMime = mime
@@ -458,41 +462,45 @@ class LosslessEngineImpl @Inject constructor(
                 mMuxer.setOrientationHint(finalRotation)
             }
 
-                        mMuxer.start()
-                         isMuxerStarted = true
-                         
-                         // Pre-calculate gap constants outside the loop
-                         val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
-                         val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
-                         val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
-            
-                        val buffer = ByteBuffer.allocateDirect(bufferSize)
-                        val bufferInfo = MediaCodec.BufferInfo()
-                        var globalOffsetUs = 0L
-                        var actuallyHasVideo = false
-            
-                        for (clip in clips) {
-                            val clipExtractor = MediaExtractor()
-                            try {
-                                clipExtractor.setDataSource(context, clip.uri, null)
-                                
-                                val clipTrackMap = mutableMapOf<Int, Int>() // Clip Track Index -> Muxer Track Index
-                                for (i in 0 until clipExtractor.trackCount) {
-                                    val format = clipExtractor.getTrackFormat(i)
-                                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                                    
-                                    val isVideo = mime.startsWith("video/")
-                                    val isAudio = mime.startsWith("audio/")
-                                    
-                                    if (isVideo && keepVideo) {
-                                        trackMap.filter { it.value == 0 }.keys.firstOrNull()?.let { 
-                                            clipTrackMap[i] = it 
-                                            actuallyHasVideo = true
-                                        }
-                                    } else if (isAudio && keepAudio) {
-                                        trackMap.filter { it.value == 1 }.keys.firstOrNull()?.let { clipTrackMap[i] = it }
-                                    }
-                                }
+            mMuxer.start()
+            isMuxerStarted = true
+
+            // Pre-calculate gap constants outside the loop
+            val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
+            val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
+            val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
+
+            // Pre-calculate muxer tracks outside the clip loop
+            val videoMuxerTrack = trackMap.entries.firstOrNull { it.value == 0 }?.key
+            val audioMuxerTrack = trackMap.entries.firstOrNull { it.value == 1 }?.key
+
+            val buffer = ByteBuffer.allocateDirect(bufferSize)
+            val bufferInfo = MediaCodec.BufferInfo()
+            var globalOffsetUs = 0L
+            var actuallyHasVideo = false
+
+            for (clip in clips) {
+                val clipExtractor = MediaExtractor()
+                try {
+                    clipExtractor.setDataSource(context, clip.uri, null)
+
+                    val clipTrackMap = mutableMapOf<Int, Int>() // Clip Track Index -> Muxer Track Index
+                    for (i in 0 until clipExtractor.trackCount) {
+                        val format = clipExtractor.getTrackFormat(i)
+                        val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+
+                        val isVideo = mime.startsWith("video/")
+                        val isAudio = mime.startsWith("audio/")
+
+                        if (isVideo && keepVideo) {
+                            videoMuxerTrack?.let {
+                                clipTrackMap[i] = it
+                                actuallyHasVideo = true
+                            }
+                        } else if (isAudio && keepAudio) {
+                            audioMuxerTrack?.let { clipTrackMap[i] = it }
+                        }
+                    }
             
 
                     for (clipTrack in clipTrackMap.keys) {

@@ -27,7 +27,7 @@ object DetectionUtils {
         var silenceStartBucket = -1
 
         for (i in waveform.indices) {
-            val isSilent = waveform[i] <= threshold
+            val isSilent = waveform[i].absoluteValue <= threshold
 
             if (isSilent) {
                 if (silenceStartBucket == -1) {

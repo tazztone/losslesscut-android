@@ -80,9 +80,7 @@ class MainActivity : AppCompatActivity() {
 
         binding.rvDashboard.adapter = DashboardAdapter(actions) { action ->
             when (action.id) {
-                "cut" -> selectMedia()
-                "remux" -> showToast("Remux/Convert feature coming soon")
-                "metadata" -> showToast("Metadata editing feature coming soon")
+                "cut", "remux", "metadata" -> selectMedia()
             }
         }
     }

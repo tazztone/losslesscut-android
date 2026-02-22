@@ -34,6 +34,20 @@ The project is organized into a layer/feature-based structure within the `com.ta
     - **Playlist Sidebar**: Synced with ExoPlayer's `currentMediaItemIndex`. Uses a `RecyclerView` with an inline "Add Media" placeholder. Visibility is tied to `clips.size > 1`.
     - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations.
 
+### 3a. User Interaction Layer
+- **Keyboard Shortcuts**: Implemented in `VideoEditingActivity.dispatchKeyEvent`.
+    - `SPACE`: Play/Pause.
+    - `I` / `O`: Set In/Out markers for the current segment.
+    - `S`: Split segment at current playhead position.
+    - `LEFT` / `RIGHT`: Seek to previous/next keyframe.
+    - `ALT + LEFT/RIGHT`: Nudge playhead by a small fixed delta (frame-step emulation).
+- **Share Intent Flow**:
+    - `MainActivity` filters for `ACTION_SEND` and `ACTION_VIEW` via its `<intent-filter>`.
+    - URIs are extracted and passed to `VideoEditingActivity` for metadata probing.
+- **Playback Speed**:
+    - Current speed state is maintained in `VideoEditingActivity` and applied to `ExoPlayer` via `PlaybackParameters(speed)`.
+    - Supported range: `0.5x, 1.0x, 1.5x, 2.0x`.
+
 ### Data & Domain Logic
 - **`LosslessEngine`**: Core muxing orchestration.
     - `executeLosslessCut`: Trims a single file. Bypasses video-specific orientation hints if no video track is present.

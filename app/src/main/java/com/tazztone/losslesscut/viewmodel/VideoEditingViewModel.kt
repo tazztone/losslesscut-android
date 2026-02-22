@@ -131,7 +131,9 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun initialize(uris: List<Uri>) {
-        if (_uiState.value !is VideoEditingUiState.Initial) return
+        if (_uiState.value is VideoEditingUiState.Success || _uiState.value is VideoEditingUiState.Loading) {
+            reset()
+        }
         
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading
@@ -347,9 +349,22 @@ class VideoEditingViewModel @Inject constructor(
     fun undo() {
         if (history.isNotEmpty()) {
             currentClips = history.removeAt(history.size - 1)
+            if (selectedClipIndex >= currentClips.size) {
+                selectedClipIndex = currentClips.size - 1
+            }
             updateState()
             loadClipData(selectedClipIndex)
         }
+    }
+
+    fun reset() {
+        _uiState.value = VideoEditingUiState.Initial
+        currentClips = emptyList()
+        selectedClipIndex = 0
+        history.clear()
+        _isDirty.value = false
+        _waveformData.value = null
+        _silencePreviewRanges.value = emptyList()
     }
 
     private fun saveToHistory() {
@@ -465,7 +480,8 @@ class VideoEditingViewModel @Inject constructor(
 
                     val firstClip = currentClips[selectedClipIndex]
                     val extension = if (!keepVideo) "m4a" else "mp4"
-                    val outputUri = storageUtils.createMediaOutputUri("${firstClip.fileName}_merged", !keepVideo)
+                    val baseNameOnly = firstClip.fileName.substringBeforeLast(".")
+                    val outputUri = storageUtils.createMediaOutputUri("${baseNameOnly}_merged.$extension", !keepVideo)
                     
                     if (outputUri == null) {
                         _uiEvents.emit(context.getString(R.string.error_create_file))
@@ -490,7 +506,8 @@ class VideoEditingViewModel @Inject constructor(
                     for ((index, segment) in segments.withIndex()) {
                         val extension = if (!keepVideo) "m4a" else "mp4"
                         val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"
-                        val outputUri = storageUtils.createMediaOutputUri(selectedClip.fileName, !keepVideo, timeSuffix)
+                        val baseNameOnly = selectedClip.fileName.substringBeforeLast(".")
+                        val outputUri = storageUtils.createMediaOutputUri("$baseNameOnly$timeSuffix.$extension", !keepVideo)
 
                         if (outputUri == null) {
                             errors.add(context.getString(R.string.error_create_file))
@@ -588,7 +605,7 @@ class VideoEditingViewModel @Inject constructor(
         
         viewModelScope.launch(ioDispatcher) {
             try {
-                val sessionId = currentClips.first().uri.toString().hashCode().toString()
+                val sessionId = getSessionId(currentClips.first().uri)
                 val sessionFile = File(context.cacheDir, "session_$sessionId.json")
                 
                 val json = gson.toJson(currentClips)
@@ -601,15 +618,22 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     suspend fun hasSavedSession(uri: Uri): Boolean {
-        val sessionId = uri.toString().hashCode().toString()
+        val sessionId = getSessionId(uri)
         val sessionFile = File(context.cacheDir, "session_$sessionId.json")
         return sessionFile.exists()
+    }
+
+    private fun getSessionId(uri: Uri): String {
+        return java.security.MessageDigest.getInstance("SHA-256")
+            .digest(uri.toString().toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(32)
     }
 
     fun restoreSession(uri: Uri) {
         viewModelScope.launch {
             try {
-                val sessionId = uri.toString().hashCode().toString()
+                val sessionId = getSessionId(uri)
                 val sessionFile = File(context.cacheDir, "session_$sessionId.json")
                 if (!sessionFile.exists()) return@launch
 
