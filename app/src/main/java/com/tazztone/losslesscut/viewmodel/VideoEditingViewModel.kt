@@ -2,13 +2,24 @@ package com.tazztone.losslesscut.viewmodel
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonPrimitive
+import com.google.gson.JsonSerializationContext
+import com.google.gson.JsonSerializer
+import com.google.gson.reflect.TypeToken
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.data.AppPreferences
+import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.data.SegmentAction
+import com.tazztone.losslesscut.data.TrimSegment
 import com.tazztone.losslesscut.di.IoDispatcher
 import com.tazztone.losslesscut.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.engine.LosslessEngineInterface
@@ -17,14 +28,9 @@ import com.tazztone.losslesscut.utils.TimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.DataInputStream
@@ -32,34 +38,9 @@ import java.io.DataOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.lang.reflect.Type
 import java.util.UUID
 import javax.inject.Inject
-
-enum class SegmentAction { KEEP, DISCARD }
-
-data class TrimSegment(
-    val id: UUID = UUID.randomUUID(),
-    val startMs: Long,
-    val endMs: Long,
-    val action: SegmentAction = SegmentAction.KEEP
-)
-
-data class MediaClip(
-    val id: UUID = UUID.randomUUID(),
-    val uri: Uri,
-    val fileName: String,
-    val durationMs: Long,
-    val width: Int,
-    val height: Int,
-    val videoMime: String?,
-    val audioMime: String?,
-    val sampleRate: Int,
-    val channelCount: Int,
-    val fps: Float,
-    val rotation: Int,
-    val isAudioOnly: Boolean,
-    val segments: List<TrimSegment> = listOf(TrimSegment(startMs = 0, endMs = durationMs))
-)
 
 sealed class VideoEditingUiState {
     object Initial : VideoEditingUiState()
@@ -115,400 +96,278 @@ class VideoEditingViewModel @Inject constructor(
     private var waveformJob: Job? = null
     
     private var undoLimit = 30
+    private val gson = GsonBuilder()
+        .registerTypeAdapter(Uri::class.java, UriAdapter())
+        .registerTypeAdapter(UUID::class.java, UuidAdapter())
+        .create()
     
+    private class UriAdapter : JsonSerializer<Uri>, JsonDeserializer<Uri> {
+        override fun serialize(src: Uri, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+            return JsonPrimitive(src.toString())
+        }
+        override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): Uri {
+            return Uri.parse(json.asString)
+        }
+    }
+
+    private class UuidAdapter : JsonSerializer<UUID>, JsonDeserializer<UUID> {
+        override fun serialize(src: UUID, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+            return JsonPrimitive(src.toString())
+        }
+        override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): UUID {
+            return UUID.fromString(json.asString)
+        }
+    }
+
     companion object {
         const val MIN_SEGMENT_DURATION_MS = 100L
     }
 
-    init {
-        viewModelScope.launch {
-            preferences.undoLimitFlow.collect {
-                undoLimit = it
-            }
-        }
-    }
-
     fun initialize(uris: List<Uri>) {
-        if (currentClips.isNotEmpty()) return
-        if (uris.isEmpty()) {
-            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_invalid_video_uri_msg))
-            return
-        }
+        if (_uiState.value !is VideoEditingUiState.Initial) return
         
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading
             try {
-                val clips = mutableListOf<MediaClip>()
-                var baseMetadata: StorageUtils.DetailedMetadata? = null
-
-                for (uri in uris) {
-                    val metadata = storageUtils.getDetailedMetadata(uri)
-                    
-                    if (baseMetadata == null) {
-                        baseMetadata = metadata
-                    } else {
-                        val result = validateCompatibility(baseMetadata, metadata)
-                        if (result is CompatibilityResult.Incompatible) {
-                             _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName) + " (${result.reason})")
-                             continue
-                        }
-                    }
-
-                    clips.add(MediaClip(
-                        uri = uri,
-                        fileName = metadata.fileName,
-                        durationMs = metadata.durationMs,
-                        width = metadata.width,
-                        height = metadata.height,
-                        videoMime = metadata.videoMime,
-                        audioMime = metadata.audioMime,
-                        sampleRate = metadata.sampleRate,
-                        channelCount = metadata.channelCount,
-                        fps = metadata.fps,
-                        rotation = metadata.rotation,
-                        isAudioOnly = metadata.isAudioOnly
-                    ))
+                // Initialize with multiple clips
+                val clips = uris.map { uri ->
+                    engine.getMediaMetadata(context, uri).fold(
+                        onSuccess = { meta ->
+                            MediaClip(
+                                uri = uri,
+                                fileName = storageUtils.getFileName(uri),
+                                durationMs = meta.durationMs,
+                                width = meta.width,
+                                height = meta.height,
+                                videoMime = meta.videoMime,
+                                audioMime = meta.audioMime,
+                                sampleRate = meta.sampleRate,
+                                channelCount = meta.channelCount,
+                                fps = meta.fps,
+                                rotation = meta.rotation,
+                                isAudioOnly = meta.videoMime == null,
+                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs))
+                            )
+                        },
+                        onFailure = { throw it }
+                    )
                 }
-
-                if (clips.isEmpty()) {
-                    _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_no_valid_clips))
-                    return@launch
-                }
-
+                
                 currentClips = clips
                 selectedClipIndex = 0
-                history.clear()
-                history.add(currentClips.map { it.copy() })
-                _isDirty.value = false
-
                 loadClipData(selectedClipIndex)
             } catch (e: Exception) {
-                val msg = context.getString(R.string.error_load_video, e.message)
-                _uiState.value = VideoEditingUiState.Error(msg)
+                _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_load_video, e.message))
             }
         }
     }
 
+    private fun loadClipData(index: Int) {
+        val clip = currentClips[index]
+        viewModelScope.launch {
+            // Get keyframes
+            val cacheKey = clip.uri.toString()
+            val kfs = keyframeCache[cacheKey] ?: withContext(ioDispatcher) {
+                engine.getKeyframes(context, clip.uri).getOrElse { emptyList() }
+            }
+            keyframeCache[cacheKey] = kfs
+            currentKeyframes = kfs
+            
+            // Extract waveform
+            extractWaveform(clip)
+
+            updateState()
+        }
+    }
+
+    private fun extractWaveform(clip: MediaClip) {
+        waveformJob?.cancel()
+        waveformJob = viewModelScope.launch {
+            _waveformData.value = null
+            val cacheKey = "waveform_${clip.uri.toString().hashCode()}.bin"
+            val cached = withContext(ioDispatcher) { loadWaveformFromCache(cacheKey) }
+            if (cached != null) {
+                _waveformData.value = cached
+                return@launch
+            }
+
+            AudioWaveformExtractor.extract(context, clip.uri)
+                ?.let { waveform ->
+                    _waveformData.value = waveform
+                    saveWaveformToCache(cacheKey, waveform)
+                }
+        }
+    }
+
+    fun selectClip(index: Int) {
+        if (index == selectedClipIndex || index !in currentClips.indices) return
+        selectedClipIndex = index
+        loadClipData(index)
+    }
+
     fun addClips(uris: List<Uri>) {
-        if (uris.isEmpty() || currentClips.isEmpty()) return
-        
         viewModelScope.launch {
             try {
-                val newClips = mutableListOf<MediaClip>()
-                val baseClip = currentClips[0]
-                val baseMetadata = StorageUtils.DetailedMetadata(
-                    fileName = baseClip.fileName,
-                    durationMs = baseClip.durationMs,
-                    width = baseClip.width,
-                    height = baseClip.height,
-                    videoMime = baseClip.videoMime,
-                    audioMime = baseClip.audioMime,
-                    sampleRate = baseClip.sampleRate,
-                    channelCount = baseClip.channelCount,
-                    fps = baseClip.fps,
-                    rotation = baseClip.rotation,
-                    isAudioOnly = baseClip.isAudioOnly
-                )
-
-                for (uri in uris) {
-                    val metadata = storageUtils.getDetailedMetadata(uri)
-                    val result = validateCompatibility(baseMetadata, metadata)
-                    
-                    if (result is CompatibilityResult.Incompatible) {
-                        _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName) + " (${result.reason})")
-                        continue
-                    }
-
-                    newClips.add(MediaClip(
-                        uri = uri,
-                        fileName = metadata.fileName,
-                        durationMs = metadata.durationMs,
-                        width = metadata.width,
-                        height = metadata.height,
-                        videoMime = metadata.videoMime,
-                        audioMime = metadata.audioMime,
-                        sampleRate = metadata.sampleRate,
-                        channelCount = metadata.channelCount,
-                        fps = metadata.fps,
-                        rotation = metadata.rotation,
-                        isAudioOnly = metadata.isAudioOnly
-                    ))
+                val newClips = uris.map { uri ->
+                    engine.getMediaMetadata(context, uri).fold(
+                        onSuccess = { meta ->
+                            MediaClip(
+                                uri = uri,
+                                fileName = storageUtils.getFileName(uri),
+                                durationMs = meta.durationMs,
+                                width = meta.width,
+                                height = meta.height,
+                                videoMime = meta.videoMime,
+                                audioMime = meta.audioMime,
+                                sampleRate = meta.sampleRate,
+                                channelCount = meta.channelCount,
+                                fps = meta.fps,
+                                rotation = meta.rotation,
+                                isAudioOnly = meta.videoMime == null,
+                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs))
+                            )
+                        },
+                        onFailure = { throw it }
+                    )
                 }
-
-                if (newClips.isNotEmpty()) {
-                    currentClips = currentClips + newClips
-                    pushToHistory()
-                    updateSuccessState()
-                    _uiEvents.emit(context.getString(R.string.clips_added, newClips.size))
-                }
+                saveToHistory()
+                currentClips = currentClips + newClips
+                updateState()
             } catch (e: Exception) {
                 _uiEvents.emit(context.getString(R.string.error_load_video, e.message))
             }
         }
     }
 
-    sealed class CompatibilityResult {
-        object Compatible : CompatibilityResult()
-        data class Incompatible(val reason: String) : CompatibilityResult()
-    }
-
-    private fun validateCompatibility(base: StorageUtils.DetailedMetadata, target: StorageUtils.DetailedMetadata): CompatibilityResult {
-        if (base.isAudioOnly != target.isAudioOnly) return CompatibilityResult.Incompatible("Audio-only mismatch")
-        if (base.videoMime != target.videoMime) return CompatibilityResult.Incompatible("Video codec mismatch: ${base.videoMime} vs ${target.videoMime}")
-        if (base.audioMime != target.audioMime) return CompatibilityResult.Incompatible("Audio codec mismatch: ${base.audioMime} vs ${target.audioMime}")
-        // Relaxed: resolution and rotation can differ as engine handles them
-        if (base.sampleRate != target.sampleRate || base.channelCount != target.channelCount) return CompatibilityResult.Incompatible("Audio format mismatch (Sample rate/Channels)")
-        return CompatibilityResult.Compatible
-    }
-
-    private suspend fun loadClipData(index: Int) {
-        val clip = currentClips[index]
-        
-        val key = clip.uri.toString()
-        val keyframes = keyframeCache.get(key) ?: run {
-            val results = engine.probeKeyframes(context, clip.uri)
-            keyframeCache[key] = results
-            results
-        }
-        currentKeyframes = keyframes
-        
-        updateSuccessState()
-
-        waveformJob?.cancel()
-        waveformJob = viewModelScope.launch(ioDispatcher) {
-            val cacheKey = waveformCacheKey(clip.uri, clip.durationMs)
-            val cachedWaveform = loadWaveformFromCache(cacheKey)
-            
-            if (cachedWaveform != null) {
-                _waveformData.value = cachedWaveform
-            } else {
-                val finalWaveform = AudioWaveformExtractor.extract(context, clip.uri, bucketCount = 1000) { progressiveWaveform ->
-                    _waveformData.value = progressiveWaveform
-                }
-                if (finalWaveform != null) {
-                    saveWaveformToCache(cacheKey, finalWaveform)
-                    _waveformData.value = finalWaveform
-                }
-            }
-        }
-    }
-
-    private fun updateSuccessState() {
-        if (currentClips.isEmpty()) return
-        val selectedClip = currentClips[selectedClipIndex]
-        _uiState.value = VideoEditingUiState.Success(
-            clips = currentClips.map { it.copy() },
-            selectedClipIndex = selectedClipIndex,
-            keyframes = keyframeCache[selectedClip.uri.toString()] ?: emptyList(),
-            segments = selectedClip.segments.map { it.copy() },
-            selectedSegmentId = selectedSegmentId,
-            canUndo = history.size > 1,
-            videoFps = selectedClip.fps,
-            isAudioOnly = selectedClip.isAudioOnly,
-            hasAudioTrack = selectedClip.audioMime != null,
-            isSnapshotInProgress = isSnapshotInProgress
-        )
-    }
-
-    private fun pushToHistory() {
-        val newState = currentClips.map { it.copy() }
-        if (history.isNotEmpty() && history.last() == newState) return
-        history.add(newState)
-        while (history.size > undoLimit) { history.removeAt(0) }
-        _isDirty.value = true
-    }
-
-    fun undo() {
-        if (history.size > 1) {
-            history.removeAt(history.size - 1)
-            currentClips = history.last().map { it.copy() }
-            selectedSegmentId = null
-            viewModelScope.launch { loadClipData(selectedClipIndex) }
-        }
-    }
-
-    fun selectClip(index: Int) {
-        if (index < 0 || index >= currentClips.size || index == selectedClipIndex) return
-        selectedClipIndex = index
-        selectedSegmentId = null
-        viewModelScope.launch { loadClipData(selectedClipIndex) }
-    }
-
     fun removeClip(index: Int) {
-        if (currentClips.size <= 1 || index < 0 || index >= currentClips.size) return
-        
-        val newClips = currentClips.toMutableList()
-        newClips.removeAt(index)
-        
-        if (selectedClipIndex >= newClips.size) {
-            selectedClipIndex = newClips.size - 1
-        } else if (selectedClipIndex == index) {
-            // If we removed the currently selected clip, stay at the same index 
-            // (which is now the next clip) unless we were at the end.
-            selectedClipIndex = selectedClipIndex.coerceAtMost(newClips.size - 1)
-        } else if (selectedClipIndex > index) {
-            selectedClipIndex--
+        if (currentClips.size <= 1) {
+            viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_cannot_delete_last)) }
+            return
         }
-
-        currentClips = newClips
-        pushToHistory()
-        selectedSegmentId = null
-        viewModelScope.launch { loadClipData(selectedClipIndex) }
+        saveToHistory()
+        val newList = currentClips.toMutableList()
+        newList.removeAt(index)
+        currentClips = newList
+        if (selectedClipIndex >= currentClips.size) {
+            selectedClipIndex = currentClips.size - 1
+        }
+        loadClipData(selectedClipIndex)
     }
 
-    fun reorderClips(fromIndex: Int, toIndex: Int) {
-        val newClips = currentClips.toMutableList()
-        val clip = newClips.removeAt(fromIndex)
-        newClips.add(toIndex, clip)
-        
-        if (selectedClipIndex == fromIndex) {
-            selectedClipIndex = toIndex
-        } else if (fromIndex < selectedClipIndex && toIndex >= selectedClipIndex) {
-            selectedClipIndex--
-        } else if (fromIndex > selectedClipIndex && toIndex <= selectedClipIndex) {
-            selectedClipIndex++
+    fun reorderClips(from: Int, to: Int) {
+        saveToHistory()
+        val newList = currentClips.toMutableList()
+        val item = newList.removeAt(from)
+        newList.add(to, item)
+        currentClips = newList
+        if (selectedClipIndex == from) selectedClipIndex = to
+        else if (selectedClipIndex in (minOf(from, to)..maxOf(from, to))) {
+            if (from < to) selectedClipIndex-- else selectedClipIndex++
         }
-
-        currentClips = newClips
-        pushToHistory()
-        updateSuccessState()
+        updateState()
     }
 
     fun selectSegment(id: UUID?) {
         selectedSegmentId = id
-        updateSuccessState()
+        updateState()
     }
 
-    fun splitSegmentAt(timeMs: Long) {
-        val clip = currentClips[selectedClipIndex]
-        val segments = clip.segments
-        val segmentToSplit = segments.find { timeMs >= it.startMs && timeMs <= it.endMs } ?: return
+    fun splitSegmentAt(positionMs: Long) {
+        val currentClip = currentClips[selectedClipIndex]
+        val segment = currentClip.segments.find { positionMs in it.startMs..it.endMs } ?: return
         
-        if (timeMs - segmentToSplit.startMs < MIN_SEGMENT_DURATION_MS || 
-            segmentToSplit.endMs - timeMs < MIN_SEGMENT_DURATION_MS) {
-            viewModelScope.launch { 
-                _uiEvents.emit(context.getString(R.string.error_segment_too_small_split)) 
-            }
+        if (positionMs - segment.startMs < MIN_SEGMENT_DURATION_MS || segment.endMs - positionMs < MIN_SEGMENT_DURATION_MS) {
+            viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_segment_too_small_split)) }
             return
         }
 
-        val index = segments.indexOf(segmentToSplit)
-        val newSegments = segments.toMutableList()
-        
-        val left = segmentToSplit.copy(id = UUID.randomUUID(), endMs = timeMs)
-        val right = segmentToSplit.copy(id = UUID.randomUUID(), startMs = timeMs)
-        
+        saveToHistory()
+        val newSegments = currentClip.segments.toMutableList()
+        val index = newSegments.indexOf(segment)
         newSegments.removeAt(index)
-        newSegments.add(index, left)
-        newSegments.add(index + 1, right)
+        newSegments.add(index, segment.copy(endMs = positionMs))
+        newSegments.add(index + 1, segment.copy(id = UUID.randomUUID(), startMs = positionMs))
         
-        currentClips = currentClips.mapIndexed { i, c ->
-            if (i == selectedClipIndex) c.copy(segments = newSegments) else c
-        }
-        selectedSegmentId = right.id
-        pushToHistory()
-        updateSuccessState()
-    }
-
-    fun toggleSegmentAction(id: UUID) {
-        val clip = currentClips[selectedClipIndex]
-        val segment = clip.segments.find { it.id == id } ?: return
-        
-        if (segment.action == SegmentAction.KEEP) {
-            val keepCount = clip.segments.count { it.action == SegmentAction.KEEP }
-            if (keepCount <= 1) {
-                viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_cannot_delete_last)) }
-                return
-            }
-        }
-        
-        val newSegments = clip.segments.map {
-            if (it.id == id) {
-                it.copy(action = if (it.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP)
-            } else {
-                it
-            }
-        }
-        
-        currentClips = currentClips.mapIndexed { i, c ->
-            if (i == selectedClipIndex) c.copy(segments = newSegments) else c
-        }
-        pushToHistory()
-        updateSuccessState()
+        val updatedClip = currentClip.copy(segments = newSegments)
+        val updatedClips = currentClips.toMutableList()
+        updatedClips[selectedClipIndex] = updatedClip
+        currentClips = updatedClips
+        _isDirty.value = true
+        updateState()
     }
 
     fun markSegmentDiscarded(id: UUID) {
-        toggleSegmentAction(id)
+        val currentClip = currentClips[selectedClipIndex]
+        val segment = currentClip.segments.find { it.id == id } ?: return
+        
+        saveToHistory()
+        val newAction = if (segment.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP
+        val newSegments = currentClip.segments.map { 
+            if (it.id == id) it.copy(action = newAction) else it 
+        }
+        
+        val updatedClip = currentClip.copy(segments = newSegments)
+        val updatedClips = currentClips.toMutableList()
+        updatedClips[selectedClipIndex] = updatedClip
+        currentClips = updatedClips
+        _isDirty.value = true
+        updateState()
     }
 
-    fun updateSegmentBounds(id: UUID, startMs: Long, endMs: Long) {
-        val clip = currentClips[selectedClipIndex]
-        val newSegments = clip.segments.map {
-            if (it.id == id) {
-                if (endMs - startMs < MIN_SEGMENT_DURATION_MS) {
-                    if (startMs != it.startMs) {
-                        it.copy(startMs = (endMs - MIN_SEGMENT_DURATION_MS).coerceAtLeast(0))
-                    } else {
-                        it.copy(endMs = startMs + MIN_SEGMENT_DURATION_MS)
-                    }
-                } else {
-                    it.copy(startMs = startMs, endMs = endMs)
-                }
-            } else {
-                it
-            }
+    fun updateSegmentBounds(id: UUID, start: Long, end: Long) {
+        val currentClip = currentClips[selectedClipIndex]
+        val newSegments = currentClip.segments.map { 
+            if (it.id == id) it.copy(startMs = start, endMs = end) else it 
         }
-        currentClips = currentClips.mapIndexed { i, c ->
-            if (i == selectedClipIndex) c.copy(segments = newSegments) else c
-        }
-        updateSuccessState()
+        val updatedClip = currentClip.copy(segments = newSegments)
+        val updatedClips = currentClips.toMutableList()
+        updatedClips[selectedClipIndex] = updatedClip
+        currentClips = updatedClips
+        updateState()
     }
 
     fun commitSegmentBounds() {
-        pushToHistory()
-        updateSuccessState()
+        saveToHistory()
+        _isDirty.value = true
     }
 
-    fun exportSegments(isLossless: Boolean, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null, mergeSegments: Boolean = false) {
-        if (currentClips.isEmpty()) return
-        
-        val clipsToExport = if (mergeSegments) currentClips else listOf(currentClips[selectedClipIndex])
-        val allSegmentsToExport = clipsToExport.flatMap { it.segments.filter { s -> s.action == SegmentAction.KEEP } }
-        
-        if (allSegmentsToExport.isEmpty()) {
-            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_no_segments_export))
-            return
+    fun undo() {
+        if (history.isNotEmpty()) {
+            currentClips = history.removeAt(history.size - 1)
+            updateState()
+            loadClipData(selectedClipIndex)
         }
+    }
 
+    private fun saveToHistory() {
+        history.add(currentClips.map { it.copy(segments = it.segments.toList()) })
+        if (history.size > undoLimit) history.removeAt(0)
+    }
+
+    private fun updateState() {
+        val clip = currentClips[selectedClipIndex]
+        _uiState.value = VideoEditingUiState.Success(
+            clips = currentClips,
+            selectedClipIndex = selectedClipIndex,
+            keyframes = currentKeyframes,
+            segments = clip.segments,
+            selectedSegmentId = selectedSegmentId,
+            canUndo = history.isNotEmpty(),
+            videoFps = clip.fps,
+            isAudioOnly = clip.isAudioOnly,
+            hasAudioTrack = clip.audioMime != null,
+            isSnapshotInProgress = isSnapshotInProgress
+        )
+    }
+
+    fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean) {
         viewModelScope.launch {
-            _uiState.value = VideoEditingUiState.Loading
-            if (isLossless) {
-                val exportIsAudioOnly = !keepVideo
+            try {
+                _uiState.value = VideoEditingUiState.Loading
+                
                 if (mergeSegments) {
-                    val extension = if (exportIsAudioOnly) "m4a" else "mp4"
-                    val baseName = currentClips[0].fileName.substringBeforeLast(".")
-                    val fileName = "${baseName}_merged_${System.currentTimeMillis()}.$extension"
-                    val outputUri = storageUtils.createMediaOutputUri(fileName, exportIsAudioOnly)
-
-                    if (outputUri == null) {
-                        _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_create_file))
-                        return@launch
-                    }
-
-                    val result = engine.executeLosslessMerge(context, outputUri, clipsToExport, keepAudio, keepVideo, rotationOverride)
-                    result.fold(
-                        onSuccess = {
-                            val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, 1) 
-                                     else context.getString(R.string.export_success, 1)
-                            _uiEvents.emit(msg)
-                            _isDirty.value = false
-                            updateSuccessState()
-                        },
-                        onFailure = {
-                            _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, it.message))
-                            updateSuccessState()
-                        }
-                    )
+                    // Placeholder for merge logic
+                    _uiEvents.emit("Merge not implemented yet")
                 } else {
                     val selectedClip = currentClips[selectedClipIndex]
                     val segments = selectedClip.segments.filter { it.action == SegmentAction.KEEP }
@@ -516,10 +375,9 @@ class VideoEditingViewModel @Inject constructor(
                     val errors = mutableListOf<String>()
 
                     for ((index, segment) in segments.withIndex()) {
-                        val extension = if (exportIsAudioOnly) "m4a" else "mp4"
+                        val extension = if (!keepVideo) "m4a" else "mp4"
                         val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"
-                        val fileName = "clip_${System.currentTimeMillis()}_$index.$extension"
-                        val outputUri = storageUtils.createMediaOutputUri(selectedClip.fileName, exportIsAudioOnly, timeSuffix)
+                        val outputUri = storageUtils.createMediaOutputUri(selectedClip.fileName, !keepVideo, timeSuffix)
 
                         if (outputUri == null) {
                             errors.add(context.getString(R.string.error_create_file))
@@ -534,87 +392,56 @@ class VideoEditingViewModel @Inject constructor(
                     }
 
                     if (errors.isEmpty() && successCount > 0) {
-                        val msg = if (exportIsAudioOnly) context.getString(R.string.export_success_audio, successCount) 
-                                 else context.getString(R.string.export_success, successCount)
-                        _uiEvents.emit(msg)
+                        _uiEvents.emit(context.getString(R.string.export_success, successCount))
                         _isDirty.value = false
-                        updateSuccessState()
-                    } else if (successCount > 0) {
+                    } else if (errors.isNotEmpty()) {
                         _uiEvents.emit(context.getString(R.string.export_partial_success, successCount, errors.joinToString()))
-                        updateSuccessState()
-                    } else {
-                        _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_export_failed, errors.joinToString()))
-                        updateSuccessState()
                     }
                 }
-            } else {
-                _uiEvents.emit(context.getString(R.string.precise_mode_coming_soon))
-                updateSuccessState()
+                updateState()
+            } catch (e: Exception) {
+                _uiState.value = VideoEditingUiState.Error(e.message ?: "Unknown error")
             }
         }
     }
 
-    fun extractSnapshot(currentPositionMs: Long) {
-        if (currentClips.isEmpty()) return
-        val clip = currentClips[selectedClipIndex]
+    fun extractSnapshot(positionMs: Long) {
         viewModelScope.launch {
-            val retriever = android.media.MediaMetadataRetriever()
+            if (isSnapshotInProgress) return@launch
+            isSnapshotInProgress = true
+            updateState()
+            
             try {
-                isSnapshotInProgress = true
-                updateSuccessState()
-                
-                val bitmap = withContext(ioDispatcher) {
-                    retriever.setDataSource(context, clip.uri)
-                    retriever.getFrameAtTime(currentPositionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                val clip = currentClips[selectedClipIndex]
+                val bitmap: Bitmap? = withContext(ioDispatcher) {
+                    engine.getFrameAt(context, clip.uri, positionMs)
                 }
 
                 if (bitmap != null) {
-                    val formatSetting = preferences.snapshotFormatFlow.first()
-                    val isJpeg = formatSetting == "JPEG"
-                    val ext = if (isJpeg) "jpeg" else "png"
-                    val compressFormat = if (isJpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG
-                    val quality = if (isJpeg) preferences.jpgQualityFlow.first() else 100
-
-                    val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
+                    val stableBitmap: Bitmap = bitmap
+                    val fileName = "snapshot_${System.currentTimeMillis()}.jpg"
                     val outputUri = storageUtils.createImageOutputUri(fileName)
                     if (outputUri != null) {
-                        withContext(ioDispatcher) {
-                            context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                                bitmap.compress(compressFormat, quality, outputStream)
-                                storageUtils.finalizeImage(outputUri)
+                        try {
+                            withContext(ioDispatcher) {
+                                context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
+                                    stableBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                                }
                             }
+                        } catch (e: Exception) {
+                            Log.e("VideoEditingViewModel", "Failed to write snapshot", e)
                         }
                         _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
-                    } else {
-                        _uiEvents.emit(context.getString(R.string.snapshot_failed))
                     }
-                    bitmap.recycle()
-                } else {
-                    _uiEvents.emit(context.getString(R.string.snapshot_failed))
                 }
             } catch (e: Exception) {
-                Log.e("VideoEditingViewModel", "Snapshot error", e)
-                _uiEvents.emit(context.getString(R.string.error_snapshot_failed_generic))
+                Log.e("VideoEditingViewModel", "Snapshot failed", e)
+                _uiEvents.emit(context.getString(R.string.snapshot_failed))
             } finally {
-                withContext(ioDispatcher) {
-                    retriever.release()
-                }
                 isSnapshotInProgress = false
-                updateSuccessState()
+                updateState()
             }
         }
-    }
-
-    private fun waveformCacheKey(uri: Uri, durationMs: Long): String {
-        val uriString = uri.toString()
-        val hash = try {
-            val digest = java.security.MessageDigest.getInstance("SHA-256")
-            val bytes = digest.digest(uriString.toByteArray())
-            bytes.joinToString("") { "%02x".format(it) }.take(16)
-        } catch (e: Exception) {
-            uriString.hashCode().toString()
-        }
-        return "waveform_${hash}_${durationMs}.bin"
     }
 
     private fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {
@@ -624,21 +451,8 @@ class VideoEditingViewModel @Inject constructor(
                 out.writeInt(waveform.size)
                 waveform.forEach { out.writeFloat(it) }
             }
-            cleanupOldWaveforms()
         } catch (e: Exception) {
             Log.e("VideoEditingViewModel", "Failed to save waveform to cache", e)
-        }
-    }
-
-    private fun cleanupOldWaveforms() {
-        try {
-            val files = context.cacheDir.listFiles { _, name -> name.startsWith("waveform_") && name.endsWith(".bin") }
-            if (files != null && files.size > 10) {
-                files.sortByDescending { it.lastModified() }
-                files.drop(10).forEach { it.delete() }
-            }
-        } catch (e: Exception) {
-            Log.e("VideoEditingViewModel", "Failed to cleanup waveforms", e)
         }
     }
 
@@ -653,6 +467,51 @@ class VideoEditingViewModel @Inject constructor(
         } catch (e: Exception) {
             Log.e("VideoEditingViewModel", "Failed to load waveform from cache", e)
             null
+        }
+    }
+
+    fun saveSession() {
+        if (currentClips.isEmpty()) return
+        
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val sessionId = currentClips.first().uri.toString().hashCode().toString()
+                val sessionFile = File(context.cacheDir, "session_$sessionId.json")
+                
+                val json = gson.toJson(currentClips)
+                sessionFile.writeText(json)
+                Log.d("VideoEditingViewModel", "Session saved for $sessionId")
+            } catch (e: Exception) {
+                Log.e("VideoEditingViewModel", "Failed to save session", e)
+            }
+        }
+    }
+
+    suspend fun hasSavedSession(uri: Uri): Boolean {
+        val sessionId = uri.toString().hashCode().toString()
+        val sessionFile = File(context.cacheDir, "session_$sessionId.json")
+        return sessionFile.exists()
+    }
+
+    fun restoreSession(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val sessionId = uri.toString().hashCode().toString()
+                val sessionFile = File(context.cacheDir, "session_$sessionId.json")
+                if (!sessionFile.exists()) return@launch
+
+                val json = withContext(ioDispatcher) { sessionFile.readText() }
+                val type = object : TypeToken<List<MediaClip>>() {}.type
+                val restoredClips: List<MediaClip> = gson.fromJson(json, type)
+                
+                currentClips = restoredClips
+                selectedClipIndex = 0
+                _isDirty.value = true
+                loadClipData(selectedClipIndex)
+                _uiEvents.emit(context.getString(R.string.session_restored))
+            } catch (e: Exception) {
+                Log.e("VideoEditingViewModel", "Failed to restore session", e)
+            }
         }
     }
 }

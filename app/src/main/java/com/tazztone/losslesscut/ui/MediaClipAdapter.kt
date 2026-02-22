@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ItemMediaClipBinding
-import com.tazztone.losslesscut.viewmodel.MediaClip
+import com.tazztone.losslesscut.data.MediaClip
 import kotlinx.coroutines.*
 import java.util.Collections
 

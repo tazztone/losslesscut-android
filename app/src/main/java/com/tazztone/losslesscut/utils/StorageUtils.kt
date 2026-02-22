@@ -8,21 +8,49 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
-import android.media.MediaExtractor
-import android.media.MediaMetadataRetriever
 import android.media.MediaFormat
+import androidx.documentfile.provider.DocumentFile
 import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class StorageUtils @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val preferences: AppPreferences
 ) {
 
+    fun getFileName(uri: Uri): String {
+        var name = "video.mp4"
+        context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    name = cursor.getString(0) ?: "video.mp4"
+                }
+            }
+        return name
+    }
 
-    fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean, suffix: String? = null): Uri? {
+
+    suspend fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean, suffix: String? = null): Uri? {
+        val customUriString = preferences.customOutputUriFlow.first()
+        if (customUriString != null) {
+            val customUri = Uri.parse(customUriString)
+            val parentDoc = DocumentFile.fromTreeUri(context, customUri)
+            if (parentDoc != null && parentDoc.exists()) {
+                val baseName = fileName.substringBeforeLast(".")
+                val extension = fileName.substringAfterLast(".", "mp4")
+                val finalFileName = if (suffix != null) "${baseName}${suffix}.${extension}" else fileName
+                val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
+                
+                val newFile = parentDoc.createFile(mimeType, finalFileName)
+                return newFile?.uri
+            }
+        }
+
         val resolver = context.contentResolver
         
         val baseName = fileName.substringBeforeLast(".")
@@ -80,7 +108,18 @@ class StorageUtils @Inject constructor(
         }
     }
 
-    fun createImageOutputUri(fileName: String): Uri? {
+    suspend fun createImageOutputUri(fileName: String): Uri? {
+        val customUriString = preferences.customOutputUriFlow.first()
+        if (customUriString != null) {
+            val customUri = Uri.parse(customUriString)
+            val parentDoc = DocumentFile.fromTreeUri(context, customUri)
+            if (parentDoc != null && parentDoc.exists()) {
+                val mimeType = if (fileName.endsWith(".jpeg", ignoreCase = true) || fileName.endsWith(".jpg", ignoreCase = true)) "image/jpeg" else "image/png"
+                val newFile = parentDoc.createFile(mimeType, fileName)
+                return newFile?.uri
+            }
+        }
+
         val resolver = context.contentResolver
         val imageCollection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

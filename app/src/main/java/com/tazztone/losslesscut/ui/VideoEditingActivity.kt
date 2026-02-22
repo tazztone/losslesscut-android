@@ -24,8 +24,9 @@ import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
-import com.tazztone.losslesscut.viewmodel.SegmentAction
-import com.tazztone.losslesscut.viewmodel.TrimSegment
+import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.data.SegmentAction
+import com.tazztone.losslesscut.data.TrimSegment
 import com.tazztone.losslesscut.utils.TimeUtils
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import dagger.hilt.android.AndroidEntryPoint
@@ -160,6 +161,20 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         viewModel.initialize(videoUris)
         
+        // Check for saved session
+        lifecycleScope.launch {
+            if (viewModel.hasSavedSession(videoUris[0])) {
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
+                    .setTitle(R.string.restore_session_title)
+                    .setMessage(R.string.restore_session_message)
+                    .setPositiveButton(R.string.restore) { _, _ ->
+                        viewModel.restoreSession(videoUris[0])
+                    }
+                    .setNegativeButton(R.string.ignore, null)
+                    .show()
+            }
+        }
+        
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
@@ -204,7 +219,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
     override fun onPause() {
         super.onPause()
-        if (::player.isInitialized) player.pause()
+        if (::player.isInitialized) {
+            player.pause()
+            viewModel.saveSession()
+        }
         stopProgressUpdate()
     }
 

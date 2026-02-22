@@ -27,6 +27,7 @@ class AppPreferences @Inject constructor(
         val UNDO_LIMIT = intPreferencesKey("undo_limit")
         val SNAPSHOT_FORMAT = stringPreferencesKey("snapshot_format")
         val JPG_QUALITY = intPreferencesKey("jpg_quality")
+        val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
     }
 
     val undoLimitFlow: Flow<Int> = context.dataStore.data
@@ -65,6 +66,18 @@ class AppPreferences @Inject constructor(
             preferences[PreferencesKeys.JPG_QUALITY] ?: 95
         }
 
+    val customOutputUriFlow: Flow<String?> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.CUSTOM_OUTPUT_URI]
+        }
+
     suspend fun setUndoLimit(limit: Int) {
         require(limit in 1..100) { "Undo limit must be between 1 and 100" }
         context.dataStore.edit { preferences ->
@@ -83,6 +96,16 @@ class AppPreferences @Inject constructor(
         require(quality in 1..100) { "JPG quality must be between 1 and 100" }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.JPG_QUALITY] = quality
+        }
+    }
+
+    suspend fun setCustomOutputUri(uri: String?) {
+        context.dataStore.edit { preferences ->
+            if (uri == null) {
+                preferences.remove(PreferencesKeys.CUSTOM_OUTPUT_URI)
+            } else {
+                preferences[PreferencesKeys.CUSTOM_OUTPUT_URI] = uri
+            }
         }
     }
 }

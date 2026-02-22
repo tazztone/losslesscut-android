@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.engine
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -12,8 +13,8 @@ import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.viewmodel.MediaClip
-import com.tazztone.losslesscut.viewmodel.SegmentAction
+import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.data.SegmentAction
 import com.tazztone.losslesscut.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
@@ -26,7 +27,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 interface LosslessEngineInterface {
-    suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long>
+    suspend fun getKeyframes(context: Context, videoUri: Uri): Result<List<Long>>
+    suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata>
+    suspend fun getFrameAt(context: Context, uri: Uri, positionMs: Long): Bitmap?
     suspend fun executeLosslessCut(
         context: Context,
         inputUri: Uri,
@@ -48,6 +51,18 @@ interface LosslessEngineInterface {
     ): Result<Uri>
 }
 
+data class MediaMetadata(
+    val durationMs: Long,
+    val width: Int,
+    val height: Int,
+    val videoMime: String?,
+    val audioMime: String?,
+    val sampleRate: Int,
+    val channelCount: Int,
+    val fps: Float,
+    val rotation: Int
+)
+
 @OptIn(UnstableApi::class)
 @Singleton
 class LosslessEngineImpl @Inject constructor(
@@ -60,7 +75,7 @@ class LosslessEngineImpl @Inject constructor(
     }
 
 
-    override suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long> = withContext(ioDispatcher) {
+    override suspend fun getKeyframes(context: Context, videoUri: Uri): Result<List<Long>> = withContext(ioDispatcher) {
         val keyframes = mutableListOf<Long>()
         val extractor = MediaExtractor()
 
@@ -92,13 +107,86 @@ class LosslessEngineImpl @Inject constructor(
                     if (!extractor.advance()) break
                 }
             }
+            Result.success(keyframes)
         } catch (e: Exception) {
             Log.e(TAG, "Error probing keyframes", e)
+            Result.failure(e)
         } finally {
             extractor.release()
         }
+    }
 
-        keyframes
+    override suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata> = withContext(ioDispatcher) {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0L
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
+            
+            // Get MIME types
+            var videoMime: String? = null
+            var audioMime: String? = null
+            var sampleRate = 0
+            var channelCount = 0
+            var fps = 30f
+
+            val extractor = MediaExtractor()
+            try {
+                extractor.setDataSource(context, uri, null)
+                for (i in 0 until extractor.trackCount) {
+                    val format = extractor.getTrackFormat(i)
+                    val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+                    if (mime.startsWith("video/")) {
+                        videoMime = mime
+                        if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                            fps = format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                        }
+                    } else if (mime.startsWith("audio/")) {
+                        audioMime = mime
+                        if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        }
+                        if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
+                            channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                        }
+                    }
+                }
+            } finally {
+                extractor.release()
+            }
+
+            Result.success(
+                MediaMetadata(
+                    durationMs = duration,
+                    width = width,
+                    height = height,
+                    videoMime = videoMime,
+                    audioMime = audioMime,
+                    sampleRate = sampleRate,
+                    channelCount = channelCount,
+                    fps = fps,
+                    rotation = rotation
+                )
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
+            retriever.release()
+        }
+    }
+
+    override suspend fun getFrameAt(context: Context, uri: Uri, positionMs: Long): android.graphics.Bitmap? = withContext(ioDispatcher) {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(context, uri)
+            retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+        } catch (e: Exception) {
+            null
+        } finally {
+            retriever.release()
+        }
     }
 
     override suspend fun executeLosslessCut(

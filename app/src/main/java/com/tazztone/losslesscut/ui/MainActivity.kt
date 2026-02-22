@@ -47,16 +47,44 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.addVideoButton.setOnClickListener {
-            Log.d("ButtonClick", "Launching media selection.")
-            selectMedia()
-        }
+        setupDashboard()
 
         binding.btnInfo.setOnClickListener {
             showAboutDialog()
         }
 
         handleIncomingIntent(intent)
+    }
+
+    private fun setupDashboard() {
+        val actions = listOf(
+            DashboardAction(
+                id = "cut",
+                title = getString(R.string.dashboard_cut_title),
+                description = getString(R.string.dashboard_cut_desc),
+                iconResId = R.drawable.ic_add_24
+            ),
+            DashboardAction(
+                id = "remux",
+                title = getString(R.string.dashboard_remux_title),
+                description = getString(R.string.dashboard_remux_desc),
+                iconResId = R.drawable.ic_save_24
+            ),
+            DashboardAction(
+                id = "metadata",
+                title = getString(R.string.dashboard_metadata_title),
+                description = getString(R.string.dashboard_metadata_desc),
+                iconResId = R.drawable.ic_settings_24
+            )
+        )
+
+        binding.rvDashboard.adapter = DashboardAdapter(actions) { action ->
+            when (action.id) {
+                "cut" -> selectMedia()
+                "remux" -> showToast("Remux/Convert feature coming soon")
+                "metadata" -> showToast("Metadata editing feature coming soon")
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

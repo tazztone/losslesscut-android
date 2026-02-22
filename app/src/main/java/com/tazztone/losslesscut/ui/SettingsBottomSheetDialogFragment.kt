@@ -9,12 +9,15 @@ import com.tazztone.losslesscut.data.*
 import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.tazztone.losslesscut.databinding.BottomSheetSettingsBinding
@@ -27,6 +30,20 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetSettingsBinding? = null
     private val binding get() = _binding!!
+
+    private val selectFolderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        uri?.let {
+            // Take persistable permission
+            val contentResolver = requireContext().contentResolver
+            val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            contentResolver.takePersistableUriPermission(it, takeFlags)
+            
+            viewLifecycleOwner.lifecycleScope.launch {
+                preferences.setCustomOutputUri(it.toString())
+            }
+        }
+    }
 
     interface SettingsListener {
         fun onLosslessModeToggled(isChecked: Boolean)
@@ -134,6 +151,29 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+
+        // Initialize Custom Output URI
+        viewLifecycleOwner.lifecycleScope.launch {
+            preferences.customOutputUriFlow.collect { uriString ->
+                if (uriString != null) {
+                    binding.tvExportPath.text = Uri.parse(uriString).path
+                    binding.btnResetPath.visibility = View.VISIBLE
+                } else {
+                    binding.tvExportPath.text = "Default (Movies/LosslessCut)"
+                    binding.btnResetPath.visibility = View.GONE
+                }
+            }
+        }
+
+        binding.btnChangePath.setOnClickListener {
+            selectFolderLauncher.launch(null)
+        }
+
+        binding.btnResetPath.setOnClickListener {
+            viewLifecycleOwner.lifecycleScope.launch {
+                preferences.setCustomOutputUri(null)
+            }
+        }
     }
 
     override fun onDestroyView() {
