@@ -438,7 +438,11 @@ class LosslessEngineImpl @Inject constructor(
                         trackMap[muxIdx] = if (isVideo) 0 else 1
                         
                         if (isVideo && format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                            videoFps = format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                            videoFps = try {
+                                format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                            } catch (_: Exception) {
+                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                            }
                         }
                         if (isAudio && format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                             audioSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)

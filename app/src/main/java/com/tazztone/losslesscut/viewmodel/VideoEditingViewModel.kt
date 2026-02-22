@@ -196,7 +196,7 @@ class VideoEditingViewModel @Inject constructor(
         waveformJob?.cancel()
         waveformJob = viewModelScope.launch {
             _waveformData.value = null
-            val cacheKey = "waveform_${clip.uri.toString().hashCode()}.bin"
+            val cacheKey = "waveform_${getSessionId(clip.uri)}.bin"
             val cached = withContext(ioDispatcher) { loadWaveformFromCache(cacheKey) }
             if (cached != null) {
                 _waveformData.value = cached
