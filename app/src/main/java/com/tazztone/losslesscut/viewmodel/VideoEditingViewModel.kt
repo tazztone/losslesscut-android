@@ -103,8 +103,12 @@ class VideoEditingViewModel @Inject constructor(
     private var history = mutableListOf<List<MediaClip>>()
     private var selectedSegmentId: UUID? = null
     
-    private val keyframeCache = mutableMapOf<Uri, List<Long>>()
-    private var isSnapshotInProgress = false
+    private val keyframeCache = object : LinkedHashMap<Uri, List<Long>>(20, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Uri, List<Long>>?): Boolean {
+            return size > 20
+        }
+    }
+    @Volatile private var isSnapshotInProgress = false
     
     private var undoLimit = 30
     
@@ -586,7 +590,15 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     private fun waveformCacheKey(uri: Uri, durationMs: Long): String {
-        return "waveform_${uri.toString().hashCode()}_${durationMs}.bin"
+        val uriString = uri.toString()
+        val hash = try {
+            val digest = java.security.MessageDigest.getInstance("SHA-256")
+            val bytes = digest.digest(uriString.toByteArray())
+            bytes.joinToString("") { "%02x".format(it) }.take(16)
+        } catch (e: Exception) {
+            uriString.hashCode().toString()
+        }
+        return "waveform_${hash}_${durationMs}.bin"
     }
 
     private fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {

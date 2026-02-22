@@ -352,7 +352,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val deleteAction = { 
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
-                state.selectedSegmentId?.let { viewModel.toggleSegmentAction(it) }
+                state.selectedSegmentId?.let { viewModel.markSegmentDiscarded(it) }
             }
         }
         binding.btnDelete.setOnClickListener { deleteAction() }

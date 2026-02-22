@@ -59,6 +59,7 @@ class LosslessEngineImpl @Inject constructor(
         private const val TAG = "LosslessEngine"
     }
 
+
     override suspend fun probeKeyframes(context: Context, videoUri: Uri): List<Long> = withContext(ioDispatcher) {
         val keyframes = mutableListOf<Long>()
         val extractor = MediaExtractor()
@@ -80,7 +81,7 @@ class LosslessEngineImpl @Inject constructor(
             if (videoTrackIndex >= 0) {
                 extractor.selectTrack(videoTrackIndex)
                 var count = 0
-                while (extractor.sampleTime >= 0 && count < 3000) {
+                while (extractor.sampleTime >= 0 && count < 3000 && currentCoroutineContext().isActive) {
                     val sampleTime = extractor.sampleTime
                     if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
                         keyframes.add(sampleTime / 1000)
@@ -332,7 +333,12 @@ class LosslessEngineImpl @Inject constructor(
             }
 
                         mMuxer.start()
-                        isMuxerStarted = true
+                         isMuxerStarted = true
+                         
+                         // Pre-calculate gap constants outside the loop
+                         val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
+                         val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
+                         val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
             
                         val buffer = ByteBuffer.allocateDirect(bufferSize)
                         val bufferInfo = MediaCodec.BufferInfo()
@@ -414,10 +420,6 @@ class LosslessEngineImpl @Inject constructor(
 
                             if (!clipExtractor.advance()) break
                         }
-                        val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
-                        val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
-                        val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
-                        
                         globalOffsetUs += lastSampleTimeInSegmentUs + segmentGapUs
                     }
                 } finally {
