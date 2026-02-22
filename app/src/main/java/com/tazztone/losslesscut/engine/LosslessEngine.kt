@@ -38,7 +38,8 @@ interface LosslessEngineInterface {
         endMs: Long,
         keepAudio: Boolean = true,
         keepVideo: Boolean = true,
-        rotationOverride: Int? = null
+        rotationOverride: Int? = null,
+        selectedTracks: List<Int>? = null
     ): Result<Uri>
 
     suspend fun executeLosslessMerge(
@@ -47,7 +48,8 @@ interface LosslessEngineInterface {
         clips: List<MediaClip>,
         keepAudio: Boolean = true,
         keepVideo: Boolean = true,
-        rotationOverride: Int? = null
+        rotationOverride: Int? = null,
+        selectedTracks: List<Int>? = null
     ): Result<Uri>
 }
 
@@ -60,7 +62,17 @@ data class MediaMetadata(
     val sampleRate: Int,
     val channelCount: Int,
     val fps: Float,
-    val rotation: Int
+    val rotation: Int,
+    val tracks: List<TrackMetadata>
+)
+
+data class TrackMetadata(
+    val id: Int,
+    val mimeType: String,
+    val language: String?,
+    val title: String?,
+    val isVideo: Boolean,
+    val isAudio: Boolean
 )
 
 @OptIn(UnstableApi::class)
@@ -133,17 +145,21 @@ class LosslessEngineImpl @Inject constructor(
             var fps = 30f
 
             val extractor = MediaExtractor()
+            val tracks = mutableListOf<TrackMetadata>()
             try {
                 extractor.setDataSource(context, uri, null)
                 for (i in 0 until extractor.trackCount) {
                     val format = extractor.getTrackFormat(i)
                     val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-                    if (mime.startsWith("video/")) {
+                    val isVideo = mime.startsWith("video/")
+                    val isAudio = mime.startsWith("audio/")
+                    
+                    if (isVideo) {
                         videoMime = mime
                         if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
                             fps = format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
                         }
-                    } else if (mime.startsWith("audio/")) {
+                    } else if (isAudio) {
                         audioMime = mime
                         if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                             sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -152,6 +168,17 @@ class LosslessEngineImpl @Inject constructor(
                             channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
                         }
                     }
+                    
+                    tracks.add(
+                        TrackMetadata(
+                            id = i,
+                            mimeType = mime,
+                            language = format.getString(MediaFormat.KEY_LANGUAGE),
+                            title = if (format.containsKey("title")) format.getString("title") else null,
+                            isVideo = isVideo,
+                            isAudio = isAudio
+                        )
+                    )
                 }
             } finally {
                 extractor.release()
@@ -167,7 +194,8 @@ class LosslessEngineImpl @Inject constructor(
                     sampleRate = sampleRate,
                     channelCount = channelCount,
                     fps = fps,
-                    rotation = rotation
+                    rotation = rotation,
+                    tracks = tracks
                 )
             )
         } catch (e: Exception) {
@@ -197,7 +225,8 @@ class LosslessEngineImpl @Inject constructor(
         endMs: Long,
         keepAudio: Boolean,
         keepVideo: Boolean,
-        rotationOverride: Int?
+        rotationOverride: Int?,
+        selectedTracks: List<Int>?
     ): Result<Uri> = withContext(ioDispatcher) {
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
@@ -226,8 +255,11 @@ class LosslessEngineImpl @Inject constructor(
                 val isVideo = mime.startsWith("video/")
                 val isAudio = mime.startsWith("audio/")
                 
-                if (isVideo && !keepVideo) continue
-                if (isAudio && !keepAudio) continue
+                val isSelected = selectedTracks?.contains(i) ?: true
+                if (!isSelected) continue
+                
+                if (isVideo && !keepVideo && selectedTracks == null) continue
+                if (isAudio && !keepAudio && selectedTracks == null) continue
                 
                 if (isVideo || isAudio) {
                     if (isVideo && format.containsKey(MediaFormat.KEY_DURATION)) {
@@ -360,7 +392,8 @@ class LosslessEngineImpl @Inject constructor(
         clips: List<MediaClip>,
         keepAudio: Boolean,
         keepVideo: Boolean,
-        rotationOverride: Int?
+        rotationOverride: Int?,
+        selectedTracks: List<Int>?
     ): Result<Uri> = withContext(ioDispatcher) {
         if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips to merge"))
 
@@ -390,8 +423,11 @@ class LosslessEngineImpl @Inject constructor(
                     val isVideo = mime.startsWith("video/")
                     val isAudio = mime.startsWith("audio/")
 
-                    if (isVideo && !keepVideo) continue
-                    if (isAudio && !keepAudio) continue
+                    val isSelected = selectedTracks?.contains(i) ?: true
+                    if (!isSelected) continue
+
+                    if (isVideo && !keepVideo && selectedTracks == null) continue
+                    if (isAudio && !keepAudio && selectedTracks == null) continue
 
                     if (isVideo || isAudio) {
                         val muxIdx = mMuxer.addTrack(format)

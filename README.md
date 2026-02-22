@@ -22,6 +22,9 @@
 - 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
 - 🔄 **Non-Destructive Workflow**: Robust undo/redo stack for all segment operations.
+- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with live savings preview.
+- 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
+- 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
 
 ## 📸 Screenshots
 
@@ -59,7 +62,9 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 - **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
 ## 🗺️ Roadmap
-- [ ] **Smart Cut**: Re-encode only the tiny GOP (Group of Pictures) at cut points for true frame-accurate (partially) lossless editing.
+- [ ] **Smart Cut (v2.0)**: Frame-accurate editing by re-encoding only the boundary GOPs.
+- [ ] **Metadata Tuning**: Advanced rotation and tag editing flags.
+- [ ] **Multi-track Wizard**: Batch track stripping and extraction UI.
 
 ## 📄 License
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.

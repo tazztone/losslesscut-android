@@ -17,7 +17,7 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **`viewmodel`**: Jetpack ViewModels (`VideoEditingViewModel`).
 - **`engine`**: Core media processing logic (`LosslessEngine`, `AudioWaveformExtractor`).
 - **`data`**: Data persistence and preferences (`AppPreferences`).
-- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`).
+- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`, `DetectionUtils`).
 - **`di`**: Hilt dependency injection modules (`AppModule`).
 - **`customviews`**: Complex custom UI components (`CustomVideoSeeker`).
 
@@ -41,11 +41,14 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **`VideoEditingViewModel`**: State machine for the editor.
     - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error). `Success` state includes `hasAudioTrack` flag for UI constraints.
     - **Undo Stack**: In-memory list of `List<MediaClip>` snapshots.
+    - **Persistence**: Implements `saveSession()` (JSON serialization to cache) and `restoreSession()` to allow resuming work on the current URI.
+    - **Silence Detection**: Orchestrates `DetectionUtils.findSilence` to preview or apply automated cuts based on waveform analysis.
     - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked.
 
 ### Utilities
-- **StorageUtils**: Handles Scoped Storage. Centralizes URI creation via `createMediaOutputUri`, which dynamically selects `Movies/LosslessCut` or `Music/LosslessCut` based on the requested media type and sets appropriate MIME types (`video/mp4` vs `audio/mp4`).
+- **StorageUtils**: Handles Scoped Storage. Centralizes URI creation via `createMediaOutputUri`, which dynamically selects `Movies/LosslessCut` or `Music/LosslessCut` based on the requested media type and sets appropriate MIME types. Supports custom tree URIs for user-selected folders.
 - **TimeUtils**: Formatting and precision conversion between MS and microseconds.
+- **DetectionUtils**: Parameterized silence detection algorithm (`findSilence`) that scans audio waveforms for regions below a decibel-relative threshold.
 - **Permission Management**: The app relies primarily on the **Storage Access Framework (SAF)** and `ActivityResultContracts.OpenMultipleDocuments`. Broad runtime permissions (like `READ_MEDIA_VIDEO` or `POST_NOTIFICATIONS`) are avoided for enhanced privacy and UX.
 
 ## 4. Key Workflows
@@ -61,6 +64,12 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - Validates track compatibility (codecs must match for lossless concatenation).
 - Shifts sample PTS values by the cumulative duration of previous segments to ensure continuity.
 
+### Smart Silence Detection
+1. ViewModel triggers `findSilence` using the extracted `waveformData`.
+2. `DetectionUtils` identifies contiguous regions below the amplitude threshold.
+3. `VideoEditingActivity` receives `silencePreviewRanges` and renders them on `CustomVideoSeeker`.
+4. User confirms, and detected ranges are converted into `DISCARD` segments.
+
 ## 5. Development & CI
 - **Testing**: 
     - JVM: `./gradlew test` (Robolectric for Engine/ViewModel).
@@ -69,9 +78,9 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **CI**: GitHub Actions (`release.yml`) builds and signs production APKs on tag push.
 
 ## 6. Roadmap
-1. **Smart Rendering (v3.0)**: Use `MediaCodec` to decode/re-encode only the first/last GOP of a cut for true frame-accuracy while keeping the rest lossless. (Completed)
+1. **Smart Cut (v2.0)**: Use `MediaCodec` to decode/re-encode only the first/last GOP of a cut for true frame-accuracy while keeping the rest lossless.
 2. **AI Tools**: Integration of on-device ML for automatic scene change detection.
-3. **Task Orchestration**: Migrate export to `WorkManager` to support background processing for extremely large files.
+3. **Task Orchestration**: Migrate export to `WorkManager` for background processing.
 
 ## 7. Context7 Library IDs
 Use these IDs for documentation queries:

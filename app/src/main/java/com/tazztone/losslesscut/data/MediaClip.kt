@@ -12,6 +12,15 @@ data class TrimSegment(
     val action: SegmentAction = SegmentAction.KEEP
 )
 
+data class MediaTrack(
+    val id: Int,
+    val mimeType: String,
+    val isVideo: Boolean,
+    val isAudio: Boolean,
+    val language: String? = null,
+    val title: String? = null
+)
+
 data class MediaClip(
     val id: UUID = UUID.randomUUID(),
     val uri: Uri,
@@ -26,5 +35,6 @@ data class MediaClip(
     val fps: Float,
     val rotation: Int,
     val isAudioOnly: Boolean,
-    val segments: List<TrimSegment> = listOf(TrimSegment(startMs = 0, endMs = durationMs))
+    val segments: List<TrimSegment> = listOf(TrimSegment(startMs = 0, endMs = durationMs)),
+    val availableTracks: List<MediaTrack> = emptyList()
 )

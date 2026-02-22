@@ -750,6 +750,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
         val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
         val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
+        val tvTracksHeader = dialogView.findViewById<android.widget.TextView>(R.id.tvTracksHeader)
+        val tracksContainer = dialogView.findViewById<android.widget.LinearLayout>(R.id.tracksContainer)
         
         val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
         val totalKeepSegments = currentState?.clips?.sumOf { clip -> 
@@ -758,6 +760,27 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         
         if (totalKeepSegments > 1 || (currentState?.clips?.size ?: 0) > 1) {
             cbMergeSegments.visibility = android.view.View.VISIBLE
+        }
+
+        val availableTracks = currentState?.availableTracks ?: emptyList()
+        val selectedTracks = mutableSetOf<Int>()
+        
+        if (availableTracks.size > 2) { // More than just 1 video + 1 audio
+            tvTracksHeader.visibility = android.view.View.VISIBLE
+            tracksContainer.visibility = android.view.View.VISIBLE
+            
+            availableTracks.forEach { track ->
+                val cb = android.widget.CheckBox(this).apply {
+                    val type = if (track.isVideo) "Video" else if (track.isAudio) "Audio" else "Other"
+                    text = getString(R.string.track_item_format, track.id, type, track.mimeType)
+                    isChecked = true
+                    selectedTracks.add(track.id)
+                    setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) selectedTracks.add(track.id) else selectedTracks.remove(track.id)
+                    }
+                }
+                tracksContainer.addView(cb)
+            }
         }
 
         // Disable unchecking video if there's no audio track to keep
@@ -776,11 +799,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 val keepVideo = cbKeepVideo.isChecked
                 val keepAudio = cbKeepAudio.isChecked
                 val mergeSegments = cbMergeSegments.isChecked
-                if (!keepVideo && !keepAudio) {
+                if (!keepVideo && !keepAudio && selectedTracks.isEmpty()) {
                     Toast.makeText(this, getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
                 } else {
                     val rotationOverride = if (currentRotation != 0) currentRotation else null
-                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments)
+                    // If complex track selection was used, pass it; otherwise let ViewModel/Engine handle it via booleans
+                    val trackList = if (selectedTracks.isNotEmpty() && availableTracks.size > 2) selectedTracks.toList() else null
+                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments, trackList)
                 }
             }
             .setNegativeButton(getString(R.string.cancel), null)

@@ -18,6 +18,7 @@ import com.google.gson.reflect.TypeToken
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.data.MediaTrack
 import com.tazztone.losslesscut.data.SegmentAction
 import com.tazztone.losslesscut.data.TrimSegment
 import com.tazztone.losslesscut.di.IoDispatcher
@@ -57,7 +58,8 @@ sealed class VideoEditingUiState {
         val isAudioOnly: Boolean = false,
         val hasAudioTrack: Boolean = true,
         val isSnapshotInProgress: Boolean = false,
-        val silencePreviewRanges: List<LongRange> = emptyList()
+        val silencePreviewRanges: List<LongRange> = emptyList(),
+        val availableTracks: List<MediaTrack> = emptyList()
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
@@ -151,7 +153,10 @@ class VideoEditingViewModel @Inject constructor(
                                 fps = meta.fps,
                                 rotation = meta.rotation,
                                 isAudioOnly = meta.videoMime == null,
-                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs))
+                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs)),
+                                availableTracks = meta.tracks.map { 
+                                    MediaTrack(it.id, it.mimeType, it.isVideo, it.isAudio, it.language, it.title)
+                                }
                             )
                         },
                         onFailure = { throw it }
@@ -229,7 +234,10 @@ class VideoEditingViewModel @Inject constructor(
                                 fps = meta.fps,
                                 rotation = meta.rotation,
                                 isAudioOnly = meta.videoMime == null,
-                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs))
+                                segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs)),
+                                availableTracks = meta.tracks.map { 
+                                    MediaTrack(it.id, it.mimeType, it.isVideo, it.isAudio, it.language, it.title)
+                                }
                             )
                         },
                         onFailure = { throw it }
@@ -362,7 +370,8 @@ class VideoEditingViewModel @Inject constructor(
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
             isSnapshotInProgress = isSnapshotInProgress,
-            silencePreviewRanges = _silencePreviewRanges.value
+            silencePreviewRanges = _silencePreviewRanges.value,
+            availableTracks = clip.availableTracks
         )
     }
 
@@ -437,14 +446,41 @@ class VideoEditingViewModel @Inject constructor(
         return result
     }
 
-    fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean) {
+    fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List<Int>? = null) {
         viewModelScope.launch {
             try {
                 _uiState.value = VideoEditingUiState.Loading
                 
                 if (mergeSegments) {
-                    // Placeholder for merge logic
-                    _uiEvents.emit("Merge not implemented yet")
+                    val segments = currentClips.flatMap { clip ->
+                        clip.segments.filter { it.action == SegmentAction.KEEP }
+                            .map { seg -> clip.copy(segments = listOf(seg)) }
+                    }
+                    
+                    if (segments.isEmpty()) {
+                        _uiEvents.emit(context.getString(R.string.error_no_tracks_found))
+                        updateState()
+                        return@launch
+                    }
+
+                    val firstClip = currentClips[selectedClipIndex]
+                    val extension = if (!keepVideo) "m4a" else "mp4"
+                    val outputUri = storageUtils.createMediaOutputUri("${firstClip.fileName}_merged", !keepVideo)
+                    
+                    if (outputUri == null) {
+                        _uiEvents.emit(context.getString(R.string.error_create_file))
+                        updateState()
+                        return@launch
+                    }
+
+                    val result = engine.executeLosslessMerge(
+                        context, outputUri, segments, keepAudio, keepVideo, rotationOverride, selectedTracks
+                    )
+                    
+                    result.fold(
+                        onSuccess = { _uiEvents.emit(context.getString(R.string.export_success, 1)) },
+                        onFailure = { _uiEvents.emit(context.getString(R.string.error_export_failed, it.message)) }
+                    )
                 } else {
                     val selectedClip = currentClips[selectedClipIndex]
                     val segments = selectedClip.segments.filter { it.action == SegmentAction.KEEP }
@@ -461,7 +497,7 @@ class VideoEditingViewModel @Inject constructor(
                             continue
                         }
 
-                        val result = engine.executeLosslessCut(context, selectedClip.uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride)
+                        val result = engine.executeLosslessCut(context, selectedClip.uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride, selectedTracks)
                         result.fold(
                             onSuccess = { successCount++ },
                             onFailure = { errors.add(context.getString(R.string.error_segment_failed, index, it.message)) }
