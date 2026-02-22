@@ -1,12 +1,4 @@
 package com.tazztone.losslesscut.engine
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
 import android.media.MediaCodec
@@ -18,6 +10,11 @@ import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.di.IoDispatcher
+import com.tazztone.losslesscut.viewmodel.MediaClip
+import com.tazztone.losslesscut.viewmodel.SegmentAction
+import com.tazztone.losslesscut.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -164,13 +161,16 @@ class LosslessEngineImpl @Inject constructor(
             val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
 
             val retriever = MediaMetadataRetriever()
-            retriever.setDataSource(context, inputUri)
-            val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-            val finalRotation = rotationOverride ?: originalRotation
-            if (hasVideoTrack) {
-                mMuxer.setOrientationHint(finalRotation)
+            try {
+                retriever.setDataSource(context, inputUri)
+                val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+                val finalRotation = rotationOverride ?: originalRotation
+                if (hasVideoTrack) {
+                    mMuxer.setOrientationHint(finalRotation)
+                }
+            } finally {
+                retriever.release()
             }
-            retriever.release()
 
             mMuxer.start()
             isMuxerStarted = true
@@ -281,8 +281,9 @@ class LosslessEngineImpl @Inject constructor(
             val mMuxer = muxer
 
             val trackMap = mutableMapOf<Int, Int>() // Muxer Track Index -> Type (0 for Video, 1 for Audio)
-            val typeMap = mutableMapOf<Int, Int>() // Muxer Track Index -> Type
             var bufferSize = -1
+            var audioSampleRate = 44100
+            var videoFps = 30f
 
             // Initialize muxer tracks using the first clip
             val firstExtractor = MediaExtractor()
@@ -300,6 +301,14 @@ class LosslessEngineImpl @Inject constructor(
                     if (isVideo || isAudio) {
                         val muxIdx = mMuxer.addTrack(format)
                         trackMap[muxIdx] = if (isVideo) 0 else 1
+                        
+                        if (isVideo && format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                            videoFps = format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                        }
+                        if (isAudio && format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                            audioSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        }
+
                         if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
                             val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
                             if (size > bufferSize) bufferSize = size
@@ -401,7 +410,11 @@ class LosslessEngineImpl @Inject constructor(
 
                             if (!clipExtractor.advance()) break
                         }
-                        globalOffsetUs += lastSampleTimeInSegmentUs + 1000
+                        val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
+                        val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
+                        val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
+                        
+                        globalOffsetUs += lastSampleTimeInSegmentUs + segmentGapUs
                     }
                 } finally {
                     clipExtractor.release()

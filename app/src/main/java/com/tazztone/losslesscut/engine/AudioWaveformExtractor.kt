@@ -1,18 +1,11 @@
 package com.tazztone.losslesscut.engine
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
-
 import android.content.Context
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 object AudioWaveformExtractor {
 
@@ -24,14 +17,14 @@ object AudioWaveformExtractor {
      * 2. Peak Hold instead of RMS = Transients/claps are highly visible.
      * 3. Zero-allocation byte array = GC won't pause, decoding is blazing fast.
      */
-    fun extract(
+    suspend fun extract(
         context: Context, 
         uri: Uri, 
         bucketCount: Int = 1000,
         onProgress: ((FloatArray) -> Unit)? = null
-    ): FloatArray? {
+    ): FloatArray? = withContext(Dispatchers.IO) {
         val extractor = MediaExtractor()
-        return try {
+        try {
             extractor.setDataSource(context, uri, null)
 
             // Find first audio track
@@ -46,18 +39,19 @@ object AudioWaveformExtractor {
                 }
             }
 
-            if (audioTrackIndex == -1 || format == null) return null
+            if (audioTrackIndex == -1 || format == null) return@withContext null
 
             extractor.selectTrack(audioTrackIndex)
             val mime = format.getString(MediaFormat.KEY_MIME)!!
             val durationUs = format.getLong(MediaFormat.KEY_DURATION)
             
             val codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(format, null, null, 0)
-            codec.start()
+            try {
+                codec.configure(format, null, null, 0)
+                codec.start()
 
-            val buckets = FloatArray(bucketCount)
-            val info = MediaCodec.BufferInfo()
+                val buckets = FloatArray(bucketCount)
+                val info = MediaCodec.BufferInfo()
             var sawInputEOS = false
             var sawOutputEOS = false
 
@@ -147,18 +141,19 @@ object AudioWaveformExtractor {
                 }
             }
 
-            codec.stop()
-            codec.release()
-
-            // Normalize visually based on the single loudest sound in the file
-            val maxPeak = buckets.maxOrNull() ?: 1f
-            if (maxPeak > 0f) {
-                for (i in buckets.indices) {
-                    buckets[i] /= maxPeak
+                codec.stop()
+                
+                // Normalize visually based on the single loudest sound in the file
+                val maxPeak = buckets.maxOrNull() ?: 1f
+                if (maxPeak > 0f) {
+                    for (i in buckets.indices) {
+                        buckets[i] /= maxPeak
+                    }
                 }
+                buckets
+            } finally {
+                codec.release()
             }
-
-            buckets
         } catch (e: Exception) {
             e.printStackTrace()
             null

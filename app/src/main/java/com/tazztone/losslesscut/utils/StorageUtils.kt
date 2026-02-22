@@ -1,12 +1,4 @@
 package com.tazztone.losslesscut.utils
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.content.ContentValues
 import android.content.Context
@@ -14,8 +6,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import java.io.File
-
+import android.provider.OpenableColumns
+import android.util.Log
+import android.media.MediaExtractor
+import android.media.MediaMetadataRetriever
+import android.media.MediaFormat
+import com.tazztone.losslesscut.R
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,13 +21,6 @@ class StorageUtils @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
 
-    fun createVideoOutputUri(fileName: String): Uri? {
-        return createMediaOutputUri(fileName, isAudioOnly = false)
-    }
-
-    fun createAudioOutputUri(fileName: String): Uri? {
-        return createMediaOutputUri(fileName, isAudioOnly = true)
-    }
 
     fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean): Uri? {
         val resolver = context.contentResolver
@@ -118,7 +107,6 @@ class StorageUtils @Inject constructor(
         }
     }
 
-    data class VideoMetadata(val fileName: String, val durationMs: Long)
     
     data class DetailedMetadata(
         val fileName: String,
@@ -197,26 +185,4 @@ class StorageUtils @Inject constructor(
         )
     }
 
-    fun getVideoMetadata(videoUri: Uri): VideoMetadata {
-        var fileName = "video.mp4"
-        context.contentResolver.query(videoUri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-            ?.use { cursor ->
-                if (cursor.moveToFirst()) {
-                    fileName = cursor.getString(0) ?: "video.mp4"
-                }
-            }
-
-        var durationMs = 0L
-        val retriever = android.media.MediaMetadataRetriever()
-        try {
-            retriever.setDataSource(context, videoUri)
-            val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-            durationMs = durationStr?.toLong() ?: 0
-        } catch (e: Exception) {
-            android.util.Log.w("StorageUtils", "Failed to extract metadata: ${e.message}")
-        } finally {
-            retriever.release()
-        }
-        return VideoMetadata(fileName, durationMs)
-    }
 }

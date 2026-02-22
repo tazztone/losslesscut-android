@@ -1,18 +1,18 @@
 package com.tazztone.losslesscut.viewmodel
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.data.AppPreferences
+import com.tazztone.losslesscut.di.IoDispatcher
+import com.tazztone.losslesscut.engine.AudioWaveformExtractor
+import com.tazztone.losslesscut.engine.LosslessEngineInterface
+import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -24,7 +24,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -71,7 +70,8 @@ sealed class VideoEditingUiState {
         val canUndo: Boolean = false,
         val videoFps: Float = 30f,
         val isAudioOnly: Boolean = false,
-        val hasAudioTrack: Boolean = true
+        val hasAudioTrack: Boolean = true,
+        val isSnapshotInProgress: Boolean = false
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
@@ -102,6 +102,9 @@ class VideoEditingViewModel @Inject constructor(
     private var currentKeyframes: List<Long> = emptyList()
     private var history = mutableListOf<List<MediaClip>>()
     private var selectedSegmentId: UUID? = null
+    
+    private val keyframeCache = mutableMapOf<Uri, List<Long>>()
+    private var isSnapshotInProgress = false
     
     private var undoLimit = 30
     
@@ -136,9 +139,9 @@ class VideoEditingViewModel @Inject constructor(
                     if (baseMetadata == null) {
                         baseMetadata = metadata
                     } else {
-                        val isValid = validateCompatibility(baseMetadata, metadata)
-                        if (!isValid) {
-                             _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName))
+                        val result = validateCompatibility(baseMetadata, metadata)
+                        if (result is CompatibilityResult.Incompatible) {
+                             _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName) + " (${result.reason})")
                              continue
                         }
                     }
@@ -201,10 +204,10 @@ class VideoEditingViewModel @Inject constructor(
 
                 for (uri in uris) {
                     val metadata = storageUtils.getDetailedMetadata(uri)
-                    val isValid = validateCompatibility(baseMetadata, metadata)
+                    val result = validateCompatibility(baseMetadata, metadata)
                     
-                    if (!isValid) {
-                        _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName))
+                    if (result is CompatibilityResult.Incompatible) {
+                        _uiEvents.emit(context.getString(R.string.error_incompatible_format, metadata.fileName) + " (${result.reason})")
                         continue
                     }
 
@@ -236,19 +239,27 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    private fun validateCompatibility(base: StorageUtils.DetailedMetadata, target: StorageUtils.DetailedMetadata): Boolean {
-        if (base.isAudioOnly != target.isAudioOnly) return false
-        if (base.videoMime != target.videoMime) return false
-        if (base.audioMime != target.audioMime) return false
-        if (base.width != target.width || base.height != target.height) return false
-        if (base.sampleRate != target.sampleRate || base.channelCount != target.channelCount) return false
-        if (base.rotation != target.rotation) return false
-        return true
+    sealed class CompatibilityResult {
+        object Compatible : CompatibilityResult()
+        data class Incompatible(val reason: String) : CompatibilityResult()
+    }
+
+    private fun validateCompatibility(base: StorageUtils.DetailedMetadata, target: StorageUtils.DetailedMetadata): CompatibilityResult {
+        if (base.isAudioOnly != target.isAudioOnly) return CompatibilityResult.Incompatible("Audio-only mismatch")
+        if (base.videoMime != target.videoMime) return CompatibilityResult.Incompatible("Video codec mismatch: ${base.videoMime} vs ${target.videoMime}")
+        if (base.audioMime != target.audioMime) return CompatibilityResult.Incompatible("Audio codec mismatch: ${base.audioMime} vs ${target.audioMime}")
+        if (base.width != target.width || base.height != target.height) return CompatibilityResult.Incompatible("Resolution mismatch: ${base.width}x${base.height} vs ${target.width}x${target.height}")
+        if (base.sampleRate != target.sampleRate || base.channelCount != target.channelCount) return CompatibilityResult.Incompatible("Audio format mismatch (Sample rate/Channels)")
+        if (base.rotation != target.rotation) return CompatibilityResult.Incompatible("Rotation mismatch")
+        return CompatibilityResult.Compatible
     }
 
     private suspend fun loadClipData(index: Int) {
         val clip = currentClips[index]
-        val keyframes = engine.probeKeyframes(context, clip.uri)
+        
+        val keyframes = keyframeCache.getOrPut(clip.uri) {
+            engine.probeKeyframes(context, clip.uri)
+        }
         currentKeyframes = keyframes
         
         updateSuccessState()
@@ -283,7 +294,8 @@ class VideoEditingViewModel @Inject constructor(
             canUndo = history.size > 1,
             videoFps = selectedClip.fps,
             isAudioOnly = selectedClip.isAudioOnly,
-            hasAudioTrack = selectedClip.audioMime != null
+            hasAudioTrack = selectedClip.audioMime != null,
+            isSnapshotInProgress = isSnapshotInProgress
         )
     }
 
@@ -534,14 +546,16 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val retriever = android.media.MediaMetadataRetriever()
             try {
-                _uiState.value = VideoEditingUiState.Loading
+                isSnapshotInProgress = true
+                updateSuccessState()
+                
                 retriever.setDataSource(context, clip.uri)
-                val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, android.media.MediaMetadataRetriever.OPTION_CLOSEST)
+                val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
                 if (bitmap != null) {
                     val formatSetting = preferences.snapshotFormatFlow.first()
                     val isJpeg = formatSetting == "JPEG"
                     val ext = if (isJpeg) "jpeg" else "png"
-                    val compressFormat = if (isJpeg) android.graphics.Bitmap.CompressFormat.JPEG else android.graphics.Bitmap.CompressFormat.PNG
+                    val compressFormat = if (isJpeg) Bitmap.CompressFormat.JPEG else Bitmap.CompressFormat.PNG
                     val quality = if (isJpeg) preferences.jpgQualityFlow.first() else 100
 
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
@@ -564,13 +578,14 @@ class VideoEditingViewModel @Inject constructor(
                 _uiEvents.emit(context.getString(R.string.error_snapshot_failed_generic))
             } finally {
                 retriever.release()
+                isSnapshotInProgress = false
                 updateSuccessState()
             }
         }
     }
 
     private fun waveformCacheKey(uri: Uri, durationMs: Long): String {
-        return "waveform_${uri.hashCode()}_${durationMs}.bin"
+        return "waveform_${uri.toString().hashCode()}_${durationMs}.bin"
     }
 
     private fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {
@@ -580,8 +595,21 @@ class VideoEditingViewModel @Inject constructor(
                 out.writeInt(waveform.size)
                 waveform.forEach { out.writeFloat(it) }
             }
+            cleanupOldWaveforms()
         } catch (e: Exception) {
             Log.e("VideoEditingViewModel", "Failed to save waveform to cache", e)
+        }
+    }
+
+    private fun cleanupOldWaveforms() {
+        try {
+            val files = context.cacheDir.listFiles { _, name -> name.startsWith("waveform_") && name.endsWith(".bin") }
+            if (files != null && files.size > 10) {
+                files.sortByDescending { it.lastModified() }
+                files.drop(10).forEach { it.delete() }
+            }
+        } catch (e: Exception) {
+            Log.e("VideoEditingViewModel", "Failed to cleanup waveforms", e)
         }
     }
 
