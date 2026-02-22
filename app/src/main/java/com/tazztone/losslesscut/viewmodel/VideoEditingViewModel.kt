@@ -529,6 +529,14 @@ class VideoEditingViewModel @Inject constructor(
                 } else {
                     val selectedClip = currentClips[selectedClipIndex]
                     val segments = selectedClip.segments.filter { it.action == SegmentAction.KEEP }
+                    
+                    if (segments.isEmpty()) {
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_no_tracks_found)))
+                        _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                        updateState()
+                        return@launch
+                    }
+
                     var successCount = 0
                     val errors = mutableListOf<String>()
 
@@ -562,6 +570,7 @@ class VideoEditingViewModel @Inject constructor(
                 updateState()
             } catch (e: Exception) {
                 _uiState.value = VideoEditingUiState.Error(e.message ?: "Unknown error")
+                _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
             }
         }
     }

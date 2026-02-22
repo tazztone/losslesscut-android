@@ -695,7 +695,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         Toast.makeText(this@VideoEditingActivity, event.message, Toast.LENGTH_LONG).show()
                     }
                     is VideoEditingEvent.ExportComplete -> {
-                        if (event.success && launchMode != MODE_CUT) {
+                        if (launchMode != MODE_CUT) {
                             finish()
                         }
                     }
