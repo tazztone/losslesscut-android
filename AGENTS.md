@@ -58,10 +58,11 @@ The project is organized into a layer/feature-based structure within the `com.ta
     - `executeLosslessMerge`: Concatenates multiple `MediaClip` objects or segments. Handles PTS shifting and validates track availability.
 - **`VideoEditingViewModel`**: State machine for the editor.
     - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error). `Success` state includes `hasAudioTrack` flag for UI constraints.
+    - **Events**: Uses a `VideoEditingEvent` sealed class (`ShowToast`, `ExportComplete`, `SessionRestored`) via `SharedFlow` for one-time UI actions.
     - **Undo Stack**: In-memory list of `List<MediaClip>` snapshots.
     - **Persistence**: Implements `saveSession()` (JSON serialization to cache) and `restoreSession()` to allow resuming work on the current URI.
     - **Silence Detection**: Orchestrates `DetectionUtils.findSilence` to preview or apply automated cuts based on waveform analysis.
-    - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked.
+    - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked. The UI automatically finishes after export in utility modes (`MODE_REMUX`, `MODE_METADATA`).
 
 ### Utilities
 - **StorageUtils**: Handles Scoped Storage. Centralizes URI creation via `createMediaOutputUri`, which dynamically selects `Movies/LosslessCut` or `Music/LosslessCut` based on the requested media type and sets appropriate MIME types. Supports custom tree URIs for user-selected folders.

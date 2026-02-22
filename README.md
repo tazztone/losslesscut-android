@@ -25,6 +25,8 @@
 - 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with live savings preview.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
 - 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
+- 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.
+- 🏷️ **Quick Metadata Fix**: Correct video orientation and rotation flags in seconds.
 
 ## 📸 Screenshots
 
@@ -63,7 +65,9 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 
 ## 🗺️ Roadmap
 - [ ] **Smart Cut (v2.0)**: Frame-accurate editing by re-encoding only the boundary GOPs.
-- [ ] **Metadata Tuning**: Advanced rotation and tag editing flags.
+- [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
+- [x] **Remux Utility**: Instant container switching.
+- [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [ ] **Multi-track Wizard**: Batch track stripping and extraction UI.
 
 ## 📄 License
