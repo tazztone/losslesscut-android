@@ -169,6 +169,17 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
 
+        if (launchMode != MODE_CUT) {
+            binding.btnAddClips?.visibility = View.GONE
+            binding.btnUndo?.visibility = View.GONE
+            binding.btnSnapshot?.visibility = View.GONE
+            binding.btnSettings?.visibility = View.GONE
+            binding.containerAddClips?.visibility = View.GONE
+            binding.containerUndo?.visibility = View.GONE
+            binding.containerSnapshot?.visibility = View.GONE
+            binding.containerSettings?.visibility = View.GONE
+        }
+
         viewModel.initialize(videoUris)
 
         when (launchMode) {
@@ -342,7 +353,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnAddClips?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
         
         binding.btnSave.setOnClickListener { 
-            showExportOptionsDialog()
+            when (launchMode) {
+                MODE_REMUX -> showRemuxDialog()
+                MODE_METADATA -> showMetadataDialog()
+                else -> showExportOptionsDialog()
+            }
         }
         TooltipCompat.setTooltipText(binding.btnSave, getString(R.string.export))
 
@@ -830,17 +845,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun configureForRemux() {
-        // Hide all cut/trim controls
-        binding.btnSplit.visibility = View.GONE
-        binding.btnSetIn?.visibility = View.GONE
-        binding.btnSetOut?.visibility = View.GONE
-        binding.btnDelete.visibility = View.GONE
-        binding.btnSilenceCut?.visibility = View.GONE
-        binding.containerSplit?.visibility = View.GONE
-        binding.containerSetIn?.visibility = View.GONE
-        binding.containerSetOut?.visibility = View.GONE
-        binding.containerDelete?.visibility = View.GONE
-        binding.containerSilenceCut?.visibility = View.GONE
+        // Hide all cut/trim controls and timeline
+        binding.seekerContainer?.visibility = View.GONE
+        binding.editingControls?.visibility = View.GONE
+        binding.rightSidebar?.visibility = View.GONE
         binding.customVideoSeeker.isRemuxMode = true
 
         lifecycleScope.launch {
@@ -873,17 +881,9 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun configureForMetadata() {
-        binding.btnSplit.visibility = View.GONE
-        binding.btnSetIn?.visibility = View.GONE
-        binding.btnSetOut?.visibility = View.GONE
-        binding.btnDelete.visibility = View.GONE
-        binding.btnSilenceCut?.visibility = View.GONE
-        binding.containerSplit?.visibility = View.GONE
-        binding.containerSetIn?.visibility = View.GONE
-        binding.containerSetOut?.visibility = View.GONE
-        binding.containerDelete?.visibility = View.GONE
-        binding.containerSilenceCut?.visibility = View.GONE
-        binding.customVideoSeeker.visibility = View.GONE
+        binding.seekerContainer?.visibility = View.GONE
+        binding.editingControls?.visibility = View.GONE
+        binding.rightSidebar?.visibility = View.GONE
 
         lifecycleScope.launch {
             viewModel.uiState.first { it is VideoEditingUiState.Success }
