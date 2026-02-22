@@ -24,6 +24,7 @@ import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
+import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.data.MediaClip
 import com.tazztone.losslesscut.data.SegmentAction
 import com.tazztone.losslesscut.data.TrimSegment
@@ -467,15 +468,15 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                     return true
                 }
                 android.view.KeyEvent.KEYCODE_I -> {
-                    setInPoint()
+                    if (launchMode == MODE_CUT) setInPoint()
                     return true
                 }
                 android.view.KeyEvent.KEYCODE_O -> {
-                    setOutPoint()
+                    if (launchMode == MODE_CUT) setOutPoint()
                     return true
                 }
                 android.view.KeyEvent.KEYCODE_S -> {
-                    splitCurrentSegment()
+                    if (launchMode == MODE_CUT) splitCurrentSegment()
                     return true
                 }
                 android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -688,8 +689,18 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             }
         }
         lifecycleScope.launch {
-            viewModel.uiEvents.collect { message ->
-                Toast.makeText(this@VideoEditingActivity, message, Toast.LENGTH_LONG).show()
+            viewModel.uiEvents.collect { event ->
+                when (event) {
+                    is VideoEditingEvent.ShowToast -> {
+                        Toast.makeText(this@VideoEditingActivity, event.message, Toast.LENGTH_LONG).show()
+                    }
+                    is VideoEditingEvent.ExportComplete -> {
+                        if (event.success && launchMode != MODE_CUT) {
+                            finish()
+                        }
+                    }
+                    else -> {}
+                }
             }
         }
         lifecycleScope.launch {
@@ -864,6 +875,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun showRemuxDialog() {
+        if (viewModel.uiState.value !is VideoEditingUiState.Success) {
+            Toast.makeText(this, R.string.please_wait, Toast.LENGTH_SHORT).show()
+            return
+        }
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dashboard_remux_title)
             .setMessage(R.string.remux_dialog_message)

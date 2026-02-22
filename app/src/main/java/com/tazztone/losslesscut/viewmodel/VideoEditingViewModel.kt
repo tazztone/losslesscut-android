@@ -64,6 +64,12 @@ sealed class VideoEditingUiState {
     data class Error(val message: String) : VideoEditingUiState()
 }
 
+sealed class VideoEditingEvent {
+    data class ShowToast(val message: String) : VideoEditingEvent()
+    data class ExportComplete(val success: Boolean, val count: Int = 0) : VideoEditingEvent()
+    object SessionRestored : VideoEditingEvent()
+}
+
 @HiltViewModel
 class VideoEditingViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -76,8 +82,8 @@ class VideoEditingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
 
-    private val _uiEvents = MutableSharedFlow<String>()
-    val uiEvents: SharedFlow<String> = _uiEvents.asSharedFlow()
+    private val _uiEvents = MutableSharedFlow<VideoEditingEvent>()
+    val uiEvents: SharedFlow<VideoEditingEvent> = _uiEvents.asSharedFlow()
 
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
@@ -264,14 +270,14 @@ class VideoEditingViewModel @Inject constructor(
                 currentClips = currentClips + newClips
                 updateState()
             } catch (e: Exception) {
-                _uiEvents.emit(context.getString(R.string.error_load_video, e.message))
+                _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_load_video, e.message)))
             }
         }
     }
 
     fun removeClip(index: Int) {
         if (currentClips.size <= 1) {
-            viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_cannot_delete_last)) }
+            viewModelScope.launch { _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_cannot_delete_last))) }
             return
         }
         saveToHistory()
@@ -307,7 +313,7 @@ class VideoEditingViewModel @Inject constructor(
         val segment = currentClip.segments.find { positionMs in it.startMs..it.endMs } ?: return
         
         if (positionMs - segment.startMs < MIN_SEGMENT_DURATION_MS || segment.endMs - positionMs < MIN_SEGMENT_DURATION_MS) {
-            viewModelScope.launch { _uiEvents.emit(context.getString(R.string.error_segment_too_small_split)) }
+            viewModelScope.launch { _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_segment_too_small_split))) }
             return
         }
 
@@ -490,7 +496,7 @@ class VideoEditingViewModel @Inject constructor(
                     }
                     
                     if (segments.isEmpty()) {
-                        _uiEvents.emit(context.getString(R.string.error_no_tracks_found))
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_no_tracks_found)))
                         updateState()
                         return@launch
                     }
@@ -501,7 +507,7 @@ class VideoEditingViewModel @Inject constructor(
                     val outputUri = storageUtils.createMediaOutputUri("${baseNameOnly}_merged.$extension", !keepVideo)
                     
                     if (outputUri == null) {
-                        _uiEvents.emit(context.getString(R.string.error_create_file))
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_create_file)))
                         updateState()
                         return@launch
                     }
@@ -511,8 +517,14 @@ class VideoEditingViewModel @Inject constructor(
                     )
                     
                     result.fold(
-                        onSuccess = { _uiEvents.emit(context.getString(R.string.export_success, 1)) },
-                        onFailure = { _uiEvents.emit(context.getString(R.string.error_export_failed, it.message)) }
+                        onSuccess = { 
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.export_success, 1)))
+                            _uiEvents.emit(VideoEditingEvent.ExportComplete(true, 1))
+                        },
+                        onFailure = { 
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_export_failed, it.message)))
+                            _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                        }
                     )
                 } else {
                     val selectedClip = currentClips[selectedClipIndex]
@@ -539,10 +551,12 @@ class VideoEditingViewModel @Inject constructor(
                     }
 
                     if (errors.isEmpty() && successCount > 0) {
-                        _uiEvents.emit(context.getString(R.string.export_success, successCount))
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.export_success, successCount)))
+                        _uiEvents.emit(VideoEditingEvent.ExportComplete(true, successCount))
                         _isDirty.value = false
                     } else if (errors.isNotEmpty()) {
-                        _uiEvents.emit(context.getString(R.string.export_partial_success, successCount, errors.joinToString()))
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.export_partial_success, successCount, errors.joinToString())))
+                        _uiEvents.emit(VideoEditingEvent.ExportComplete(successCount > 0, successCount))
                     }
                 }
                 updateState()
@@ -578,12 +592,12 @@ class VideoEditingViewModel @Inject constructor(
                         } catch (e: Exception) {
                             Log.e("VideoEditingViewModel", "Failed to write snapshot", e)
                         }
-                        _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
+                        _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.snapshot_saved, fileName)))
                     }
                 }
             } catch (e: Exception) {
                 Log.e("VideoEditingViewModel", "Snapshot failed", e)
-                _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.snapshot_failed)))
             } finally {
                 isSnapshotInProgress = false
                 updateState()
@@ -672,7 +686,7 @@ class VideoEditingViewModel @Inject constructor(
                 }
 
                 if (validClips.isEmpty()) {
-                    _uiEvents.emit(context.getString(R.string.error_restore_failed_files_missing))
+                    _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_restore_failed_files_missing)))
                     return@launch
                 }
 
@@ -680,10 +694,11 @@ class VideoEditingViewModel @Inject constructor(
                 selectedClipIndex = 0
                 _isDirty.value = true
                 loadClipData(selectedClipIndex)
-                _uiEvents.emit(context.getString(R.string.session_restored))
+                _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.session_restored)))
+                _uiEvents.emit(VideoEditingEvent.SessionRestored)
             } catch (e: Exception) {
                 Log.e("VideoEditingViewModel", "Failed to restore session", e)
-                _uiEvents.emit(context.getString(R.string.error_restore_failed, e.message))
+                _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_restore_failed, e.message)))
             }
         }
     }
