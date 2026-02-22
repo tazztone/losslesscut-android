@@ -5,9 +5,10 @@
         <item>70.0</item>
     </array>
     <string-array name="rotation_options">
-        <item>0° (Original)</item>
-        <item>90°</item>
-        <item>180°</item>
-        <item>270°</item>
+        <item>Keep Original</item>
+        <item>Force 0°</item>
+        <item>Force 90°</item>
+        <item>Force 180°</item>
+        <item>Force 270°</item>
     </string-array>
 </resources>

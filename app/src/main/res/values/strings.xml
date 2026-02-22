@@ -105,7 +105,7 @@
     <string name="dashboard_remux_title">Remux &amp; Convert</string>
     <string name="dashboard_remux_desc">Change container format without re-encoding</string>
     <string name="dashboard_metadata_title">Edit Metadata</string>
-    <string name="dashboard_metadata_desc">Update rotation flags and tags</string>
+    <string name="dashboard_metadata_desc">Fix video orientation and rotation</string>
     <string name="export_folder">Export Folder</string>
     <string name="session_restored">Previous session restored</string>
     <string name="restore_session_title">Restore Session</string>

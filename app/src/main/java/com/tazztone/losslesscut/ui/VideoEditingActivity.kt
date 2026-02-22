@@ -147,6 +147,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding = ActivityVideoEditingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
+
         val videoUris = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             intent.getParcelableArrayListExtra(EXTRA_VIDEO_URIS, Uri::class.java)
         } else {
@@ -166,8 +168,6 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         initializePlayer()
         setupCustomSeeker()
         observeViewModel()
-
-        launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
 
         if (launchMode != MODE_CUT) {
             binding.btnAddClips?.visibility = View.GONE
@@ -190,7 +190,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         
         // Check for saved session
         lifecycleScope.launch {
-            if (viewModel.hasSavedSession(videoUris[0])) {
+            if (launchMode == MODE_CUT && viewModel.hasSavedSession(videoUris[0])) {
                 com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
                     .setTitle(R.string.restore_session_title)
                     .setMessage(R.string.restore_session_message)
@@ -219,7 +219,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private fun setupBackPressed() {
         val callback = object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (viewModel.isDirty.value) {
+                if (launchMode == MODE_CUT && viewModel.isDirty.value) {
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
                         .setTitle(R.string.exit_confirm_title)
                         .setMessage(R.string.exit_confirm_message)
@@ -248,7 +248,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         super.onPause()
         if (::player.isInitialized) {
             player.pause()
-            viewModel.saveSession()
+            if (launchMode == MODE_CUT) viewModel.saveSession()
         }
         stopProgressUpdate()
     }
@@ -660,8 +660,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         } else {
                             binding.playerView.visibility = View.VISIBLE
                             binding.audioPlaceholder?.visibility = View.GONE
-                            binding.containerRotate?.visibility = View.VISIBLE
-                            binding.containerSnapshot?.visibility = View.VISIBLE
+                            if (launchMode == MODE_CUT) {
+                                binding.containerRotate?.visibility = View.VISIBLE
+                                binding.containerSnapshot?.visibility = View.VISIBLE
+                            }
                         }
 
                         binding.customVideoSeeker.setKeyframes(state.keyframes)
@@ -852,8 +854,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.customVideoSeeker.isRemuxMode = true
 
         lifecycleScope.launch {
-            viewModel.uiState.first { it is VideoEditingUiState.Success }
-            showRemuxDialog()
+            val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }
+            if (finalState is VideoEditingUiState.Success) {
+                showRemuxDialog()
+            }
         }
     }
 
@@ -875,8 +879,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 )
                 isRemuxDialogShowing = false
             }
-            .setNegativeButton(R.string.cancel) { _, _ -> isRemuxDialogShowing = false }
-            .setOnCancelListener { isRemuxDialogShowing = false }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                isRemuxDialogShowing = false
+                finish()
+            }
+            .setOnCancelListener {
+                isRemuxDialogShowing = false
+                finish()
+            }
             .show()
     }
 
@@ -886,8 +896,10 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.rightSidebar?.visibility = View.GONE
 
         lifecycleScope.launch {
-            viewModel.uiState.first { it is VideoEditingUiState.Success }
-            showMetadataDialog()
+            val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }
+            if (finalState is VideoEditingUiState.Success) {
+                showMetadataDialog()
+            }
         }
     }
 
@@ -900,12 +912,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         val dialogView = layoutInflater.inflate(R.layout.dialog_metadata_editor, null)
         val spinnerRotation = dialogView.findViewById<android.widget.Spinner>(R.id.spinnerRotation)
         
-        // Map currentRotation to spinner index (0, 90, 180, 270)
+        // Map currentRotation to spinner index (0 -> 1, 90 -> 2, 180 -> 3, 270 -> 4)
+        // Index 0 is "Original" which means null override
         val rotationIndex = when (currentRotation) {
-            90 -> 1
-            180 -> 2
-            270 -> 3
-            else -> 0
+            90 -> 2
+            180 -> 3
+            270 -> 4
+            0 -> 1
+            else -> 0 // Original
         }
         spinnerRotation.setSelection(rotationIndex)
 
@@ -914,18 +928,25 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             .setView(dialogView)
             .setPositiveButton(R.string.apply) { _, _ ->
                 val selectedRotation = when (spinnerRotation.selectedItemPosition) {
-                    1 -> 90
-                    2 -> 180
-                    3 -> 270
-                    else -> 0
+                    1 -> 0
+                    2 -> 90
+                    3 -> 180
+                    4 -> 270
+                    else -> null // Keep Original
                 }
-                currentRotation = selectedRotation
+                currentRotation = selectedRotation ?: 0
                 viewModel.exportSegments(true, keepAudio = true, keepVideo = true,
                     rotationOverride = selectedRotation, mergeSegments = false)
                 isMetadataDialogShowing = false
             }
-            .setNegativeButton(R.string.cancel) { _, _ -> isMetadataDialogShowing = false }
-            .setOnCancelListener { isMetadataDialogShowing = false }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                isMetadataDialogShowing = false
+                finish()
+            }
+            .setOnCancelListener {
+                isMetadataDialogShowing = false
+                finish()
+            }
             .show()
     }
 

@@ -416,7 +416,7 @@ class LosslessEngineImpl @Inject constructor(
             muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val mMuxer = muxer
 
-            val trackMap = mutableMapOf<Int, Int>() // Muxer Track Index -> Type (0 for Video, 1 for Audio)
+            val muxerTrackByType = mutableMapOf<Int, Int>() // Muxer Track Index -> Type (0 for Video, 1 for Audio)
             var bufferSize = -1
             var audioSampleRate = 44100
             var videoFps = 30f
@@ -441,7 +441,7 @@ class LosslessEngineImpl @Inject constructor(
 
                     if (isVideo || isAudio) {
                         val muxIdx = mMuxer.addTrack(format)
-                        trackMap[muxIdx] = if (isVideo) 0 else 1
+                        muxerTrackByType[muxIdx] = if (isVideo) 0 else 1
                         
                         if (isVideo) {
                             expectedVideoMime = mime
@@ -469,11 +469,11 @@ class LosslessEngineImpl @Inject constructor(
                 firstExtractor.release()
             }
 
-            if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
+            if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
             if (bufferSize < 0) bufferSize = 1024 * 1024
 
             val finalRotation = rotationOverride ?: clips[0].rotation
-            if (trackMap.any { it.value == 0 }) {
+            if (muxerTrackByType.any { it.value == 0 }) {
                 mMuxer.setOrientationHint(finalRotation)
             }
 
@@ -486,8 +486,8 @@ class LosslessEngineImpl @Inject constructor(
             val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
 
             // Pre-calculate muxer tracks outside the clip loop
-            val videoMuxerTrack = trackMap.entries.firstOrNull { it.value == 0 }?.key
-            val audioMuxerTrack = trackMap.entries.firstOrNull { it.value == 1 }?.key
+            val videoMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == 0 }?.key
+            val audioMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == 1 }?.key
 
             val buffer = ByteBuffer.allocateDirect(bufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
