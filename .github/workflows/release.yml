@@ -22,10 +22,10 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'zulu'
       - name: Run Unit Tests
         run: ./gradlew test
@@ -115,9 +115,8 @@ jobs:
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "title=$RELEASE_TITLE" >> $GITHUB_OUTPUT
       
-      # 6. Create GitHub Release & Upload Artifacts
       - name: Create GitHub Release & Upload Artifacts
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77 # v1
         with:
           tag_name: ${{ steps.vars.outputs.tag }}
           name: ${{ steps.vars.outputs.title }}
@@ -130,10 +129,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 7. Publish to Google Play Store (Production Track)
       - name: Publish to Google Play Store
         if: github.event.inputs.publish_to_play_store == 'true' && steps.variant.outputs.name == 'Release'
-        uses: r0adkll/upload-google-play@v1
+        uses: r0adkll/upload-google-play@0250910c30c1c098744c510e32e1659c6af78eb6 # v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tazztone.losslesscut

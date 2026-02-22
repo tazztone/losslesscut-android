@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.File
@@ -554,14 +555,17 @@ class VideoEditingViewModel @Inject constructor(
     fun extractSnapshot(currentPositionMs: Long) {
         if (currentClips.isEmpty()) return
         val clip = currentClips[selectedClipIndex]
-        viewModelScope.launch(ioDispatcher) {
+        viewModelScope.launch {
             val retriever = android.media.MediaMetadataRetriever()
             try {
                 isSnapshotInProgress = true
                 updateSuccessState()
                 
-                retriever.setDataSource(context, clip.uri)
-                val bitmap = retriever.getFrameAtTime(currentPositionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                val bitmap = withContext(ioDispatcher) {
+                    retriever.setDataSource(context, clip.uri)
+                    retriever.getFrameAtTime(currentPositionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                }
+
                 if (bitmap != null) {
                     val formatSetting = preferences.snapshotFormatFlow.first()
                     val isJpeg = formatSetting == "JPEG"
@@ -572,13 +576,15 @@ class VideoEditingViewModel @Inject constructor(
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = storageUtils.createImageOutputUri(fileName)
                     if (outputUri != null) {
-                        context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                            bitmap.compress(compressFormat, quality, outputStream)
-                            storageUtils.finalizeImage(outputUri)
-                            _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
-                        } ?: _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                        withContext(ioDispatcher) {
+                            context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
+                                bitmap.compress(compressFormat, quality, outputStream)
+                                storageUtils.finalizeImage(outputUri)
+                            }
+                        }
+                        _uiEvents.emit(context.getString(R.string.snapshot_saved, fileName))
                     } else {
-                         _uiEvents.emit(context.getString(R.string.snapshot_failed))
+                        _uiEvents.emit(context.getString(R.string.snapshot_failed))
                     }
                     bitmap.recycle()
                 } else {
@@ -588,7 +594,9 @@ class VideoEditingViewModel @Inject constructor(
                 Log.e("VideoEditingViewModel", "Snapshot error", e)
                 _uiEvents.emit(context.getString(R.string.error_snapshot_failed_generic))
             } finally {
-                retriever.release()
+                withContext(ioDispatcher) {
+                    retriever.release()
+                }
                 isSnapshotInProgress = false
                 updateSuccessState()
             }

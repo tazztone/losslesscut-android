@@ -73,6 +73,7 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun setSnapshotFormat(format: String) {
+        require(format in setOf("PNG", "JPEG")) { "Snapshot format must be PNG or JPEG" }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.SNAPSHOT_FORMAT] = format
         }
