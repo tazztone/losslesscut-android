@@ -71,6 +71,18 @@
                 android:layout_marginEnd="16dp"/>
 
             <ImageButton
+                android:id="@+id/btnSnapshot"
+                android:minWidth="48dp"
+                android:minHeight="48dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:src="@drawable/ic_camera_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/snapshot"
+                android:tooltipText="@string/snapshot"
+                android:layout_marginEnd="8dp"/>
+
+            <ImageButton
                 android:id="@+id/btnSave"
                 android:minWidth="48dp"
                 android:minHeight="48dp"
@@ -200,7 +212,7 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/containerSnapshot"
+            android:id="@+id/containerSilenceCut"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -209,18 +221,18 @@
             android:clickable="true"
             android:focusable="true">
             <ImageButton
-                android:id="@+id/btnSnapshot"
+                android:id="@+id/btnSilenceCut"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_camera_24"
+                android:src="@drawable/ic_silence_cut_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/snapshot"
-                android:tooltipText="@string/snapshot"
+                android:contentDescription="@string/silence_cut"
+                android:tooltipText="@string/auto_detect_silence"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Snap"
+                android:text="@string/silence_cut"
                 android:textSize="10sp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
         </LinearLayout>

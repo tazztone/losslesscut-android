@@ -386,17 +386,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         val snapshotAction = { extractSnapshot() }
         binding.btnSnapshot.setOnClickListener { snapshotAction() }
-        binding.btnSnapshot.setOnLongClickListener { 
-            showSilenceDetectionDialog()
-            true
-        }
-        binding.containerSnapshot?.setOnClickListener { snapshotAction() }
-        binding.containerSnapshot?.setOnLongClickListener { 
-            showSilenceDetectionDialog()
-            true
-        }
         TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
-        binding.containerSnapshot?.let { TooltipCompat.setTooltipText(it, getString(R.string.snapshot)) }
+
+        val silenceCutAction = { showSilenceDetectionDialog() }
+        binding.btnSilenceCut?.setOnClickListener { silenceCutAction() }
+        binding.containerSilenceCut?.setOnClickListener { silenceCutAction() }
+        binding.btnSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
+        binding.containerSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
         
         val rotateAction = { 
             currentRotation = (currentRotation + 90) % 360

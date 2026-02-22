@@ -113,6 +113,7 @@
     <string name="restore">Restore</string>
     <string name="ignore">Ignore</string>
     <string name="auto_detect_silence">Auto-detect Silence</string>
+    <string name="silence_cut">Silence Cut</string>
     <string name="silence_detected_preview">Silence detected: %1$s (%2$d regions)</string>
     <string name="estimated_savings">Estimated saving: %1$s (%2$.1f%% of total)</string>
     <string name="no_silence_detected">No silence detected at this level</string>
