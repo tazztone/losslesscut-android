@@ -34,6 +34,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import java.io.File
 import java.io.FileOutputStream
 
@@ -43,6 +44,12 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
  
     companion object {
         const val EXTRA_VIDEO_URIS = "com.tazztone.losslesscut.EXTRA_VIDEO_URIS"
+        const val EXTRA_LAUNCH_MODE = "com.tazztone.losslesscut.EXTRA_LAUNCH_MODE"
+
+        const val MODE_CUT      = "cut"
+        const val MODE_REMUX    = "remux"
+        const val MODE_METADATA = "metadata"
+
         private const val KEY_PLAYHEAD = "playhead_pos"
         private const val KEY_PLAY_WHEN_READY = "play_when_ready"
         private const val KEY_ROTATION = "rotation_offset"
@@ -54,6 +61,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private lateinit var binding: ActivityVideoEditingBinding
     private lateinit var player: ExoPlayer
     private lateinit var clipAdapter: MediaClipAdapter
+    private lateinit var launchMode: String
 
     private var isVideoLoaded = false
     private var updateJob: Job? = null
@@ -159,7 +167,15 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         setupCustomSeeker()
         observeViewModel()
 
+        launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
+
         viewModel.initialize(videoUris)
+
+        when (launchMode) {
+            MODE_REMUX    -> configureForRemux()
+            MODE_METADATA -> configureForMetadata()
+            else          -> { /* default cut UI */ }
+        }
         
         // Check for saved session
         lifecycleScope.launch {
@@ -811,6 +827,106 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (!isVideoLoaded || total <= 0) return
         binding.tvDuration?.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
+    }
+
+    private fun configureForRemux() {
+        // Hide all cut/trim controls
+        binding.btnSplit.visibility = View.GONE
+        binding.btnSetIn?.visibility = View.GONE
+        binding.btnSetOut?.visibility = View.GONE
+        binding.btnDelete.visibility = View.GONE
+        binding.btnSilenceCut?.visibility = View.GONE
+        binding.containerSplit?.visibility = View.GONE
+        binding.containerSetIn?.visibility = View.GONE
+        binding.containerSetOut?.visibility = View.GONE
+        binding.containerDelete?.visibility = View.GONE
+        binding.containerSilenceCut?.visibility = View.GONE
+        binding.customVideoSeeker.isRemuxMode = true
+
+        lifecycleScope.launch {
+            viewModel.uiState.first { it is VideoEditingUiState.Success }
+            showRemuxDialog()
+        }
+    }
+
+    private var isRemuxDialogShowing = false
+    private fun showRemuxDialog() {
+        if (isRemuxDialogShowing) return
+        isRemuxDialogShowing = true
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dashboard_remux_title)
+            .setMessage(R.string.remux_dialog_message)
+            .setPositiveButton(R.string.export) { _, _ ->
+                viewModel.exportSegments(
+                    isLossless = true,
+                    keepAudio = true,
+                    keepVideo = true,
+                    rotationOverride = null,
+                    mergeSegments = false,
+                    selectedTracks = null
+                )
+                isRemuxDialogShowing = false
+            }
+            .setNegativeButton(R.string.cancel) { _, _ -> isRemuxDialogShowing = false }
+            .setOnCancelListener { isRemuxDialogShowing = false }
+            .show()
+    }
+
+    private fun configureForMetadata() {
+        binding.btnSplit.visibility = View.GONE
+        binding.btnSetIn?.visibility = View.GONE
+        binding.btnSetOut?.visibility = View.GONE
+        binding.btnDelete.visibility = View.GONE
+        binding.btnSilenceCut?.visibility = View.GONE
+        binding.containerSplit?.visibility = View.GONE
+        binding.containerSetIn?.visibility = View.GONE
+        binding.containerSetOut?.visibility = View.GONE
+        binding.containerDelete?.visibility = View.GONE
+        binding.containerSilenceCut?.visibility = View.GONE
+        binding.customVideoSeeker.visibility = View.GONE
+
+        lifecycleScope.launch {
+            viewModel.uiState.first { it is VideoEditingUiState.Success }
+            showMetadataDialog()
+        }
+    }
+
+    private var isMetadataDialogShowing = false
+    private fun showMetadataDialog() {
+        if (isMetadataDialogShowing) return
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        isMetadataDialogShowing = true
+
+        val dialogView = layoutInflater.inflate(R.layout.dialog_metadata_editor, null)
+        val spinnerRotation = dialogView.findViewById<android.widget.Spinner>(R.id.spinnerRotation)
+        
+        // Map currentRotation to spinner index (0, 90, 180, 270)
+        val rotationIndex = when (currentRotation) {
+            90 -> 1
+            180 -> 2
+            270 -> 3
+            else -> 0
+        }
+        spinnerRotation.setSelection(rotationIndex)
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dashboard_metadata_title)
+            .setView(dialogView)
+            .setPositiveButton(R.string.apply) { _, _ ->
+                val selectedRotation = when (spinnerRotation.selectedItemPosition) {
+                    1 -> 90
+                    2 -> 180
+                    3 -> 270
+                    else -> 0
+                }
+                currentRotation = selectedRotation
+                viewModel.exportSegments(true, keepAudio = true, keepVideo = true,
+                    rotationOverride = selectedRotation, mergeSegments = false)
+                isMetadataDialogShowing = false
+            }
+            .setNegativeButton(R.string.cancel) { _, _ -> isMetadataDialogShowing = false }
+            .setOnCancelListener { isMetadataDialogShowing = false }
+            .show()
     }
 
     override fun onLosslessModeToggled(isChecked: Boolean) {

@@ -32,6 +32,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var requestPermissionsLauncher: ActivityResultLauncher<Array<String>>
+    private var pendingLaunchMode = VideoEditingActivity.MODE_CUT
+
     private val selectMediaLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
             if (uris.isNotEmpty()) {
@@ -80,7 +82,9 @@ class MainActivity : AppCompatActivity() {
 
         binding.rvDashboard.adapter = DashboardAdapter(actions) { action ->
             when (action.id) {
-                "cut", "remux", "metadata" -> selectMedia()
+                "cut"      -> selectMedia(VideoEditingActivity.MODE_CUT)
+                "remux"    -> selectMedia(VideoEditingActivity.MODE_REMUX)
+                "metadata" -> selectMedia(VideoEditingActivity.MODE_METADATA)
             }
         }
     }
@@ -134,15 +138,18 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun selectMedia() {
-        Log.d("MediaSelection", "Launching media selector.")
+    private fun selectMedia(mode: String) {
+        pendingLaunchMode = mode
+        Log.d("MediaSelection", "Launching media selector in mode: $mode")
         selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
     }
 
     private fun navigateToEditingScreen(mediaUris: List<Uri>) {
-        Log.d("Navigation", "Navigating to editing screen with URIs: $mediaUris")
-        val intent = Intent(this, VideoEditingActivity::class.java)
-        intent.putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
+        Log.d("Navigation", "Navigating to editing screen with URIs: $mediaUris, mode: $pendingLaunchMode")
+        val intent = Intent(this, VideoEditingActivity::class.java).apply {
+            putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
+            putExtra(VideoEditingActivity.EXTRA_LAUNCH_MODE, pendingLaunchMode)
+        }
         startActivity(intent)
     }
 

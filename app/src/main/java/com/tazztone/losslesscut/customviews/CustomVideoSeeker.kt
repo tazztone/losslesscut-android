@@ -48,6 +48,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     private var keyframes = listOf<Long>() // milliseconds
     var isLosslessMode = true
+    var isRemuxMode = false
     private var lastSnappedKeyframe: Long? = null
 
     private var segments = listOf<TrimSegment>()
@@ -261,12 +262,14 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val contentX = e.x + scrollOffsetX
             val timeMs = xToTime(contentX)
             
-            // Find if a segment was tapped
-            val tappedSegment = segments.find { it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs }
-            if (tappedSegment != null) {
-                performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            if (!isRemuxMode) {
+                // Find if a segment was tapped
+                val tappedSegment = segments.find { it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs }
+                if (tappedSegment != null) {
+                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                }
+                onSegmentSelected?.invoke(tappedSegment?.id)
             }
-            onSegmentSelected?.invoke(tappedSegment?.id)
             
             seekPositionMs = timeMs
             onSeekListener?.invoke(seekPositionMs)
@@ -562,7 +565,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 showHandleHint = false
                 stopPinchAnimation()
 
-                if (isTouchingBottom) {
+                if (isTouchingBottom && !isRemuxMode) {
                     val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }
                     var bestDist = hitTestThresholdMs + 1
                     var bestHandle: TouchTarget = TouchTarget.NONE

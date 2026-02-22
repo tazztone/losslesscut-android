@@ -25,6 +25,10 @@ The project is organized into a layer/feature-based structure within the `com.ta
 
 ### UI & Custom Views
 - **VideoEditingActivity**: Central hub. Manages ExoPlayer lifecycle, binds ViewModel state, and coordinates UI transitions between Video and Audio modes.
+- **Launch Modes** (`EXTRA_LAUNCH_MODE`):
+  - `MODE_CUT` (default): Full NLE editor with timeline, segments, split, silence detection.
+  - `MODE_REMUX`: Hides all edit controls; auto-prompts a full-file pass-through mux dialog.
+  - `MODE_METADATA`: Hides timeline; shows metadata form (rotation override); exports via full-file mux with new orientation hint.
 - **CustomVideoSeeker**: A high-performance custom `View` for the NLE timeline.
     - **Logic**: Handles multi-touch (zoom), drag gestures for playhead and segments, and edge-auto-panning.
     - **Accessibility**: Implements `ExploreByTouchHelper` to expose virtual nodes for playhead and segment handles. Supports standard accessibility actions (Scroll Forward/Backward).

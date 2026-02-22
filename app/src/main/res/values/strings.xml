@@ -122,4 +122,9 @@
     <string name="error_export_failed_msg">Export failed: %1$s</string>
     <string name="error_restore_failed_files_missing">Could not restore session: files are missing or inaccessible.</string>
     <string name="error_restore_failed">Failed to restore session: %1$s</string>
+    <string name="metadata_title_hint">Title</string>
+    <string name="metadata_artist_hint">Artist (stub)</string>
+    <string name="metadata_rotation_label">Rotation Override</string>
+    <string name="remux_dialog_message">Repackage this file into a new container without re-encoding. All original tracks will be preserved.</string>
+    <string name="apply">Apply</string>
 </resources>

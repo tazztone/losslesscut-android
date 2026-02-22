@@ -4,4 +4,10 @@
         <item>20.0</item>
         <item>70.0</item>
     </array>
+    <string-array name="rotation_options">
+        <item>0° (Original)</item>
+        <item>90°</item>
+        <item>180°</item>
+        <item>270°</item>
+    </string-array>
 </resources>
