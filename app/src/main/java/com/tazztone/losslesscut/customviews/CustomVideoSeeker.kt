@@ -60,6 +60,17 @@ class CustomVideoSeeker @JvmOverloads constructor(
         style = Paint.Style.STROKE
     }
 
+    var silencePreviewRanges: List<LongRange> = emptyList()
+        set(value) {
+            field = value
+            invalidate()
+        }
+
+    private val silencePreviewPaint = Paint().apply {
+        color = 0x88000000.toInt() // Semi-transparent black
+        style = Paint.Style.FILL
+    }
+
     // Zoom and Pan
     private var zoomFactor = 1f
     private val minZoom = 1f
@@ -347,72 +358,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
 
         // Draw waveform
-        waveformData?.let { data ->
-            val midY = height / 2f
-            val maxAvailableHeight = midY * 0.95f // Use more vertical space
-            
-            val timelineStart = timeToX(0).toInt()
-            val timelineEnd = timeToX(videoDurationMs).toInt()
-            
-            val startPx = (scrollOffsetX.toInt()).coerceAtLeast(timelineStart)
-            val endPx = (scrollOffsetX + width).toInt().coerceAtMost(timelineEnd)
-
-            // Draw with global scaling (data is already normalized to 1.0 by the extractor)
-        for (px in startPx..endPx) {
-            val timeMs = xToTime(px.toFloat())
-            val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
-                .toInt().coerceIn(0, data.size - 1)
-            val amp = data[bucketIdx]
-            
-            // 1. Noise Floor & Baseline: Ensure at least a tiny baseline is visible
-            // Threshold for amplification is still 2%, but we map everything to a min height
-            val baseAmp = if (amp < 0.02f) 0.01f else amp
-
-            // 2. Peak Scale: Amplify by 1.00x
-            val amplifiedAmp = baseAmp * 1.00f
-            
-            // 3. Draw with Clipping & Min Height
-            // maxAvailableHeight corresponds to 95% of view area
-            val barHalf = (amplifiedAmp * maxAvailableHeight).coerceIn(2f, maxAvailableHeight)
-            canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
-        }
-    }
-        
-
-        // Draw Segments
-        var keepSegmentIndex = 0
-        for (segment in segments) {
-            if (segment.action == SegmentAction.DISCARD) continue
-            
-            val startX = timeToX(segment.startMs)
-            val endX = timeToX(segment.endMs)
-            segmentRect.set(startX, 0f, endX, height.toFloat())
-            
-            val color = keepColors[keepSegmentIndex % keepColors.size]
-            keepSegmentPaint.color = color
-            canvas.drawRect(segmentRect, keepSegmentPaint)
-            keepSegmentIndex++
-
-            // Draw handles for ALL keep segments
-            canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
-            canvas.drawCircle(startX, height.toFloat() - 25f, 25f, handlePaint)
-
-            if (showHandleHint) {
-                drawHandleArrow(canvas, startX, height.toFloat() - 25f, isLeft = true)
-            }
-
-            canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
-            canvas.drawCircle(endX, height.toFloat() - 25f, 25f, handlePaint)
-
-            if (showHandleHint) {
-                drawHandleArrow(canvas, endX, height.toFloat() - 25f, isLeft = false)
-            }
-
-            // Draw highlight border if selected
-            if (segment.id == selectedSegmentId) {
-                canvas.drawRect(segmentRect, selectedBorderPaint)
-            }
-        }
+        drawWaveform(canvas)
+        drawSilencePreviews(canvas)
+        drawSegments(canvas)
 
         // Draw keyframes
         for (kfMs in keyframes) {
@@ -812,5 +760,58 @@ class CustomVideoSeeker @JvmOverloads constructor(
         zoomFactor = 1f
         scrollOffsetX = 0f
         invalidate()
+    }
+
+    private fun drawWaveform(canvas: Canvas) {
+        waveformData?.let { data ->
+            val midY = height / 2f
+            val maxAvailableHeight = midY * 0.95f
+            val timelineStart = timeToX(0).toInt()
+            val timelineEnd = timeToX(videoDurationMs).toInt()
+            val startPx = (scrollOffsetX.toInt()).coerceAtLeast(timelineStart)
+            val endPx = (scrollOffsetX + width).toInt().coerceAtMost(timelineEnd)
+
+            for (px in startPx..endPx) {
+                val timeMs = xToTime(px.toFloat())
+                val bucketIdx = ((timeMs.toDouble() / videoDurationMs) * (data.size - 1))
+                    .toInt().coerceIn(0, data.size - 1)
+                val amp = data[bucketIdx]
+                val baseAmp = if (amp < 0.02f) 0.01f else amp
+                val amplifiedAmp = baseAmp * 1.00f
+                val barHalf = (amplifiedAmp * maxAvailableHeight).coerceIn(2f, maxAvailableHeight)
+                canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
+            }
+        }
+    }
+
+    private fun drawSilencePreviews(canvas: Canvas) {
+        if (silencePreviewRanges.isEmpty()) return
+        silencePreviewRanges.forEach { range ->
+            val startX = timeToX(range.first)
+            val endX = timeToX(range.last)
+            canvas.drawRect(startX, 0f, endX, height.toFloat(), silencePreviewPaint)
+        }
+    }
+
+    private fun drawSegments(canvas: Canvas) {
+        var keepSegmentIndex = 0
+        for (segment in segments) {
+            if (segment.action == SegmentAction.DISCARD) continue
+            val startX = timeToX(segment.startMs)
+            val endX = timeToX(segment.endMs)
+            segmentRect.set(startX, 0f, endX, height.toFloat())
+            val color = keepColors[keepSegmentIndex % keepColors.size]
+            keepSegmentPaint.color = color
+            canvas.drawRect(segmentRect, keepSegmentPaint)
+            keepSegmentIndex++
+
+            canvas.drawLine(startX, 0f, startX, height.toFloat(), handlePaint)
+            canvas.drawCircle(startX, height.toFloat() - 25f, 25f, handlePaint)
+            if (showHandleHint) drawHandleArrow(canvas, startX, height.toFloat() - 25f, isLeft = true)
+            canvas.drawLine(endX, 0f, endX, height.toFloat(), handlePaint)
+            canvas.drawCircle(endX, height.toFloat() - 25f, 25f, handlePaint)
+            if (showHandleHint) drawHandleArrow(canvas, endX, height.toFloat() - 25f, isLeft = false)
+            if (segment.id == selectedSegmentId) canvas.drawRect(segmentRect, selectedBorderPaint)
+        }
     }
 }

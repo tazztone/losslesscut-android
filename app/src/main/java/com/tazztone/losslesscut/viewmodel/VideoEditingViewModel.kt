@@ -25,6 +25,7 @@ import com.tazztone.losslesscut.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.engine.LosslessEngineInterface
 import com.tazztone.losslesscut.utils.StorageUtils
 import com.tazztone.losslesscut.utils.TimeUtils
+import com.tazztone.losslesscut.utils.DetectionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -55,7 +56,8 @@ sealed class VideoEditingUiState {
         val videoFps: Float = 30f,
         val isAudioOnly: Boolean = false,
         val hasAudioTrack: Boolean = true,
-        val isSnapshotInProgress: Boolean = false
+        val isSnapshotInProgress: Boolean = false,
+        val silencePreviewRanges: List<LongRange> = emptyList()
     ) : VideoEditingUiState()
     data class Error(val message: String) : VideoEditingUiState()
 }
@@ -80,6 +82,9 @@ class VideoEditingViewModel @Inject constructor(
 
     private val _waveformData = MutableStateFlow<FloatArray?>(null)
     val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
+
+    private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
+    val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
     private var currentClips = listOf<MediaClip>()
     private var selectedClipIndex = 0
@@ -345,7 +350,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     private fun updateState() {
-        val clip = currentClips[selectedClipIndex]
+        val clip = currentClips.getOrNull(selectedClipIndex) ?: return
         _uiState.value = VideoEditingUiState.Success(
             clips = currentClips,
             selectedClipIndex = selectedClipIndex,
@@ -356,8 +361,80 @@ class VideoEditingViewModel @Inject constructor(
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
-            isSnapshotInProgress = isSnapshotInProgress
+            isSnapshotInProgress = isSnapshotInProgress,
+            silencePreviewRanges = _silencePreviewRanges.value
         )
+    }
+
+    fun previewSilenceSegments(threshold: Float, minDurationMs: Long) {
+        val waveform = _waveformData.value ?: return
+        val clip = currentClips.getOrNull(selectedClipIndex) ?: return
+        
+        viewModelScope.launch {
+            val ranges = withContext(ioDispatcher) {
+                DetectionUtils.findSilence(
+                    waveform = waveform,
+                    threshold = threshold,
+                    minDurationMs = minDurationMs,
+                    totalDurationMs = clip.durationMs
+                )
+            }
+            _silencePreviewRanges.value = ranges
+            updateState()
+        }
+    }
+
+    fun clearSilencePreview() {
+        _silencePreviewRanges.value = emptyList()
+        updateState()
+    }
+
+    fun applySilenceDetection() {
+        val ranges = _silencePreviewRanges.value
+        if (ranges.isEmpty()) return
+        
+        saveToHistory()
+        val clip = currentClips[selectedClipIndex]
+        
+        var newSegments = clip.segments.toList()
+        ranges.forEach { range ->
+            newSegments = applySilenceRange(newSegments, range)
+        }
+        
+        currentClips = currentClips.toMutableList().apply {
+            this[selectedClipIndex] = clip.copy(segments = newSegments)
+        }
+        
+        _silencePreviewRanges.value = emptyList()
+        _isDirty.value = true
+        updateState()
+    }
+
+    private fun applySilenceRange(segments: List<TrimSegment>, range: LongRange): List<TrimSegment> {
+        val result = mutableListOf<TrimSegment>()
+        segments.forEach { seg ->
+            val segRange = seg.startMs..seg.endMs
+            
+            // Overlap detection
+            val overlapStart = maxOf(segRange.first, range.first)
+            val overlapEnd = minOf(segRange.last, range.last)
+            
+            if (overlapStart < overlapEnd && (overlapEnd - overlapStart) >= MIN_SEGMENT_DURATION_MS) {
+                // Split segments: [segStart...overlapStart] [overlapStart...overlapEnd] [overlapEnd...segEnd]
+                if (overlapStart > segRange.first + MIN_SEGMENT_DURATION_MS) {
+                    result.add(seg.copy(id = UUID.randomUUID(), endMs = overlapStart))
+                }
+                
+                result.add(seg.copy(id = UUID.randomUUID(), startMs = overlapStart, endMs = overlapEnd, action = SegmentAction.DISCARD))
+                
+                if (overlapEnd < segRange.last - MIN_SEGMENT_DURATION_MS) {
+                    result.add(seg.copy(id = UUID.randomUUID(), startMs = overlapEnd))
+                }
+            } else {
+                result.add(seg)
+            }
+        }
+        return result
     }
 
     fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean) {
