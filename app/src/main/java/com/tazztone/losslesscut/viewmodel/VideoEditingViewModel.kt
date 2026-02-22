@@ -138,6 +138,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading
             try {
+                evictOldCacheFiles()
                 // Initialize with multiple clips
                 val clips = uris.map { uri ->
                     engine.getMediaMetadata(context, uri).fold(
@@ -170,6 +171,20 @@ class VideoEditingViewModel @Inject constructor(
                 loadClipData(selectedClipIndex)
             } catch (e: Exception) {
                 _uiState.value = VideoEditingUiState.Error(context.getString(R.string.error_load_video, e.message))
+            }
+        }
+    }
+
+    private fun evictOldCacheFiles() {
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val sevenDaysAgo = System.currentTimeMillis() - 7 * 86_400_000L
+                context.cacheDir.listFiles()
+                    ?.filter { it.name.startsWith("waveform_") || it.name.startsWith("session_") }
+                    ?.filter { it.lastModified() < sevenDaysAgo }
+                    ?.forEach { it.delete() }
+            } catch (e: Exception) {
+                Log.e("VideoEditingViewModel", "Failed to evict old cache files", e)
             }
         }
     }
@@ -574,7 +589,7 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    private fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {
+    private suspend fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) = withContext(ioDispatcher) {
         try {
             val cacheFile = File(context.cacheDir, cacheKey)
             DataOutputStream(FileOutputStream(cacheFile)).use { out ->
@@ -617,10 +632,10 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    suspend fun hasSavedSession(uri: Uri): Boolean {
+    suspend fun hasSavedSession(uri: Uri): Boolean = withContext(ioDispatcher) {
         val sessionId = getSessionId(uri)
         val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-        return sessionFile.exists()
+        sessionFile.exists()
     }
 
     private fun getSessionId(uri: Uri): String {
@@ -641,13 +656,32 @@ class VideoEditingViewModel @Inject constructor(
                 val type = object : TypeToken<List<MediaClip>>() {}.type
                 val restoredClips: List<MediaClip> = gson.fromJson(json, type)
                 
-                currentClips = restoredClips
+                // URI Reachability Check
+                val validClips = withContext(ioDispatcher) {
+                    restoredClips.filter { clip ->
+                        try {
+                            context.contentResolver.query(clip.uri, null, null, null, null)?.use { 
+                                it.moveToFirst() 
+                            } ?: false
+                        } catch (e: Exception) {
+                            false
+                        }
+                    }
+                }
+
+                if (validClips.isEmpty()) {
+                    _uiEvents.emit(context.getString(R.string.error_restore_failed_files_missing))
+                    return@launch
+                }
+
+                currentClips = validClips
                 selectedClipIndex = 0
                 _isDirty.value = true
                 loadClipData(selectedClipIndex)
                 _uiEvents.emit(context.getString(R.string.session_restored))
             } catch (e: Exception) {
                 Log.e("VideoEditingViewModel", "Failed to restore session", e)
+                _uiEvents.emit(context.getString(R.string.error_restore_failed, e.message))
             }
         }
     }

@@ -34,7 +34,8 @@ import java.io.IOException
 class LosslessEngineInstrumentedTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val storageUtils = StorageUtils(context)
+    private val appPreferences = AppPreferences(context)
+    private val storageUtils = StorageUtils(context, appPreferences)
     private val engine = LosslessEngineImpl(storageUtils, kotlinx.coroutines.Dispatchers.IO)
 
     @Test
@@ -43,7 +44,7 @@ class LosslessEngineInstrumentedTest {
         val inputUri = Uri.fromFile(testFile)
         
         val outputFileName = "test_output_${System.currentTimeMillis()}.mp4"
-        val outputUri = storageUtils.createVideoOutputUri(outputFileName)
+        val outputUri = storageUtils.createMediaOutputUri(outputFileName, false)
         
         assertNotNull("Output URI should not be null", outputUri)
         
@@ -61,7 +62,9 @@ class LosslessEngineInstrumentedTest {
         assertTrue("Lossless cut should succeed: ${result.exceptionOrNull()?.message}", result.isSuccess)
         
         // Verify output exists and has some data
-        val metadata = storageUtils.getDetailedMetadata(outputUri)
+        val metadataResult = engine.getMediaMetadata(context, outputUri)
+        assertTrue("Get metadata should succeed", metadataResult.isSuccess)
+        val metadata = metadataResult.getOrThrow()
         assertTrue("Output video should have a duration > 0", metadata.durationMs > 0)
         
         // Clean up
@@ -69,12 +72,14 @@ class LosslessEngineInstrumentedTest {
     }
 
     @Test
-    fun probeKeyframes_validVideo_returnsNonEmptyList() = runBlocking {
+    fun getKeyframes_validVideo_returnsNonEmptyList() = runBlocking {
         val testFile = copyAssetToCache("test_video.mp4") ?: return@runBlocking
         val inputUri = Uri.fromFile(testFile)
         
-        val keyframes = engine.probeKeyframes(context, inputUri)
+        val result = engine.getKeyframes(context, inputUri)
         
+        assertTrue("Get keyframes should succeed", result.isSuccess)
+        val keyframes = result.getOrThrow()
         assertNotNull("Keyframes list should not be null", keyframes)
         assertFalse("Keyframes list should not be empty for a valid video", keyframes.isEmpty())
         assertTrue("First keyframe should typically be 0", keyframes.contains(0L))

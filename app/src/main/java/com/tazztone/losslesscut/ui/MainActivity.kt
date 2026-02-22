@@ -94,7 +94,18 @@ class MainActivity : AppCompatActivity() {
         val action = intent.action
         val type = intent.type
 
-        if ((Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) && type != null) {
+        if (Intent.ACTION_SEND_MULTIPLE == action && type != null) {
+            val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
+            }
+            uris?.let {
+                Log.d("IncomingIntent", "Received multiple URIs: $it")
+                navigateToEditingScreen(it)
+            }
+        } else if ((Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) && type != null) {
             val uri = if (Intent.ACTION_SEND == action) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)

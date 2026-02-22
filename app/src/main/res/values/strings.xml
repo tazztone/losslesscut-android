@@ -120,4 +120,6 @@
     <string name="select_tracks">Select individual tracks</string>
     <string name="track_item_format">Track %1$d: %2$s (%3$s)</string>
     <string name="error_export_failed_msg">Export failed: %1$s</string>
+    <string name="error_restore_failed_files_missing">Could not restore session: files are missing or inaccessible.</string>
+    <string name="error_restore_failed">Failed to restore session: %1$s</string>
 </resources>

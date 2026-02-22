@@ -232,6 +232,10 @@ class LosslessEngineImpl @Inject constructor(
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<Uri> = withContext(ioDispatcher) {
+        if (endMs <= startMs) return@withContext Result.failure(
+            IllegalArgumentException("endMs ($endMs) must be > startMs ($startMs)")
+        )
+
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
@@ -416,6 +420,8 @@ class LosslessEngineImpl @Inject constructor(
             var bufferSize = -1
             var audioSampleRate = 44100
             var videoFps = 30f
+            var expectedVideoMime: String? = null
+            var expectedAudioMime: String? = null
 
             // Initialize muxer tracks using the first clip
             val firstExtractor = MediaExtractor()
@@ -437,15 +443,20 @@ class LosslessEngineImpl @Inject constructor(
                         val muxIdx = mMuxer.addTrack(format)
                         trackMap[muxIdx] = if (isVideo) 0 else 1
                         
-                        if (isVideo && format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                            videoFps = try {
-                                format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
-                            } catch (_: Exception) {
-                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                        if (isVideo) {
+                            expectedVideoMime = mime
+                            if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
+                                videoFps = try {
+                                    format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                                } catch (_: Exception) {
+                                    try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                                }
                             }
-                        }
-                        if (isAudio && format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                            audioSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                        } else {
+                            expectedAudioMime = mime
+                            if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                                audioSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                            }
                         }
 
                         if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
@@ -495,13 +506,23 @@ class LosslessEngineImpl @Inject constructor(
 
                         val isVideo = mime.startsWith("video/")
                         val isAudio = mime.startsWith("audio/")
+                        
+                        // respect selectedTracks if provided
+                        val isSelected = selectedTracks?.contains(i) ?: true
+                        if (!isSelected) continue
 
                         if (isVideo && keepVideo) {
+                            if (mime != expectedVideoMime) {
+                                return@withContext Result.failure(IOException("Codec mismatch: expected $expectedVideoMime, got $mime in ${clip.uri}"))
+                            }
                             videoMuxerTrack?.let {
                                 clipTrackMap[i] = it
                                 actuallyHasVideo = true
                             }
                         } else if (isAudio && keepAudio) {
+                            if (mime != expectedAudioMime) {
+                                return@withContext Result.failure(IOException("Codec mismatch: expected $expectedAudioMime, got $mime in ${clip.uri}"))
+                            }
                             audioMuxerTrack?.let { clipTrackMap[i] = it }
                         }
                     }
@@ -558,7 +579,10 @@ class LosslessEngineImpl @Inject constructor(
 
                             if (!clipExtractor.advance()) break
                         }
-                        globalOffsetUs += lastSampleTimeInSegmentUs + segmentGapUs
+                        
+                        val effectiveSegmentDurationUs = if (lastSampleTimeInSegmentUs > 0) 
+                            lastSampleTimeInSegmentUs else (segment.endMs - segment.startMs) * 1000
+                        globalOffsetUs += effectiveSegmentDurationUs + segmentGapUs
                     }
                 } finally {
                     clipExtractor.release()

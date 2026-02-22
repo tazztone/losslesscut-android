@@ -52,10 +52,9 @@ class VideoEditingViewModelTest {
         )
         
         // Default mocks
-        coEvery { mockEngine.probeKeyframes(any(), any()) } returns listOf(0L, 5000L, 10000L)
+        coEvery { mockEngine.getKeyframes(any(), any()) } returns Result.success(listOf(0L, 5000L, 10000L))
         
-        val defaultMetadata = StorageUtils.DetailedMetadata(
-            fileName = "mock_video.mp4",
+        val defaultMetadata = MediaMetadata(
             durationMs = 10000L,
             width = 1920,
             height = 1080,
@@ -65,9 +64,10 @@ class VideoEditingViewModelTest {
             channelCount = 2,
             fps = 30f,
             rotation = 0,
-            isAudioOnly = false
+            tracks = emptyList()
         )
-        every { mockStorageUtils.getDetailedMetadata(any()) } returns defaultMetadata
+        coEvery { mockEngine.getMediaMetadata(any(), any()) } returns Result.success(defaultMetadata)
+        every { mockStorageUtils.getFileName(any()) } returns "mock_video.mp4"
     }
 
     @After
@@ -124,7 +124,7 @@ class VideoEditingViewModelTest {
     }
 
     @Test
-    fun testToggleSegmentAction() = runTest {
+    fun testMarkSegmentDiscarded() = runTest {
         val uris = listOf(Uri.parse("content://mock/video.mp4"))
         viewModel.initialize(uris)
         advanceUntilIdle()
@@ -133,12 +133,12 @@ class VideoEditingViewModelTest {
         advanceUntilIdle()
         
         val segmentId = (viewModel.uiState.value as VideoEditingUiState.Success).segments[0].id
-        viewModel.toggleSegmentAction(segmentId)
+        viewModel.markSegmentDiscarded(segmentId)
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(SegmentAction.DISCARD, state.segments[0].action)
         
-        viewModel.toggleSegmentAction(segmentId)
+        viewModel.markSegmentDiscarded(segmentId)
         assertEquals(SegmentAction.KEEP, (viewModel.uiState.value as VideoEditingUiState.Success).segments[0].action)
     }
 
@@ -148,38 +148,17 @@ class VideoEditingViewModelTest {
         viewModel.initialize(uris)
         advanceUntilIdle()
         
-        val firstClipId = (viewModel.uiState.value as VideoEditingUiState.Success).clips[0].id
+        val firstClipUri = (viewModel.uiState.value as VideoEditingUiState.Success).clips[0].uri
         viewModel.reorderClips(0, 1)
         advanceUntilIdle()
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
-        assertEquals(firstClipId, state.clips[1].id)
+        assertEquals(firstClipUri, state.clips[1].uri)
         assertTrue(state.canUndo)
     }
 
     @Test
-    fun testValidationFailure_EmitsEvent() = runTest {
-        val uris = listOf(Uri.parse("content://mock/video1.mp4"), Uri.parse("content://mock/video2.mp4"))
-        
-        val baseMetadata = StorageUtils.DetailedMetadata(
-            fileName = "v1.mp4", durationMs = 1000L, width = 1920, height = 1080,
-            videoMime = "video/avc", audioMime = "audio/mp4a-latm", sampleRate = 44100,
-            channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false
-        )
-        val incompatibleMetadata = baseMetadata.copy(fileName = "v2.mp4", videoMime = "video/hevc") // Codec mismatch
-        
-        every { mockStorageUtils.getDetailedMetadata(uris[0]) } returns baseMetadata
-        every { mockStorageUtils.getDetailedMetadata(uris[1]) } returns incompatibleMetadata
-        
-        viewModel.initialize(uris)
-        advanceUntilIdle()
-        
-        val state = viewModel.uiState.value as VideoEditingUiState.Success
-        assertEquals(1, state.clips.size) // Only v1 should be added
-    }
-
-    @Test
-    fun testAddClips_AppendsCompatibleClips() = runTest {
+    fun testAddClips_AppendsClips() = runTest {
         val uris = listOf(Uri.parse("content://mock/video1.mp4"))
         viewModel.initialize(uris)
         advanceUntilIdle()
@@ -204,7 +183,7 @@ class VideoEditingViewModelTest {
         
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(1, state.clips.size)
-        assertEquals("mock_video.mp4", state.clips[0].fileName) // v2 because v1 was removed
+        assertEquals("mock_video.mp4", state.clips[0].fileName)
         assertTrue(state.canUndo)
     }
 
@@ -216,13 +195,13 @@ class VideoEditingViewModelTest {
         
         val outputUri = Uri.parse("content://mock/output.mp4")
         every { mockStorageUtils.createMediaOutputUri(any(), any()) } returns outputUri
-        coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
+        coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
         
-        viewModel.exportSegments(isLossless = true, mergeSegments = true)
+        viewModel.exportSegments(isLossless = true, keepAudio = true, keepVideo = true, rotationOverride = null, mergeSegments = true)
         advanceUntilIdle()
         
         coVerify(exactly = 1) { 
-            mockEngine.executeLosslessMerge(any(), eq(outputUri), any(), any(), any(), any()) 
+            mockEngine.executeLosslessMerge(any(), eq(outputUri), any(), any(), any(), any(), any()) 
         }
     }
 }
