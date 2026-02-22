@@ -194,7 +194,7 @@ class VideoEditingViewModelTest {
         advanceUntilIdle()
         
         val outputUri = Uri.parse("content://mock/output.mp4")
-        every { mockStorageUtils.createMediaOutputUri(any(), any()) } returns outputUri
+        coEvery { mockStorageUtils.createMediaOutputUri(any(), any(), any()) } returns outputUri
         coEvery { mockEngine.executeLosslessMerge(any(), any(), any(), any(), any(), any(), any()) } returns Result.success(outputUri)
         
         viewModel.exportSegments(isLossless = true, keepAudio = true, keepVideo = true, rotationOverride = null, mergeSegments = true)

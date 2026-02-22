@@ -25,13 +25,16 @@ import java.io.File
 class RobolectricEngineTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val engine = LosslessEngineImpl(StorageUtils(context), kotlinx.coroutines.Dispatchers.IO)
+    private val preferences = AppPreferences(context)
+    private val storageUtils = StorageUtils(context, preferences)
+    private val engine = LosslessEngineImpl(storageUtils, kotlinx.coroutines.Dispatchers.IO)
 
     @Test
-    fun probeKeyframes_withInvalidUri_returnsEmptyList() = runBlocking {
+    fun getKeyframes_withInvalidUri_returnsEmptyList() = runBlocking {
         val invalidUri = Uri.parse("content://invalid/video.mp4")
-        val keyframes = engine.probeKeyframes(context, invalidUri)
-        assertTrue("Keyframes should be empty for invalid URI", keyframes.isEmpty())
+        val result = engine.getKeyframes(context, invalidUri)
+        assertTrue("Result should be success for invalid URI (graceful degradation)", result.isSuccess)
+        assertTrue("Keyframes should be empty", result.getOrDefault(emptyList()).isEmpty())
     }
 
     @Test
