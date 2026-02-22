@@ -857,14 +857,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }
             if (finalState is VideoEditingUiState.Success) {
                 showRemuxDialog()
+            } else {
+                finish()
             }
         }
     }
 
-    private var isRemuxDialogShowing = false
     private fun showRemuxDialog() {
-        if (isRemuxDialogShowing) return
-        isRemuxDialogShowing = true
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dashboard_remux_title)
             .setMessage(R.string.remux_dialog_message)
@@ -877,14 +876,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                     mergeSegments = false,
                     selectedTracks = null
                 )
-                isRemuxDialogShowing = false
             }
             .setNegativeButton(R.string.cancel) { _, _ ->
-                isRemuxDialogShowing = false
                 finish()
             }
             .setOnCancelListener {
-                isRemuxDialogShowing = false
                 finish()
             }
             .show()
@@ -899,29 +895,23 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }
             if (finalState is VideoEditingUiState.Success) {
                 showMetadataDialog()
+            } else {
+                finish()
             }
         }
     }
 
-    private var isMetadataDialogShowing = false
     private fun showMetadataDialog() {
-        if (isMetadataDialogShowing) return
-        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        isMetadataDialogShowing = true
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: run {
+            Toast.makeText(this, R.string.please_wait, Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val dialogView = layoutInflater.inflate(R.layout.dialog_metadata_editor, null)
         val spinnerRotation = dialogView.findViewById<android.widget.Spinner>(R.id.spinnerRotation)
         
-        // Map currentRotation to spinner index (0 -> 1, 90 -> 2, 180 -> 3, 270 -> 4)
-        // Index 0 is "Original" which means null override
-        val rotationIndex = when (currentRotation) {
-            90 -> 2
-            180 -> 3
-            270 -> 4
-            0 -> 1
-            else -> 0 // Original
-        }
-        spinnerRotation.setSelection(rotationIndex)
+        // Default to "Keep Original" (Index 0)
+        spinnerRotation.setSelection(0)
 
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dashboard_metadata_title)
@@ -934,17 +924,14 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                     4 -> 270
                     else -> null // Keep Original
                 }
-                currentRotation = selectedRotation ?: 0
+                currentRotation = selectedRotation ?: state.clips[state.selectedClipIndex].rotation
                 viewModel.exportSegments(true, keepAudio = true, keepVideo = true,
                     rotationOverride = selectedRotation, mergeSegments = false)
-                isMetadataDialogShowing = false
             }
             .setNegativeButton(R.string.cancel) { _, _ ->
-                isMetadataDialogShowing = false
                 finish()
             }
             .setOnCancelListener {
-                isMetadataDialogShowing = false
                 finish()
             }
             .show()
