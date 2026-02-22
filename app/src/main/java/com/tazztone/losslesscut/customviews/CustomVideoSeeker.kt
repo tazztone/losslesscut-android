@@ -67,7 +67,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
 
     private val silencePreviewPaint = Paint().apply {
-        color = 0x88000000.toInt() // Semi-transparent black
+        color = 0xBB000000.toInt() // Dark semi-transparent black
         style = Paint.Style.FILL
     }
 

@@ -405,7 +405,7 @@ class VideoEditingViewModel @Inject constructor(
         )
     }
 
-    fun previewSilenceSegments(threshold: Float, minDurationMs: Long) {
+    fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingMs: Long, minSegmentMs: Long) {
         val waveform = _waveformData.value ?: return
         val clip = currentClips.getOrNull(selectedClipIndex) ?: return
         
@@ -414,8 +414,10 @@ class VideoEditingViewModel @Inject constructor(
                 DetectionUtils.findSilence(
                     waveform = waveform,
                     threshold = threshold,
-                    minDurationMs = minDurationMs,
-                    totalDurationMs = clip.durationMs
+                    minSilenceMs = minSilenceMs,
+                    totalDurationMs = clip.durationMs,
+                    paddingMs = paddingMs,
+                    minSegmentMs = minSegmentMs
                 )
             }
             _silencePreviewRanges.value = ranges

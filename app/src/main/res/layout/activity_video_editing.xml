@@ -440,6 +440,11 @@
                 android:padding="16dp"
                 android:contentDescription="@string/play_pause"
                 android:tooltipText="@string/play_pause" />
+
+            <include
+                android:id="@+id/silenceDetectionContainer"
+                layout="@layout/dialog_silence_detection"
+                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Playlist Area (Visible when multiple clips) -->

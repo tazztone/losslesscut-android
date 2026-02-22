@@ -820,47 +820,52 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun showSilenceDetectionDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_silence_detection, null)
-        val sliderThreshold = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
-        val sliderDuration = dialogView.findViewById<com.google.android.material.slider.Slider>(R.id.sliderDuration)
-        val tvThresholdValue = dialogView.findViewById<TextView>(R.id.tvThresholdValue)
-        val tvDurationValue = dialogView.findViewById<TextView>(R.id.tvDurationValue)
-        val tvEstimatedCut = dialogView.findViewById<TextView>(R.id.tvEstimatedCut)
-        val tvSavings = dialogView.findViewById<TextView>(R.id.tvSavings)
-        val btnCancel = dialogView.findViewById<android.widget.Button>(R.id.btnCancel)
-        val btnApply = dialogView.findViewById<android.widget.Button>(R.id.btnApply)
-
-        val dialog = com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-            .setView(dialogView)
-            .setCancelable(false)
-            .create()
+        val overlay = binding.silenceDetectionContainer?.root ?: return
+        overlay.visibility = View.VISIBLE
+        
+        val sliderThreshold = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
+        val sliderDuration = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderDuration)
+        val sliderMinSegment = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderMinSegment)
+        val sliderPadding = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderPadding)
+        
+        val tvThresholdValue = overlay.findViewById<TextView>(R.id.tvThresholdValue)
+        val tvDurationValue = overlay.findViewById<TextView>(R.id.tvDurationValue)
+        val tvMinSegmentValue = overlay.findViewById<TextView>(R.id.tvMinSegmentValue)
+        val tvPaddingValue = overlay.findViewById<TextView>(R.id.tvPaddingValue)
+        
+        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
+        val btnCancel = overlay.findViewById<android.widget.Button>(R.id.btnCancel)
+        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
 
         val updatePreview = {
             val threshold = sliderThreshold.value
             val duration = sliderDuration.value.toLong()
+            val minSegment = sliderMinSegment.value.toLong()
+            val padding = sliderPadding.value.toLong()
+            
             tvThresholdValue.text = String.format("%.1f%%", threshold * 100)
             tvDurationValue.text = String.format("%.1fs", duration / 1000f)
-            viewModel.previewSilenceSegments(threshold, duration)
+            tvMinSegmentValue.text = String.format("%.1fs", minSegment / 1000f)
+            tvPaddingValue.text = String.format("%.1fs", padding / 1000f)
+            
+            viewModel.previewSilenceSegments(threshold, duration, padding, minSegment)
         }
 
         sliderThreshold.addOnChangeListener { _, _, _ -> updatePreview() }
         sliderDuration.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderMinSegment.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderPadding.addOnChangeListener { _, _, _ -> updatePreview() }
 
-        lifecycleScope.launchWhenStarted {
+        val silencePreviewJob = lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 if (state is VideoEditingUiState.Success) {
                     val ranges = state.silencePreviewRanges
                     if (ranges.isNotEmpty()) {
                         val totalSilenceMs = ranges.sumOf { it.last - it.first }
-                        val totalDurationMs = state.clips.getOrNull(state.selectedClipIndex)?.durationMs ?: 1L
-                        val savingsPercent = (totalSilenceMs.toFloat() / totalDurationMs) * 100
-                        
                         tvEstimatedCut.text = getString(R.string.silence_detected_preview, TimeUtils.formatDuration(totalSilenceMs), ranges.size)
-                        tvSavings.text = getString(R.string.estimated_savings, TimeUtils.formatDuration(totalSilenceMs), savingsPercent)
                         btnApply.isEnabled = true
                     } else {
                         tvEstimatedCut.text = getString(R.string.no_silence_detected)
-                        tvSavings.text = "Adjust sliders to preview cuts"
                         btnApply.isEnabled = false
                     }
                 }
@@ -868,16 +873,17 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
 
         btnCancel.setOnClickListener {
+            silencePreviewJob.cancel()
             viewModel.clearSilencePreview()
-            dialog.dismiss()
+            overlay.visibility = View.GONE
         }
 
         btnApply.setOnClickListener {
+            silencePreviewJob.cancel()
             viewModel.applySilenceDetection()
-            dialog.dismiss()
+            overlay.visibility = View.GONE
         }
 
-        dialog.show()
         updatePreview() // Initial run
     }
 
