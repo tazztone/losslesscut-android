@@ -178,7 +178,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
             
             if (isLosslessMode && keyframes.isNotEmpty()) {
                 val snapTimeMs = keyframes.minByOrNull { kotlin.math.abs(it - touchTimeMs) }
-                if (snapTimeMs != null && timeToX(kotlin.math.abs(snapTimeMs - touchTimeMs)) < 30f) {
+                if (snapTimeMs != null && durationToWidth(kotlin.math.abs(snapTimeMs - touchTimeMs)) < 30f) {
                     touchTimeMs = snapTimeMs
                     if (lastSnappedKeyframe != snapTimeMs) {
                         performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -283,6 +283,13 @@ class CustomVideoSeeker @JvmOverloads constructor(
         return (((x - timelinePadding) / availableWidth) * videoDurationMs).toLong().coerceIn(0L, videoDurationMs)
     }
 
+    private fun durationToWidth(durationMs: Long): Float {
+        if (videoDurationMs == 0L || width == 0) return 0f
+        val logicalWidthRaw = width * zoomFactor
+        val availableWidth = logicalWidthRaw - 2 * timelinePadding
+        return (durationMs.toFloat() / videoDurationMs) * availableWidth
+    }
+
     private fun formatTimeShort(ms: Long): String {
         val totalSeconds = ms / 1000
         val seconds = totalSeconds % 60
@@ -348,8 +355,8 @@ class CustomVideoSeeker @JvmOverloads constructor(
             // Threshold for amplification is still 2%, but we map everything to a min height
             val baseAmp = if (amp < 0.02f) 0.01f else amp
 
-            // 2. Peak Scale: Amplify by 1.25x
-            val amplifiedAmp = baseAmp * 1.25f
+            // 2. Peak Scale: Amplify by 1.00x
+            val amplifiedAmp = baseAmp * 1.00f
             
             // 3. Draw with Clipping & Min Height
             // maxAvailableHeight corresponds to 95% of view area
@@ -658,7 +665,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                         if (isLosslessMode && keyframes.isNotEmpty()) {
                             val snapTimeMs = keyframes.minByOrNull { kotlin.math.abs(it - newTimeMs) }
-                            if (snapTimeMs != null && timeToX(kotlin.math.abs(snapTimeMs - newTimeMs)) < 30f) {
+                            if (snapTimeMs != null && durationToWidth(kotlin.math.abs(snapTimeMs - newTimeMs)) < 30f) {
                                 newTimeMs = snapTimeMs
                                 if (lastSnappedKeyframe != snapTimeMs) {
                                     performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
