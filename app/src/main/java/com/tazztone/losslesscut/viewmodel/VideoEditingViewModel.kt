@@ -34,7 +34,9 @@ sealed class VideoEditingUiState {
         val hasAudioTrack: Boolean = true,
         val isSnapshotInProgress: Boolean = false,
         val silencePreviewRanges: List<LongRange> = emptyList(),
-        val availableTracks: List<MediaTrack> = emptyList()
+        val availableTracks: List<MediaTrack> = emptyList(),
+        val playbackSpeed: Float = 1.0f,
+        val isPitchCorrectionEnabled: Boolean = false
     ) : VideoEditingUiState()
     data class Error(val error: UiText) : VideoEditingUiState()
 }
@@ -72,6 +74,9 @@ class VideoEditingViewModel @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private var currentPlaybackSpeed = 1.0f
+    private var isPitchCorrectionEnabled = false
+
     private var currentClips = listOf<MediaClip>()
     private var selectedClipIndex = 0
     private var currentKeyframes: List<Long> = emptyList()
@@ -92,6 +97,12 @@ class VideoEditingViewModel @Inject constructor(
 
     companion object {
         const val MIN_SEGMENT_DURATION_MS = 100L
+    }
+
+    fun setPlaybackParameters(speed: Float, pitchCorrection: Boolean) {
+        currentPlaybackSpeed = speed
+        isPitchCorrectionEnabled = pitchCorrection
+        updateState()
     }
 
     fun initialize(uris: List<Uri>) {
@@ -172,7 +183,7 @@ class VideoEditingViewModel @Inject constructor(
                     updateState()
                 },
                 onFailure = { e ->
-                    _uiEvents.emit(VideoEditingEvent.ShowToast(
+                    _uiEvents.send(VideoEditingEvent.ShowToast(
                         UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
                     ))
                 }
@@ -300,6 +311,8 @@ class VideoEditingViewModel @Inject constructor(
         _isDirty.value = false
         _waveformData.value = null
         _silencePreviewRanges.value = emptyList()
+        currentPlaybackSpeed = 1.0f
+        isPitchCorrectionEnabled = false
     }
 
     private fun saveToHistory() {
@@ -323,7 +336,9 @@ class VideoEditingViewModel @Inject constructor(
             hasAudioTrack = clip.audioMime != null,
             isSnapshotInProgress = isSnapshotInProgress.get(),
             silencePreviewRanges = _silencePreviewRanges.value,
-            availableTracks = clip.availableTracks
+            availableTracks = clip.availableTracks,
+            playbackSpeed = currentPlaybackSpeed,
+            isPitchCorrectionEnabled = isPitchCorrectionEnabled
         )
     }
 

@@ -111,8 +111,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                 updatePlaybackIcons()
                 if (isPlaying) startProgressUpdate() else stopProgressUpdate()
             },
-            onSpeedChanged = { speed ->
+            onPlaybackParametersChanged = { speed, pitch ->
                 updatePlaybackSpeedUI(speed)
+                viewModel.setPlaybackParameters(speed, pitch)
             }
         )
         playerManager.initialize()
@@ -341,6 +342,11 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                             binding.audioPlaceholder?.visibility = View.GONE
                         }
 
+                        if (playerManager.currentPlaybackSpeed != state.playbackSpeed || playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
+                            playerManager.updatePlaybackSpeed(state.playbackSpeed, state.isPitchCorrectionEnabled)
+                        }
+                        updatePlaybackSpeedUI(state.playbackSpeed)
+
                         binding.customVideoSeeker.setKeyframes(state.keyframes)
                         binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
                         binding.customVideoSeeker.silencePreviewRanges = state.silencePreviewRanges
@@ -411,7 +417,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         }
     }
 
-    private fun stopProgressUpdate() { updateJob?.cancel() }
+    private fun stopProgressUpdate() {
+        updateJob?.cancel()
+        val pos = playerManager.currentPosition
+        binding.customVideoSeeker.setSeekPosition(pos)
+        updateDurationDisplay(pos, playerManager.duration)
+    }
 
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (total <= 0) return
@@ -426,11 +437,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     private fun updatePlaybackSpeedUI(speed: Float) {
-        val formatted = if (speed == 0.25f) {
-            String.format("%.2fx", speed)
-        } else {
-            String.format("%.1fx", speed).replace(".0", "")
-        }
+        val formatted = if (speed % 1f == 0f) "${speed.toInt()}x" else String.format("%.2gx", speed)
         binding.btnPlaybackSpeed?.text = formatted
     }
 
@@ -441,15 +448,17 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun setInPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val currentSeg = state.segments.find { it.id == state.selectedSegmentId } ?: return
         val currentPos = playerManager.currentPosition
-        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentPos, Long.MAX_VALUE)
+        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentPos, currentSeg.endMs)
         viewModel.commitSegmentBounds()
     }
 
     private fun setOutPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val currentSeg = state.segments.find { it.id == state.selectedSegmentId } ?: return
         val currentPos = playerManager.currentPosition
-        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, 0L, currentPos)
+        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentSeg.startMs, currentPos)
         viewModel.commitSegmentBounds()
     }
 

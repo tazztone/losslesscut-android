@@ -28,12 +28,8 @@ class MetadataFragment : BaseEditingFragment(R.layout.fragment_metadata) {
             context = requireContext(),
             playerView = getPlayerView(),
             viewModel = viewModel,
-            onSpeedChanged = { speed ->
-                val formatted = if (speed == 0.25f) {
-                    String.format("%.2fx", speed)
-                } else {
-                    String.format("%.1fx", speed).replace(".0", "")
-                }
+            onPlaybackParametersChanged = { speed, _ ->
+                val formatted = if (speed % 1f == 0f) "${speed.toInt()}x" else String.format("%.2gx", speed)
                 binding.btnPlaybackSpeed?.text = formatted
             }
         )
