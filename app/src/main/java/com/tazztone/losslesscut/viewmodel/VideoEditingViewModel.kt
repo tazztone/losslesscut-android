@@ -29,9 +29,7 @@ import com.tazztone.losslesscut.utils.TimeUtils
 import com.tazztone.losslesscut.utils.DetectionUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -107,6 +105,7 @@ class VideoEditingViewModel @Inject constructor(
     }
     @Volatile private var isSnapshotInProgress = false
     private var waveformJob: Job? = null
+    private var silencePreviewJob: Job? = null
     
     private var undoLimit = 30
     private val gson = GsonBuilder()
@@ -291,15 +290,24 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun reorderClips(from: Int, to: Int) {
+        if (from == to || from !in currentClips.indices || to !in currentClips.indices) return
+        
         saveToHistory()
-        val newList = currentClips.toMutableList()
-        val item = newList.removeAt(from)
-        newList.add(to, item)
-        currentClips = newList
-        if (selectedClipIndex == from) selectedClipIndex = to
-        else if (selectedClipIndex in (minOf(from, to)..maxOf(from, to))) {
-            if (from < to) selectedClipIndex-- else selectedClipIndex++
+        val list = currentClips.toMutableList()
+        val item = list.removeAt(from)
+        list.add(to, item)
+        
+        // Update selectedIndex
+        if (selectedClipIndex == from) {
+            selectedClipIndex = to
+        } else if (from < selectedClipIndex && to >= selectedClipIndex) {
+            selectedClipIndex--
+        } else if (from > selectedClipIndex && to <= selectedClipIndex) {
+            selectedClipIndex++
         }
+        
+        currentClips = list
+        _isDirty.value = true
         updateState()
     }
 
@@ -333,9 +341,18 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun markSegmentDiscarded(id: UUID) {
-        val currentClip = currentClips[selectedClipIndex]
+        val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return
         val segment = currentClip.segments.find { it.id == id } ?: return
         
+        // Prevent discarding the last KEEP segment
+        if (segment.action == SegmentAction.KEEP && 
+            currentClip.segments.count { it.action == SegmentAction.KEEP } <= 1) {
+            viewModelScope.launch {
+                _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.error_cannot_discard_last)))
+            }
+            return
+        }
+
         saveToHistory()
         val newAction = if (segment.action == SegmentAction.KEEP) SegmentAction.DISCARD else SegmentAction.KEEP
         val newSegments = currentClip.segments.map { 
@@ -415,7 +432,9 @@ class VideoEditingViewModel @Inject constructor(
         val waveform = _waveformData.value ?: return
         val clip = currentClips.getOrNull(selectedClipIndex) ?: return
         
-        viewModelScope.launch {
+        silencePreviewJob?.cancel()
+        silencePreviewJob = viewModelScope.launch {
+            delay(150) // Wait for user to stop dragging
             val ranges = withContext(ioDispatcher) {
                 DetectionUtils.findSilence(
                     waveform = waveform,
@@ -443,45 +462,60 @@ class VideoEditingViewModel @Inject constructor(
         saveToHistory()
         val clip = currentClips[selectedClipIndex]
         
-        var newSegments = clip.segments.toList()
-        ranges.forEach { range ->
-            newSegments = applySilenceRange(newSegments, range)
+        // Stabilized splitting: Perform a single-pass split of all existing segments
+        // against all silence ranges to avoid the "fragmentation" issue.
+        val newSegments = mutableListOf<TrimSegment>()
+        
+        clip.segments.forEach { seg ->
+            val segRanges = mutableListOf<LongRange>()
+            segRanges.add(seg.startMs..seg.endMs)
+            
+            // Intersection of this segment with all silence ranges
+            ranges.forEach { silenceRange ->
+                val it = segRanges.iterator()
+                val added = mutableListOf<LongRange>()
+                while (it.hasNext()) {
+                    val curr = it.next()
+                    val overlapStart = maxOf(curr.first, silenceRange.first)
+                    val overlapEnd = minOf(curr.last, silenceRange.last)
+                    
+                    if (overlapStart < overlapEnd && (overlapEnd - overlapStart) >= MIN_SEGMENT_DURATION_MS) {
+                        it.remove()
+                        if (overlapStart > curr.first + MIN_SEGMENT_DURATION_MS) {
+                            added.add(curr.first..overlapStart)
+                        }
+                        // The overlap is the SILENCE part, keep track of it as a DISCARD segment later
+                        // For now we just carve it out of the 'curr' range
+                        if (overlapEnd < curr.last - MIN_SEGMENT_DURATION_MS) {
+                            added.add(overlapEnd..curr.last)
+                        }
+                    }
+                }
+                segRanges.addAll(added)
+                segRanges.sortBy { it.first }
+            }
+            
+            // Now reconstruct segments: the gaps between our remaining segRanges are the DISCARD portions
+            var currentPos = seg.startMs
+            segRanges.forEach { keepRange ->
+                if (keepRange.first > currentPos + MIN_SEGMENT_DURATION_MS) {
+                    newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = currentPos, endMs = keepRange.first, action = SegmentAction.DISCARD))
+                }
+                newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = keepRange.first, endMs = keepRange.last, action = SegmentAction.KEEP))
+                currentPos = keepRange.last
+            }
+            if (currentPos < seg.endMs - MIN_SEGMENT_DURATION_MS) {
+                newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = currentPos, endMs = seg.endMs, action = SegmentAction.DISCARD))
+            }
         }
         
         currentClips = currentClips.toMutableList().apply {
-            this[selectedClipIndex] = clip.copy(segments = newSegments)
+            this[selectedClipIndex] = clip.copy(segments = newSegments.sortedBy { it.startMs })
         }
         
         _silencePreviewRanges.value = emptyList()
         _isDirty.value = true
         updateState()
-    }
-
-    private fun applySilenceRange(segments: List<TrimSegment>, range: LongRange): List<TrimSegment> {
-        val result = mutableListOf<TrimSegment>()
-        segments.forEach { seg ->
-            val segRange = seg.startMs..seg.endMs
-            
-            // Overlap detection
-            val overlapStart = maxOf(segRange.first, range.first)
-            val overlapEnd = minOf(segRange.last, range.last)
-            
-            if (overlapStart < overlapEnd && (overlapEnd - overlapStart) >= MIN_SEGMENT_DURATION_MS) {
-                // Split segments: [segStart...overlapStart] [overlapStart...overlapEnd] [overlapEnd...segEnd]
-                if (overlapStart > segRange.first + MIN_SEGMENT_DURATION_MS) {
-                    result.add(seg.copy(id = UUID.randomUUID(), endMs = overlapStart))
-                }
-                
-                result.add(seg.copy(id = UUID.randomUUID(), startMs = overlapStart, endMs = overlapEnd, action = SegmentAction.DISCARD))
-                
-                if (overlapEnd < segRange.last - MIN_SEGMENT_DURATION_MS) {
-                    result.add(seg.copy(id = UUID.randomUUID(), startMs = overlapEnd))
-                }
-            } else {
-                result.add(seg)
-            }
-        }
-        return result
     }
 
     fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List<Int>? = null) {
@@ -601,6 +635,7 @@ class VideoEditingViewModel @Inject constructor(
                         } catch (e: Exception) {
                             Log.e("VideoEditingViewModel", "Failed to write snapshot", e)
                         }
+                        storageUtils.finalizeImage(outputUri)
                         _uiEvents.emit(VideoEditingEvent.ShowToast(context.getString(R.string.snapshot_saved, fileName)))
                     }
                 }

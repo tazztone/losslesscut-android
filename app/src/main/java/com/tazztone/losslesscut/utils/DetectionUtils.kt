@@ -69,41 +69,57 @@ object DetectionUtils {
 
         if (minSegmentMs <= 0 || paddedRanges.isEmpty()) return paddedRanges
 
-        // Filter by minSegmentMs:
-        // We have [0...Range0Start], [Range0End...Range1Start], ..., [RangeLastEnd...TotalDuration]
-        // These are the kept segments.
-        val finalRanges = mutableListOf<LongRange>()
-        var currentPaddedRanges = paddedRanges.toMutableList()
+        if (minSegmentMs <= 0 || paddedRanges.isEmpty()) return paddedRanges
         
-        var i = 0
-        while (i <= currentPaddedRanges.size) {
-            val segmentStart = if (i == 0) 0L else currentPaddedRanges[i - 1].last
-            val segmentEnd = if (i == currentPaddedRanges.size) totalDurationMs else currentPaddedRanges[i].first
-            
-            val segmentDuration = segmentEnd - segmentStart
-            if (segmentDuration < minSegmentMs) {
-                // Segment too short! We should merge it by removing one of the adjacent silence ranges.
-                // If it's the first segment, remove the first silence range.
-                // If it's the last, remove the last silence range.
-                // Otherwise, remove the shorter silence range or the one after it.
-                if (i == 0 && currentPaddedRanges.isNotEmpty()) {
-                    currentPaddedRanges.removeAt(0)
-                    i = 0 // Restart check from beginning
-                    continue
-                } else if (i == currentPaddedRanges.size && currentPaddedRanges.isNotEmpty()) {
-                    currentPaddedRanges.removeAt(currentPaddedRanges.size - 1)
-                    i = 0
-                    continue
-                } else if (i > 0 && i < currentPaddedRanges.size) {
-                    // Middle segment too short. Merge it with the next one by removing the silence between them.
-                    currentPaddedRanges.removeAt(i)
-                    i = 0
-                    continue
+        // Filter by minSegmentMs:
+        // Identify kept segments (the gaps between silence ranges)
+        // If a kept segment is too short, we merge it by removing one of the adjacent silence ranges.
+        val currentSilence = paddedRanges.toMutableList()
+        
+        var changed = true
+        while (changed) {
+            changed = false
+            var i = 0
+            while (i <= currentSilence.size) {
+                val segStart = if (i == 0) 0L else currentSilence[i - 1].last
+                val segEnd = if (i == currentSilence.size) totalDurationMs else currentSilence[i].first
+                
+                if (segEnd - segStart < minSegmentMs) {
+                    // This kept segment is too short. Merge it into adjacent silence.
+                    if (currentSilence.isEmpty()) {
+                        // If no silence exists but total duration is too short, 
+                        // we can't really "silence" it unless we want to silence the whole thing.
+                        // Usually we just leave it.
+                        break
+                    }
+                    
+                    if (i > 0 && i < currentSilence.size) {
+                        // In middle: merge previous and next silence
+                        val merged = currentSilence[i - 1].first..currentSilence[i].last
+                        currentSilence.removeAt(i)
+                        currentSilence.removeAt(i - 1)
+                        currentSilence.add(i - 1, merged)
+                        changed = true
+                        break
+                    } else if (i == 0) {
+                        // At start: extend first silence to 0
+                        val merged = 0L..currentSilence[0].last
+                        currentSilence.removeAt(0)
+                        currentSilence.add(0, merged)
+                        changed = true
+                        break
+                    } else {
+                        // At end: extend last silence to totalDuration
+                        val merged = currentSilence.last().first..totalDurationMs
+                        currentSilence.removeAt(currentSilence.size - 1)
+                        currentSilence.add(merged)
+                        changed = true
+                        break
+                    }
                 }
+                i++
             }
-            i++
         }
-
-        return currentPaddedRanges
+        return currentSilence
     }
 }

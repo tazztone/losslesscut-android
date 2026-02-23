@@ -143,6 +143,24 @@ class VideoEditingViewModelTest {
     }
 
     @Test
+    fun testMarkLastSegmentDiscarded_Fails() = runTest {
+        val uris = listOf(Uri.parse("content://mock/video.mp4"))
+        viewModel.initialize(uris)
+        advanceUntilIdle()
+        
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        val segmentId = state.segments[0].id
+        
+        // Try to discard the ONLY KEEP segment
+        viewModel.markSegmentDiscarded(segmentId)
+        advanceUntilIdle()
+        
+        // Should still be KEEP
+        val newState = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(SegmentAction.KEEP, newState.segments[0].action)
+    }
+
+    @Test
     fun testReorderClips() = runTest {
         val uris = listOf(Uri.parse("content://mock/video1.mp4"), Uri.parse("content://mock/video2.mp4"))
         viewModel.initialize(uris)

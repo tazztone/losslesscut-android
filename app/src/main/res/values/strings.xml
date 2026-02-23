@@ -127,4 +127,7 @@
     <string name="metadata_rotation_label">Rotation Override</string>
     <string name="remux_dialog_message">Repackage this file into a new container without re-encoding. All original tracks will be preserved.</string>
     <string name="apply">Apply</string>
+    <string name="error_cannot_discard_last">Cannot discard the last remaining keep segment</string>
+    <string name="pitch_correction_on">Audio pitch correction ON</string>
+    <string name="pitch_correction_off">Audio pitch correction OFF</string>
 </resources>

@@ -70,7 +70,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private var currentRotation = 0
     private var isLosslessMode = true
     private var currentPlaybackSpeed = 1.0f
-    
+    private var isPitchCorrectionEnabled = true
+    private val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f)
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
     
@@ -287,13 +288,19 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
         val itemTouchHelper = androidx.recyclerview.widget.ItemTouchHelper(object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
             androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN, 0) {
-            override fun onMove(rv: androidx.recyclerview.widget.RecyclerView, vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
-                val from = vh.bindingAdapterPosition
+            override fun onMove(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, target: androidx.recyclerview.widget.RecyclerView.ViewHolder): Boolean {
+                val from = viewHolder.bindingAdapterPosition
                 val to = target.bindingAdapterPosition
-                val success = clipAdapter.moveItem(from, to)
-                return success
+                clipAdapter.moveItemVisual(from, to)
+                return true
             }
-            override fun onSwiped(vh: androidx.recyclerview.widget.RecyclerView.ViewHolder, dir: Int) {}
+
+            override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
+            
+            override fun clearView(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
+                super.clearView(recyclerView, viewHolder)
+                clipAdapter.commitPendingMove()
+            }
             override fun isLongPressDragEnabled(): Boolean = false
         })
 
@@ -307,7 +314,6 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             },
             onClipsReordered = { from, to -> 
                 viewModel.reorderClips(from, to)
-                // Update player playlist order
                 player.moveMediaItem(from, to)
             },
             onClipLongPressed = { index ->
@@ -350,18 +356,15 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnHome.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         TooltipCompat.setTooltipText(binding.btnHome, getString(R.string.home))
 
-        binding.btnAddClips?.setOnClickListener { addClipsAction() }
-        binding.btnAddClips?.let { TooltipCompat.setTooltipText(it, getString(R.string.add_video)) }
-        
-        binding.btnSave.setOnClickListener { 
-            when (launchMode) {
-                MODE_REMUX -> showRemuxDialog()
-                MODE_METADATA -> showMetadataDialog()
-                else -> showExportOptionsDialog()
-            }
-        }
-        TooltipCompat.setTooltipText(binding.btnSave, getString(R.string.export))
+        binding.btnExport?.setOnClickListener { showExportOptionsDialog() }
+        binding.btnExport?.let { TooltipCompat.setTooltipText(it, getString(R.string.export)) }
 
+        binding.btnRemux?.setOnClickListener { showRemuxDialog() }
+        binding.btnRemux?.let { TooltipCompat.setTooltipText(it, "Remux") }
+
+        binding.btnMetadata?.setOnClickListener { showMetadataDialog() }
+        binding.btnMetadata?.let { TooltipCompat.setTooltipText(it, "Metadata") }
+        
         binding.btnSettings?.setOnClickListener {
             val bottomSheet = SettingsBottomSheetDialogFragment()
             bottomSheet.setInitialState(isLosslessMode)
@@ -412,8 +415,13 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
         binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
-        binding.btnPlaybackSpeed?.setOnClickListener {
-            cyclePlaybackSpeed()
+        binding.btnPlaybackSpeed?.setOnClickListener { cyclePlaybackSpeed() }
+        binding.btnPlaybackSpeed?.setOnLongClickListener {
+            isPitchCorrectionEnabled = !isPitchCorrectionEnabled
+            updatePlaybackSpeed(currentPlaybackSpeed)
+            val msg = if (isPitchCorrectionEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            true
         }
 
         val snapshotAction = { extractSnapshot() }
@@ -726,25 +734,21 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         player.seekTo(initialIndex, savedPlayheadPos)
         
         // Reset speed to 1.0x when loading new media
-        currentPlaybackSpeed = 1.0f
-        updatePlaybackSpeedUI()
+        updatePlaybackSpeed(1.0f)
     }
 
     private fun cyclePlaybackSpeed() {
-        currentPlaybackSpeed = when (currentPlaybackSpeed) {
-            1.0f -> 1.5f
-            1.5f -> 2.0f
-            2.0f -> 0.5f
-            else -> 1.0f
-        }
-        updatePlaybackSpeedUI()
+        val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
+        updatePlaybackSpeed(playbackSpeeds[nextIdx])
     }
 
-    private fun updatePlaybackSpeedUI() {
-        binding.btnPlaybackSpeed?.text = getString(R.string.speed_format, currentPlaybackSpeed)
-        if (::player.isInitialized) {
-            player.playbackParameters = androidx.media3.common.PlaybackParameters(currentPlaybackSpeed)
-        }
+    private fun updatePlaybackSpeed(speed: Float) {
+        currentPlaybackSpeed = speed
+        val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
+        player.playbackParameters = params
+        binding.btnPlaybackSpeed?.text = getString(R.string.speed_format, speed)
+        
+        // Update UI state or tooltips if needed
     }
 
     private fun setupCustomSeeker() {

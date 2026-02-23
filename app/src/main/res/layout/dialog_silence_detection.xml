@@ -8,7 +8,9 @@
     android:padding="12dp"
     android:background="#AA000000"
     android:clickable="true"
-    android:focusable="true">
+    android:focusable="true"
+    android:clipChildren="true"
+    android:clipToPadding="true">
 
     <TextView
         android:layout_width="wrap_content"
@@ -23,7 +25,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:columnCount="2"
-        android:alignmentMode="alignBounds">
+        android:alignmentMode="alignBounds"
+        android:clipChildren="true"
+        android:clipToPadding="true">
 
         <!-- Threshold -->
         <TextView
@@ -49,7 +53,8 @@
                 android:value="0.02"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
+                app:trackHeight="2dp"
+                app:labelBehavior="gone"/>
             <TextView
                 android:id="@+id/tvThresholdValue"
                 android:layout_width="45dp"
@@ -85,7 +90,8 @@
                 android:value="1000"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
+                app:trackHeight="2dp"
+                app:labelBehavior="gone"/>
             <TextView
                 android:id="@+id/tvDurationValue"
                 android:layout_width="45dp"
@@ -121,7 +127,8 @@
                 android:value="500"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
+                app:trackHeight="2dp"
+                app:labelBehavior="gone"/>
             <TextView
                 android:id="@+id/tvMinSegmentValue"
                 android:layout_width="45dp"
@@ -157,7 +164,8 @@
                 android:value="200"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
+                app:trackHeight="2dp"
+                app:labelBehavior="gone"/>
             <TextView
                 android:id="@+id/tvPaddingValue"
                 android:layout_width="45dp"

@@ -27,13 +27,16 @@ class MediaClipAdapter(
         private const val VIEW_TYPE_ADD = 1
     }
 
-    private var selectedIndex: Int = 0
+    private var selectedIndex: Int = -1
+    private var shadowList: MutableList<MediaClip> = mutableListOf()
+    var isDragging = false
+        private set
 
     fun updateSelection(newSelectedIndex: Int) {
         val oldIndex = selectedIndex
         selectedIndex = newSelectedIndex
-        notifyItemChanged(oldIndex)
-        notifyItemChanged(selectedIndex)
+        if (oldIndex != -1) notifyItemChanged(oldIndex)
+        if (selectedIndex != -1) notifyItemChanged(selectedIndex)
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -51,9 +54,18 @@ class MediaClipAdapter(
         }
     }
 
+    override fun submitList(list: List<MediaClip>?) {
+        if (!isDragging) {
+            super.submitList(list) {
+                shadowList = list?.toMutableList() ?: mutableListOf()
+            }
+        }
+    }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is ClipViewHolder) {
-            holder.bind(getItem(position), position == selectedIndex, position + 1)
+            val clip = if (isDragging) shadowList[position] else getItem(position)
+            holder.bind(clip, position == selectedIndex, position + 1)
         } else if (holder is AddViewHolder) {
             holder.bind()
         }
@@ -61,11 +73,15 @@ class MediaClipAdapter(
 
     override fun getItemCount(): Int = currentList.size + 1
 
-    fun moveItem(from: Int, to: Int): Boolean {
-        if (from == to) return true
-        if (from >= currentList.size || to >= currentList.size) return false
+    fun moveItemVisual(from: Int, to: Int) {
+        if (from == to) return
+        if (from >= currentList.size || to >= currentList.size) return
         
-        // Update selectedIndex if it's affected by the move
+        isDragging = true
+        val item = shadowList.removeAt(from)
+        shadowList.add(to, item)
+        
+        // Update selectedIndex if it's affected by the local move
         if (selectedIndex == from) {
             selectedIndex = to
         } else if (from < selectedIndex && to >= selectedIndex) {
@@ -74,8 +90,12 @@ class MediaClipAdapter(
             selectedIndex++
         }
 
+        notifyItemMoved(from, to)
         onClipsReordered(from, to)
-        return true
+    }
+
+    fun commitPendingMove() {
+        isDragging = false
     }
 
     inner class ClipViewHolder(private val binding: ItemMediaClipBinding) : RecyclerView.ViewHolder(binding.root) {
