@@ -100,6 +100,7 @@ class MainActivity : AppCompatActivity() {
         val type = intent.type
 
         if (Intent.ACTION_SEND_MULTIPLE == action && type != null) {
+            pendingLaunchMode = VideoEditingActivity.MODE_CUT // sensible default for share
             val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {

@@ -5,6 +5,7 @@ import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ItemMediaClipBinding
@@ -35,9 +36,22 @@ class MediaClipAdapter(
     fun submitList(newList: List<MediaClip>?) {
         if (isDragging) return
         val list = newList ?: emptyList()
-        if (clips == list) return
+        val oldList = clips.toList()
         clips = list.toMutableList()
-        notifyDataSetChanged()
+        
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = oldList.size + 1
+            override fun getNewListSize() = clips.size + 1
+            override fun areItemsTheSame(o: Int, n: Int): Boolean {
+                if (o == oldList.size || n == clips.size) return o == oldList.size && n == clips.size
+                return oldList[o].id == clips[n].id
+            }
+            override fun areContentsTheSame(o: Int, n: Int): Boolean {
+                if (o == oldList.size || n == clips.size) return true
+                return oldList[o] == clips[n]
+            }
+        })
+        diff.dispatchUpdatesTo(this)
     }
 
     fun startDrag(from: Int) {
@@ -85,6 +99,11 @@ class MediaClipAdapter(
 
     override fun getItemCount(): Int = clips.size + 1
 
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        (holder as? ClipViewHolder)?.cancelThumbnail()
+    }
+
     fun moveItemVisual(from: Int, to: Int) {
         if (from == to) return
         if (from >= clips.size || to >= clips.size) return
@@ -93,10 +112,6 @@ class MediaClipAdapter(
         clips.add(to, item)
         
         notifyItemMoved(from, to)
-        // CRITICAL: Update order numbers for the affected range
-        val start = minOf(from, to)
-        val count = java.lang.Math.abs(from - to) + 1
-        notifyItemRangeChanged(start, count)
     }
 
     fun commitPendingMove(finalTo: Int) {
@@ -149,6 +164,11 @@ class MediaClipAdapter(
                 }
                 false
             }
+        }
+
+        fun cancelThumbnail() {
+            thumbnailJob?.cancel()
+            thumbnailJob = null
         }
     }
 
