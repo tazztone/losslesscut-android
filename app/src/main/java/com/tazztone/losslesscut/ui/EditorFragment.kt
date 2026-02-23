@@ -40,7 +40,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     
     private var isDraggingTimeline = false
     private var isLosslessMode = true
-    private var isPitchCorrectionEnabled = false
     private var updateJob: Job? = null
     private var lastLoadedClipId: UUID? = null
 
@@ -242,6 +241,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.containerRotate?.setOnClickListener { rotationManager.rotate(90) }
 
         binding.btnPlaybackSpeed?.setOnClickListener { playerManager.cyclePlaybackSpeed() }
+        binding.btnPlaybackSpeed?.setOnLongClickListener {
+            val isEnabled = playerManager.togglePitchCorrection()
+            val msgRes = if (isEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
+            Toast.makeText(requireContext(), msgRes, Toast.LENGTH_SHORT).show()
+            true
+        }
         binding.btnSnapshot.setOnClickListener { viewModel.extractSnapshot(playerManager.currentPosition) }
 
         binding.btnDelete.setOnClickListener {
@@ -423,7 +428,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     private fun updatePlaybackSpeedUI(speed: Float) {
-        binding.btnPlaybackSpeed?.text = String.format("%.1fx", speed)
+        val formatted = if (speed == 0.25f) {
+            String.format("%.2fx", speed)
+        } else {
+            String.format("%.1fx", speed).replace(".0", "")
+        }
+        binding.btnPlaybackSpeed?.text = formatted
     }
 
     private fun splitCurrentSegment() {

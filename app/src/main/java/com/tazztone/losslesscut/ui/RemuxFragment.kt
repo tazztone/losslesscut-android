@@ -27,9 +27,25 @@ class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
         playerManager = PlayerManager(
             context = requireContext(),
             playerView = getPlayerView(),
-            viewModel = viewModel
+            viewModel = viewModel,
+            onSpeedChanged = { speed ->
+                val formatted = if (speed == 0.25f) {
+                    String.format("%.2fx", speed)
+                } else {
+                    String.format("%.1fx", speed).replace(".0", "")
+                }
+                binding.btnPlaybackSpeed?.text = formatted
+            }
         )
         playerManager.initialize()
+
+        binding.btnPlaybackSpeed?.setOnClickListener { playerManager.cyclePlaybackSpeed() }
+        binding.btnPlaybackSpeed?.setOnLongClickListener {
+            val isEnabled = playerManager.togglePitchCorrection()
+            val msgRes = if (isEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
+            Toast.makeText(requireContext(), msgRes, Toast.LENGTH_SHORT).show()
+            true
+        }
         
         binding.seekerContainer?.visibility = View.GONE
         binding.editingControls?.visibility = View.GONE

@@ -28,11 +28,11 @@ class PlayerManager(
     var player: ExoPlayer? = null
         private set
 
-    val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 4.0f)
+    val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 2.0f, 4.0f)
     var currentPlaybackSpeed = 1.0f
         private set
 
-    var isPitchCorrectionEnabled = true
+    var isPitchCorrectionEnabled = false
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -112,6 +112,12 @@ class PlayerManager(
     fun cyclePlaybackSpeed() {
         val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
         updatePlaybackSpeed(playbackSpeeds[nextIdx], isPitchCorrectionEnabled)
+    }
+
+    fun togglePitchCorrection(): Boolean {
+        isPitchCorrectionEnabled = !isPitchCorrectionEnabled
+        updatePlaybackSpeed(currentPlaybackSpeed, isPitchCorrectionEnabled)
+        return isPitchCorrectionEnabled
     }
 
     fun setSeekParameters(params: androidx.media3.exoplayer.SeekParameters) {
