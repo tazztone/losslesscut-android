@@ -21,8 +21,10 @@
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
 - 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
-- 🔄 **Non-Destructive Workflow**: Robust undo/redo stack for all segment operations.
-- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with live savings preview.
+- 🔄 **Non-Destructive Workflow**: Full **Undo/Redo** stack for all segment operations.
+- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with live savings preview and intuitive "Mute" status.
+- ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
+- ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
 - 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
 - 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.

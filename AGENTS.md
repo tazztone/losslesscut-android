@@ -13,7 +13,7 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 
 ## 2. Project Structure
 The project is organized into a layer/feature-based structure within the `com.tazztone.losslesscut` package:
-- **`ui`**: Activities, Fragments, and Adapters (`MainActivity`, `VideoEditingActivity`, `MediaClipAdapter`).
+- **`ui`**: Activities, Fragments, and Adapters (`MainActivity`, `VideoEditingActivity`, `MediaClipAdapter` refactored to standard `RecyclerView.Adapter` for robust reordering).
 - **`viewmodel`**: Jetpack ViewModels (`VideoEditingViewModel`).
 - **`engine`**: Core media processing logic (`LosslessEngine`, `AudioWaveformExtractor`).
 - **`data`**: Data persistence and preferences (`AppPreferences`).
@@ -32,11 +32,12 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **CustomVideoSeeker**: A high-performance custom `View` for the NLE timeline.
     - **Logic**: Handles multi-touch (zoom), drag gestures for playhead and segments, and edge-auto-panning.
     - **Accessibility**: Implements `ExploreByTouchHelper` to expose virtual nodes for playhead and segment handles. Supports standard accessibility actions (Scroll Forward/Backward).
+    - **UX Polish**: Implements auto-dismissing hint animations (e.g., "pinch to zoom") that disappear upon the first user interaction anywhere on the screen.
     - **Visuals**: Draws segment colors, keyframe ticks, and zoom levels directly on the canvas for performance.
 - **Layout System**: Uses orientation-specific layouts (`layout` vs `layout-land`) to maintain ergonomics. 
     - **Sidebars**: Landscape mode uses vertical sidebars for primary toolbar actions.
-    - **Playlist Sidebar**: Synced with ExoPlayer's `currentMediaItemIndex`. Uses a `RecyclerView` with an inline "Add Media" placeholder. Visibility is tied to `clips.size > 1`.
-    - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations.
+    - **Playlist Sidebar**: Synced with ExoPlayer via robust **Clip ID-based targeting**. Switched from `ListAdapter` to standard `RecyclerView.Adapter` to eliminate state synchronization race conditions during drags. Blue border follows the Clip UUID, making it position-invariant.
+    - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations. **Auto-pauses** playback whenever a dialog or overlay (Settings, Silence Cut, Export) is opened.
 
 ### 3a. User Interaction Layer
 - **Keyboard Shortcuts**: Implemented in `VideoEditingActivity.dispatchKeyEvent`.
@@ -50,7 +51,7 @@ The project is organized into a layer/feature-based structure within the `com.ta
     - URIs are extracted and passed to `VideoEditingActivity` for metadata probing.
 - **Playback Speed**:
     - Current speed state is maintained in `VideoEditingActivity` and applied to `ExoPlayer` via `PlaybackParameters(speed)`.
-    - Supported range: `0.5x, 1.0x, 1.5x, 2.0x`.
+    - Supported range: `0.25x, 0.5x, 1.0x, 1.5x, 2.0x`.
 
 ### Data & Domain Logic
 - **`LosslessEngine`**: Core muxing orchestration.
@@ -59,7 +60,7 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **`VideoEditingViewModel`**: State machine for the editor.
     - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error). `Success` state includes `hasAudioTrack` flag for UI constraints.
     - **Events**: Uses a `VideoEditingEvent` sealed class (`ShowToast`, `ExportComplete`, `SessionRestored`) via `SharedFlow` for one-time UI actions.
-    - **Undo Stack**: In-memory list of `List<MediaClip>` snapshots.
+    - **Undo/Redo Stack**: In-memory history of `List<MediaClip>` snapshots. Integrated **Redo** button with synchronized `canRedo` flow logic.
     - **Persistence**: Implements `saveSession()` (JSON serialization to cache) and `restoreSession()` to allow resuming work on the current URI.
     - **Silence Detection**: Orchestrates `DetectionUtils.findSilence` to preview or apply automated cuts based on waveform analysis.
     - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked. The UI automatically finishes after export in utility modes (`MODE_REMUX`, `MODE_METADATA`).
