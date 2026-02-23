@@ -30,4 +30,13 @@ class TimeUtilsTest {
     fun formatDuration_zero() {
         assertEquals("00:00.000", TimeUtils.formatDuration(0))
     }
+
+    @Test
+    fun testFormatFilenameDuration() {
+        assertEquals("45s", TimeUtils.formatFilenameDuration(45000))
+        assertEquals("01m15s", TimeUtils.formatFilenameDuration(75000))
+        assertEquals("01h01m05s", TimeUtils.formatFilenameDuration(3665000))
+        assertEquals("01h00m00s", TimeUtils.formatFilenameDuration(3600000))
+        assertEquals("00s050ms", TimeUtils.formatFilenameDuration(50))
+    }
 }

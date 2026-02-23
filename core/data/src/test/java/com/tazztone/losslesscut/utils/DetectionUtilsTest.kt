@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.utils
 
 import com.tazztone.losslesscut.domain.model.DetectionUtils
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DetectionUtilsTest {
@@ -74,5 +75,14 @@ class DetectionUtilsTest {
         // After merging 50-100 and 110-200 (by removing 100-110), we get one big silence.
         assertEquals(1, silence.size)
         assertEquals(50L..200L, silence[0])
+    }
+
+    @Test
+    fun `test findSilence with empty waveform or zero duration`() {
+        val result1 = DetectionUtils.findSilence(FloatArray(0), 0.1f, 100, 1000)
+        assertTrue(result1.isEmpty())
+
+        val result2 = DetectionUtils.findSilence(FloatArray(100), 0.1f, 100, 0)
+        assertTrue(result2.isEmpty())
     }
 }
