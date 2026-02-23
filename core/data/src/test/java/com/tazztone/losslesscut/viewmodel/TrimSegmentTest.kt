@@ -1,7 +1,7 @@
 package com.tazztone.losslesscut.viewmodel
 
-import com.tazztone.losslesscut.data.SegmentAction
-import com.tazztone.losslesscut.data.TrimSegment
+import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.domain.model.TrimSegment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test

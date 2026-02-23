@@ -80,6 +80,7 @@ android {
 dependencies {
     implementation(project(":engine"))
     implementation(project(":core:data"))
+    implementation(project(":core:domain"))
     
     implementation(libs.google.material)
     implementation(libs.lottie)

@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ItemMediaClipBinding
-import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.domain.model.MediaClip
 import kotlinx.coroutines.*
 import java.util.Collections
 import java.util.UUID

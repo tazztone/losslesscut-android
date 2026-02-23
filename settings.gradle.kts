@@ -26,3 +26,4 @@ rootProject.name = "LosslessCut"
 include(":app")
 include(":engine")
 include(":core:data")
+include(":core:domain")

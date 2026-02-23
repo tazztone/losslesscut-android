@@ -1,13 +1,9 @@
 package com.tazztone.losslesscut.customviews
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.domain.model.TrimSegment
+import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle

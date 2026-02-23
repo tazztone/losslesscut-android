@@ -1,26 +1,22 @@
 package com.tazztone.losslesscut.domain.usecase
 
 import android.net.Uri
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.data.MediaClip
-import com.tazztone.losslesscut.data.SegmentAction
-import com.tazztone.losslesscut.data.VideoEditingRepository
-import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.utils.TimeUtils
-import com.tazztone.losslesscut.utils.UiText
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.model.*
+import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class ExportUseCase @Inject constructor(
-    private val repository: VideoEditingRepository,
+    private val repository: IVideoEditingRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     sealed class Result {
         data class Success(val count: Int) : Result()
         data class Failure(val error: String) : Result()
-        data class Progress(val percentage: Int, val message: UiText) : Result()
+        data class Progress(val percentage: Int, val message: String) : Result()
     }
 
     suspend fun execute(
@@ -46,7 +42,7 @@ class ExportUseCase @Inject constructor(
                     return@withContext
                 }
 
-                onStatus(Result.Progress(0, UiText.StringResource(R.string.export_merging)))
+                onStatus(Result.Progress(0, "Merging segments..."))
                 ensureActive()
 
                 val firstClip = clips[selectedClipIndex]
@@ -84,7 +80,7 @@ class ExportUseCase @Inject constructor(
                     val progress = ((index.toFloat() / segments.size) * 100).toInt()
                     onStatus(Result.Progress(
                         progress,
-                        UiText.StringResource(R.string.export_saving_segment, index + 1, segments.size)
+                        "Saving segment ${index + 1} of ${segments.size}"
                     ))
 
                     val extension = if (!keepVideo) "m4a" else "mp4"

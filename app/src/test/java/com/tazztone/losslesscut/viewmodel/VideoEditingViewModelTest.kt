@@ -2,8 +2,8 @@ package com.tazztone.losslesscut.viewmodel
 
 import android.net.Uri
 import com.tazztone.losslesscut.data.AppPreferences
-import com.tazztone.losslesscut.data.VideoEditingRepository
-import com.tazztone.losslesscut.data.MediaClip
+import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
+import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -39,7 +39,7 @@ class VideoEditingViewModelTest {
     @Test
     fun testInitialization_success() = runTest {
         val uris = listOf(Uri.parse("content://mock/video1.mp4"))
-        val mockRepo = mockk<VideoEditingRepository>()
+        val mockRepo = mockk<IVideoEditingRepository>()
         val mockPrefs = mockk<AppPreferences>()
         val mockClipUseCase = mockk<ClipManagementUseCase>()
         val mockExportUseCase = mockk<ExportUseCase>()

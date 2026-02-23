@@ -1,4 +1,4 @@
-package com.tazztone.losslesscut.data
+package com.tazztone.losslesscut.domain.model
 
 import android.net.Uri
 import kotlinx.serialization.KSerializer

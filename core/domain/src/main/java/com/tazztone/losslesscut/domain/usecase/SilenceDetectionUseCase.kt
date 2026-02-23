@@ -1,14 +1,14 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import com.tazztone.losslesscut.data.VideoEditingRepository
-import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.utils.DetectionUtils
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.model.DetectionUtils
+import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class SilenceDetectionUseCase @Inject constructor(
-    private val repository: VideoEditingRepository,
+    private val repository: IVideoEditingRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend fun findSilence(

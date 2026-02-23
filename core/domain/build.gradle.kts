@@ -2,10 +2,11 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.google.hilt.android)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
-    namespace = "com.tazztone.losslesscut.engine"
+    namespace = "com.tazztone.losslesscut.domain"
     compileSdk = 35
 
     defaultConfig {
@@ -20,16 +21,11 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:domain"))
-    implementation(project(":core:data"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.media3.exoplayer)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
-    testImplementation(libs.androidx.test.core)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.mockk.agent)
 }

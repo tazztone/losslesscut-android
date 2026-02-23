@@ -17,10 +17,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.data.MediaClip
-import com.tazztone.losslesscut.data.SegmentAction
+import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
-import com.tazztone.losslesscut.utils.TimeUtils
 import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
@@ -90,7 +88,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentEditorBinding.bind(view)
         
-        // Re-initialize playerManager with the callbacks needed for EditorFragment
         playerManager = PlayerManager(
             context = requireContext(),
             playerView = binding.playerView,
@@ -306,7 +303,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         binding.loadingScreen.root.visibility = View.GONE
                         val selectedClip = state.clips[state.selectedClipIndex]
                         
-                        // Sync player
                         val newStateUris = state.clips.map { it.uri }
                         val currentUris = playerManager.player?.mediaItemCount?.let { count ->
                             (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
@@ -437,7 +433,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private fun setInPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
         val currentPos = playerManager.currentPosition
-        // simplified snap logic, could be refined
         viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentPos, Long.MAX_VALUE)
         viewModel.commitSegmentBounds()
     }
@@ -451,14 +446,137 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun showExportOptionsDialog() {
         playerManager.pause()
-        // ... (Dialog logic, same as Activity)
-        // For brevity, I'll omit full dialog logic here but it should be moved.
+        val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
+        val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
+        val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
+        val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
+        val tvTracksHeader = dialogView.findViewById<android.widget.TextView>(R.id.tvTracksHeader)
+        val tracksContainer = dialogView.findViewById<android.widget.LinearLayout>(R.id.tracksContainer)
+        
+        val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
+        val totalKeepSegments = currentState?.clips?.sumOf { clip -> 
+            clip.segments.count { it.action == SegmentAction.KEEP } 
+        } ?: 0
+        
+        if (totalKeepSegments > 1 || (currentState?.clips?.size ?: 0) > 1) {
+            cbMergeSegments.visibility = View.VISIBLE
+        }
+
+        val availableTracks = currentState?.availableTracks ?: emptyList()
+        val selectedTracks = mutableSetOf<Int>()
+        
+        if (availableTracks.size > 2) {
+            tvTracksHeader.visibility = View.VISIBLE
+            tracksContainer.visibility = View.VISIBLE
+            
+            availableTracks.forEach { track ->
+                val cb = android.widget.CheckBox(requireContext()).apply {
+                    val type = if (track.isVideo) "Video" else if (track.isAudio) "Audio" else "Other"
+                    text = getString(R.string.track_item_format, track.id, type, track.mimeType)
+                    isChecked = true
+                    selectedTracks.add(track.id)
+                    setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) selectedTracks.add(track.id) else selectedTracks.remove(track.id)
+                    }
+                }
+                tracksContainer.addView(cb)
+            }
+        }
+
+        if (currentState?.hasAudioTrack == false) {
+            cbKeepVideo.isEnabled = false
+            cbKeepVideo.alpha = 0.5f
+            cbKeepVideo.setOnClickListener {
+                Toast.makeText(requireContext(), getString(R.string.error_cannot_exclude_video), Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.export_options))
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.export)) { _, _ ->
+                val keepVideo = cbKeepVideo.isChecked
+                val keepAudio = cbKeepAudio.isChecked
+                val mergeSegments = cbMergeSegments.isChecked
+                if (!keepVideo && !keepAudio && selectedTracks.isEmpty()) {
+                    Toast.makeText(requireContext(), getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
+                } else {
+                    val rotationOverride = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
+                    val trackList = if (selectedTracks.isNotEmpty() && availableTracks.size > 2) selectedTracks.toList() else null
+                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments, trackList)
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
     }
 
     private fun showSilenceDetectionDialog() {
         playerManager.pause()
-        binding.silenceDetectionContainer?.root?.visibility = View.VISIBLE
-        // ... (Silence detection logic, same as Activity)
+        val overlay = binding.silenceDetectionContainer?.root ?: return
+        overlay.visibility = View.VISIBLE
+        
+        val sliderThreshold = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
+        val sliderDuration = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderDuration)
+        val sliderMinSegment = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderMinSegment)
+        val sliderPadding = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderPadding)
+        
+        val tvThresholdValue = overlay.findViewById<TextView>(R.id.tvThresholdValue)
+        val tvDurationValue = overlay.findViewById<TextView>(R.id.tvDurationValue)
+        val tvMinSegmentValue = overlay.findViewById<TextView>(R.id.tvMinSegmentValue)
+        val tvPaddingValue = overlay.findViewById<TextView>(R.id.tvPaddingValue)
+        
+        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
+        val btnCancel = overlay.findViewById<android.widget.Button>(R.id.btnCancel)
+        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
+
+        val updatePreview = {
+            val threshold = sliderThreshold.value
+            val duration = sliderDuration.value.toLong()
+            val minSegment = sliderMinSegment.value.toLong()
+            val padding = sliderPadding.value.toLong()
+            
+            tvThresholdValue.text = String.format("%.1f%%", threshold * 100)
+            tvDurationValue.text = String.format("%.1fs", duration / 1000f)
+            tvMinSegmentValue.text = String.format("%.1fs", minSegment / 1000f)
+            tvPaddingValue.text = String.format("%.1fs", padding / 1000f)
+            
+            viewModel.previewSilenceSegments(threshold, duration, padding, minSegment)
+        }
+
+        sliderThreshold.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderDuration.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderMinSegment.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderPadding.addOnChangeListener { _, _, _ -> updatePreview() }
+
+        val silencePreviewJob = viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                if (state is VideoEditingUiState.Success) {
+                    val ranges = state.silencePreviewRanges
+                    if (ranges.isNotEmpty()) {
+                        val totalSilenceMs = ranges.sumOf { it.last - it.first }
+                        tvEstimatedCut.text = getString(R.string.silence_detected_preview, TimeUtils.formatDuration(totalSilenceMs), ranges.size)
+                        btnApply.isEnabled = true
+                    } else {
+                        tvEstimatedCut.text = getString(R.string.no_silence_detected)
+                        btnApply.isEnabled = false
+                    }
+                }
+            }
+        }
+
+        btnCancel.setOnClickListener {
+            silencePreviewJob.cancel()
+            viewModel.clearSilencePreview()
+            overlay.visibility = View.GONE
+        }
+
+        btnApply.setOnClickListener {
+            silencePreviewJob.cancel()
+            viewModel.applySilenceDetection()
+            overlay.visibility = View.GONE
+        }
+
+        updatePreview()
     }
 
     override fun onLosslessModeToggled(isChecked: Boolean) {

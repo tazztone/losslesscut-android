@@ -1,5 +1,6 @@
 package com.tazztone.losslesscut.utils
 
+import com.tazztone.losslesscut.domain.model.DetectionUtils
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

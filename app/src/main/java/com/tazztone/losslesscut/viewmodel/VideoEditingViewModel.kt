@@ -1,21 +1,15 @@
 package com.tazztone.losslesscut.viewmodel
 
-import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.data.AppPreferences
-import com.tazztone.losslesscut.data.MediaClip
-import com.tazztone.losslesscut.data.MediaTrack
-import com.tazztone.losslesscut.data.SegmentAction
-import com.tazztone.losslesscut.data.TrimSegment
-import com.tazztone.losslesscut.data.VideoEditingRepository
-import com.tazztone.losslesscut.di.IoDispatcher
+import com.tazztone.losslesscut.domain.model.*
+import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
+import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.usecase.*
-import com.tazztone.losslesscut.utils.TimeUtils
-import com.tazztone.losslesscut.utils.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -52,7 +46,7 @@ sealed class VideoEditingEvent {
 
 @HiltViewModel
 class VideoEditingViewModel @Inject constructor(
-    private val repository: VideoEditingRepository,
+    private val repository: IVideoEditingRepository,
     private val preferences: AppPreferences,
     private val clipManagementUseCase: ClipManagementUseCase,
     private val exportUseCase: ExportUseCase,
@@ -359,8 +353,6 @@ class VideoEditingViewModel @Inject constructor(
         saveToHistory()
         val clip = currentClips[selectedClipIndex]
         
-        // Logic for applying silence detection (kept here as it involves multi-clip/multi-segment orchestration)
-        // or could be moved to another use case.
         val newSegments = mutableListOf<TrimSegment>()
         clip.segments.forEach { seg ->
             if (seg.action == SegmentAction.DISCARD) {
@@ -429,7 +421,7 @@ class VideoEditingViewModel @Inject constructor(
             ) { result ->
                 when (result) {
                     is ExportUseCase.Result.Progress -> {
-                        _uiState.value = VideoEditingUiState.Loading(result.percentage, result.message)
+                        _uiState.value = VideoEditingUiState.Loading(result.percentage, UiText.DynamicString(result.message))
                     }
                     is ExportUseCase.Result.Success -> {
                         _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))
@@ -453,7 +445,10 @@ class VideoEditingViewModel @Inject constructor(
             updateState()
             
             val clip = currentClips[selectedClipIndex]
-            val result = snapshotUseCase.execute(clip.uri, positionMs)
+            val format = preferences.snapshotFormatFlow.first()
+            val quality = preferences.jpgQualityFlow.first()
+            
+            val result = snapshotUseCase.execute(clip.uri, positionMs, format, quality)
             
             when (result) {
                 is ExtractSnapshotUseCase.Result.Success -> {

@@ -1,7 +1,6 @@
 package com.tazztone.losslesscut.engine
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -9,12 +8,13 @@ import android.media.MediaMuxer
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
-import androidx.annotation.OptIn
-import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.data.MediaClip
-import com.tazztone.losslesscut.data.SegmentAction
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.engine.ILosslessEngine
+import com.tazztone.losslesscut.domain.engine.MediaMetadata
+import com.tazztone.losslesscut.domain.engine.TrackMetadata
+import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.utils.StorageUtils
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
@@ -24,60 +24,11 @@ import java.nio.ByteBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
 
-interface LosslessEngineInterface {
-    suspend fun getKeyframes(context: Context, videoUri: Uri): Result<List<Long>>
-    suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata>
-    suspend fun getFrameAt(context: Context, uri: Uri, positionMs: Long): Bitmap?
-    suspend fun executeLosslessCut(
-        context: Context,
-        inputUri: Uri,
-        outputUri: Uri,
-        startMs: Long,
-        endMs: Long,
-        keepAudio: Boolean = true,
-        keepVideo: Boolean = true,
-        rotationOverride: Int? = null,
-        selectedTracks: List<Int>? = null
-    ): Result<Uri>
-
-    suspend fun executeLosslessMerge(
-        context: Context,
-        outputUri: Uri,
-        clips: List<MediaClip>,
-        keepAudio: Boolean = true,
-        keepVideo: Boolean = true,
-        rotationOverride: Int? = null,
-        selectedTracks: List<Int>? = null
-    ): Result<Uri>
-}
-
-data class MediaMetadata(
-    val durationMs: Long,
-    val width: Int,
-    val height: Int,
-    val videoMime: String?,
-    val audioMime: String?,
-    val sampleRate: Int,
-    val channelCount: Int,
-    val fps: Float,
-    val rotation: Int,
-    val tracks: List<TrackMetadata>
-)
-
-data class TrackMetadata(
-    val id: Int,
-    val mimeType: String,
-    val language: String?,
-    val title: String?,
-    val isVideo: Boolean,
-    val isAudio: Boolean
-)
-
 @Singleton
 class LosslessEngineImpl @Inject constructor(
     private val storageUtils: StorageUtils,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
-) : LosslessEngineInterface {
+) : ILosslessEngine {
     
     companion object {
         private const val TAG = "LosslessEngine"

@@ -1,20 +1,15 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.data.AppPreferences
-import com.tazztone.losslesscut.data.VideoEditingRepository
-import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.utils.UiText
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class ExtractSnapshotUseCase @Inject constructor(
-    private val repository: VideoEditingRepository,
-    private val preferences: AppPreferences,
+    private val repository: IVideoEditingRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     sealed class Result {
@@ -22,12 +17,10 @@ class ExtractSnapshotUseCase @Inject constructor(
         data class Failure(val error: String) : Result()
     }
 
-    suspend fun execute(uri: android.net.Uri, positionMs: Long): Result = withContext(ioDispatcher) {
+    suspend fun execute(uri: Uri, positionMs: Long, format: String, quality: Int): Result = withContext(ioDispatcher) {
         try {
             val bitmap = repository.getFrameAt(uri, positionMs)
             if (bitmap != null) {
-                val format = preferences.snapshotFormatFlow.first()
-                val quality = preferences.jpgQualityFlow.first()
                 val ext = if (format == "PNG") "png" else "jpg"
                 val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                 val outputUri = repository.createImageOutputUri(fileName)

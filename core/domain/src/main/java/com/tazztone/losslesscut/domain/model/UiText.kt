@@ -1,4 +1,4 @@
-package com.tazztone.losslesscut.utils
+package com.tazztone.losslesscut.domain.model
 
 import android.content.Context
 import androidx.annotation.StringRes
