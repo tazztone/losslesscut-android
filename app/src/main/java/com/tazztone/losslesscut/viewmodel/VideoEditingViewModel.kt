@@ -183,7 +183,7 @@ class VideoEditingViewModel @Inject constructor(
                     updateState()
                 },
                 onFailure = { e ->
-                    _uiEvents.emit(VideoEditingEvent.ShowToast(
+                    _uiEvents.send(VideoEditingEvent.ShowToast(
                         UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
                     ))
                 }
