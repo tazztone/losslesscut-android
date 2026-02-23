@@ -86,6 +86,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     override fun getPlayerView() = binding.playerView
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         _binding = FragmentEditorBinding.bind(view)
         
         playerManager = PlayerManager(

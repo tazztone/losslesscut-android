@@ -24,6 +24,13 @@ class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
         _binding = FragmentRemuxBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
         
+        playerManager = PlayerManager(
+            context = requireContext(),
+            playerView = getPlayerView(),
+            viewModel = viewModel
+        )
+        playerManager.initialize()
+        
         binding.seekerContainer?.visibility = View.GONE
         binding.editingControls?.visibility = View.GONE
         

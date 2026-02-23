@@ -18,12 +18,6 @@ abstract class BaseEditingFragment(@LayoutRes layoutId: Int) : Fragment(layoutId
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        playerManager = PlayerManager(
-            context = requireContext(),
-            playerView = getPlayerView(),
-            viewModel = viewModel
-        )
-        playerManager.initialize()
     }
 
     override fun onDestroyView() {

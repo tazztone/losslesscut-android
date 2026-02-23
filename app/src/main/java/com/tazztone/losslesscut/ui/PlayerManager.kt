@@ -15,11 +15,16 @@ class PlayerManager(
     private val context: Context,
     private val playerView: androidx.media3.ui.PlayerView,
     private val viewModel: VideoEditingViewModel,
-    private val onStateChanged: (Int) -> Unit = {},
-    private val onMediaTransition: (Int) -> Unit = {},
-    private val onIsPlayingChanged: (Boolean) -> Unit = {},
-    private val onSpeedChanged: (Float) -> Unit = {}
+    onStateChanged: (Int) -> Unit = {},
+    onMediaTransition: (Int) -> Unit = {},
+    onIsPlayingChanged: (Boolean) -> Unit = {},
+    onSpeedChanged: (Float) -> Unit = {}
 ) {
+    private val onStateChangedCallback = onStateChanged
+    private val onMediaTransitionCallback = onMediaTransition
+    private val onIsPlayingChangedCallback = onIsPlayingChanged
+    private val onSpeedChangedCallback = onSpeedChanged
+
     var player: ExoPlayer? = null
         private set
 
@@ -33,15 +38,15 @@ class PlayerManager(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val index = currentMediaItemIndex
             viewModel.selectClip(index)
-            onMediaTransition(index)
+            onMediaTransitionCallback(index)
         }
 
         override fun onPlaybackStateChanged(state: Int) {
-            onStateChanged(state)
+            onStateChangedCallback(state)
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            onIsPlayingChanged(isPlaying)
+            onIsPlayingChangedCallback(isPlaying)
         }
     }
 
@@ -101,7 +106,7 @@ class PlayerManager(
         this.isPitchCorrectionEnabled = isPitchCorrectionEnabled
         val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
         player?.playbackParameters = params
-        onSpeedChanged(speed)
+        onSpeedChangedCallback(speed)
     }
 
     fun cyclePlaybackSpeed() {
