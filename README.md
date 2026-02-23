@@ -29,6 +29,7 @@
 - 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
 - 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.
 - 🏷️ **Quick Metadata Fix**: Correct video orientation and rotation flags in seconds.
+- 🏗️ **Clean Architecture**: Context-free ViewModels and a centralized Repository pattern for maximum maintainability.
 
 ## 📸 Screenshots
 

@@ -41,28 +41,29 @@ The project is organized into a layer/feature-based structure within the `com.ta
     - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations. **Auto-pauses** playback whenever a dialog or overlay (Settings, Silence Cut, Export) is opened.
 
 ### 3a. User Interaction Layer
-- **Keyboard Shortcuts**: Implemented in `VideoEditingActivity.dispatchKeyEvent`.
+- **Keyboard Shortcuts**: Managed by `ShortcutHandler`.
     - `SPACE`: Play/Pause.
     - `I` / `O`: Set In/Out markers for the current segment.
     - `S`: Split segment at current playhead position.
     - `LEFT` / `RIGHT`: Seek to previous/next keyframe.
-    - `ALT + LEFT/RIGHT`: Nudge playhead by a small fixed delta (frame-step emulation).
+    - `ALT + LEFT/RIGHT`: Nudge playhead via `PlayerManager.performNudge`.
 - **Share Intent Flow**:
     - `MainActivity` filters for `ACTION_SEND` and `ACTION_VIEW` via its `<intent-filter>`.
     - URIs are extracted and passed to `VideoEditingActivity` for metadata probing.
 - **Playback Speed**:
-    - Current speed state is maintained in `VideoEditingActivity` and applied to `ExoPlayer` via `PlaybackParameters(speed)`.
-    - Supported range: `0.25x, 0.5x, 1.0x, 1.5x, 2.0x`.
+    - Current speed state is maintained in `PlayerManager` and applied to `ExoPlayer` via `PlaybackParameters(speed)`.
+    - Supported range: `0.25x, 0.5x, 1.0x, 1.5x, 2.0x, 4.0x`.
 
 ### Data & Domain Logic
 - **`LosslessEngine`**: Core muxing orchestration.
     - `executeLosslessCut`: Trims a single file. Bypasses video-specific orientation hints if no video track is present.
     - `executeLosslessMerge`: Concatenates multiple `MediaClip` objects or segments. Handles PTS shifting and validates track availability.
-- **`VideoEditingViewModel`**: State machine for the editor.
+- **`VideoEditingViewModel`**: State machine for the editor. **Context-Free**.
+    - **Architecture**: No dependency on `android.content.Context`. All context-dependent operations (I/O) are delegated to the Repository.
     - **State**: `VideoEditingUiState` (Initial, Loading, Success, Error). `Success` state includes `hasAudioTrack` flag for UI constraints.
     - **Events**: Uses a `VideoEditingEvent` sealed class (`ShowToast`, `ExportComplete`, `SessionRestored`) via `SharedFlow` for one-time UI actions.
     - **Undo/Redo Stack**: In-memory history of `List<MediaClip>` snapshots. Integrated **Redo** button with synchronized `canRedo` flow logic.
-    - **Persistence**: Implements `saveSession()` (JSON serialization to cache) and `restoreSession()` to allow resuming work on the current URI.
+    - **Persistence**: Delegated to `VideoEditingRepository` (JSON serialization to cache). Optimized cache key generation using memory-efficient hashing.
     - **Silence Detection**: Orchestrates `DetectionUtils.findSilence` to preview or apply automated cuts based on waveform analysis.
     - **Export**: Orchestrates single-clip multi-segment export OR multi-clip merging. Automatically selects `.m4a` extension and `Music` storage if video is unchecked. The UI automatically finishes after export in utility modes (`MODE_REMUX`, `MODE_METADATA`).
 
