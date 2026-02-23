@@ -10,7 +10,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
-import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.di.IoDispatcher
 import com.tazztone.losslesscut.data.MediaClip
 import com.tazztone.losslesscut.data.SegmentAction
@@ -283,7 +282,7 @@ class LosslessEngineImpl @Inject constructor(
             }
             
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
-            if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
+            if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val mMuxer = muxer
@@ -326,7 +325,7 @@ class LosslessEngineImpl @Inject constructor(
                 }
             }
             
-            if (trackMap.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
+            if (trackMap.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))
             if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
             val hasVideoTrack = isVideoTrackMap.values.any { it }
 
@@ -449,7 +448,7 @@ class LosslessEngineImpl @Inject constructor(
 
         try {
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
-            if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
+            if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val mMuxer = muxer
@@ -514,7 +513,7 @@ class LosslessEngineImpl @Inject constructor(
                 firstExtractor.release()
             }
 
-            if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException(context.getString(R.string.error_no_tracks_found)))
+            if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))
             if (bufferSize < 0) bufferSize = 1024 * 1024
 
             val finalRotation = rotationOverride ?: clips[0].rotation

@@ -13,23 +13,22 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 - **Tooling**: AGP 9.0 (Built-in Kotlin Support)
 
 ## 2. Project Structure
-The project is organized into a layer/feature-based structure within the `com.tazztone.losslesscut` package:
-- **`ui`**: Activities and Adapters (`VideoEditingActivity`, `MediaClipAdapter`). Heavily delegated via specialized managers (`PlayerManager`, `ShortcutHandler`, `RotationManager`).
-- **`viewmodel`**: Jetpack ViewModels (`VideoEditingViewModel`).
-- **`engine`**: Core media processing logic (`LosslessEngine`, `AudioWaveformExtractor`).
-- **`data`**: Data persistence, Repository layer, and preferences (`VideoEditingRepository`, `AppPreferences`).
-- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`, `DetectionUtils`, `UiText`).
-- **`di`**: Hilt dependency injection modules (`AppModule`).
-- **`customviews`**: Complex custom UI components (`CustomVideoSeeker`).
+The project is organized into a modular feature/layer-based structure:
+- **`:app`**: Main Android application module.
+  - **`ui`**: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`) and Navigation. `VideoEditingActivity` is now a thin host.
+  - **`viewmodel`**: Jetpack ViewModels. `VideoEditingViewModel` delegates complex logic to Use Cases.
+  - **`domain`**: Domain layer containing Use Cases/Interactors for business logic separation.
+- **`:engine`**: Core media processing library. Contains `LosslessEngine` and specialized media engines.
+- **`:core:data`**: Shared data module containing models (`MediaClip`, `TrimSegment`), persistence (`AppPreferences`), and utilities (`StorageUtils`, `TimeUtils`).
 
 ## 3. Component Blueprint
 
-### UI & Custom Views
-- **VideoEditingActivity**: Central hub. Manages ExoPlayer lifecycle, binds ViewModel state, and coordinates UI transitions between Video and Audio modes.
-- **Launch Modes** (`EXTRA_LAUNCH_MODE`):
-  - `MODE_CUT` (default): Full NLE editor with timeline, segments, split, silence detection.
-  - `MODE_REMUX`: Hides all edit controls; auto-prompts a full-file pass-through mux dialog.
-  - `MODE_METADATA`: Hides timeline; shows metadata form (rotation override); exports via full-file mux with new orientation hint.
+### UI & Navigation
+- **Jetpack Navigation**: Orchestrates transitions between editing modes.
+- **Fragments**:
+  - `EditorFragment`: Full NLE editor.
+  - `RemuxFragment`: Simplified remux-only mode.
+  - `MetadataFragment`: Metadata editing and rotation override.
 - **CustomVideoSeeker**: A high-performance custom `View` for the NLE timeline.
     - **Logic**: Handles multi-touch (zoom), drag gestures for playhead and segments, and edge-auto-panning.
     - **Accessibility**: Implements `ExploreByTouchHelper` to expose virtual nodes for playhead and segment handles. Supports standard accessibility actions (Scroll Forward/Backward).

@@ -13,7 +13,7 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 @UnstableApi
 class PlayerManager(
     private val context: Context,
-    private val binding: ActivityVideoEditingBinding,
+    private val playerView: androidx.media3.ui.PlayerView,
     private val viewModel: VideoEditingViewModel,
     private val onStateChanged: (Int) -> Unit = {},
     private val onMediaTransition: (Int) -> Unit = {},
@@ -47,7 +47,7 @@ class PlayerManager(
 
     fun initialize() {
         player = ExoPlayer.Builder(context).build().apply {
-            binding.playerView.player = this
+            playerView.player = this
             addListener(playerListener)
         }
     }

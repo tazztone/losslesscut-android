@@ -10,7 +10,6 @@ import android.provider.OpenableColumns
 import android.util.Log
 import android.media.MediaFormat
 import androidx.documentfile.provider.DocumentFile
-import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first

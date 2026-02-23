@@ -55,6 +55,10 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
     @Inject
     lateinit var preferences: AppPreferences
 
+    fun setSettingsListener(listener: SettingsListener) {
+        this.listener = listener
+    }
+
     fun setInitialState(isLossless: Boolean) {
         this.initialLosslessState = isLossless
     }
@@ -65,10 +69,12 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        if (context is SettingsListener) {
-            listener = context
-        } else {
-            throw RuntimeException("$context must implement SettingsListener")
+        if (listener == null) {
+            if (context is SettingsListener) {
+                listener = context
+            } else {
+                // It's okay if activity doesn't implement it if a fragment set it manually
+            }
         }
     }
 

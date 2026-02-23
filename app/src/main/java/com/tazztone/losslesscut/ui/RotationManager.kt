@@ -1,10 +1,16 @@
 package com.tazztone.losslesscut.ui
 
 import android.view.View
-import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
+import android.widget.ImageButton
+import android.widget.TextView
+import androidx.media3.ui.PlayerView
 
 class RotationManager(
-    private val binding: ActivityVideoEditingBinding
+    private val badgeRotate: TextView?,
+    private val btnRotate: ImageButton,
+    private val tvRotateEmoji: TextView,
+    private val btnRotateContainer: View,
+    private val playerView: PlayerView
 ) {
     var currentRotation = 0
         private set
@@ -21,26 +27,23 @@ class RotationManager(
     }
 
     fun updateRotationPreview(animate: Boolean = true) {
-        // Hide the degree text badge since the icon is now the visual indicator
-        binding.badgeRotate?.visibility = View.GONE
+        badgeRotate?.visibility = View.GONE
         
         val isZero = currentRotation == 0
-        binding.btnRotate.visibility = if (isZero) View.VISIBLE else View.GONE
-        binding.tvRotateEmoji.visibility = if (isZero) View.GONE else View.VISIBLE
+        btnRotate.visibility = if (isZero) View.VISIBLE else View.GONE
+        tvRotateEmoji.visibility = if (isZero) View.GONE else View.VISIBLE
         
-        // Always rotate the container. This makes the logic much simpler and more robust.
         if (animate) {
-            binding.btnRotateContainer.animate()
+            btnRotateContainer.animate()
                 .rotation(currentRotation.toFloat())
                 .setDuration(250)
                 .start()
         } else {
-            binding.btnRotateContainer.rotation = currentRotation.toFloat()
+            btnRotateContainer.rotation = currentRotation.toFloat()
         }
 
-        // Ensure the video player stays completely un-squished and un-rotated
-        binding.playerView.scaleX = 1f
-        binding.playerView.scaleY = 1f
-        binding.playerView.parent.requestLayout()
+        playerView.scaleX = 1f
+        playerView.scaleY = 1f
+        (playerView.parent as? View)?.requestLayout()
     }
 }

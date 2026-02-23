@@ -24,3 +24,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "LosslessCut"
 include(":app")
+include(":engine")
+include(":core:data")
