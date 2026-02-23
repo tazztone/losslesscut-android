@@ -164,6 +164,14 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private fun stopPinchAnimation() {
         pinchAnimator?.cancel()
         pinchAnimator = null
+        pinchAnimValue = 0f
+        invalidate()
+    }
+
+    fun dismissHints() {
+        showZoomHint = false
+        showHandleHint = false
+        stopPinchAnimation()
     }
 
     // Hit testing

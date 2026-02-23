@@ -30,6 +30,8 @@ import com.tazztone.losslesscut.data.SegmentAction
 import com.tazztone.losslesscut.data.TrimSegment
 import com.tazztone.losslesscut.utils.TimeUtils
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.ItemTouchHelper
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -70,7 +72,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private var currentRotation = 0
     private var isLosslessMode = true
     private var currentPlaybackSpeed = 1.0f
-    private var isPitchCorrectionEnabled = true
+    private var isPitchCorrectionEnabled = false
     private val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f)
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
@@ -216,6 +218,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         }
 
         setupBackPressed()
+
+        binding.root.setOnTouchListener { _, _ ->
+            binding.customVideoSeeker.dismissHints()
+            false
+        }
     }
 
     private fun setupBackPressed() {
@@ -297,12 +304,21 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
             override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
             
-            override fun clearView(recyclerView: androidx.recyclerview.widget.RecyclerView, viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder) {
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
+                    clipAdapter.startDrag(viewHolder.adapterPosition)
+                }
+            }
+            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                clipAdapter.commitPendingMove()
+                clipAdapter.commitPendingMove(viewHolder.adapterPosition)
             }
             override fun isLongPressDragEnabled(): Boolean = false
         })
+
+        binding.btnAddClips?.setOnClickListener { addClipsAction() }
+        TooltipCompat.setTooltipText(binding.btnAddClips!!, getString(R.string.add_video))
 
         clipAdapter = MediaClipAdapter(
             onClipSelected = { index -> 
@@ -359,11 +375,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnExport?.setOnClickListener { showExportOptionsDialog() }
         binding.btnExport?.let { TooltipCompat.setTooltipText(it, getString(R.string.export)) }
 
-        binding.btnRemux?.setOnClickListener { showRemuxDialog() }
-        binding.btnRemux?.let { TooltipCompat.setTooltipText(it, "Remux") }
-
-        binding.btnMetadata?.setOnClickListener { showMetadataDialog() }
-        binding.btnMetadata?.let { TooltipCompat.setTooltipText(it, "Metadata") }
+        binding.btnUndo.setOnClickListener { viewModel.undo() }
+        binding.btnRedo?.setOnClickListener { viewModel.redo() }
         
         binding.btnSettings?.setOnClickListener {
             val bottomSheet = SettingsBottomSheetDialogFragment()
@@ -680,6 +693,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         binding.customVideoSeeker.silencePreviewRanges = state.silencePreviewRanges
                         binding.btnUndo.isEnabled = state.canUndo
                         binding.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
+                        binding.btnRedo?.isEnabled = state.canRedo
+                        binding.btnRedo?.alpha = if (state.canRedo) 1.0f else 0.5f
 
                         val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
                         if (selectedSeg != null && selectedSeg.action == SegmentAction.DISCARD) {
@@ -746,12 +761,24 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         currentPlaybackSpeed = speed
         val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
         player.playbackParameters = params
-        binding.btnPlaybackSpeed?.text = getString(R.string.speed_format, speed)
+        val speedText = when (speed) {
+            0.25f -> "0.25x"
+            0.5f -> "0.5x"
+            1.0f -> "1.0x"
+            2.0f -> "2.0x"
+            4.0f -> "4.0x"
+            else -> String.format("%.1fx", speed)
+        }
+        binding.btnPlaybackSpeed?.text = speedText
         
         // Update UI state or tooltips if needed
     }
 
     private fun setupCustomSeeker() {
+        binding.root.setOnTouchListener { _, _ ->
+            binding.customVideoSeeker.dismissHints()
+            false
+        }
         binding.customVideoSeeker.onSeekStart = {
             isDraggingTimeline = true
             player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)

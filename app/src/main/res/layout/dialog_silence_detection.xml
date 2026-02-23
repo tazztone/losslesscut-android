@@ -6,11 +6,11 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="#AA000000"
+    android:background="#FF000000"
     android:clickable="true"
     android:focusable="true"
-    android:clipChildren="true"
-    android:clipToPadding="true">
+    android:clipChildren="false"
+    android:clipToPadding="false">
 
     <TextView
         android:layout_width="wrap_content"
@@ -26,8 +26,8 @@
         android:layout_height="wrap_content"
         android:columnCount="2"
         android:alignmentMode="alignBounds"
-        android:clipChildren="true"
-        android:clipToPadding="true">
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
         <!-- Threshold -->
         <TextView
@@ -48,13 +48,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:valueFrom="0.001"
                 android:valueTo="0.1"
                 android:value="0.02"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"
-                app:labelBehavior="gone"/>
+                app:trackHeight="2dp"/>
             <TextView
                 android:id="@+id/tvThresholdValue"
                 android:layout_width="45dp"
@@ -84,14 +85,15 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:valueFrom="200"
                 android:valueTo="5000"
                 android:stepSize="100"
                 android:value="1000"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"
-                app:labelBehavior="gone"/>
+                app:trackHeight="2dp"/>
             <TextView
                 android:id="@+id/tvDurationValue"
                 android:layout_width="45dp"
@@ -121,14 +123,15 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:valueFrom="100"
                 android:valueTo="5000"
                 android:stepSize="100"
                 android:value="500"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"
-                app:labelBehavior="gone"/>
+                app:trackHeight="2dp"/>
             <TextView
                 android:id="@+id/tvMinSegmentValue"
                 android:layout_width="45dp"
@@ -158,14 +161,15 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
                 android:valueFrom="0"
                 android:valueTo="2000"
                 android:stepSize="50"
                 android:value="200"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
-                app:trackHeight="2dp"
-                app:labelBehavior="gone"/>
+                app:trackHeight="2dp"/>
             <TextView
                 android:id="@+id/tvPaddingValue"
                 android:layout_width="45dp"

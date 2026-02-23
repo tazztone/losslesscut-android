@@ -31,6 +31,12 @@ class MediaClipAdapter(
     private var shadowList: MutableList<MediaClip> = mutableListOf()
     var isDragging = false
         private set
+    private var dragStartIndex: Int = -1
+
+    fun startDrag(from: Int) {
+        dragStartIndex = from
+        isDragging = true
+    }
 
     fun updateSelection(newSelectedIndex: Int) {
         val oldIndex = selectedIndex
@@ -77,7 +83,6 @@ class MediaClipAdapter(
         if (from == to) return
         if (from >= currentList.size || to >= currentList.size) return
         
-        isDragging = true
         val item = shadowList.removeAt(from)
         shadowList.add(to, item)
         
@@ -91,11 +96,14 @@ class MediaClipAdapter(
         }
 
         notifyItemMoved(from, to)
-        onClipsReordered(from, to)
     }
 
-    fun commitPendingMove() {
+    fun commitPendingMove(finalTo: Int) {
+        if (isDragging && dragStartIndex != -1 && dragStartIndex != finalTo) {
+            onClipsReordered(dragStartIndex, finalTo)
+        }
         isDragging = false
+        dragStartIndex = -1
     }
 
     inner class ClipViewHolder(private val binding: ItemMediaClipBinding) : RecyclerView.ViewHolder(binding.root) {

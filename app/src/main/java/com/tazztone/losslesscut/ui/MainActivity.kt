@@ -64,7 +64,8 @@ class MainActivity : AppCompatActivity() {
                 id = "cut",
                 title = getString(R.string.dashboard_cut_title),
                 description = getString(R.string.dashboard_cut_desc),
-                iconResId = R.drawable.ic_add_24
+                iconResId = R.drawable.ic_add_24,
+                isPrimary = true
             ),
             DashboardAction(
                 id = "remux",

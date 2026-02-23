@@ -52,6 +52,7 @@ sealed class VideoEditingUiState {
         val segments: List<TrimSegment>,
         val selectedSegmentId: UUID? = null,
         val canUndo: Boolean = false,
+        val canRedo: Boolean = false,
         val videoFps: Float = 30f,
         val isAudioOnly: Boolean = false,
         val hasAudioTrack: Boolean = true,
@@ -96,6 +97,7 @@ class VideoEditingViewModel @Inject constructor(
     private var selectedClipIndex = 0
     private var currentKeyframes: List<Long> = emptyList()
     private var history = mutableListOf<List<MediaClip>>()
+    private var redoStack = mutableListOf<List<MediaClip>>()
     private var selectedSegmentId: UUID? = null
     
     private val keyframeCache = object : LinkedHashMap<String, List<Long>>(20, 0.75f, true) {
@@ -386,7 +388,20 @@ class VideoEditingViewModel @Inject constructor(
 
     fun undo() {
         if (history.isNotEmpty()) {
+            redoStack.add(currentClips.map { it.copy(segments = it.segments.toList()) })
             currentClips = history.removeAt(history.size - 1)
+            if (selectedClipIndex >= currentClips.size) {
+                selectedClipIndex = currentClips.size - 1
+            }
+            updateState()
+            loadClipData(selectedClipIndex)
+        }
+    }
+
+    fun redo() {
+        if (redoStack.isNotEmpty()) {
+            history.add(currentClips.map { it.copy(segments = it.segments.toList()) })
+            currentClips = redoStack.removeAt(redoStack.size - 1)
             if (selectedClipIndex >= currentClips.size) {
                 selectedClipIndex = currentClips.size - 1
             }
@@ -400,6 +415,7 @@ class VideoEditingViewModel @Inject constructor(
         currentClips = emptyList()
         selectedClipIndex = 0
         history.clear()
+        redoStack.clear()
         _isDirty.value = false
         _waveformData.value = null
         _silencePreviewRanges.value = emptyList()
@@ -408,6 +424,7 @@ class VideoEditingViewModel @Inject constructor(
     private fun saveToHistory() {
         history.add(currentClips.map { it.copy(segments = it.segments.toList()) })
         if (history.size > undoLimit) history.removeAt(0)
+        redoStack.clear()
     }
 
     private fun updateState() {
@@ -419,6 +436,7 @@ class VideoEditingViewModel @Inject constructor(
             segments = clip.segments,
             selectedSegmentId = selectedSegmentId,
             canUndo = history.isNotEmpty(),
+            canRedo = redoStack.isNotEmpty(),
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
@@ -434,7 +452,6 @@ class VideoEditingViewModel @Inject constructor(
         
         silencePreviewJob?.cancel()
         silencePreviewJob = viewModelScope.launch {
-            delay(150) // Wait for user to stop dragging
             val ranges = withContext(ioDispatcher) {
                 DetectionUtils.findSilence(
                     waveform = waveform,
@@ -451,6 +468,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun clearSilencePreview() {
+        silencePreviewJob?.cancel()
         _silencePreviewRanges.value = emptyList()
         updateState()
     }
@@ -467,6 +485,10 @@ class VideoEditingViewModel @Inject constructor(
         val newSegments = mutableListOf<TrimSegment>()
         
         clip.segments.forEach { seg ->
+            if (seg.action == SegmentAction.DISCARD) {
+                newSegments.add(seg)
+                return@forEach
+            }
             val segRanges = mutableListOf<LongRange>()
             segRanges.add(seg.startMs..seg.endMs)
             
@@ -623,13 +645,20 @@ class VideoEditingViewModel @Inject constructor(
 
                 if (bitmap != null) {
                     val stableBitmap: Bitmap = bitmap
-                    val fileName = "snapshot_${System.currentTimeMillis()}.jpg"
+                    
+                    val format = preferences.snapshotFormatFlow.first()
+                    val quality = preferences.jpgQualityFlow.first()
+                    
+                    val ext = if (format == "PNG") "png" else "jpg"
+                    val compressFormat = if (format == "PNG") Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+                    
+                    val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = storageUtils.createImageOutputUri(fileName)
                     if (outputUri != null) {
                         try {
                             withContext(ioDispatcher) {
                                 context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                                    stableBitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream)
+                                    stableBitmap.compress(compressFormat, quality, outputStream)
                                 }
                             }
                         } catch (e: Exception) {

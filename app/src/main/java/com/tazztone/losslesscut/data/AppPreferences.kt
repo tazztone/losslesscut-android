@@ -51,7 +51,7 @@ class AppPreferences @Inject constructor(
             }
         }
         .map { preferences ->
-            preferences[PreferencesKeys.SNAPSHOT_FORMAT] ?: "PNG"
+            preferences[PreferencesKeys.SNAPSHOT_FORMAT] ?: "JPEG"
         }
 
     val jpgQualityFlow: Flow<Int> = context.dataStore.data

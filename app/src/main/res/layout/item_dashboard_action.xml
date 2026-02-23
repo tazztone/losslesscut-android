@@ -50,6 +50,7 @@
         </LinearLayout>
 
         <ImageView
+            android:id="@+id/ivArrow"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:src="@drawable/ic_skip_next_24"

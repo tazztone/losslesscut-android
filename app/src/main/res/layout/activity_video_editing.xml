@@ -18,71 +18,81 @@
 
         <ImageButton
             android:id="@+id/btnHome"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@drawable/ic_home_24"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/home"
             android:tooltipText="@string/home"
-            android:layout_marginEnd="8dp"/>
+            app:tint="?attr/colorOnSurface"/>
 
         <ImageButton
             android:id="@+id/btnAddClips"
-            android:minWidth="48dp"
-            android:minHeight="48dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@drawable/ic_add_24"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/add_video"
             android:tooltipText="@string/add_video"
-            android:layout_marginEnd="16dp"/>
+            app:tint="?attr/colorOnSurface"/>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end">
+        <ImageButton
+            android:id="@+id/btnUndo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_undo_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/undo"
+            android:tooltipText="@string/undo"
+            app:tint="?attr/colorOnSurface"/>
 
-            <ImageButton
-                android:id="@+id/btnUndo"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/ic_undo_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/undo"
-                android:tooltipText="@string/undo"
-                android:layout_marginEnd="16dp"/>
+        <ImageButton
+            android:id="@+id/btnRedo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_redo_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Redo"
+            android:tooltipText="Redo"
+            app:tint="?attr/colorOnSurface"/>
 
-            <ImageButton
-                android:id="@+id/btnSettings"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/ic_settings_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/settings"
-                android:tooltipText="@string/settings"
-                android:layout_marginEnd="16dp"/>
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
-            <ImageButton
-                android:id="@+id/btnSnapshot"
-                android:minWidth="48dp"
-                android:minHeight="48dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@drawable/ic_camera_24"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/snapshot"
-                android:tooltipText="@string/snapshot"
-                android:layout_marginEnd="8dp"/>
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_settings_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/settings"
+            android:tooltipText="@string/settings"
+            app:tint="?attr/colorOnSurface"
+            android:layout_marginEnd="8dp"/>
 
-        </LinearLayout>
+        <ImageButton
+            android:id="@+id/btnSnapshot"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_camera_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/snapshot"
+            android:tooltipText="@string/snapshot"
+            app:tint="?attr/colorOnSurface"
+            android:layout_marginEnd="8dp"/>
+
+        <ImageButton
+            android:id="@+id/btnExport"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_export_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/export"
+            android:tooltipText="@string/export"
+            app:tint="?attr/colorOnSurface"
+            android:layout_marginEnd="8dp"/>
     </androidx.appcompat.widget.Toolbar>
 
     <!-- Bottom Editing Tools -->
@@ -310,59 +320,6 @@
     </LinearLayout>
 
 
-    <!-- Bottom Action Bar -->
-    <LinearLayout
-        android:id="@+id/bottomActionBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="8dp"
-        app:layout_constraintBottom_toBottomOf="parent">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnMetadata"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Metadata"
-            android:textSize="10sp"
-            app:icon="@drawable/ic_metadata_24"
-            app:iconSize="18dp" />
-
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnExport"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="2"
-            android:text="Cut"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:icon="@drawable/ic_export_24"
-            app:iconSize="24dp" />
-
-        <Space
-            android:layout_width="8dp"
-            android:layout_height="0dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnRemux"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Remux"
-            android:textSize="10sp"
-            app:icon="@drawable/ic_remux_24"
-            app:iconSize="18dp" />
-
-    </LinearLayout>
 
     <!-- Player Area (Takes remaining top space) -->
     <LinearLayout
@@ -390,15 +347,11 @@
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom"
                 android:padding="8dp"
-                android:text="00:00 / 00:00"
+                android:text="00:00:00 / 00:00:00"
                 android:textColor="@android:color/white"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:shadowColor="#BB000000"
-                android:shadowDx="2"
-                android:shadowDy="2"
-                android:shadowRadius="4" />
+                android:textSize="14sp"
+                android:background="#FF000000"
+                android:gravity="start" />
 
             <LinearLayout
                 android:id="@+id/audioPlaceholder"
@@ -495,6 +448,9 @@
             <include
                 android:id="@+id/silenceDetectionContainer"
                 layout="@layout/dialog_silence_detection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
                 android:visibility="gone" />
         </FrameLayout>
 
