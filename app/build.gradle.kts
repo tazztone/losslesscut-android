@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.google.hilt.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -43,8 +44,8 @@ android {
         applicationId = "com.tazztone.losslesscut"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: 2
+        versionName = project.findProperty("versionName")?.toString() ?: "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

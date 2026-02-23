@@ -12,6 +12,7 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.usecase.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
@@ -59,8 +60,8 @@ class VideoEditingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
 
-    private val _uiEvents = MutableSharedFlow<VideoEditingEvent>()
-    val uiEvents: SharedFlow<VideoEditingEvent> = _uiEvents.asSharedFlow()
+    private val _uiEvents = Channel<VideoEditingEvent>(Channel.BUFFERED)
+    val uiEvents: Flow<VideoEditingEvent> = _uiEvents.receiveAsFlow()
 
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
@@ -98,7 +99,7 @@ class VideoEditingViewModel @Inject constructor(
             reset()
         }
         
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.value = VideoEditingUiState.Loading()
             try {
                 repository.evictOldCacheFiles()
@@ -125,9 +126,9 @@ class VideoEditingViewModel @Inject constructor(
 
     private fun loadClipData(index: Int) {
         val clip = currentClips[index]
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             val cacheKey = clip.uri.toString()
-            val kfs = keyframeCache[cacheKey] ?: repository.getKeyframes(clip.uri)
+            val kfs = keyframeCache[cacheKey] ?: withContext(ioDispatcher) { repository.getKeyframes(clip.uri) }
             keyframeCache[cacheKey] = kfs
             currentKeyframes = kfs
             
@@ -138,7 +139,7 @@ class VideoEditingViewModel @Inject constructor(
 
     private fun extractWaveform(clip: MediaClip) {
         waveformJob?.cancel()
-        waveformJob = viewModelScope.launch {
+        waveformJob = viewModelScope.launch(ioDispatcher) {
             _waveformData.value = null
             val cacheKey = "waveform_${clip.uri.toString().hashCode()}.bin"
             val cached = repository.loadWaveformFromCache(cacheKey)
@@ -162,7 +163,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun addClips(uris: List<Uri>) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             val result = clipManagementUseCase.createClips(uris)
             result.fold(
                 onSuccess = { newClips ->
@@ -181,8 +182,8 @@ class VideoEditingViewModel @Inject constructor(
 
     fun removeClip(index: Int) {
         if (currentClips.size <= 1) {
-            viewModelScope.launch { 
-                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_cannot_delete_last))) 
+            viewModelScope.launch(ioDispatcher) { 
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_cannot_delete_last))) 
             }
             return
         }
@@ -225,8 +226,8 @@ class VideoEditingViewModel @Inject constructor(
         val updatedClip = clipManagementUseCase.splitSegment(currentClip, positionMs, MIN_SEGMENT_DURATION_MS)
         
         if (updatedClip == null) {
-            viewModelScope.launch { 
-                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split))) 
+            viewModelScope.launch(ioDispatcher) { 
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split))) 
             }
             return
         }
@@ -242,8 +243,8 @@ class VideoEditingViewModel @Inject constructor(
         val updatedClip = clipManagementUseCase.markSegmentDiscarded(currentClip, id)
         
         if (updatedClip == null) {
-            viewModelScope.launch {
-                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_cannot_discard_last)))
+            viewModelScope.launch(ioDispatcher) {
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_cannot_discard_last)))
             }
             return
         }
@@ -331,7 +332,7 @@ class VideoEditingViewModel @Inject constructor(
         val clip = currentClips.getOrNull(selectedClipIndex) ?: return
         
         silencePreviewJob?.cancel()
-        silencePreviewJob = viewModelScope.launch {
+        silencePreviewJob = viewModelScope.launch(ioDispatcher) {
             val ranges = silenceDetectionUseCase.findSilence(
                 waveform, threshold, minSilenceMs, clip.durationMs, paddingMs, minSegmentMs
             )
@@ -407,7 +408,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List<Int>? = null) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.value = VideoEditingUiState.Loading()
             exportUseCase.execute(
                 clips = currentClips,
@@ -424,14 +425,14 @@ class VideoEditingViewModel @Inject constructor(
                         _uiState.value = VideoEditingUiState.Loading(result.percentage, UiText.DynamicString(result.message))
                     }
                     is ExportUseCase.Result.Success -> {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))
-                        _uiEvents.emit(VideoEditingEvent.ExportComplete(true, result.count))
+                        _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))
+                        _uiEvents.send(VideoEditingEvent.ExportComplete(true, result.count))
                         _isDirty.value = false
                         updateState()
                     }
                     is ExportUseCase.Result.Failure -> {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.DynamicString(result.error)))
-                        _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                        _uiEvents.send(VideoEditingEvent.ShowToast(UiText.DynamicString(result.error)))
+                        _uiEvents.send(VideoEditingEvent.ExportComplete(false))
                         updateState()
                     }
                 }
@@ -440,7 +441,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun extractSnapshot(positionMs: Long) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             if (!isSnapshotInProgress.compareAndSet(false, true)) return@launch
             updateState()
             
@@ -452,10 +453,10 @@ class VideoEditingViewModel @Inject constructor(
             
             when (result) {
                 is ExtractSnapshotUseCase.Result.Success -> {
-                    _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_saved, result.fileName)))
+                    _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_saved, result.fileName)))
                 }
                 is ExtractSnapshotUseCase.Result.Failure -> {
-                    _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_failed)))
+                    _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_failed)))
                 }
             }
             
@@ -465,7 +466,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun saveSession() {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             sessionUseCase.saveSession(currentClips)
         }
     }
@@ -475,13 +476,13 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun restoreSession(uri: Uri) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             try {
                 _uiState.value = VideoEditingUiState.Loading()
                 val validClips = sessionUseCase.restoreSession(uri)
 
                 if (validClips.isNullOrEmpty()) {
-                    _uiEvents.emit(VideoEditingEvent.ShowToast(
+                    _uiEvents.send(VideoEditingEvent.ShowToast(
                         UiText.StringResource(R.string.error_restore_failed_files_missing)
                     ))
                     updateState()
@@ -492,11 +493,11 @@ class VideoEditingViewModel @Inject constructor(
                 selectedClipIndex = 0
                 _isDirty.value = true
                 loadClipData(selectedClipIndex)
-                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.session_restored)))
-                _uiEvents.emit(VideoEditingEvent.SessionRestored)
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.session_restored)))
+                _uiEvents.send(VideoEditingEvent.SessionRestored)
             } catch (e: Exception) {
                 Log.e("VideoEditingViewModel", "Failed to restore session", e)
-                _uiEvents.emit(VideoEditingEvent.ShowToast(
+                _uiEvents.send(VideoEditingEvent.ShowToast(
                     UiText.StringResource(R.string.error_restore_failed, e.message ?: "")
                 ))
                 updateState()

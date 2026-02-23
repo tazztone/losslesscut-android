@@ -37,3 +37,4 @@ keystore.properties
 logo.png
 release.keystore
 *.jks
+test_output.txt

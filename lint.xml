@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <lint>
     <!-- Ignore specific issues if necessary -->
-    <issue id="OldTargetApi" severity="warning" />
-    <issue id="NewerVersionAvailable" severity="warning" />
+    <issue id="OldTargetApi" severity="error" />
+    <issue id="NewerVersionAvailable" severity="error" />
 </lint>

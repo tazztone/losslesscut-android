@@ -1,20 +1,30 @@
 # Gemini Integration Guide
 
 ## Project Context
-This project is a lossless video editor for Android, using Media3, MediaExtractor, and MediaMuxer.
-It follows Clean Architecture with a multi-module Gradle setup.
+Lossless video editor for Android (Media3, MediaExtractor, MediaMuxer).
+Clean Architecture (MVVM) with multi-module Gradle setup.
 
 ## Module Responsibilities
-- `:app`: UI (Fragments, Activities, ViewModels).
-- `:core:domain`: Domain Layer (Use Cases, Repository/Engine Interfaces, Models).
-- `:core:data`: Data Layer (Repository Implementations, Persistence, low-level Utils).
-- `:engine`: Media Processing Layer (Lossless Engine implementations).
+- `:app`: UI (Fragments, ViewModels), Navigation, Use Cases.
+- `:core:domain`: Domain Layer (Interfaces, Models, Use Case interfaces).
+- `:core:data`: Data Layer (Repository Impl, Persistence, Utils).
+- `:engine`: Media Processing Layer (Lossless Engines).
 
-## Clean Architecture Rules
-- Use Cases must reside in `:core:domain`.
-- UI must depend on `:core:domain` via Interfaces.
-- Logic should be decoupled from `android.content.Context` where possible (delegated to Repository/Engine).
+## Clean Architecture & Design
+- Use Cases in `:app` or `:core:domain`. Logic decoupled from `Context`.
+- Palette: Modern, vibrant colors (HSL), dark mode, glassmorphism.
+- UI: Jetpack Navigation, Fragments (`Editor`, `Remux`, `Metadata`).
+- `CustomVideoSeeker`: High-performance timeline with accessibility & zoom.
 
-## CI/CD
-- GitHub Actions is used for CI.
-- Pinned SHAs and JDK 21 are required for all workflows.
+## Data & Engine
+- `LosslessEngine`: Core muxing/merging logic.
+- `AppPreferences`: DataStore for settings.
+- `StorageUtils`: Scoped Storage (SAF) helper.
+
+## CI/CD & Tooling
+- GitHub Actions (JDK 21, Pinned SHAs).
+- JVM Tests: `./gradlew test` | Lint: `./gradlew lintDebug`.
+
+## Context7 Library IDs
+- `/androidx/media` (Media3) | `/kotlin/kotlinx.coroutines`
+- `/androidx/datastore` | `/material-components/material-components-android`
