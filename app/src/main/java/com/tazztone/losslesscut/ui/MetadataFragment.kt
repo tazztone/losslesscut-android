@@ -47,6 +47,9 @@ class MetadataFragment : BaseEditingFragment(R.layout.fragment_metadata) {
             true
         }
 
+        binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
+        binding.btnNudgeForward?.setOnClickListener { playerManager.seekToKeyframe(1) }
+
         binding.seekerContainer?.visibility = View.GONE
         binding.editingControls?.visibility = View.GONE
         

@@ -46,6 +46,9 @@ class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
             Toast.makeText(requireContext(), msgRes, Toast.LENGTH_SHORT).show()
             true
         }
+
+        binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
+        binding.btnNudgeForward?.setOnClickListener { playerManager.seekToKeyframe(1) }
         
         binding.seekerContainer?.visibility = View.GONE
         binding.editingControls?.visibility = View.GONE

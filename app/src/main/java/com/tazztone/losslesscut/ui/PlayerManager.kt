@@ -65,6 +65,24 @@ class PlayerManager(
         player = null
     }
 
+    fun seekToKeyframe(direction: Int) {
+        val currentPos = currentPosition
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success
+        val keyframes = state?.keyframes ?: emptyList()
+
+        val target = if (direction > 0) {
+            keyframes.firstOrNull { it > currentPos + 10 }
+        } else {
+            keyframes.lastOrNull { it < currentPos - 10 }
+        }
+
+        if (target != null) {
+            seekTo(target)
+        } else {
+            performNudge(direction)
+        }
+    }
+
     fun setMediaItems(uris: List<Uri>, initialIndex: Int = 0, initialPosition: Long = 0, playWhenReady: Boolean = false) {
         val mediaItems = uris.map { MediaItem.fromUri(it) }
         player?.apply {

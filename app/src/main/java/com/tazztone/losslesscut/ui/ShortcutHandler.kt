@@ -25,7 +25,7 @@ class ShortcutHandler(
                     if (event.isAltPressed) {
                         playerManager.performNudge(-1)
                     } else {
-                        playerManager.seekToPrevious()
+                        playerManager.seekToKeyframe(-1)
                     }
                     return true
                 }
@@ -33,7 +33,7 @@ class ShortcutHandler(
                     if (event.isAltPressed) {
                         playerManager.performNudge(1)
                     } else {
-                        playerManager.seekToNext()
+                        playerManager.seekToKeyframe(1)
                     }
                     return true
                 }

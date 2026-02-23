@@ -265,8 +265,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.btnSilenceCut?.setOnClickListener { showSilenceDetectionDialog() }
         binding.containerSilenceCut?.setOnClickListener { showSilenceDetectionDialog() }
 
-        binding.btnNudgeBack?.setOnClickListener { playerManager.performNudge(-1) }
-        binding.btnNudgeForward?.setOnClickListener { playerManager.performNudge(1) }
+        binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
+        binding.btnNudgeForward?.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
     private fun setupCustomSeeker() {
