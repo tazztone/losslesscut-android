@@ -272,11 +272,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private fun setupCustomSeeker() {
         binding.customVideoSeeker.onSeekStart = {
             isDraggingTimeline = true
-            playerManager.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
         }
         binding.customVideoSeeker.onSeekEnd = {
             isDraggingTimeline = false
-            playerManager.setSeekParameters(androidx.media3.exoplayer.SeekParameters.DEFAULT)
         }
         binding.customVideoSeeker.onSeekListener = { pos ->
             playerManager.seekTo(pos)

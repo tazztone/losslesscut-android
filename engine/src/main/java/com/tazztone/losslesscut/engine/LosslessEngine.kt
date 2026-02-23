@@ -194,7 +194,7 @@ class LosslessEngineImpl @Inject constructor(
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(context, uri)
-            retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
         } catch (e: Exception) {
             null
         } finally {
