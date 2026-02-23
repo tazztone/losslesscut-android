@@ -99,6 +99,8 @@
     <string name="duplicate_files_confirm_msg">%1$d selected file(s) are already in the playlist. Skip duplicates?</string>
     <string name="skip_duplicates">Skip Duplicates</string>
     <string name="import_all">Import All</string>
+    <string name="import_anyway">Import Anyway</string>
+    <string name="skip">Skip</string>
     <string name="speed_format">%.1fx</string>
     <string name="dashboard_cut_title">Cut &amp; Trim</string>
     <string name="dashboard_cut_desc">Lossless cutting for video and audio</string>

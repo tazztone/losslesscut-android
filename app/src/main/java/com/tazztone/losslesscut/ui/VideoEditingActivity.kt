@@ -43,7 +43,7 @@ import java.io.FileOutputStream
 
 @UnstableApi
 @AndroidEntryPoint
-class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
+class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.SettingsListener {
  
     companion object {
         const val EXTRA_VIDEO_URIS = "com.tazztone.losslesscut.EXTRA_VIDEO_URIS"
@@ -83,26 +83,30 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             val currentState = viewModel.uiState.value
             if (currentState is VideoEditingUiState.Success) {
                 val existingUris = currentState.clips.map { it.uri }.toSet()
-                val duplicateUris = uris.filter { it in existingUris }
-                val nonDuplicateUris = uris.filter { it !in existingUris }
+                val duplicates = uris.filter { it in existingUris }
+                val nonDuplicates = uris.filter { it !in existingUris }
 
-                if (duplicateUris.isEmpty()) {
+                if (duplicates.isEmpty()) {
                     viewModel.addClips(uris)
-                } else if (nonDuplicateUris.isEmpty()) {
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
-                        .setTitle(R.string.add_video)
-                        .setMessage(R.string.duplicate_files_msg)
-                        .setPositiveButton(android.R.string.ok, null)
-                        .show()
                 } else {
+                    val message = if (uris.size == 1) {
+                        getString(R.string.duplicate_files_msg)
+                    } else if (nonDuplicates.isEmpty()) {
+                        getString(R.string.duplicate_files_msg)
+                    } else {
+                        getString(R.string.duplicate_files_confirm_msg, duplicates.size)
+                    }
+
                     com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
                         .setTitle(R.string.add_video)
-                        .setMessage(getString(R.string.duplicate_files_confirm_msg, duplicateUris.size))
-                        .setPositiveButton(R.string.skip_duplicates) { _, _ ->
-                            viewModel.addClips(nonDuplicateUris)
-                        }
-                        .setNegativeButton(R.string.import_all) { _, _ ->
+                        .setMessage(message)
+                        .setPositiveButton(R.string.import_anyway) { _, _ ->
                             viewModel.addClips(uris)
+                        }
+                        .setNegativeButton(R.string.skip) { _, _ ->
+                            if (nonDuplicates.isNotEmpty()) {
+                                viewModel.addClips(nonDuplicates)
+                            }
                         }
                         .setNeutralButton(android.R.string.cancel, null)
                         .show()
@@ -132,19 +136,11 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                 updateDurationDisplay(player.currentPosition, player.duration)
                 binding.customVideoSeeker.setSeekPosition(player.currentPosition)
             }
+            updatePlaybackIcons()
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (::binding.isInitialized) {
-                binding.btnPlayPause?.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
-                binding.btnPlayPauseControls?.setImageResource(if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24)
-                if (isPlaying) {
-                    binding.btnPlayPause?.animate()?.alpha(0f)?.setStartDelay(500)?.setDuration(300)?.start()
-                } else {
-                    binding.btnPlayPause?.animate()?.cancel()
-                    binding.btnPlayPause?.alpha = 1f
-                }
-            }
+            updatePlaybackIcons()
             if (isPlaying) {
                 startProgressUpdate()
             } else {
@@ -199,17 +195,19 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
             else          -> { /* default cut UI */ }
         }
         
-        // Check for saved session
-        lifecycleScope.launch {
-            if (launchMode == MODE_CUT && viewModel.hasSavedSession(videoUris[0])) {
-                com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
-                    .setTitle(R.string.restore_session_title)
-                    .setMessage(R.string.restore_session_message)
-                    .setPositiveButton(R.string.restore) { _, _ ->
-                        viewModel.restoreSession(videoUris[0])
-                    }
-                    .setNegativeButton(R.string.ignore, null)
-                    .show()
+        // Check for saved session - only on fresh launch
+        if (savedInstanceState == null) {
+            lifecycleScope.launch {
+                if (launchMode == MODE_CUT && viewModel.hasSavedSession(videoUris[0])) {
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(this@VideoEditingActivity)
+                        .setTitle(R.string.restore_session_title)
+                        .setMessage(R.string.restore_session_message)
+                        .setPositiveButton(R.string.restore) { _, _ ->
+                            viewModel.restoreSession(videoUris[0])
+                        }
+                        .setNegativeButton(R.string.ignore, null)
+                        .show()
+                }
             }
         }
         
@@ -363,12 +361,12 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
 
         binding.btnPlayPause?.setOnClickListener {
-            if (player.isPlaying) player.pause() else player.play()
+            togglePlayback()
         }
         binding.btnPlayPause?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
         binding.playerView.setOnClickListener {
-            if (player.isPlaying) player.pause() else player.play()
+            togglePlayback()
         }
         
         try { 
@@ -433,7 +431,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnNudgeForward?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_forward)) }
 
         binding.btnPlayPauseControls?.setOnClickListener {
-            if (player.isPlaying) player.pause() else player.play()
+            togglePlayback()
         }
         binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
@@ -494,7 +492,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         if (event.action == android.view.KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 android.view.KeyEvent.KEYCODE_SPACE -> {
-                    if (player.isPlaying) player.pause() else player.play()
+                    togglePlayback()
                     return true
                 }
                 android.view.KeyEvent.KEYCODE_I -> {
@@ -781,6 +779,38 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private fun cyclePlaybackSpeed() {
         val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
         updatePlaybackSpeed(playbackSpeeds[nextIdx])
+    }
+
+    private fun updatePlaybackIcons() {
+        if (!::binding.isInitialized || !::player.isInitialized) return
+        
+        val isPlaying = player.isPlaying
+        val isEnded = player.playbackState == Player.STATE_ENDED
+        
+        val iconRes = when {
+            isEnded -> R.drawable.ic_restore_24
+            isPlaying -> R.drawable.ic_pause_24
+            else -> R.drawable.ic_play_24
+        }
+        
+        binding.btnPlayPause?.setImageResource(iconRes)
+        binding.btnPlayPauseControls?.setImageResource(iconRes)
+        
+        if (isPlaying) {
+            binding.btnPlayPause?.animate()?.alpha(0f)?.setStartDelay(500)?.setDuration(300)?.start()
+        } else {
+            binding.btnPlayPause?.animate()?.cancel()
+            binding.btnPlayPause?.alpha = 1f
+        }
+    }
+
+    private fun togglePlayback() {
+        if (player.playbackState == Player.STATE_ENDED) {
+            player.seekTo(0)
+            player.play()
+        } else {
+            if (player.isPlaying) player.pause() else player.play()
+        }
     }
 
     private fun updatePlaybackSpeed(speed: Float) {

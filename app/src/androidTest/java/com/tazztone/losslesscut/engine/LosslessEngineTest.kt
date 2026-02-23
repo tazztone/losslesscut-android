@@ -23,13 +23,14 @@ import java.io.File
 class LosslessEngineTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val storageUtils = StorageUtils(context)
+    private val preferences = AppPreferences(context)
+    private val storageUtils = StorageUtils(context, preferences)
     private val engine = LosslessEngineImpl(storageUtils, kotlinx.coroutines.Dispatchers.IO)
 
     @Test
     fun probeKeyframes_withInvalidUri_returnsEmptyList() = runBlocking {
         val invalidUri = Uri.parse("content://invalid/video.mp4")
-        val keyframes = engine.probeKeyframes(context, invalidUri)
+        val keyframes = engine.getKeyframes(context, invalidUri).getOrDefault(emptyList())
         assertTrue("Keyframes should be empty for invalid URI", keyframes.isEmpty())
     }
 

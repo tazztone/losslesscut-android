@@ -27,8 +27,21 @@ class AppPreferences @Inject constructor(
         val UNDO_LIMIT = intPreferencesKey("undo_limit")
         val SNAPSHOT_FORMAT = stringPreferencesKey("snapshot_format")
         val JPG_QUALITY = intPreferencesKey("jpg_quality")
+        val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
     }
+
+    val accentColorFlow: Flow<String> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.ACCENT_COLOR] ?: "cyan"
+        }
 
     val undoLimitFlow: Flow<Int> = context.dataStore.data
         .catch { exception ->
@@ -96,6 +109,12 @@ class AppPreferences @Inject constructor(
         require(quality in 1..100) { "JPG quality must be between 1 and 100" }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.JPG_QUALITY] = quality
+        }
+    }
+
+    suspend fun setAccentColor(colorName: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ACCENT_COLOR] = colorName
         }
     }
 

@@ -55,10 +55,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private var selectedSegmentId: UUID? = null
 
     private var waveformData: FloatArray? = null
-    private val waveformPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#55FFFFFF") // 33% white, sits under segments
-        strokeWidth = 2f
-        style = Paint.Style.STROKE
+    private val waveformPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(85, Color.red(colorOnSurfaceVariant), Color.green(colorOnSurfaceVariant), Color.blue(colorOnSurfaceVariant))
+            strokeWidth = 2f
+            style = Paint.Style.STROKE
+        }
     }
 
     var silencePreviewRanges: List<LongRange> = emptyList()
@@ -67,10 +69,20 @@ class CustomVideoSeeker @JvmOverloads constructor(
             invalidate()
         }
 
-    private val silencePreviewPaint = Paint().apply {
-        color = 0xBB000000.toInt() // Dark semi-transparent black
-        style = Paint.Style.FILL
+    private val silencePreviewPaint by lazy {
+        Paint().apply {
+            color = 0xBB000000.toInt() // Dark semi-transparent black
+            style = Paint.Style.FILL
+        }
     }
+
+    // Colors
+    private val colorOnSurface: Int by lazy { resolveColor(R.attr.colorOnSurface, Color.WHITE) }
+    private val colorOnSurfaceVariant: Int by lazy { resolveColor(R.attr.colorOnSurfaceVariant, Color.LTGRAY) }
+    private val colorPrimary: Int by lazy { resolveColor(android.R.attr.colorPrimary, Color.BLUE) }
+    private val colorAccent: Int by lazy { resolveColor(R.attr.colorAccent, Color.CYAN) }
+    private val colorSegmentKeep: Int by lazy { resolveColor(R.attr.colorSegmentKeep, Color.GREEN) }
+    private val colorSegmentDiscard: Int by lazy { resolveColor(R.attr.colorSegmentDiscard, Color.RED) }
 
     // Zoom and Pan
     private var zoomFactor = 1f
@@ -80,11 +92,26 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val timelinePadding = 50f
 
     // Paints
-    private val playheadPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; strokeWidth = 5f }
-    private val playheadTrianglePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.RED; style = Paint.Style.FILL }
+    private val playheadPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { 
+            color = Color.WHITE
+            strokeWidth = 5f 
+        }
+    }
+    private val playheadTrianglePaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { 
+            color = Color.RED 
+            style = Paint.Style.FILL 
+        }
+    }
     private val playheadPath = android.graphics.Path()
 
-    private val keyframePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.YELLOW; strokeWidth = 2f }
+    private val keyframePaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { 
+            color = Color.YELLOW 
+            strokeWidth = 2f 
+        }
+    }
     private val keepColors = arrayOf(
         Color.parseColor("#6688FF88"), // Pastel Green
         Color.parseColor("#66FF8888"), // Pastel Red
@@ -94,39 +121,53 @@ class CustomVideoSeeker @JvmOverloads constructor(
         Color.parseColor("#66FF88FF")  // Pastel Magenta
     )
     private val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 8f
+    private val selectedBorderPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 8f
+        }
     }
-    private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        strokeWidth = 10f
-        strokeCap = Paint.Cap.ROUND
+    private val handlePaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            strokeWidth = 10f
+            strokeCap = Paint.Cap.ROUND
+        }
     }
-    private val zoomHintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { 
-        color = Color.WHITE
-        textSize = 64f
-        textAlign = Paint.Align.CENTER
-        setShadowLayer(4f, 2f, 2f, Color.BLACK)
+    private val zoomHintPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { 
+            color = Color.WHITE
+            textSize = 64f
+            textAlign = Paint.Align.CENTER
+            setShadowLayer(4f, 2f, 2f, Color.BLACK)
+        }
     }
-    private val zoomHintBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#99000000") // Darker semi-transparent background
-        style = Paint.Style.FILL
+    private val zoomHintBgPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#99000000")
+            style = Paint.Style.FILL
+        }
     }
-    private val timeLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.LTGRAY
-        textSize = 30f
-        textAlign = Paint.Align.CENTER
+    private val timeLabelPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.LTGRAY
+            textSize = 30f
+            textAlign = Paint.Align.CENTER
+        }
     }
-    private val fingerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.STROKE
-        strokeWidth = 4f
+    private val fingerPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 4f
+        }
     }
-    private val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
-        style = Paint.Style.FILL
+    private val arrowPaint by lazy {
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        }
     }
     private val arrowPath = android.graphics.Path()
     private val timeStringBuilder = StringBuilder()
@@ -141,10 +182,20 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private val segmentRect = RectF()
 
     init {
-        keepSegmentPaint.color = keepColors[0]
+        keepSegmentPaint.color = colorSegmentKeep
         contentDescription = context.getString(R.string.video_timeline_description)
         ViewCompat.setAccessibilityDelegate(this, accessibilityHelper)
         startPinchAnimation()
+    }
+
+    private fun resolveColor(attr: Int, default: Int): Int {
+        val typedValue = android.util.TypedValue()
+        val theme = context.theme
+        return if (theme.resolveAttribute(attr, typedValue, true)) {
+            typedValue.data
+        } else {
+            default
+        }
     }
 
     private fun startPinchAnimation() {

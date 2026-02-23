@@ -92,7 +92,14 @@ class LosslessEngineImpl @Inject constructor(
         val extractor = MediaExtractor()
 
         try {
-            extractor.setDataSource(context, videoUri, null)
+            try {
+                extractor.setDataSource(context, videoUri, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "MediaExtractor (keyframes) failed for $videoUri, trying FileDescriptor", e)
+                context.contentResolver.openFileDescriptor(videoUri, "r")?.use { pfd ->
+                    extractor.setDataSource(pfd.fileDescriptor)
+                } ?: throw IOException("Could not open FileDescriptor for $videoUri")
+            }
             val trackCount = extractor.trackCount
             var videoTrackIndex = -1
 
@@ -131,11 +138,24 @@ class LosslessEngineImpl @Inject constructor(
     override suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata> = withContext(ioDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(context, uri)
-            val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0L
-            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt() ?: 0
-            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt() ?: 0
-            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0
+            try {
+                retriever.setDataSource(context, uri)
+            } catch (e: Exception) {
+                Log.e(TAG, "MediaMetadataRetriever failed for $uri, trying FileDescriptor", e)
+                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                    retriever.setDataSource(pfd.fileDescriptor)
+                } ?: throw IOException("Could not open FileDescriptor for $uri")
+            }
+
+            val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            val duration = durationStr?.toLong() ?: 0L
+            if (duration <= 0) {
+                Log.w(TAG, "Duration is 0 or null for $uri")
+            }
+
+            val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
+            val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
+            val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
             
             // Get MIME types
             var videoMime: String? = null
@@ -147,7 +167,19 @@ class LosslessEngineImpl @Inject constructor(
             val extractor = MediaExtractor()
             val tracks = mutableListOf<TrackMetadata>()
             try {
-                extractor.setDataSource(context, uri, null)
+                try {
+                    extractor.setDataSource(context, uri, null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "MediaExtractor failed for $uri, trying FileDescriptor", e)
+                    context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                        extractor.setDataSource(pfd.fileDescriptor)
+                    } ?: throw IOException("Could not open FileDescriptor for $uri")
+                }
+
+                if (extractor.trackCount == 0) {
+                    return@withContext Result.failure(IOException("No tracks found in the media file"))
+                }
+
                 for (i in 0 until extractor.trackCount) {
                     val format = extractor.getTrackFormat(i)
                     val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
@@ -203,7 +235,8 @@ class LosslessEngineImpl @Inject constructor(
                 )
             )
         } catch (e: Exception) {
-            Result.failure(e)
+            Log.e(TAG, "Failed to get metadata for $uri", e)
+            Result.failure(Exception("Could not read media file: ${e.localizedMessage ?: e.javaClass.simpleName}", e))
         } finally {
             retriever.release()
         }
@@ -242,7 +275,14 @@ class LosslessEngineImpl @Inject constructor(
         var pfd: android.os.ParcelFileDescriptor? = null
 
         try {
-            extractor.setDataSource(context, inputUri, null)
+            try {
+                extractor.setDataSource(context, inputUri, null)
+            } catch (e: Exception) {
+                Log.e(TAG, "MediaExtractor (cut) failed for $inputUri, trying FileDescriptor", e)
+                context.contentResolver.openFileDescriptor(inputUri, "r")?.use { pfd_in ->
+                    extractor.setDataSource(pfd_in.fileDescriptor)
+                } ?: throw IOException("Could not open FileDescriptor for $inputUri")
+            }
             
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
             if (pfd == null) return@withContext Result.failure(IOException(context.getString(R.string.error_failed_open_pfd)))
@@ -426,7 +466,14 @@ class LosslessEngineImpl @Inject constructor(
             // Initialize muxer tracks using the first clip
             val firstExtractor = MediaExtractor()
             try {
-                firstExtractor.setDataSource(context, clips[0].uri, null)
+                try {
+                    firstExtractor.setDataSource(context, clips[0].uri, null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "MediaExtractor (merge init) failed for ${clips[0].uri}, trying FileDescriptor", e)
+                    context.contentResolver.openFileDescriptor(clips[0].uri, "r")?.use { pfd_in ->
+                        firstExtractor.setDataSource(pfd_in.fileDescriptor)
+                    } ?: throw IOException("Could not open FileDescriptor for ${clips[0].uri}")
+                }
                 for (i in 0 until firstExtractor.trackCount) {
                     val format = firstExtractor.getTrackFormat(i)
                     val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
@@ -497,7 +544,14 @@ class LosslessEngineImpl @Inject constructor(
             for (clip in clips) {
                 val clipExtractor = MediaExtractor()
                 try {
-                    clipExtractor.setDataSource(context, clip.uri, null)
+                    try {
+                        clipExtractor.setDataSource(context, clip.uri, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "MediaExtractor (merge step) failed for ${clip.uri}, trying FileDescriptor", e)
+                        context.contentResolver.openFileDescriptor(clip.uri, "r")?.use { pfd_in ->
+                            clipExtractor.setDataSource(pfd_in.fileDescriptor)
+                        } ?: throw IOException("Could not open FileDescriptor for ${clip.uri}")
+                    }
 
                     val clipTrackMap = mutableMapOf<Int, Int>() // Clip Track Index -> Muxer Track Index
                     for (i in 0 until clipExtractor.trackCount) {

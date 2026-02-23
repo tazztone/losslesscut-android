@@ -11,19 +11,46 @@
         <item name="colorOnSurface">@color/colorOnSurface</item>
         <item name="colorOnSurfaceVariant">@color/colorOnSurfaceVariant</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowBackground">@android:color/black</item>
         <item name="android:textColor">@color/textColor</item>
-        <item name="android:navigationBarColor">@color/navigationBarColor</item>
-        <item name="android:statusBarColor">@color/statusBarColor</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="colorSegmentKeep">@color/segmentKeep</item>
+        <item name="colorSegmentDiscard">@color/segmentDiscard</item>
     </style>
 
     <style name="Editor" parent="AppTheme">
-        <item name="colorBackground">@color/colorPrimary</item>
+        <item name="colorBackground">@android:color/black</item>
     </style>
 
     <style name="DialogShapeAppearance" parent="">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="AppTheme.Purple">
+        <item name="colorPrimary">#BB86FC</item>
+        <item name="colorAccent">#BB86FC</item>
+    </style>
+
+    <style name="AppTheme.Green">
+        <item name="colorPrimary">#03DAC5</item>
+        <item name="colorAccent">#03DAC5</item>
+    </style>
+
+    <style name="AppTheme.Yellow">
+        <item name="colorPrimary">#FFEB3B</item>
+        <item name="colorAccent">#FFEB3B</item>
+    </style>
+
+    <style name="AppTheme.Red">
+        <item name="colorPrimary">#FF5252</item>
+        <item name="colorAccent">#FF5252</item>
+    </style>
+
+    <style name="AppTheme.Orange">
+        <item name="colorPrimary">#FF9800</item>
+        <item name="colorAccent">#FF9800</item>
     </style>
 
 </resources>

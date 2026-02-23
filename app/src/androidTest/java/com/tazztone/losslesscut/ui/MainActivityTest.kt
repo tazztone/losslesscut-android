@@ -43,7 +43,7 @@ class MainActivityTest {
 
     @Test
     fun testUIElementsVisible() {
-        onView(withId(R.id.addVideoButton)).check(matches(isDisplayed()))
+        onView(withId(R.id.rvDashboard)).check(matches(isDisplayed()))
         onView(withId(R.id.btnInfo)).check(matches(isDisplayed()))
         onView(withId(R.id.instructionText)).check(matches(isDisplayed()))
     }
@@ -53,17 +53,5 @@ class MainActivityTest {
         onView(withId(R.id.btnInfo)).perform(click())
         onView(withText("About")).check(matches(isDisplayed()))
         onView(withText("OK")).perform(click())
-    }
-
-    @Test
-    fun testAddVideoClick_launchesPicker() {
-        // Permissions might be requested first, which is hard to handle in a generic test
-        // but we can at least check if the click works.
-        // If permissions are granted, it should launch GetContent intent.
-        
-        onView(withId(R.id.addVideoButton)).perform(click())
-        
-        // This might fail if the permission dialog blocks the intent launch
-        // So we just check that the button is clickable for now.
     }
 }

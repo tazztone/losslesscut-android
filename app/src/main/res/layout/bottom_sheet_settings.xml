@@ -127,6 +127,89 @@
         android:background="?attr/colorOutlineVariant"
         android:layout_marginBottom="16dp"/>
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Theme Accent Color"
+        android:textColor="?attr/colorOnSurface"
+        android:textSize="16sp"
+        android:layout_marginBottom="8dp"/>
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:id="@+id/layoutColorPicker"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="4dp">
+            
+            <View
+                android:id="@+id/colorCyan"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_cyan"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="cyan"/>
+
+            <View
+                android:id="@+id/colorPurple"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_purple"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="purple"/>
+
+            <View
+                android:id="@+id/colorGreen"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_green"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="green"/>
+
+            <View
+                android:id="@+id/colorYellow"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_yellow"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="yellow"/>
+
+            <View
+                android:id="@+id/colorRed"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_red"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="red"/>
+
+            <View
+                android:id="@+id/colorOrange"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_margin="4dp"
+                android:background="@drawable/color_circle_orange"
+                android:clickable="true"
+                android:focusable="true"
+                android:tag="orange"/>
+        </LinearLayout>
+    </HorizontalScrollView>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

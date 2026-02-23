@@ -28,7 +28,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var requestPermissionsLauncher: ActivityResultLauncher<Array<String>>
@@ -151,6 +151,15 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, VideoEditingActivity::class.java).apply {
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
             putExtra(VideoEditingActivity.EXTRA_LAUNCH_MODE, pendingLaunchMode)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            
+            // For multiple URIs, ClipData is the standard way to grant permissions to all of them
+            if (mediaUris.isNotEmpty()) {
+                clipData = android.content.ClipData.newRawUri("Media", mediaUris[0])
+                for (i in 1 until mediaUris.size) {
+                    clipData?.addItem(android.content.ClipData.Item(mediaUris[i]))
+                }
+            }
         }
         startActivity(intent)
     }

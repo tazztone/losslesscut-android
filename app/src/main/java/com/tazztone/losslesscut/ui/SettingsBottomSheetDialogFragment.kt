@@ -174,6 +174,40 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 preferences.setCustomOutputUri(null)
             }
         }
+
+        setupColorPicker()
+    }
+
+    private fun setupColorPicker() {
+        val colors = listOf(
+            binding.colorCyan,
+            binding.colorPurple,
+            binding.colorGreen,
+            binding.colorYellow,
+            binding.colorRed,
+            binding.colorOrange
+        )
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            preferences.accentColorFlow.collect { currentColor ->
+                colors.forEach { view ->
+                    val isSelected = view.tag == currentColor
+                    view.scaleX = if (isSelected) 1.2f else 1.0f
+                    view.scaleY = if (isSelected) 1.2f else 1.0f
+                    view.alpha = if (isSelected) 1.0f else 0.6f
+                }
+            }
+        }
+
+        colors.forEach { view ->
+            view.setOnClickListener {
+                val colorName = it.tag as String
+                viewLifecycleOwner.lifecycleScope.launch {
+                    preferences.setAccentColor(colorName)
+                    activity?.recreate()
+                }
+            }
+        }
     }
 
     override fun onDestroyView() {
