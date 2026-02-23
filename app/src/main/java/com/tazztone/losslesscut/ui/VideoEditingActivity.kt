@@ -118,38 +118,6 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         }
     }
 
-    private val playerListener = object : Player.Listener {
-        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val index = playerManager.currentMediaItemIndex
-            viewModel.selectClip(index)
-            if (::clipAdapter.isInitialized) {
-                // Sync selection by ID from the current state to be position-invariant
-                val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
-                val clipId = currentState?.clips?.getOrNull(index)?.id
-                clipAdapter.updateSelection(clipId)
-            }
-        }
-
-        override fun onPlaybackStateChanged(state: Int) {
-            if (state == Player.STATE_READY && !isVideoLoaded) {
-                isVideoLoaded = true
-                binding.customVideoSeeker.setVideoDuration(playerManager.duration)
-                updateDurationDisplay(playerManager.currentPosition, playerManager.duration)
-                binding.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
-            }
-            updatePlaybackIcons()
-        }
-
-        override fun onIsPlayingChanged(isPlaying: Boolean) {
-            updatePlaybackIcons()
-            if (isPlaying) {
-                startProgressUpdate()
-            } else {
-                stopProgressUpdate()
-            }
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityVideoEditingBinding.inflate(layoutInflater)
@@ -173,7 +141,33 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         hideSystemUI()
 
         initializeViews()
-        playerManager = PlayerManager(this, binding, viewModel, playerListener)
+        playerManager = PlayerManager(
+            context = this,
+            binding = binding,
+            viewModel = viewModel,
+            onStateChanged = { state ->
+                if (state == Player.STATE_READY) { // Removed !isVideoLoaded check
+                    binding.customVideoSeeker.setVideoDuration(playerManager.duration)
+                    updateDurationDisplay(playerManager.currentPosition, playerManager.duration)
+                    binding.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
+                }
+                updatePlaybackIcons()
+            },
+            onMediaTransition = { index ->
+                if (::clipAdapter.isInitialized) {
+                    val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
+                    val clipId = currentState?.clips?.getOrNull(index)?.id
+                    clipAdapter.updateSelection(clipId)
+                }
+            },
+            onIsPlayingChanged = { isPlaying ->
+                updatePlaybackIcons()
+                if (isPlaying) startProgressUpdate() else stopProgressUpdate()
+            },
+            onSpeedChanged = { speed ->
+                updatePlaybackSpeedUI(speed)
+            }
+        )
         playerManager.initialize()
         
         rotationManager = RotationManager(binding)
@@ -184,8 +178,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
             onSplit = { splitCurrentSegment() },
             onSetIn = { setInPoint() },
             onSetOut = { setOutPoint() },
-            onRestore = { viewModel.restoreSession(videoUris[0]) },
-            onNudge = { direction -> performNudge(direction) }
+            onRestore = { viewModel.restoreSession(videoUris[0]) }
         )
 
         setupCustomSeeker()
@@ -377,12 +370,12 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
 
         binding.btnPlayPause?.setOnClickListener {
-            togglePlayback()
+            playerManager.togglePlayback()
         }
         binding.btnPlayPause?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
 
         binding.playerView.setOnClickListener {
-            togglePlayback()
+            playerManager.togglePlayback()
         }
         
         try { 
@@ -429,60 +422,63 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         TooltipCompat.setTooltipText(binding.btnSplit, getString(R.string.split))
         binding.containerSplit?.let { TooltipCompat.setTooltipText(it, getString(R.string.split)) }
         
-        val deleteAction = { 
+        binding.btnRotateContainer.setOnClickListener { 
+            rotationManager.rotate(90)
+            Toast.makeText(this, getString(R.string.export_rotation_offset, rotationManager.currentRotation), Toast.LENGTH_SHORT).show()
+        }
+        binding.containerRotate?.setOnClickListener { 
+            rotationManager.rotate(90)
+            Toast.makeText(this, getString(R.string.export_rotation_offset, rotationManager.currentRotation), Toast.LENGTH_SHORT).show()
+        }
+        TooltipCompat.setTooltipText(binding.btnRotateContainer, getString(R.string.rotate))
+        binding.containerRotate?.let { TooltipCompat.setTooltipText(it, getString(R.string.rotate)) }
+
+        binding.btnPlaybackSpeed?.setOnClickListener {
+            playerManager.cyclePlaybackSpeed()
+        }
+        binding.btnPlaybackSpeed?.setOnLongClickListener {
+            isPitchCorrectionEnabled = !isPitchCorrectionEnabled
+            playerManager.updatePlaybackSpeed(playerManager.currentPlaybackSpeed, isPitchCorrectionEnabled)
+            val msg = if (isPitchCorrectionEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            true
+        }
+        binding.btnPlaybackSpeed?.let { TooltipCompat.setTooltipText(it, getString(R.string.playback_speed)) }
+
+        binding.btnSnapshot.setOnClickListener { extractSnapshot() }
+        TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
+
+        binding.btnDelete.setOnClickListener {
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.markSegmentDiscarded(it) }
             }
         }
-        binding.btnDelete.setOnClickListener { deleteAction() }
-        binding.containerDelete?.setOnClickListener { deleteAction() }
+        binding.containerDelete?.setOnClickListener {
+            val state = viewModel.uiState.value
+            if (state is VideoEditingUiState.Success) {
+                state.selectedSegmentId?.let { viewModel.markSegmentDiscarded(it) }
+            }
+        }
         TooltipCompat.setTooltipText(binding.btnDelete, getString(R.string.discard_segment))
         binding.containerDelete?.let { TooltipCompat.setTooltipText(it, getString(R.string.discard_segment)) }
-
-        binding.btnNudgeBack?.setOnClickListener { performNudge(-1) }
-        binding.btnNudgeBack?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_backward)) }
-        
-        binding.btnNudgeForward?.setOnClickListener { performNudge(1) }
-        binding.btnNudgeForward?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_forward)) }
-
-        binding.btnPlayPauseControls?.setOnClickListener {
-            togglePlayback()
-        }
-        binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
-
-        binding.btnPlaybackSpeed?.setOnClickListener { cyclePlaybackSpeed() }
-        binding.btnPlaybackSpeed?.setOnLongClickListener {
-            isPitchCorrectionEnabled = !isPitchCorrectionEnabled
-            updatePlaybackSpeed(currentPlaybackSpeed)
-            val msg = if (isPitchCorrectionEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
-            true
-        }
-
-        val snapshotAction = { extractSnapshot() }
-        binding.btnSnapshot.setOnClickListener { snapshotAction() }
-        TooltipCompat.setTooltipText(binding.btnSnapshot, getString(R.string.snapshot))
 
         val silenceCutAction = { showSilenceDetectionDialog() }
         binding.btnSilenceCut?.setOnClickListener { silenceCutAction() }
         binding.containerSilenceCut?.setOnClickListener { silenceCutAction() }
         binding.btnSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
         binding.containerSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
+
+        binding.btnNudgeBack?.setOnClickListener { playerManager.performNudge(-1) }
+        binding.btnNudgeBack?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_backward)) }
         
-        val rotateAction = {
-            rotationManager.rotate(90)
-            Toast.makeText(this, getString(R.string.export_rotation_offset, rotationManager.currentRotation), Toast.LENGTH_SHORT).show()
-        }
-        binding.btnRotateContainer.setOnClickListener { rotateAction() }
-        binding.containerRotate?.setOnClickListener { rotateAction() }
-        TooltipCompat.setTooltipText(binding.btnRotateContainer, getString(R.string.rotate))
-        binding.containerRotate?.let { TooltipCompat.setTooltipText(it, getString(R.string.rotate)) }
+        binding.btnNudgeForward?.setOnClickListener { playerManager.performNudge(1) }
+        binding.btnNudgeForward?.let { TooltipCompat.setTooltipText(it, getString(R.string.nudge_forward)) }
+
+        binding.btnPlayPauseControls?.setOnClickListener { playerManager.togglePlayback() }
+        binding.btnPlayPauseControls?.let { TooltipCompat.setTooltipText(it, getString(R.string.play_pause)) }
     }
 
-    private fun cycleRotation() {
-        rotationManager.rotate(90)
-    }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (shortcutHandler.handleKeyEvent(event)) return true
@@ -739,11 +735,6 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     }
 
 
-    private fun cyclePlaybackSpeed() {
-        val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
-        updatePlaybackSpeed(playbackSpeeds[nextIdx])
-    }
-
     private fun updatePlaybackIcons() {
         if (!::binding.isInitialized || !::playerManager.isInitialized) return
         
@@ -767,13 +758,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         }
     }
 
-    private fun togglePlayback() {
-        playerManager.togglePlayback()
-    }
-
-    private fun updatePlaybackSpeed(speed: Float) {
-        currentPlaybackSpeed = speed
-        playerManager.updatePlaybackSpeed(speed, isPitchCorrectionEnabled)
+    private fun updatePlaybackSpeedUI(speed: Float) {
         val speedText = when (speed) {
             0.25f -> "0.25x"
             0.5f -> "0.5x"
@@ -783,8 +768,6 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
             else -> String.format("%.1fx", speed)
         }
         binding.btnPlaybackSpeed?.text = speedText
-        
-        // Update UI state or tooltips if needed
     }
 
     private fun setupCustomSeeker() {

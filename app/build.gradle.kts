@@ -89,7 +89,6 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.documentfile)
-    implementation(libs.gson)
     implementation(libs.kotlinx.serialization.json)
     
     // Media3

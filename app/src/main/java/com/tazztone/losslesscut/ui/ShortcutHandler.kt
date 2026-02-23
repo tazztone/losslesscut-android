@@ -12,8 +12,7 @@ class ShortcutHandler(
     private val onSplit: () -> Unit,
     private val onSetIn: () -> Unit,
     private val onSetOut: () -> Unit,
-    private val onRestore: () -> Unit,
-    private val onNudge: (Int) -> Unit
+    private val onRestore: () -> Unit
 ) {
     fun handleKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
@@ -24,7 +23,7 @@ class ShortcutHandler(
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (event.isAltPressed) {
-                        onNudge(-1)
+                        playerManager.performNudge(-1)
                     } else {
                         playerManager.seekToPrevious()
                     }
@@ -32,7 +31,7 @@ class ShortcutHandler(
                 }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (event.isAltPressed) {
-                        onNudge(1)
+                        playerManager.performNudge(1)
                     } else {
                         playerManager.seekToNext()
                     }

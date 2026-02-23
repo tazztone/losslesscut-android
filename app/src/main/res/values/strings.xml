@@ -102,6 +102,7 @@
     <string name="import_anyway">Import Anyway</string>
     <string name="skip">Skip</string>
     <string name="speed_format">%.1fx</string>
+    <string name="playback_speed">Playback Speed</string>
     <string name="dashboard_cut_title">Cut &amp; Trim</string>
     <string name="dashboard_cut_desc">Lossless cutting for video and audio</string>
     <string name="dashboard_remux_title">Remux &amp; Convert</string>

@@ -15,21 +15,46 @@ class PlayerManager(
     private val context: Context,
     private val binding: ActivityVideoEditingBinding,
     private val viewModel: VideoEditingViewModel,
-    private val listener: Player.Listener
+    private val onStateChanged: (Int) -> Unit = {},
+    private val onMediaTransition: (Int) -> Unit = {},
+    private val onIsPlayingChanged: (Boolean) -> Unit = {},
+    private val onSpeedChanged: (Float) -> Unit = {}
 ) {
     var player: ExoPlayer? = null
         private set
 
+    val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f, 4.0f)
+    var currentPlaybackSpeed = 1.0f
+        private set
+
+    var isPitchCorrectionEnabled = true
+
+    private val playerListener = object : Player.Listener {
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val index = currentMediaItemIndex
+            viewModel.selectClip(index)
+            onMediaTransition(index)
+        }
+
+        override fun onPlaybackStateChanged(state: Int) {
+            onStateChanged(state)
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            onIsPlayingChanged(isPlaying)
+        }
+    }
+
     fun initialize() {
         player = ExoPlayer.Builder(context).build().apply {
             binding.playerView.player = this
-            addListener(listener)
+            addListener(playerListener)
         }
     }
 
     fun release() {
         player?.apply {
-            removeListener(listener)
+            removeListener(playerListener)
             release()
         }
         player = null
@@ -56,6 +81,13 @@ class PlayerManager(
         }
     }
 
+    fun performNudge(direction: Int) {
+        player?.let {
+            val delta = 100L * direction // 100ms nudge
+            it.seekTo(it.currentPosition + delta)
+        }
+    }
+
     fun seekTo(positionMs: Long) {
         player?.seekTo(positionMs)
     }
@@ -65,8 +97,16 @@ class PlayerManager(
     }
 
     fun updatePlaybackSpeed(speed: Float, isPitchCorrectionEnabled: Boolean) {
+        this.currentPlaybackSpeed = speed
+        this.isPitchCorrectionEnabled = isPitchCorrectionEnabled
         val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
         player?.playbackParameters = params
+        onSpeedChanged(speed)
+    }
+
+    fun cyclePlaybackSpeed() {
+        val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
+        updatePlaybackSpeed(playbackSpeeds[nextIdx], isPitchCorrectionEnabled)
     }
 
     fun setSeekParameters(params: androidx.media3.exoplayer.SeekParameters) {

@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.viewmodel
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
@@ -13,24 +12,13 @@ import com.tazztone.losslesscut.data.MediaTrack
 import com.tazztone.losslesscut.data.SegmentAction
 import com.tazztone.losslesscut.data.TrimSegment
 import com.tazztone.losslesscut.di.IoDispatcher
-import com.tazztone.losslesscut.engine.AudioWaveformExtractor
-import com.tazztone.losslesscut.engine.LosslessEngineInterface
-import com.tazztone.losslesscut.utils.StorageUtils
 import com.tazztone.losslesscut.utils.TimeUtils
 import com.tazztone.losslesscut.utils.DetectionUtils
-import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import com.tazztone.losslesscut.utils.UiText
 import com.tazztone.losslesscut.data.VideoEditingRepository
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
@@ -64,7 +52,6 @@ sealed class VideoEditingEvent {
 
 @HiltViewModel
 class VideoEditingViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val repository: VideoEditingRepository,
     private val preferences: AppPreferences,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
@@ -102,10 +89,6 @@ class VideoEditingViewModel @Inject constructor(
     private var silencePreviewJob: Job? = null
     
     private var undoLimit = 30
-    private val json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
     
 
     companion object {
@@ -120,7 +103,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = VideoEditingUiState.Loading()
             try {
-                withContext(ioDispatcher) { evictOldCacheFiles() }
+                repository.evictOldCacheFiles()
                 // Initialize with multiple clips
                 val clips = uris.map { uri ->
                     repository.createClipFromUri(uri).getOrThrow()
@@ -137,17 +120,6 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    private suspend fun evictOldCacheFiles() {
-        try {
-            val sevenDaysAgo = System.currentTimeMillis() - 7 * 86_400_000L
-            context.cacheDir.listFiles()
-                ?.filter { it.name.startsWith("waveform_") || it.name.startsWith("session_") }
-                ?.filter { it.lastModified() < sevenDaysAgo }
-                ?.forEach { it.delete() }
-        } catch (e: Exception) {
-            Log.e("VideoEditingViewModel", "Failed to evict old cache files", e)
-        }
-    }
 
     private fun loadClipData(index: Int) {
         val clip = currentClips[index]
@@ -169,8 +141,8 @@ class VideoEditingViewModel @Inject constructor(
         waveformJob?.cancel()
         waveformJob = viewModelScope.launch {
             _waveformData.value = null
-            val cacheKey = "waveform_${getSessionId(clip.uri)}.bin"
-            val cached = withContext(ioDispatcher) { loadWaveformFromCache(cacheKey) }
+            val cacheKey = "waveform_${clip.uri.toString().hashCode()}.bin"
+            val cached = repository.loadWaveformFromCache(cacheKey)
             if (cached != null) {
                 _waveformData.value = cached
                 return@launch
@@ -179,7 +151,7 @@ class VideoEditingViewModel @Inject constructor(
             repository.extractWaveform(clip.uri)
                 ?.let { waveform ->
                     _waveformData.value = waveform
-                    saveWaveformToCache(cacheKey, waveform)
+                    repository.saveWaveformToCache(cacheKey, waveform)
                 }
         }
     }
@@ -600,19 +572,17 @@ class VideoEditingViewModel @Inject constructor(
                     val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                     val outputUri = repository.createImageOutputUri(fileName)
                     if (outputUri != null) {
-                        try {
-                            withContext(ioDispatcher) {
-                                context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                                    stableBitmap.compress(compressFormat, quality, outputStream)
-                                }
-                            }
-                        } catch (e: Exception) {
-                            Log.e("VideoEditingViewModel", "Failed to write snapshot", e)
+                        val success = repository.writeSnapshot(stableBitmap, outputUri, format, quality)
+                        if (success) {
+                            repository.finalizeImage(outputUri)
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(
+                                UiText.StringResource(R.string.snapshot_saved, fileName)
+                            ))
+                        } else {
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(
+                                UiText.StringResource(R.string.snapshot_failed)
+                            ))
                         }
-                        repository.finalizeImage(outputUri)
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(
-                            UiText.StringResource(R.string.snapshot_saved, fileName)
-                        ))
                     }
                 }
             } catch (e: Exception) {
@@ -627,89 +597,27 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    private suspend fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) = withContext(ioDispatcher) {
-        try {
-            val cacheFile = File(context.cacheDir, cacheKey)
-            DataOutputStream(FileOutputStream(cacheFile)).use { out ->
-                out.writeInt(waveform.size)
-                waveform.forEach { out.writeFloat(it) }
-            }
-        } catch (e: Exception) {
-            Log.e("VideoEditingViewModel", "Failed to save waveform to cache", e)
-        }
-    }
-
-    private fun loadWaveformFromCache(cacheKey: String): FloatArray? {
-        val cacheFile = File(context.cacheDir, cacheKey)
-        if (!cacheFile.exists()) return null
-        return try {
-            DataInputStream(FileInputStream(cacheFile)).use { input ->
-                val size = input.readInt()
-                FloatArray(size) { input.readFloat() }
-            }
-        } catch (e: Exception) {
-            Log.e("VideoEditingViewModel", "Failed to load waveform from cache", e)
-            null
-        }
-    }
-
     fun saveSession() {
-        if (currentClips.isEmpty()) return
-        
-        viewModelScope.launch(ioDispatcher) {
-            try {
-                val sessionId = getSessionId(currentClips.first().uri)
-                val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-                
-                val jsonText = json.encodeToString(currentClips)
-                sessionFile.writeText(jsonText)
-                Log.d("VideoEditingViewModel", "Session saved for $sessionId")
-            } catch (e: Exception) {
-                Log.e("VideoEditingViewModel", "Failed to save session", e)
-            }
+        viewModelScope.launch {
+            repository.saveSession(currentClips)
         }
     }
 
-    suspend fun hasSavedSession(uri: Uri): Boolean = withContext(ioDispatcher) {
-        val sessionId = getSessionId(uri)
-        val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-        sessionFile.exists()
-    }
-
-    private fun getSessionId(uri: Uri): String {
-        val bytes = uri.toString().toByteArray()
-        val md = java.security.MessageDigest.getInstance("SHA-256")
-        val digest = md.digest(bytes)
-        return digest.fold("") { str, it -> str + "%02x".format(it) }.take(32)
+    suspend fun hasSavedSession(uri: Uri): Boolean {
+        return repository.hasSavedSession(uri)
     }
 
     fun restoreSession(uri: Uri) {
         viewModelScope.launch {
             try {
-                val sessionId = getSessionId(uri)
-                val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-                if (!sessionFile.exists()) return@launch
+                _uiState.value = VideoEditingUiState.Loading()
+                val validClips = repository.restoreSession(uri)
 
-                val jsonText = withContext(ioDispatcher) { sessionFile.readText() }
-                val restoredClips: List<MediaClip> = json.decodeFromString(jsonText)
-                
-                // URI Reachability Check
-                val validClips = withContext(ioDispatcher) {
-                    restoredClips.filter { clip ->
-                        try {
-                            context.contentResolver.query(clip.uri, null, null, null, null)?.use { 
-                                it.moveToFirst() 
-                            } ?: false
-                        } catch (e: Exception) {
-                            false
-                        }
-                    }
-                }
-
-                if (validClips.isEmpty()) {
+                if (validClips.isNullOrEmpty()) {
                     _uiEvents.emit(VideoEditingEvent.ShowToast(
                         UiText.StringResource(R.string.error_restore_failed_files_missing)
                     ))
+                    updateState() // Return to success state if possible
                     return@launch
                 }
 
@@ -724,6 +632,7 @@ class VideoEditingViewModel @Inject constructor(
                 _uiEvents.emit(VideoEditingEvent.ShowToast(
                     UiText.StringResource(R.string.error_restore_failed, e.message ?: "")
                 ))
+                updateState()
             }
         }
     }
