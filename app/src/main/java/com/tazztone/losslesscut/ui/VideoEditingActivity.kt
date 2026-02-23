@@ -612,7 +612,25 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         lifecycleScope.launch {
             viewModel.uiState.collect { state ->
                 when (state) {
-                    is VideoEditingUiState.Loading -> binding.loadingScreen.root.visibility = View.VISIBLE
+                    is VideoEditingUiState.Loading -> {
+                        binding.loadingScreen.root.visibility = View.VISIBLE
+                        val progress = state.progress
+                        val message = state.message
+                        
+                        if (progress > 0) {
+                            binding.loadingScreen.loadingProgress.visibility = View.VISIBLE
+                            binding.loadingScreen.loadingProgress.progress = progress
+                        } else {
+                            binding.loadingScreen.loadingProgress.visibility = View.GONE
+                        }
+                        
+                        if (message != null) {
+                            binding.loadingScreen.tvLoadingStatus.visibility = View.VISIBLE
+                            binding.loadingScreen.tvLoadingStatus.text = message.asString(this@VideoEditingActivity)
+                        } else {
+                            binding.loadingScreen.tvLoadingStatus.visibility = View.GONE
+                        }
+                    }
                     is VideoEditingUiState.Success -> {
                         binding.loadingScreen.root.visibility = View.GONE
                         

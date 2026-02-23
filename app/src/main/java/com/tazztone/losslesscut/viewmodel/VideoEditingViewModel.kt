@@ -37,7 +37,7 @@ import javax.inject.Inject
 
 sealed class VideoEditingUiState {
     object Initial : VideoEditingUiState()
-    object Loading : VideoEditingUiState()
+    data class Loading(val progress: Int = 0, val message: UiText? = null) : VideoEditingUiState()
     data class Success(
         val clips: List<MediaClip>,
         val selectedClipIndex: Int = 0,
@@ -118,7 +118,7 @@ class VideoEditingViewModel @Inject constructor(
         }
         
         viewModelScope.launch {
-            _uiState.value = VideoEditingUiState.Loading
+            _uiState.value = VideoEditingUiState.Loading()
             try {
                 withContext(ioDispatcher) { evictOldCacheFiles() }
                 // Initialize with multiple clips
@@ -478,88 +478,101 @@ class VideoEditingViewModel @Inject constructor(
     fun exportSegments(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List<Int>? = null) {
         viewModelScope.launch {
             try {
-                _uiState.value = VideoEditingUiState.Loading
+                _uiState.value = VideoEditingUiState.Loading()
                 
-                if (mergeSegments) {
-                    val segments = currentClips.flatMap { clip ->
-                        clip.segments.filter { it.action == SegmentAction.KEEP }
-                            .map { seg -> clip.copy(segments = listOf(seg)) }
-                    }
-                    
-                    if (segments.isEmpty()) {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_no_tracks_found)))
-                        updateState()
-                        return@launch
-                    }
-
-                    val firstClip = currentClips[selectedClipIndex]
-                    val extension = if (!keepVideo) "m4a" else "mp4"
-                    val baseNameOnly = firstClip.fileName.substringBeforeLast(".")
-                    val outputUri = repository.createMediaOutputUri("${baseNameOnly}_merged.$extension", !keepVideo)
-                    
-                    if (outputUri == null) {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_create_file)))
-                        updateState()
-                        return@launch
-                    }
-
-                    val result = repository.executeLosslessMerge(
-                        outputUri, segments, keepAudio, keepVideo, rotationOverride, selectedTracks
-                    )
-                    
-                    result.fold(
-                        onSuccess = { 
-                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, 1)))
-                            _uiEvents.emit(VideoEditingEvent.ExportComplete(true, 1))
-                        },
-                        onFailure = { 
-                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_export_failed, it.message ?: "")))
-                            _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                withContext(ioDispatcher) {
+                    if (mergeSegments) {
+                        val segments = currentClips.flatMap { clip ->
+                            clip.segments.filter { it.action == SegmentAction.KEEP }
+                                .map { seg -> clip.copy(segments = listOf(seg)) }
                         }
-                    )
-                } else {
-                    val selectedClip = currentClips[selectedClipIndex]
-                    val segments = selectedClip.segments.filter { it.action == SegmentAction.KEEP }
-                    
-                    if (segments.isEmpty()) {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_no_tracks_found)))
-                        _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
-                        updateState()
-                        return@launch
-                    }
+                        
+                        if (segments.isEmpty()) {
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_no_tracks_found)))
+                            updateState()
+                            return@withContext
+                        }
 
-                    var successCount = 0
-                    val errors = mutableListOf<String>()
+                        _uiState.value = VideoEditingUiState.Loading(progress = 0, message = UiText.StringResource(R.string.export_merging))
+                        ensureActive()
 
-                    for ((index, segment) in segments.withIndex()) {
+                        val firstClip = currentClips[selectedClipIndex]
                         val extension = if (!keepVideo) "m4a" else "mp4"
-                        val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"
-                        val baseNameOnly = selectedClip.fileName.substringBeforeLast(".")
-                        val outputUri = repository.createMediaOutputUri("$baseNameOnly$timeSuffix.$extension", !keepVideo)
-
+                        val baseNameOnly = firstClip.fileName.substringBeforeLast(".")
+                        val outputUri = repository.createMediaOutputUri("${baseNameOnly}_merged.$extension", !keepVideo)
+                        
                         if (outputUri == null) {
-                            errors.add("Failed to create output file")
-                            continue
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_create_file)))
+                            updateState()
+                            return@withContext
                         }
 
-                        val result = repository.executeLosslessCut(selectedClip.uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride, selectedTracks)
-                        result.fold(
-                            onSuccess = { successCount++ },
-                            onFailure = { errors.add("Segment $index failed: ${it.message}") }
+                        val result = repository.executeLosslessMerge(
+                            outputUri, segments, keepAudio, keepVideo, rotationOverride, selectedTracks
                         )
-                    }
+                        
+                        result.fold(
+                            onSuccess = { 
+                                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, 1)))
+                                _uiEvents.emit(VideoEditingEvent.ExportComplete(true, 1))
+                            },
+                            onFailure = { 
+                                _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_export_failed, it.message ?: "")))
+                                _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                            }
+                        )
+                    } else {
+                        val selectedClip = currentClips[selectedClipIndex]
+                        val segments = selectedClip.segments.filter { it.action == SegmentAction.KEEP }
+                        
+                        if (segments.isEmpty()) {
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_no_tracks_found)))
+                            _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
+                            updateState()
+                            return@withContext
+                        }
 
-                    if (errors.isEmpty() && successCount > 0) {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, successCount)))
-                        _uiEvents.emit(VideoEditingEvent.ExportComplete(true, successCount))
-                        _isDirty.value = false
-                    } else if (errors.isNotEmpty()) {
-                        _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.DynamicString(errors.joinToString())))
-                        _uiEvents.emit(VideoEditingEvent.ExportComplete(successCount > 0, successCount))
+                        var successCount = 0
+                        val errors = mutableListOf<String>()
+
+                        for ((index, segment) in segments.withIndex()) {
+                            ensureActive()
+                            val progress = ((index.toFloat() / segments.size) * 100).toInt()
+                            _uiState.value = VideoEditingUiState.Loading(
+                                progress = progress,
+                                message = UiText.StringResource(R.string.export_saving_segment, index + 1, segments.size)
+                            )
+
+                            val extension = if (!keepVideo) "m4a" else "mp4"
+                            val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"
+                            val baseNameOnly = selectedClip.fileName.substringBeforeLast(".")
+                            val outputUri = repository.createMediaOutputUri("$baseNameOnly$timeSuffix.$extension", !keepVideo)
+
+                            if (outputUri == null) {
+                                errors.add("Failed to create output file")
+                                continue
+                            }
+
+                            val result = repository.executeLosslessCut(selectedClip.uri, outputUri, segment.startMs, segment.endMs, keepAudio, keepVideo, rotationOverride, selectedTracks)
+                            result.fold(
+                                onSuccess = { successCount++ },
+                                onFailure = { errors.add("Segment $index failed: ${it.message}") }
+                            )
+                        }
+
+                        if (errors.isEmpty() && successCount > 0) {
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, successCount)))
+                            _uiEvents.emit(VideoEditingEvent.ExportComplete(true, successCount))
+                            _isDirty.value = false
+                        } else if (errors.isNotEmpty()) {
+                            _uiEvents.emit(VideoEditingEvent.ShowToast(UiText.DynamicString(errors.joinToString())))
+                            _uiEvents.emit(VideoEditingEvent.ExportComplete(successCount > 0, successCount))
+                        }
                     }
                 }
                 updateState()
             } catch (e: Exception) {
+                if (e is CancellationException) throw e
                 _uiState.value = VideoEditingUiState.Error(UiText.DynamicString(e.message ?: "Unknown error"))
                 _uiEvents.emit(VideoEditingEvent.ExportComplete(false))
             }
@@ -664,10 +677,10 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     private fun getSessionId(uri: Uri): String {
-        return java.security.MessageDigest.getInstance("SHA-256")
-            .digest(uri.toString().toByteArray())
-            .joinToString("") { "%02x".format(it) }
-            .take(32)
+        val bytes = uri.toString().toByteArray()
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        val digest = md.digest(bytes)
+        return digest.fold("") { str, it -> str + "%02x".format(it) }.take(32)
     }
 
     fun restoreSession(uri: Uri) {

@@ -28,6 +28,7 @@
         android:textColor="@color/colorOnSecondary"/>
 
     <TextView
+        android:id="@+id/tvLoadingTag"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="40dp"
@@ -37,5 +38,33 @@
         android:text="@string/loading_tag"
         android:textColor="@color/colorOnSecondary"
         android:textSize="14sp"/>
+
+    <com.google.android.material.progressindicator.LinearProgressIndicator
+        android:id="@+id/loadingProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="16dp"
+        android:visibility="gone"
+        app:trackCornerRadius="4dp"
+        app:trackThickness="4dp"
+        tools:visibility="visible"
+        tools:progress="50"/>
+
+    <TextView
+        android:id="@+id/tvLoadingStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="40dp"
+        android:gravity="center"
+        android:textColor="@color/colorOnSecondary"
+        android:textSize="14sp"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:text="Saving segment 1 of 5..."/>
 
 </LinearLayout>

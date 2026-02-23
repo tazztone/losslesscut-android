@@ -56,7 +56,10 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 # Clone the repo
 git clone https://github.com/tazztone/lossless-video-cut.git
 
-# Build debug APK
+# Generate icons (AWT standalone)
+./dev-scripts/generate-icons.sh
+
+# Build debug APK using Gradle Kotlin DSL
 ./gradlew assembleDebug
 ```
 
@@ -69,6 +72,8 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 - [ ] **Smart Cut (v2.0)**: Frame-accurate editing by re-encoding only the boundary GOPs.
 - [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
 - [x] **Remux Utility**: Instant container switching.
+- [x] **Activity Decomposition**: Refactored major UI logic into specialized delegates.
+- [x] **Modern Build**: Full migration to Gradle Kotlin DSL and AGP 9.0.
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [ ] **Multi-track Wizard**: Batch track stripping and extraction UI.
 

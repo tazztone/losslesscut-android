@@ -132,4 +132,6 @@
     <string name="error_cannot_discard_last">Cannot discard the last remaining keep segment</string>
     <string name="pitch_correction_on">Audio pitch correction ON</string>
     <string name="pitch_correction_off">Audio pitch correction OFF</string>
+    <string name="export_merging">Merging segments…</string>
+    <string name="export_saving_segment">Saving segment %1$d of %2$d…</string>
 </resources>

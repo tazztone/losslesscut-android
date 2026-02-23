@@ -27,8 +27,8 @@ jobs:
         with:
           java-version: '21'
           distribution: 'zulu'
-      - name: Run Unit Tests
-        run: ./gradlew test
+      - name: Run Unit Tests & Lint
+        run: ./gradlew test lintDebug
 
   build-and-release:
     name: Build APK/AAB & Create Release

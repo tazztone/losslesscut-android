@@ -4,4 +4,5 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android) apply false
     alias(libs.plugins.google.hilt.android) apply false
     alias(libs.plugins.google.devtools.ksp) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
 }

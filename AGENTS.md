@@ -4,20 +4,21 @@
 LosslessCut follows **MVVM** architecture with a focus on reactive UI and native media processing.
 
 ### Tech Stack
-- **Languages**: Kotlin 1.9+
+- **Languages**: Kotlin 1.9+, Gradle Kotlin DSL (`.gradle.kts`)
 - **Media Engine**: Media3 (ExoPlayer), `MediaExtractor`, `MediaMuxer`
 - **Dependency Injection**: Hilt
-- **Persistence**: Jetpack DataStore (AppPreferences)
+- **Persistence**: Jetpack DataStore (AppPreferences), Scoped Storage (SAF)
 - **Minimum SDK**: 26 (Android 8.0)
 - **Target SDK**: 35 (Android 15)
+- **Tooling**: AGP 9.0 (Built-in Kotlin Support)
 
 ## 2. Project Structure
 The project is organized into a layer/feature-based structure within the `com.tazztone.losslesscut` package:
-- **`ui`**: Activities, Fragments, and Adapters (`MainActivity`, `VideoEditingActivity`, `MediaClipAdapter` refactored to standard `RecyclerView.Adapter` for robust reordering).
+- **`ui`**: Activities and Adapters (`VideoEditingActivity`, `MediaClipAdapter`). Heavily delegated via specialized managers (`PlayerManager`, `ShortcutHandler`, `RotationManager`).
 - **`viewmodel`**: Jetpack ViewModels (`VideoEditingViewModel`).
 - **`engine`**: Core media processing logic (`LosslessEngine`, `AudioWaveformExtractor`).
-- **`data`**: Data persistence and preferences (`AppPreferences`).
-- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`, `DetectionUtils`).
+- **`data`**: Data persistence, Repository layer, and preferences (`VideoEditingRepository`, `AppPreferences`).
+- **`utils`**: General helper classes (`StorageUtils`, `TimeUtils`, `DetectionUtils`, `UiText`).
 - **`di`**: Hilt dependency injection modules (`AppModule`).
 - **`customviews`**: Complex custom UI components (`CustomVideoSeeker`).
 
@@ -94,8 +95,11 @@ The project is organized into a layer/feature-based structure within the `com.ta
 - **Testing**: 
     - JVM: `./gradlew test` (Robolectric for Engine/ViewModel).
     - Android: `./gradlew connectedAndroidTest` (Espresso for UI/Timeline).
-- **Scripts**: `dev-scripts/` contains helpers for cleaning, pushing debug builds, and viewing logs.
-- **CI**: GitHub Actions (`release.yml`) builds and signs production APKs on tag push.
+- **Scripts**: `dev-scripts/` contains:
+    - `IconGenerator.java`: Standalone AWT-based icon generator (no longer depends on Gradle environment).
+    - `generate-icons.sh`: Bash wrapper to compile/run the icon generator.
+    - `clean_gradle.sh`, `push_debug.sh`: Maintenance scripts.
+- **CI**: GitHub Actions (`release.yml`) builds and signs production APKs on tag push. Now includes a **Lint gate** (`./gradlew lintDebug`).
 
 ## 6. Roadmap
 1. **Smart Cut (v2.0)**: Use `MediaCodec` to decode/re-encode only the first/last GOP of a cut for true frame-accuracy while keeping the rest lossless.
