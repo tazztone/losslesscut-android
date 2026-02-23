@@ -18,12 +18,12 @@ class PlayerManager(
     onStateChanged: (Int) -> Unit = {},
     onMediaTransition: (Int) -> Unit = {},
     onIsPlayingChanged: (Boolean) -> Unit = {},
-    onSpeedChanged: (Float) -> Unit = {}
+    onPlaybackParametersChanged: (Float, Boolean) -> Unit = { _, _ -> }
 ) {
     private val onStateChangedCallback = onStateChanged
     private val onMediaTransitionCallback = onMediaTransition
     private val onIsPlayingChangedCallback = onIsPlayingChanged
-    private val onSpeedChangedCallback = onSpeedChanged
+    private val onPlaybackParametersChangedCallback = onPlaybackParametersChanged
 
     var player: ExoPlayer? = null
         private set
@@ -78,8 +78,6 @@ class PlayerManager(
 
         if (target != null) {
             seekTo(target)
-        } else {
-            performNudge(direction)
         }
     }
 
@@ -124,7 +122,7 @@ class PlayerManager(
         this.isPitchCorrectionEnabled = isPitchCorrectionEnabled
         val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
         player?.playbackParameters = params
-        onSpeedChangedCallback(speed)
+        onPlaybackParametersChangedCallback(speed, isPitchCorrectionEnabled)
     }
 
     fun cyclePlaybackSpeed() {
