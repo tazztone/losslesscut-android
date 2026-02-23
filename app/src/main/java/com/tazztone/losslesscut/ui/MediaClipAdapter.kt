@@ -5,14 +5,13 @@ import android.util.Size
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ItemMediaClipBinding
 import com.tazztone.losslesscut.data.MediaClip
 import kotlinx.coroutines.*
 import java.util.Collections
+import java.util.UUID
 
 class MediaClipAdapter(
     private val onClipSelected: (Int) -> Unit,
@@ -20,33 +19,48 @@ class MediaClipAdapter(
     private val onClipLongPressed: (Int) -> Unit,
     private val onStartDrag: (RecyclerView.ViewHolder) -> Unit,
     private val onAddClicked: () -> Unit
-) : ListAdapter<MediaClip, RecyclerView.ViewHolder>(ClipDiffCallback()) {
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         private const val VIEW_TYPE_CLIP = 0
         private const val VIEW_TYPE_ADD = 1
     }
 
-    private var selectedIndex: Int = -1
-    private var shadowList: MutableList<MediaClip> = mutableListOf()
+    private var clips: MutableList<MediaClip> = mutableListOf()
+    private var selectedClipId: UUID? = null
     var isDragging = false
         private set
     private var dragStartIndex: Int = -1
+
+    fun submitList(newList: List<MediaClip>?) {
+        if (isDragging) return
+        val list = newList ?: emptyList()
+        if (clips == list) return
+        clips = list.toMutableList()
+        notifyDataSetChanged()
+    }
 
     fun startDrag(from: Int) {
         dragStartIndex = from
         isDragging = true
     }
 
-    fun updateSelection(newSelectedIndex: Int) {
-        val oldIndex = selectedIndex
-        selectedIndex = newSelectedIndex
-        if (oldIndex != -1) notifyItemChanged(oldIndex)
-        if (selectedIndex != -1) notifyItemChanged(selectedIndex)
+    fun updateSelection(newSelectedId: UUID?) {
+        if (selectedClipId == newSelectedId) return
+        
+        val oldId = selectedClipId
+        selectedClipId = newSelectedId
+        
+        // Find indices to notify
+        clips.forEachIndexed { index, clip ->
+            if (clip.id == oldId || clip.id == newSelectedId) {
+                notifyItemChanged(index)
+            }
+        }
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (position < currentList.size) VIEW_TYPE_CLIP else VIEW_TYPE_ADD
+        return if (position < clips.size) VIEW_TYPE_CLIP else VIEW_TYPE_ADD
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -60,42 +74,29 @@ class MediaClipAdapter(
         }
     }
 
-    override fun submitList(list: List<MediaClip>?) {
-        if (!isDragging) {
-            super.submitList(list) {
-                shadowList = list?.toMutableList() ?: mutableListOf()
-            }
-        }
-    }
-
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is ClipViewHolder) {
-            val clip = if (isDragging) shadowList[position] else getItem(position)
-            holder.bind(clip, position == selectedIndex, position + 1)
+            val clip = clips[position]
+            holder.bind(clip, clip.id == selectedClipId, position + 1)
         } else if (holder is AddViewHolder) {
             holder.bind()
         }
     }
 
-    override fun getItemCount(): Int = currentList.size + 1
+    override fun getItemCount(): Int = clips.size + 1
 
     fun moveItemVisual(from: Int, to: Int) {
         if (from == to) return
-        if (from >= currentList.size || to >= currentList.size) return
+        if (from >= clips.size || to >= clips.size) return
         
-        val item = shadowList.removeAt(from)
-        shadowList.add(to, item)
+        val item = clips.removeAt(from)
+        clips.add(to, item)
         
-        // Update selectedIndex if it's affected by the local move
-        if (selectedIndex == from) {
-            selectedIndex = to
-        } else if (from < selectedIndex && to >= selectedIndex) {
-            selectedIndex--
-        } else if (from > selectedIndex && to <= selectedIndex) {
-            selectedIndex++
-        }
-
         notifyItemMoved(from, to)
+        // CRITICAL: Update order numbers for the affected range
+        val start = minOf(from, to)
+        val count = java.lang.Math.abs(from - to) + 1
+        notifyItemRangeChanged(start, count)
     }
 
     fun commitPendingMove(finalTo: Int) {
@@ -156,10 +157,5 @@ class MediaClipAdapter(
             androidx.appcompat.widget.TooltipCompat.setTooltipText(itemView, itemView.context.getString(R.string.add_video))
             itemView.setOnClickListener { onAddClicked() }
         }
-    }
-
-    class ClipDiffCallback : DiffUtil.ItemCallback<MediaClip>() {
-        override fun areItemsTheSame(oldItem: MediaClip, newItem: MediaClip): Boolean = oldItem.id == newItem.id
-        override fun areContentsTheSame(oldItem: MediaClip, newItem: MediaClip): Boolean = oldItem == newItem
     }
 }

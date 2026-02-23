@@ -76,6 +76,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     private val playbackSpeeds = listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f)
     private var savedPlayheadPos = 0L
     private var savedPlayWhenReady = false
+    private var lastLoadedClipId: java.util.UUID? = null
     
     private val addClipsLauncher = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) {
@@ -116,6 +117,12 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val index = player.currentMediaItemIndex
             viewModel.selectClip(index)
+            if (::clipAdapter.isInitialized) {
+                // Sync selection by ID from the current state to be position-invariant
+                val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
+                val clipId = currentState?.clips?.getOrNull(index)?.id
+                clipAdapter.updateSelection(clipId)
+            }
         }
 
         override fun onPlaybackStateChanged(state: Int) {
@@ -290,6 +297,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
 
     private fun initializeViews() {
         val addClipsAction = {
+            player.pause()
             addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
         }
 
@@ -379,6 +387,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
         binding.btnRedo?.setOnClickListener { viewModel.redo() }
         
         binding.btnSettings?.setOnClickListener {
+            player.pause()
             val bottomSheet = SettingsBottomSheetDialogFragment()
             bottomSheet.setInitialState(isLosslessMode)
             bottomSheet.show(supportFragmentManager, "SettingsBottomSheet")
@@ -653,14 +662,31 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         val currentUris = List(player.mediaItemCount) { player.getMediaItemAt(it).localConfiguration?.uri }
                         val newStateUris = state.clips.map { it.uri }
                         
+                        // We only want to FULLY re-initialize the player if the URI list is actually DIFFERENT.
+                        // If it's just a move, we trust player.moveMediaItem was already called or handled.
+                        // However, initializePlayer clears and adds all, which is safe but expensive.
+                        // But if we just Moved, the URIs are the same, just order changed.
+                        // Exoplayer index logic matches state index if URIs match.
                         if (currentUris != newStateUris) {
-                            initializePlayer(newStateUris, state.selectedClipIndex)
-                            binding.customVideoSeeker.resetView()
+                            if (currentUris.toSet() != newStateUris.toSet() || currentUris.size != newStateUris.size) {
+                                initializePlayer(newStateUris, state.selectedClipIndex)
+                            } else {
+                                // Order changed. Ensure player is on the correct clip by ID/URI
+                                val playerUri = player.getMediaItemAt(player.currentMediaItemIndex % player.mediaItemCount).localConfiguration?.uri
+                                if (playerUri != selectedClip.uri) {
+                                    player.seekTo(state.selectedClipIndex, 0L)
+                                }
+                            }
                         } else if (player.currentMediaItemIndex != state.selectedClipIndex) {
                             player.seekTo(state.selectedClipIndex, 0L)
-                            binding.customVideoSeeker.resetView()
                         }
 
+                        // Only reset timeline view if the CLIP ITSELF changed (not just its position or selection)
+                        if (lastLoadedClipId != selectedClip.id) {
+                            binding.customVideoSeeker.resetView()
+                            lastLoadedClipId = selectedClip.id
+                        }
+                        
                         // Update timeline duration for the selected clip
                         binding.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
                         
@@ -668,7 +694,7 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
                         if (state.clips.size > 1) {
                             binding.playlistContainer?.visibility = View.VISIBLE
                             clipAdapter.submitList(state.clips)
-                            clipAdapter.updateSelection(state.selectedClipIndex)
+                            clipAdapter.updateSelection(selectedClip.id)
                         } else {
                             binding.playlistContainer?.visibility = View.GONE
                         }
@@ -817,7 +843,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun showExportOptionsDialog() {
-        val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
+    player.pause()
+    val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
         val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
         val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
         val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
@@ -990,7 +1017,8 @@ class VideoEditingActivity : AppCompatActivity(), SettingsBottomSheetDialogFragm
     }
 
     private fun showSilenceDetectionDialog() {
-        val overlay = binding.silenceDetectionContainer?.root ?: return
+    player.pause()
+    val overlay = binding.silenceDetectionContainer?.root ?: return
         overlay.visibility = View.VISIBLE
         
         val sliderThreshold = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
