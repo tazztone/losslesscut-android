@@ -10,7 +10,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
 import androidx.annotation.OptIn
-import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.di.IoDispatcher
 import com.tazztone.losslesscut.data.MediaClip
@@ -75,7 +74,6 @@ data class TrackMetadata(
     val isAudio: Boolean
 )
 
-@OptIn(UnstableApi::class)
 @Singleton
 class LosslessEngineImpl @Inject constructor(
     private val storageUtils: StorageUtils,

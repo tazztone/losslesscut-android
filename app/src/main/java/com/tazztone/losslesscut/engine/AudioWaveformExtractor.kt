@@ -6,8 +6,11 @@ import android.media.MediaFormat
 import android.net.Uri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-object AudioWaveformExtractor {
+@Singleton
+class AudioWaveformExtractor @Inject constructor() {
 
     /**
      * High-Performance Continuous Audio Waveform Extractor.

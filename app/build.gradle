@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.google.hilt.android)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -79,6 +80,7 @@ dependencies {
     implementation libs.androidx.datastore.preferences
     implementation libs.androidx.documentfile
     implementation libs.gson
+    implementation libs.kotlinx.serialization.json
     
     // Media3
     implementation libs.media3.exoplayer

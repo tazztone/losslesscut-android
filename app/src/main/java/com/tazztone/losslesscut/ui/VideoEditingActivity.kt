@@ -62,14 +62,15 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
  
     private val viewModel: VideoEditingViewModel by viewModels()
     private lateinit var binding: ActivityVideoEditingBinding
-    private lateinit var player: ExoPlayer
+    private lateinit var playerManager: PlayerManager
+    private lateinit var shortcutHandler: ShortcutHandler
+    private lateinit var rotationManager: RotationManager
     private lateinit var clipAdapter: MediaClipAdapter
     private lateinit var launchMode: String
 
     private var isVideoLoaded = false
     private var updateJob: Job? = null
     private var isDraggingTimeline = false
-    private var currentRotation = 0
     private var isLosslessMode = true
     private var currentPlaybackSpeed = 1.0f
     private var isPitchCorrectionEnabled = false
@@ -119,7 +120,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-            val index = player.currentMediaItemIndex
+            val index = playerManager.currentMediaItemIndex
             viewModel.selectClip(index)
             if (::clipAdapter.isInitialized) {
                 // Sync selection by ID from the current state to be position-invariant
@@ -132,9 +133,9 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         override fun onPlaybackStateChanged(state: Int) {
             if (state == Player.STATE_READY && !isVideoLoaded) {
                 isVideoLoaded = true
-                binding.customVideoSeeker.setVideoDuration(player.duration)
-                updateDurationDisplay(player.currentPosition, player.duration)
-                binding.customVideoSeeker.setSeekPosition(player.currentPosition)
+                binding.customVideoSeeker.setVideoDuration(playerManager.duration)
+                updateDurationDisplay(playerManager.currentPosition, playerManager.duration)
+                binding.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
             }
             updatePlaybackIcons()
         }
@@ -172,7 +173,21 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         hideSystemUI()
 
         initializeViews()
-        initializePlayer()
+        playerManager = PlayerManager(this, binding, viewModel, playerListener)
+        playerManager.initialize()
+        
+        rotationManager = RotationManager(binding)
+        shortcutHandler = ShortcutHandler(
+            viewModel = viewModel,
+            playerManager = playerManager,
+            launchMode = launchMode,
+            onSplit = { splitCurrentSegment() },
+            onSetIn = { setInPoint() },
+            onSetOut = { setOutPoint() },
+            onRestore = { viewModel.restoreSession(videoUris[0]) },
+            onNudge = { direction -> performNudge(direction) }
+        )
+
         setupCustomSeeker()
         observeViewModel()
 
@@ -214,8 +229,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         savedInstanceState?.let {
             savedPlayheadPos = it.getLong(KEY_PLAYHEAD, 0L)
             savedPlayWhenReady = it.getBoolean(KEY_PLAY_WHEN_READY, false)
-            currentRotation = it.getInt(KEY_ROTATION, 0)
-            updateRotationPreview(animate = false)
+            rotationManager.setRotation(it.getInt(KEY_ROTATION, 0), animate = false)
             isLosslessMode = it.getBoolean(KEY_LOSSLESS_MODE, true)
             if (::binding.isInitialized) {
                 binding.customVideoSeeker.isLosslessMode = isLosslessMode
@@ -255,25 +269,27 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     override fun onResume() {
         super.onResume()
         hideSystemUI()
-        if (::player.isInitialized && player.isPlaying) startProgressUpdate()
+        if (playerManager.isPlaying) startProgressUpdate()
     }
 
     override fun onPause() {
         super.onPause()
-        if (::player.isInitialized) {
-            player.pause()
-            if (launchMode == MODE_CUT) viewModel.saveSession()
+        playerManager.player?.apply {
+            savedPlayheadPos = currentPosition
+            savedPlayWhenReady = playWhenReady
+            pause()
         }
+        if (launchMode == MODE_CUT) viewModel.saveSession()
         stopProgressUpdate()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        if (::player.isInitialized) {
-            outState.putLong(KEY_PLAYHEAD, player.currentPosition)
-            outState.putBoolean(KEY_PLAY_WHEN_READY, player.playWhenReady)
+        playerManager.player?.apply {
+            outState.putLong(KEY_PLAYHEAD, currentPosition)
+            outState.putBoolean(KEY_PLAY_WHEN_READY, playWhenReady)
         }
-        outState.putInt(KEY_ROTATION, currentRotation)
+        outState.putInt(KEY_ROTATION, rotationManager.currentRotation)
         outState.putBoolean(KEY_LOSSLESS_MODE, isLosslessMode)
     }
 
@@ -295,7 +311,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
 
     private fun initializeViews() {
         val addClipsAction = {
-            player.pause()
+            playerManager.player?.pause()
             addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
         }
 
@@ -330,13 +346,13 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
             onClipSelected = { index -> 
                 val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
                 if (currentState != null && index != currentState.selectedClipIndex) {
-                    currentRotation = 0
+                    rotationManager.setRotation(0, animate = false)
                     viewModel.selectClip(index)
                 }
             },
             onClipsReordered = { from, to -> 
                 viewModel.reorderClips(from, to)
-                player.moveMediaItem(from, to)
+                playerManager.moveMediaItem(from, to)
             },
             onClipLongPressed = { index ->
                 val clip = (viewModel.uiState.value as? VideoEditingUiState.Success)?.clips?.getOrNull(index)
@@ -346,7 +362,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
                         .setMessage(getString(R.string.remove_clip_confirm))
                         .setPositiveButton(getString(R.string.delete)) { _, _ ->
                             viewModel.removeClip(index)
-                            player.removeMediaItem(index)
+                            playerManager.removeMediaItem(index)
                         }
                         .setNegativeButton(getString(R.string.cancel), null)
                         .show()
@@ -385,7 +401,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         binding.btnRedo?.setOnClickListener { viewModel.redo() }
         
         binding.btnSettings?.setOnClickListener {
-            player.pause()
+            playerManager.pause()
             val bottomSheet = SettingsBottomSheetDialogFragment()
             bottomSheet.setInitialState(isLosslessMode)
             bottomSheet.show(supportFragmentManager, "SettingsBottomSheet")
@@ -454,10 +470,9 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         binding.btnSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
         binding.containerSilenceCut?.let { TooltipCompat.setTooltipText(it, getString(R.string.auto_detect_silence)) }
         
-        val rotateAction = { 
-            currentRotation = (currentRotation + 90) % 360
-            updateRotationPreview(animate = true)
-            Toast.makeText(this, getString(R.string.export_rotation_offset, currentRotation), Toast.LENGTH_SHORT).show()
+        val rotateAction = {
+            rotationManager.rotate(90)
+            Toast.makeText(this, getString(R.string.export_rotation_offset, rotationManager.currentRotation), Toast.LENGTH_SHORT).show()
         }
         binding.btnRotateContainer.setOnClickListener { rotateAction() }
         binding.containerRotate?.setOnClickListener { rotateAction() }
@@ -465,71 +480,17 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         binding.containerRotate?.let { TooltipCompat.setTooltipText(it, getString(R.string.rotate)) }
     }
 
-    private fun updateRotationPreview(animate: Boolean = true) {
-        // Hide the degree text badge since the icon is now the visual indicator
-        binding.badgeRotate?.visibility = View.GONE
-        
-        val isZero = currentRotation == 0
-        binding.btnRotate.visibility = if (isZero) View.VISIBLE else View.GONE
-        binding.tvRotateEmoji.visibility = if (isZero) View.GONE else View.VISIBLE
-        
-        // Always rotate the container. This makes the logic much simpler and more robust.
-        if (animate) {
-            binding.btnRotateContainer.animate()
-                .rotation(currentRotation.toFloat())
-                .setDuration(250)
-                .start()
-        } else {
-            binding.btnRotateContainer.rotation = currentRotation.toFloat()
-        }
-
-        // Ensure the video player stays completely un-squished and un-rotated
-        binding.playerView.scaleX = 1f
-        binding.playerView.scaleY = 1f
+    private fun cycleRotation() {
+        rotationManager.rotate(90)
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                android.view.KeyEvent.KEYCODE_SPACE -> {
-                    togglePlayback()
-                    return true
-                }
-                android.view.KeyEvent.KEYCODE_I -> {
-                    if (launchMode == MODE_CUT) setInPoint()
-                    return true
-                }
-                android.view.KeyEvent.KEYCODE_O -> {
-                    if (launchMode == MODE_CUT) setOutPoint()
-                    return true
-                }
-                android.view.KeyEvent.KEYCODE_S -> {
-                    if (launchMode == MODE_CUT) splitCurrentSegment()
-                    return true
-                }
-                android.view.KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (event.isAltPressed) {
-                        performNudge(-1)
-                    } else {
-                        player.seekToPrevious()
-                    }
-                    return true
-                }
-                android.view.KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    if (event.isAltPressed) {
-                        performNudge(1)
-                    } else {
-                        player.seekToNext()
-                    }
-                    return true
-                }
-            }
-        }
+        if (shortcutHandler.handleKeyEvent(event)) return true
         return super.dispatchKeyEvent(event)
     }
 
     private fun splitCurrentSegment() {
-        val currentPos = player.currentPosition
+        val currentPos = playerManager.currentPosition
         val state = viewModel.uiState.value as? VideoEditingUiState.Success
         
         val splitPos = if (isLosslessMode && state?.keyframes?.isNotEmpty() == true) {
@@ -539,16 +500,16 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         }
 
         viewModel.splitSegmentAt(splitPos)
-        player.seekTo(splitPos)
+        playerManager.seekTo(splitPos)
         binding.customVideoSeeker.setSeekPosition(splitPos)
     }
 
     private fun setInPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        val currentPos = player.currentPosition
+        val currentPos = playerManager.currentPosition
         
         val snapPos = if (isLosslessMode && state.keyframes.isNotEmpty()) {
-            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos)!! } ?: currentPos
         } else {
             currentPos
         }
@@ -569,17 +530,17 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         if (newStart < segment.endMs) {
             viewModel.updateSegmentBounds(segment.id, newStart, segment.endMs)
             viewModel.commitSegmentBounds()
-            player.seekTo(newStart)
+            playerManager.seekTo(newStart)
             binding.customVideoSeeker.setSeekPosition(newStart)
         }
     }
 
     private fun setOutPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        val currentPos = player.currentPosition
+        val currentPos = playerManager.currentPosition
         
         val snapPos = if (isLosslessMode && state.keyframes.isNotEmpty()) {
-            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos) } ?: currentPos
+            state.keyframes.minByOrNull { kotlin.math.abs(it - currentPos)!! } ?: currentPos
         } else {
             currentPos
         }
@@ -600,7 +561,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         if (newEnd > segment.startMs) {
             viewModel.updateSegmentBounds(segment.id, segment.startMs, newEnd)
             viewModel.commitSegmentBounds()
-            player.seekTo(newEnd)
+            playerManager.seekTo(newEnd)
             binding.customVideoSeeker.setSeekPosition(newEnd)
         }
     }
@@ -608,10 +569,11 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     private fun startProgressUpdate() {
         updateJob?.cancel()
         updateJob = lifecycleScope.launch {
-            while (isActive && player.isPlaying) {
+            while (isActive && playerManager.isPlaying) {
                 if (!isDraggingTimeline) {
-                    binding.customVideoSeeker.setSeekPosition(player.currentPosition)
-                    updateDurationDisplay(player.currentPosition, player.duration)
+                    val pos = playerManager.currentPosition
+                    binding.customVideoSeeker.setSeekPosition(pos)
+                    updateDurationDisplay(pos, playerManager.duration)
                 }
                 delay(30)
             }
@@ -627,22 +589,22 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
 
         if (isLosslessMode && currentState.keyframes.isNotEmpty()) {
             val keyframesMs = currentState.keyframes.sorted()
-            val currentPos = player.currentPosition
+            val currentPos = playerManager.currentPosition
             
             val targetKf = if (direction > 0) {
-                keyframesMs.firstOrNull { it > currentPos + 10 } ?: player.duration
+                keyframesMs.firstOrNull { it > currentPos + 10 } ?: playerManager.duration
             } else {
                 keyframesMs.lastOrNull { it < currentPos - 10 } ?: 0L
             }
-            player.seekTo(targetKf)
+            playerManager.seekTo(targetKf)
             binding.customVideoSeeker.setSeekPosition(targetKf)
-            updateDurationDisplay(targetKf, player.duration)
+            updateDurationDisplay(targetKf, playerManager.duration)
         } else {
             val step = if (currentState.videoFps > 0f) (1000L / currentState.videoFps).toLong() else 33L
-            val target = (player.currentPosition + (direction * step)).coerceIn(0, player.duration)
-            player.seekTo(target)
+            val target = (playerManager.currentPosition + (direction * step)).coerceIn(0, playerManager.duration)
+            playerManager.seekTo(target)
             binding.customVideoSeeker.setSeekPosition(target)
-            updateDurationDisplay(target, player.duration)
+            updateDurationDisplay(target, playerManager.duration)
         }
     }
 
@@ -656,27 +618,28 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
                         
                         val selectedClip = state.clips[state.selectedClipIndex]
                         
-                        // Check if we need to initialize or update the player items
-                        val currentUris = List(player.mediaItemCount) { player.getMediaItemAt(it).localConfiguration?.uri }
-                        val newStateUris = state.clips.map { it.uri }
-                        
                         // We only want to FULLY re-initialize the player if the URI list is actually DIFFERENT.
-                        // If it's just a move, we trust player.moveMediaItem was already called or handled.
+                        // If it's just a move, we trust playerManager.moveMediaItem was already called or handled.
                         // However, initializePlayer clears and adds all, which is safe but expensive.
                         // But if we just Moved, the URIs are the same, just order changed.
                         // Exoplayer index logic matches state index if URIs match.
+                        val newStateUris = state.clips.map { it.uri }
+                        val currentUris = playerManager.player?.mediaItemCount?.let { count ->
+                            (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
+                        } ?: emptyList<Uri>()
+
                         if (currentUris != newStateUris) {
                             if (currentUris.toSet() != newStateUris.toSet() || currentUris.size != newStateUris.size) {
-                                initializePlayer(newStateUris, state.selectedClipIndex)
+                                playerManager.setMediaItems(newStateUris, state.selectedClipIndex, savedPlayheadPos, savedPlayWhenReady)
                             } else {
                                 // Order changed. Ensure player is on the correct clip by ID/URI
-                                val playerUri = player.getMediaItemAt(player.currentMediaItemIndex % player.mediaItemCount).localConfiguration?.uri
+                                val playerUri = playerManager.player?.getMediaItemAt(playerManager.currentMediaItemIndex % (playerManager.player?.mediaItemCount ?: 1))?.localConfiguration?.uri
                                 if (playerUri != selectedClip.uri) {
-                                    player.seekTo(state.selectedClipIndex, 0L)
+                                    playerManager.seekTo(state.selectedClipIndex, 0L)
                                 }
                             }
-                        } else if (player.currentMediaItemIndex != state.selectedClipIndex) {
-                            player.seekTo(state.selectedClipIndex, 0L)
+                        } else if (playerManager.currentMediaItemIndex != state.selectedClipIndex) {
+                            playerManager.seekTo(state.selectedClipIndex, 0L)
                         }
 
                         // Only reset timeline view if the CLIP ITSELF changed (not just its position or selection)
@@ -729,7 +692,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
-                        Toast.makeText(this@VideoEditingActivity, state.message, Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@VideoEditingActivity, state.error.asString(this@VideoEditingActivity), Toast.LENGTH_LONG).show()
                     }
                     else -> {}
                 }
@@ -739,7 +702,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
             viewModel.uiEvents.collect { event ->
                 when (event) {
                     is VideoEditingEvent.ShowToast -> {
-                        Toast.makeText(this@VideoEditingActivity, event.message, Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@VideoEditingActivity, event.message.asString(this@VideoEditingActivity), Toast.LENGTH_LONG).show()
                     }
                     is VideoEditingEvent.ExportComplete -> {
                         if (launchMode != MODE_CUT) {
@@ -757,24 +720,6 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         }
     }
 
-    private fun initializePlayer() {
-        isVideoLoaded = false
-        player = ExoPlayer.Builder(this).build().apply {
-            binding.playerView.player = this
-            addListener(playerListener)
-        }
-    }
-
-    private fun initializePlayer(uris: List<Uri>, initialIndex: Int = 0) {
-        val mediaItems = uris.map { MediaItem.fromUri(it) }
-        player.setMediaItems(mediaItems)
-        player.prepare()
-        player.playWhenReady = savedPlayWhenReady
-        player.seekTo(initialIndex, savedPlayheadPos)
-        
-        // Reset speed to 1.0x when loading new media
-        updatePlaybackSpeed(1.0f)
-    }
 
     private fun cyclePlaybackSpeed() {
         val nextIdx = (playbackSpeeds.indexOf(currentPlaybackSpeed) + 1) % playbackSpeeds.size
@@ -782,10 +727,10 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     }
 
     private fun updatePlaybackIcons() {
-        if (!::binding.isInitialized || !::player.isInitialized) return
+        if (!::binding.isInitialized || !::playerManager.isInitialized) return
         
-        val isPlaying = player.isPlaying
-        val isEnded = player.playbackState == Player.STATE_ENDED
+        val isPlaying = playerManager.isPlaying
+        val isEnded = playerManager.player?.playbackState == Player.STATE_ENDED
         
         val iconRes = when {
             isEnded -> R.drawable.ic_restore_24
@@ -805,18 +750,12 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     }
 
     private fun togglePlayback() {
-        if (player.playbackState == Player.STATE_ENDED) {
-            player.seekTo(0)
-            player.play()
-        } else {
-            if (player.isPlaying) player.pause() else player.play()
-        }
+        playerManager.togglePlayback()
     }
 
     private fun updatePlaybackSpeed(speed: Float) {
         currentPlaybackSpeed = speed
-        val params = androidx.media3.common.PlaybackParameters(speed, if (isPitchCorrectionEnabled) 1.0f else speed)
-        player.playbackParameters = params
+        playerManager.updatePlaybackSpeed(speed, isPitchCorrectionEnabled)
         val speedText = when (speed) {
             0.25f -> "0.25x"
             0.5f -> "0.5x"
@@ -837,17 +776,17 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         }
         binding.customVideoSeeker.onSeekStart = {
             isDraggingTimeline = true
-            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
+            playerManager.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC)
         }
         
         binding.customVideoSeeker.onSeekEnd = {
             isDraggingTimeline = false
-            player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.DEFAULT)
+            playerManager.setSeekParameters(androidx.media3.exoplayer.SeekParameters.DEFAULT)
         }
 
         binding.customVideoSeeker.onSeekListener = { seekPositionMs ->
-            player.seekTo(seekPositionMs)
-            updateDurationDisplay(seekPositionMs, player.duration)
+            playerManager.seekTo(seekPositionMs)
+            updateDurationDisplay(seekPositionMs, playerManager.duration)
         }
         
         binding.customVideoSeeker.onSegmentSelected = { id ->
@@ -857,8 +796,8 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
         binding.customVideoSeeker.onSegmentBoundsChanged = { id, start, end, seekPos ->
             isDraggingTimeline = true
             viewModel.updateSegmentBounds(id, start, end)
-            player.seekTo(seekPos)
-            updateDurationDisplay(seekPos, player.duration)
+            playerManager.seekTo(seekPos)
+            updateDurationDisplay(seekPos, playerManager.duration)
         }
         
         binding.customVideoSeeker.onSegmentBoundsDragEnd = {
@@ -869,11 +808,11 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
 
     private fun extractSnapshot() {
         if (viewModel.uiState.value !is VideoEditingUiState.Success) return
-        viewModel.extractSnapshot(player.currentPosition)
+        viewModel.extractSnapshot(playerManager.currentPosition)
     }
 
     private fun showExportOptionsDialog() {
-    player.pause()
+    playerManager.pause()
     val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
         val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
         val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
@@ -930,7 +869,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
                 if (!keepVideo && !keepAudio && selectedTracks.isEmpty()) {
                     Toast.makeText(this, getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
                 } else {
-                    val rotationOverride = if (currentRotation != 0) currentRotation else null
+                    val rotationOverride = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
                     // If complex track selection was used, pass it; otherwise let ViewModel/Engine handle it via booleans
                     val trackList = if (selectedTracks.isNotEmpty() && availableTracks.size > 2) selectedTracks.toList() else null
                     viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments, trackList)
@@ -1027,7 +966,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
                     4 -> 270
                     else -> null // Keep Original
                 }
-                currentRotation = selectedRotation ?: state.clips[state.selectedClipIndex].rotation
+                // rotationManager.setRotation handled via clip selection/UI
                 viewModel.exportSegments(true, keepAudio = true, keepVideo = true,
                     rotationOverride = selectedRotation, mergeSegments = false)
             }
@@ -1047,7 +986,7 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     }
 
     private fun showSilenceDetectionDialog() {
-    player.pause()
+    playerManager.pause()
     val overlay = binding.silenceDetectionContainer?.root ?: return
         overlay.visibility = View.VISIBLE
         
@@ -1118,6 +1057,6 @@ class VideoEditingActivity : BaseActivity(), SettingsBottomSheetDialogFragment.S
     override fun onDestroy() {
         super.onDestroy()
         stopProgressUpdate()
-        player.release()
+        playerManager.release()
     }
 }
