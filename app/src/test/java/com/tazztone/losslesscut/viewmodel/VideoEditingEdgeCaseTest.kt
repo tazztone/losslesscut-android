@@ -4,6 +4,7 @@ import android.net.Uri
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
@@ -177,7 +178,7 @@ public class VideoEditingEdgeCaseTest {
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
         
         val waveform = FloatArray(100) { i -> if (i in 2..50) 0.01f else 0.5f }
-        coEvery { mockRepo.loadWaveformFromCache(any()) } returns waveform
+        coEvery { mockRepo.loadWaveformFromCache(any()) } returns WaveformResult(waveform, 0.5f, 1000L)
         
         viewModel.initialize(listOf(uri))
         advanceUntilIdle()

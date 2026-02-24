@@ -1,5 +1,6 @@
 package com.tazztone.losslesscut.engine
 
+import com.tazztone.losslesscut.domain.engine.AudioDecoder
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import dagger.Binds
@@ -18,4 +19,8 @@ abstract class EngineModule {
     @Binds
     @Singleton
     abstract fun bindAudioWaveformExtractor(impl: AudioWaveformExtractorImpl): AudioWaveformExtractor
+
+    @Binds
+    @Singleton
+    abstract fun bindAudioDecoder(impl: AudioDecoderImpl): AudioDecoder
 }

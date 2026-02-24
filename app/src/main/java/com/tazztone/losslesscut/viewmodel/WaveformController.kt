@@ -4,6 +4,7 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.HashUtils
 import com.tazztone.losslesscut.domain.model.DetectionUtils
+import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
@@ -42,28 +43,43 @@ class WaveformController @Inject constructor(
     private var waveformJob: Job? = null
     private var silencePreviewJob: Job? = null
 
+    // Store raw result for silence detection
+    private var rawWaveformResult: WaveformResult? = null
+
     fun extractWaveform(scope: CoroutineScope, clip: MediaClip) {
         waveformJob?.cancel()
         _silencePreviewRanges.value = emptyList()
         waveformJob = scope.launch(ioDispatcher) {
             _waveformData.value = null
+            rawWaveformResult = null
             
             // SHA-256 caching with duration/dims to detect content changes (best effort)
+            // Use v2 suffix for new WaveformResult format
             val cacheKeyInput = "${clip.uri}_${clip.durationMs}_${clip.width}x${clip.height}"
-            val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.bin"
+            val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.v2.bin"
             
             val cached = repository.loadWaveformFromCache(cacheKey)
             if (cached != null) {
-                _waveformData.value = cached
+                rawWaveformResult = cached
+                val normalized = cached.rawAmplitudes.clone()
+                AudioWaveformProcessor.normalize(normalized, cached.maxAmplitude)
+                _waveformData.value = normalized
                 return@launch
             }
             
             val bucketCount = AudioWaveformProcessor.calculateAdaptiveBucketCount(clip.durationMs)
-            repository.extractWaveform(clip.uri, bucketCount = bucketCount, onProgress = null)
-                ?.let { waveform ->
-                    _waveformData.value = waveform
-                    repository.saveWaveformToCache(cacheKey, waveform)
-                }
+            repository.extractWaveform(clip.uri, bucketCount = bucketCount) { progressResult ->
+                // Update UI with normalized view of progress
+                val normalized = progressResult.rawAmplitudes.clone()
+                AudioWaveformProcessor.normalize(normalized, progressResult.maxAmplitude)
+                _waveformData.value = normalized
+            }?.let { finalResult ->
+                rawWaveformResult = finalResult
+                val normalized = finalResult.rawAmplitudes.clone()
+                AudioWaveformProcessor.normalize(normalized, finalResult.maxAmplitude)
+                _waveformData.value = normalized
+                repository.saveWaveformToCache(cacheKey, finalResult)
+            }
         }
     }
 
@@ -72,7 +88,7 @@ class WaveformController @Inject constructor(
         params: SilenceDetectionParams,
         onComplete: suspend () -> Unit
     ) {
-        val waveform = _waveformData.value ?: return
+        val result = rawWaveformResult ?: return
         
         silencePreviewJob?.cancel()
         silencePreviewJob = scope.launch(ioDispatcher) {
@@ -84,8 +100,7 @@ class WaveformController @Inject constructor(
                 minSegmentMs = params.minSegmentMs
             )
             val ranges = silenceDetectionUseCase.findSilence(
-                waveform, 
-                params.clip.durationMs, 
+                result,
                 config
             )
             _silencePreviewRanges.value = ranges
@@ -106,6 +121,7 @@ class WaveformController @Inject constructor(
         silencePreviewJob?.cancel()
         _waveformData.value = null
         _silencePreviewRanges.value = emptyList()
+        rawWaveformResult = null
     }
 
     fun cancelJobs() {
