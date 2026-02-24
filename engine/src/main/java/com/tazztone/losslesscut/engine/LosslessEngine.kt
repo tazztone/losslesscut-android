@@ -39,10 +39,10 @@ import javax.inject.Singleton
 
 @Singleton
 class LosslessEngineImpl @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val storageUtils: StorageUtils,
     private val collaborators: EngineCollaborators,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
     
     private val dataSource get() = collaborators.dataSource
@@ -116,15 +116,15 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 
-    override suspend fun getMediaMetadata(uriString: String): Result<MediaMetadata> = withContext(ioDispatcher) {
+    override suspend fun getMediaMetadata(uri: String): Result<MediaMetadata> = withContext(ioDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
-            dataSource.setRetrieverSource(retriever, uriString)
+            dataSource.setRetrieverSource(retriever, uri)
 
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val duration = durationStr?.toLong() ?: 0L
             if (duration <= 0) {
-                Log.w(TAG, "Duration is 0 or null for $uriString")
+                Log.w(TAG, "Duration is 0 or null for $uri")
             }
 
             val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
@@ -141,7 +141,7 @@ class LosslessEngineImpl @Inject constructor(
             val extractor = MediaExtractor()
             val tracks = mutableListOf<TrackMetadata>()
             try {
-                dataSource.setExtractorSource(extractor, uriString)
+                dataSource.setExtractorSource(extractor, uri)
 
                 if (extractor.trackCount == 0) {
                     return@withContext Result.failure(IOException("No tracks found in the media file"))
@@ -198,7 +198,7 @@ class LosslessEngineImpl @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to get metadata for $uriString", e)
+            Log.e(TAG, "Failed to get metadata for $uri", e)
             val msg = "Could not read media file: ${e.localizedMessage ?: e.javaClass.simpleName}"
             Result.failure(Exception(msg, e))
         } finally {
@@ -206,10 +206,10 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 
-    override suspend fun getFrameAt(uriString: String, positionMs: Long): ByteArray? = withContext(ioDispatcher) {
+    override suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray? = withContext(ioDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
-            dataSource.setRetrieverSource(retriever, uriString)
+            dataSource.setRetrieverSource(retriever, uri)
             val bitmap = retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
             bitmap?.let {
                 val stream = ByteArrayOutputStream()
@@ -226,8 +226,8 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     override suspend fun executeLosslessCut(
-        inputUriString: String,
-        outputUriString: String,
+        inputUri: String,
+        outputUri: String,
         startMs: Long,
         endMs: Long,
         keepAudio: Boolean,
@@ -235,7 +235,7 @@ class LosslessEngineImpl @Inject constructor(
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<String> = withContext(ioDispatcher) {
-        val outputUri = Uri.parse(outputUriString)
+        val outputUriParsed = Uri.parse(outputUri)
         if (endMs <= startMs) return@withContext Result.failure(
             IllegalArgumentException("endMs ($endMs) must be > startMs ($startMs)")
         )
@@ -245,9 +245,9 @@ class LosslessEngineImpl @Inject constructor(
         var pfd: ParcelFileDescriptor? = null
 
         try {
-            dataSource.setExtractorSource(extractor, inputUriString)
+            dataSource.setExtractorSource(extractor, inputUri)
             
-            pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
+            pfd = context.contentResolver.openFileDescriptor(outputUriParsed, "rw")
             if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -285,11 +285,11 @@ class LosslessEngineImpl @Inject constructor(
             copier.copy(plan, startUs, endUs, buffer)
             
             if (plan.hasVideoTrack) {
-                storageUtils.finalizeVideo(outputUri)
+                storageUtils.finalizeVideo(outputUriParsed)
             } else {
-                storageUtils.finalizeAudio(outputUri)
+                storageUtils.finalizeAudio(outputUriParsed)
             }
-            Result.success(outputUriString)
+            Result.success(outputUri)
 
         } catch (e: CancellationException) {
             throw e
@@ -304,21 +304,21 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     override suspend fun executeLosslessMerge(
-        outputUriString: String,
+        outputUri: String,
         clips: List<MediaClip>,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<String> = withContext(ioDispatcher) {
-        val outputUri = Uri.parse(outputUriString)
+        val outputUriParsed = Uri.parse(outputUri)
         if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips to merge"))
 
         var muxerWriter: MuxerWriter? = null
         var pfd: ParcelFileDescriptor? = null
 
         try {
-            pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
+            pfd = context.contentResolver.openFileDescriptor(outputUriParsed, "rw")
             if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
@@ -469,11 +469,11 @@ class LosslessEngineImpl @Inject constructor(
             }
 
             if (actuallyHasVideo) {
-                storageUtils.finalizeVideo(outputUri)
+                storageUtils.finalizeVideo(outputUriParsed)
             } else {
-                storageUtils.finalizeAudio(outputUri)
+                storageUtils.finalizeAudio(outputUriParsed)
             }
-            Result.success(outputUriString)
+            Result.success(outputUri)
 
         } catch (e: CancellationException) {
             throw e

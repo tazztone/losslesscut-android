@@ -63,7 +63,7 @@ class VideoEditingViewModel @Inject constructor(
     private val repository: IVideoEditingRepository,
     private val preferences: AppPreferences,
     private val useCases: VideoEditingUseCases,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)

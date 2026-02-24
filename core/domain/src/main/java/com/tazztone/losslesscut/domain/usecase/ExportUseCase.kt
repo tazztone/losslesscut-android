@@ -11,7 +11,7 @@ import javax.inject.Inject
 
 class ExportUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     sealed class Result {
         data class Success(val count: Int) : Result()

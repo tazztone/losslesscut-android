@@ -25,23 +25,23 @@ import javax.inject.Singleton
 
 @Singleton
 class VideoEditingRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
     private val engine: ILosslessEngine,
     private val storageUtils: StorageUtils,
     private val waveformExtractor: AudioWaveformExtractor,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : IVideoEditingRepository {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
 
-    override suspend fun createClipFromUri(uriString: String): Result<MediaClip> = withContext(ioDispatcher) {
-        val uri = Uri.parse(uriString)
-        engine.getMediaMetadata(uriString).map { meta ->
+    override suspend fun createClipFromUri(uri: String): Result<MediaClip> = withContext(ioDispatcher) {
+        val uriParsed = Uri.parse(uri)
+        engine.getMediaMetadata(uri).map { meta ->
             MediaClip(
-                uri = uriString,
-                fileName = storageUtils.getFileName(uri),
+                uri = uri,
+                fileName = storageUtils.getFileName(uriParsed),
                 durationMs = meta.durationMs,
                 width = meta.width,
                 height = meta.height,
@@ -205,11 +205,11 @@ class VideoEditingRepository @Inject constructor(
 
     // --- Snapshot Management ---
 
-    override suspend fun writeSnapshot(bitmapBytes: ByteArray, outputUriString: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
+    override suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
         try {
-            val outputUri = Uri.parse(outputUriString)
-            context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                outputStream.write(bitmapBytes)
+            val uriParsed = Uri.parse(outputUri)
+            context.contentResolver.openOutputStream(uriParsed)?.use { outputStream ->
+                outputStream.write(bitmap)
                 true
             } ?: false
         } catch (e: Exception) {

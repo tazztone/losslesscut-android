@@ -142,7 +142,14 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             onSetIn = { setInPoint() },
             onSetOut = { setOutPoint() },
             onRestore = { 
-                val uris = activity?.intent?.getParcelableArrayListExtra<Uri>(VideoEditingActivity.EXTRA_VIDEO_URIS)
+                val uris = activity?.intent?.let { intent ->
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS)
+                    }
+                }
                 if (uris != null && uris.isNotEmpty()) {
                     viewModel.restoreSession(uris[0])
                 }
@@ -177,12 +184,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
                 if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
-                    clipAdapter.startDrag(viewHolder.adapterPosition)
+                    clipAdapter.startDrag(viewHolder.bindingAdapterPosition)
                 }
             }
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
-                clipAdapter.commitPendingMove(viewHolder.adapterPosition)
+                clipAdapter.commitPendingMove(viewHolder.bindingAdapterPosition)
             }
             override fun isLongPressDragEnabled(): Boolean = false
         })

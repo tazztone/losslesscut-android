@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 class SilenceDetectionUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     suspend fun findSilence(
         waveform: FloatArray,

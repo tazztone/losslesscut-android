@@ -520,6 +520,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 node.contentDescription = context.getString(R.string.accessibility_playhead_pos_format, formatTimeShort(seekPositionMs))
                 val x = timeToX(seekPositionMs) - scrollOffsetX
                 val rect = Rect((x - 20).toInt(), 0, (x + 20).toInt(), height)
+                @Suppress("DEPRECATION")
                 node.setBoundsInParent(rect)
                 node.isFocusable = true
                 node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
@@ -536,6 +537,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                     
                     val x = timeToX(timeMs) - scrollOffsetX
                     val rect = Rect((x - 25).toInt(), height - 60, (x + 25).toInt(), height)
+                    @Suppress("DEPRECATION")
                     node.setBoundsInParent(rect)
                     node.isFocusable = true
                     node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)

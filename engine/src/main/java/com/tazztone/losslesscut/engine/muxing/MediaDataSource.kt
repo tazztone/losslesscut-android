@@ -13,7 +13,7 @@ import javax.inject.Inject
  * Handles setting data sources for MediaExtractor and MediaMetadataRetriever,
  * dealing with Android SAF Uri challenges.
  */
-class MediaDataSource @Inject constructor(@ApplicationContext private val context: Context) {
+class MediaDataSource @Inject constructor(@param:ApplicationContext private val context: Context) {
 
     fun setExtractorSource(extractor: MediaExtractor, uriString: String) {
         val uri = Uri.parse(uriString)

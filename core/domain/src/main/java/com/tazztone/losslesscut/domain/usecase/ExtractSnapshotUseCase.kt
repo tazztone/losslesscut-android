@@ -9,7 +9,7 @@ import javax.inject.Inject
 
 class ExtractSnapshotUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     sealed class Result {
         data class Success(val fileName: String) : Result()

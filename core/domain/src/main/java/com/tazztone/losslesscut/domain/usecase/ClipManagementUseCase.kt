@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 open class ClipManagementUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     open suspend fun createClips(uris: List<String>): Result<List<MediaClip>> = withContext(ioDispatcher) {
         try {
