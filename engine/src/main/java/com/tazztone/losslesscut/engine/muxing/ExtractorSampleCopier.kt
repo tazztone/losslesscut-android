@@ -42,19 +42,20 @@ class ExtractorSampleCopier(
             
             if (sampleSize < 0 || sampleTime > endUs) {
                 hasMore = false
-            } else {
-                val muxIdx = plan.trackMap[extractor.sampleTrackIndex]
-                if (muxIdx != null) {
-                    if (effectiveStartUs == -1L) effectiveStartUs = sampleTime
-                    val presUs = timeMapper.map(sampleTime, effectiveStartUs, globalOffsetUs)
-                    writeSample(muxIdx, buffer, sampleSize, presUs)
-                    
-                    val relativeTime = presUs - globalOffsetUs
-                    val currentMax = lastSampleTimeByMuxerTrack[muxIdx] ?: 0L
-                    lastSampleTimeByMuxerTrack[muxIdx] = maxOf(currentMax, relativeTime)
-                }
-                hasMore = extractor.advance()
+                continue
             }
+
+            val muxIdx = plan.trackMap[extractor.sampleTrackIndex]
+            if (muxIdx != null) {
+                if (effectiveStartUs == -1L) effectiveStartUs = sampleTime
+                val presUs = timeMapper.map(sampleTime, effectiveStartUs, globalOffsetUs)
+                writeSample(muxIdx, buffer, sampleSize, presUs)
+                
+                val relativeTime = presUs - globalOffsetUs
+                val currentMax = lastSampleTimeByMuxerTrack[muxIdx] ?: 0L
+                lastSampleTimeByMuxerTrack[muxIdx] = maxOf(currentMax, relativeTime)
+            }
+            hasMore = extractor.advance()
         }
         return lastSampleTimeByMuxerTrack
     }
