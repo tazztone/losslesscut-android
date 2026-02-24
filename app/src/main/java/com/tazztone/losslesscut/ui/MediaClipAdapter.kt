@@ -138,7 +138,8 @@ class MediaClipAdapter(
                     try {
                         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                             val size = Size(128, 128)
-                            binding.root.context.contentResolver.loadThumbnail(clip.uri, size, null)
+                            val uri = android.net.Uri.parse(clip.uri)
+                            binding.root.context.contentResolver.loadThumbnail(uri, size, null)
                         } else null
                     } catch (e: Exception) {
                         null

@@ -50,7 +50,7 @@ class VideoEditingViewModelTest {
         val mockClips = listOf(
             MediaClip(
                 id = UUID.randomUUID(),
-                uri = uris[0],
+                uri = uris[0].toString(),
                 fileName = "video1.mp4",
                 durationMs = 10000L,
                 width = 1920,

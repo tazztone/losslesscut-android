@@ -48,8 +48,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             val currentState = viewModel.uiState.value
             if (currentState is VideoEditingUiState.Success) {
                 val existingUris = currentState.clips.map { it.uri }.toSet()
-                val duplicates = uris.filter { it in existingUris }
-                val nonDuplicates = uris.filter { it !in existingUris }
+                val duplicates = uris.filter { it.toString() in existingUris }
+                val nonDuplicates = uris.filter { it.toString() !in existingUris }
 
                 if (duplicates.isEmpty()) {
                     viewModel.addClips(uris)
@@ -308,13 +308,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         binding.loadingScreen.root.visibility = View.GONE
                         val selectedClip = state.clips[state.selectedClipIndex]
                         
-                        val newStateUris = state.clips.map { it.uri }
+                        val newStateUris = state.clips.map { Uri.parse(it.uri) }
                         val currentUris = playerManager.player?.mediaItemCount?.let { count ->
                             (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
-                        } ?: emptyList<Uri>()
+                        } ?: emptyList<Uri?>()
 
                         if (currentUris != newStateUris) {
-                            playerManager.setMediaItems(newStateUris, state.selectedClipIndex)
+                            playerManager.setMediaItems(newStateUris.filterNotNull(), state.selectedClipIndex)
                         } else if (playerManager.currentMediaItemIndex != state.selectedClipIndex) {
                             playerManager.seekTo(state.selectedClipIndex, 0L)
                         }
