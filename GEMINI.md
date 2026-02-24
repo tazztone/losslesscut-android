@@ -15,8 +15,8 @@
 4. **Domain:** Images as `ByteArray` (no `Bitmap`). Use `Result<T>` for errors.
 
 ## Workflow & Gates
-1. **Detekt:** Max params=5. If >5, define grouping `data class` *before* impl. `maxIssues: 0`.
-2. **Safety:** Run `./gradlew test detekt lint` pre-push. CI failures are blockers.
-3. **API:** Use `explicitApi()` in domain. Update interface/impls atomically.
-4. **Tooling:** Pin versions in `docs/build-tooling.md`. Update 1 axis/PR. Keep `disallowKotlinSourceSets`.
+1. **Detekt:** Max params=5 for pure logic. Exempt `@Composable` and `@Inject` constructors. `maxIssues: 0` blocks PRs.
+2. **Safety:** Run `./gradlew test detekt lint` pre-push.
+3. **API:** Use explicit return types for domain functions. Update interface/impls atomically.
+4. **Tooling:** Document breaking matrix changes in `docs/build-tooling.md`. Batch related dependency updates (e.g., Kotlin/KSP) together.
 5. **Legacy:** `LosslessEngineImpl` is legacy God Class. Shrink, don't grow.
