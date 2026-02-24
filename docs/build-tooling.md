@@ -21,6 +21,10 @@ This document tracks the current stable toolchain and dependency matrix for Loss
 | `android.disallowKotlinSourceSets` | `true` | Enabled (KSP 2.3.5 compatibility verified) |
 | `android.nonTransitiveRClass` | `true` | Standard |
 | `kotlin.code.style` | `official` | Standard |
+| `org.gradle.configuration-cache` | `true` | **Optimized** (verified) |
+| `org.gradle.parallel` | `true` | **Optimized** |
+| `org.gradle.caching` | `true` | **Optimized** |
+| `-Xshare:off` | enabled | Noise reduction (OpenJDK CDS warnings) |
 
 ## Key Dependency Axes
 
