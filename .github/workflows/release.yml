@@ -24,9 +24,15 @@ jobs:
         with:
           java-version: '21'
           distribution: 'zulu'
-          cache: 'gradle'
-      - name: Run Unit Tests & Lint
-        run: ./gradlew test lintDebug
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+      - name: Run Unit Tests
+        run: ./gradlew test
+      - name: Run Lint (Release)
+        run: ./gradlew lintRelease
 
   build-and-release:
     name: Build APK/AAB & Create Release
@@ -45,26 +51,21 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '21'
-          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       # 2. Prepare Keystore
-      - name: Decode Keystore
+      - name: Prepare Keystore
         id: decode_keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
             echo "::error::Missing ANDROID_KEYSTORE_BASE64 secret!"
             exit 1
           fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
-          echo "storeFile=../keystore.jks" > keystore.properties
-          echo "storePassword=$ANDROID_KEYSTORE_PASSWORD" >> keystore.properties
-          echo "keyAlias=$ANDROID_KEY_ALIAS" >> keystore.properties
-          echo "keyPassword=$ANDROID_KEY_PASSWORD" >> keystore.properties
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
@@ -78,18 +79,24 @@ jobs:
           else
             VERSION_NAME="manual-main"
           fi
-          # Map run_number to a reasonably unique versionCode
-          VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))
+          # Monotonic versionCode from git history
+          VERSION_CODE=$(git rev-list --count HEAD)
           
           echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       # 4. Build Artifacts
       - name: Build App Bundle & APK
-        run: ./gradlew bundleRelease assembleRelease -PversionCode=${{ steps.meta.outputs.versionCode }} -PversionName=${{ steps.meta.outputs.versionName }}
+        run: ./gradlew bundleRelease assembleRelease \
+            -PversionCode=${{ steps.meta.outputs.versionCode }} \
+            -PversionName=${{ steps.meta.outputs.versionName }} \
+            -PstoreFile=../keystore.jks \
+            -PstorePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -PkeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -PkeyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           
       - name: Create GitHub Release & Upload Artifacts
-        uses: softprops/action-gh-release@26994186c0ac3ef5cae75ac16aa32e8153525f77 # v1
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8ad5fc06c3b555 # v2.0.4
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ steps.meta.outputs.versionName }}
@@ -108,7 +115,7 @@ jobs:
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         with:
-          serviceAccountJsonPlainText: $GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tazztone.losslesscut
           releaseFiles: app/build/outputs/bundle/release/app-release.aab
           track: internal

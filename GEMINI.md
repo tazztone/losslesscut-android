@@ -5,13 +5,13 @@ Lossless video editor for Android (Media3, MediaExtractor, MediaMuxer).
 Clean Architecture (MVVM) with multi-module Gradle setup.
 
 ## Module Responsibilities
-- `:app`: UI (Fragments, ViewModels), Navigation, Use Cases.
-- `:core:domain`: Domain Layer (Interfaces, Models, Use Case interfaces).
+- `:app`: UI (Fragments, ViewModels), Navigation.
+- `:core:domain`: Domain Layer (Models, Use Cases, Engine interfaces).
 - `:core:data`: Data Layer (Repository Impl, Persistence, Utils).
 - `:engine`: Media Processing Layer (Lossless Engines).
 
 ## Clean Architecture & Design
-- Use Cases in `:app` or `:core:domain`. Logic decoupled from `Context`.
+- Use Cases exclusively in `:core:domain`. Logic decoupled from `Context`.
 - Palette: Modern, vibrant colors (HSL), dark mode, glassmorphism.
 - UI: Jetpack Navigation, Fragments (`Editor`, `Remux`, `Metadata`).
 - `CustomVideoSeeker`: High-performance timeline with accessibility & zoom.

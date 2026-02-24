@@ -64,6 +64,21 @@ git clone https://github.com/tazztone/lossless-video-cut.git
 ./gradlew assembleDebug
 ```
 
+## 🤝 Contributing
+
+We follow **MVVM + Clean Architecture** with a strict separation between UI, Domain, and Data layers.
+
+- **Multi-Module**: Core logic belongs in `:core:domain`, `:core:data`, or `:engine`.
+- **Use Cases**: All business logic MUST reside in Use Cases within the `:core:domain` module.
+- **Workflow**: Create a feature branch for every change and ensure CI passes before opening a PR.
+- **Code Style**: Follow standard Kotlin conventions and avoid "God Classes".
+
+## 🛡️ Security Policy
+
+### Reporting a Vulnerability
+
+If you discover a security vulnerability within LosslessCut, please do not open a public issue. Instead, report it privately to the maintainers. We aim to respond to all reports within 48 hours and provide a fix or mitigation plan as soon as possible.
+
 ## 🔒 Permissions & Privacy
 - **Privacy-First Model**: Removed all unnecessary runtime permissions (Notifications, Media Access). The app relies on the **Storage Access Framework (SAF)** for user-initiated file selection.
 - **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio extraction). 

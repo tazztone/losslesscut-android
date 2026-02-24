@@ -12,6 +12,8 @@ jobs:
   build-debug:
     name: Build Debug APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -21,16 +23,36 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '21'
-          cache: 'gradle'
+      
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
+      
+      - name: Determine Build Metadata
+        id: meta
+        run: |
+          VERSION_CODE=$(git rev-list --count HEAD)
+          echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "versionName=debug-$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug -PversionCode=${{ steps.meta.outputs.versionCode }} -PversionName=${{ steps.meta.outputs.versionName }}
 
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+      - name: Upload Debug APK to Artifacts
+        uses: actions/upload-artifact@4cea0028a04e2d762c938a5a0904130f9f3478d1 # v4.6.1
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload Debug APK to Release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8ad5fc06c3b555 # v2.0.4
+        with:
+          tag_name: debug-build
+          name: ${{ inputs.release_name || 'Debug Build' }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          prerelease: true
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
