@@ -1,11 +1,12 @@
 package com.tazztone.losslesscut.engine.muxing
 
 import kotlin.math.max
+import javax.inject.Inject
 
 /**
  * Handles presentation time mapping for lossless cutting and merging.
  */
-class SampleTimeMapper {
+class SampleTimeMapper @Inject constructor() {
 
     /**
      * Maps original sample time to relative presentation time.

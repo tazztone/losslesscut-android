@@ -16,6 +16,14 @@ import com.tazztone.losslesscut.domain.engine.MediaMetadata
 import com.tazztone.losslesscut.domain.engine.TrackMetadata
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.engine.muxing.ExtractorSampleCopier
+import com.tazztone.losslesscut.engine.muxing.MediaDataSource
+import com.tazztone.losslesscut.engine.muxing.MergeValidator
+import com.tazztone.losslesscut.engine.muxing.MuxerWriter
+import com.tazztone.losslesscut.engine.muxing.SampleTimeMapper
+import com.tazztone.losslesscut.engine.muxing.SegmentGapCalculator
+import com.tazztone.losslesscut.engine.muxing.SelectedTrackPlan
+import com.tazztone.losslesscut.engine.muxing.TrackInspector
 import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
@@ -33,13 +41,14 @@ import javax.inject.Singleton
 class LosslessEngineImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val storageUtils: StorageUtils,
+    private val collaborators: EngineCollaborators,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
     
-    private val dataSource = com.tazztone.losslesscut.engine.muxing.MediaDataSource(context)
-    private val inspector = com.tazztone.losslesscut.engine.muxing.TrackInspector()
-    private val timeMapper = com.tazztone.losslesscut.engine.muxing.SampleTimeMapper()
-    private val mergeValidator = com.tazztone.losslesscut.engine.muxing.MergeValidator()
+    private val dataSource get() = collaborators.dataSource
+    private val inspector get() = collaborators.inspector
+    private val timeMapper get() = collaborators.timeMapper
+    private val mergeValidator get() = collaborators.mergeValidator
 
     private fun getVideoFps(format: MediaFormat): Float {
         return if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
@@ -54,8 +63,6 @@ class LosslessEngineImpl @Inject constructor(
             }
         } else DEFAULT_FPS
     }
-
-    enum class TrackType { VIDEO, AUDIO }
 
     companion object {
         private const val TAG = "LosslessEngine"
@@ -148,13 +155,7 @@ class LosslessEngineImpl @Inject constructor(
                     
                     if (isVideo) {
                         videoMime = mime
-                        if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                            fps = try {
-                                format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
-                            } catch (_: Exception) {
-                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }
-                            }
-                        }
+                        fps = getVideoFps(format)
                     } else if (isAudio) {
                         audioMime = mime
                         if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
@@ -215,6 +216,8 @@ class LosslessEngineImpl @Inject constructor(
                 it.compress(Bitmap.CompressFormat.JPEG, SNAPSHOT_QUALITY, stream)
                 stream.toByteArray()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             null
         } finally {
@@ -238,7 +241,7 @@ class LosslessEngineImpl @Inject constructor(
         )
 
         val extractor = MediaExtractor()
-        var muxerWriter: com.tazztone.losslesscut.engine.muxing.MuxerWriter? = null
+        var muxerWriter: MuxerWriter? = null
         var pfd: ParcelFileDescriptor? = null
 
         try {
@@ -248,7 +251,7 @@ class LosslessEngineImpl @Inject constructor(
             if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            muxerWriter = com.tazztone.losslesscut.engine.muxing.MuxerWriter(muxer)
+            muxerWriter = MuxerWriter(muxer)
             
             val plan = inspector.inspect(extractor, muxerWriter, keepAudio, keepVideo, selectedTracks)
             
@@ -273,7 +276,7 @@ class LosslessEngineImpl @Inject constructor(
             muxerWriter.start()
             
             val buffer = ByteBuffer.allocateDirect(plan.bufferSize)
-            val copier = com.tazztone.losslesscut.engine.muxing.ExtractorSampleCopier(
+            val copier = ExtractorSampleCopier(
                 extractor,
                 muxerWriter,
                 timeMapper
@@ -311,7 +314,7 @@ class LosslessEngineImpl @Inject constructor(
         val outputUri = Uri.parse(outputUriString)
         if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips to merge"))
 
-        var muxerWriter: com.tazztone.losslesscut.engine.muxing.MuxerWriter? = null
+        var muxerWriter: MuxerWriter? = null
         var pfd: ParcelFileDescriptor? = null
 
         try {
@@ -319,7 +322,7 @@ class LosslessEngineImpl @Inject constructor(
             if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
 
             val muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-            muxerWriter = com.tazztone.losslesscut.engine.muxing.MuxerWriter(muxer)
+            muxerWriter = MuxerWriter(muxer)
 
             var audioSampleRate = AUDIO_SAMPLE_RATE_44100
             var videoFps = DEFAULT_FPS
@@ -362,26 +365,6 @@ class LosslessEngineImpl @Inject constructor(
                 return@withContext Result.failure(IOException(msg))
             }
 
-            // Find the maximum buffer size across all clips
-            var maxBufferSize = plan.bufferSize
-            for (clip in clips) {
-                val clipExtractor = MediaExtractor()
-                try {
-                    dataSource.setExtractorSource(clipExtractor, clip.uri)
-                    for (i in 0 until clipExtractor.trackCount) {
-                        val format = clipExtractor.getTrackFormat(i)
-                        if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
-                            val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
-                            if (size > maxBufferSize) maxBufferSize = size
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "Could not probe buffer size for ${clip.uri}", e)
-                } finally {
-                    clipExtractor.release()
-                }
-            }
-
             val finalRotation = rotationOverride ?: clips[0].rotation
             if (plan.hasVideoTrack) {
                 muxerWriter.setOrientationHint(finalRotation)
@@ -389,11 +372,12 @@ class LosslessEngineImpl @Inject constructor(
 
             muxerWriter.start()
 
-            val gapUs = com.tazztone.losslesscut.engine.muxing.SegmentGapCalculator.calculateGapUs(
+            val gapUs = SegmentGapCalculator.calculateGapUs(
                 audioSampleRate,
                 videoFps
             )
-            val buffer = ByteBuffer.allocateDirect(maxBufferSize)
+            var maxBufferSize = plan.bufferSize
+            var buffer = ByteBuffer.allocateDirect(maxBufferSize)
             var globalOffsetUs = 0L
             var actuallyHasVideo = false
 
@@ -402,11 +386,21 @@ class LosslessEngineImpl @Inject constructor(
                 try {
                     dataSource.setExtractorSource(clipExtractor, clip.uri)
 
-                    // Map clip tracks to muxer tracks, validating codecs
+                    // Map clip tracks to muxer tracks, validating codecs and checking buffer size
                     val clipTrackMap = mutableMapOf<Int, Int>()
                     val isVideoTrackMap = mutableMapOf<Int, Boolean>()
                     for (i in 0 until clipExtractor.trackCount) {
                         val format = clipExtractor.getTrackFormat(i)
+                        
+                        // Grow buffer if needed
+                        if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                            val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
+                            if (size > maxBufferSize) {
+                                maxBufferSize = size
+                                buffer = ByteBuffer.allocateDirect(maxBufferSize)
+                            }
+                        }
+
                         val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
                         val isVideo = mime.startsWith("video/")
                         val isAudio = mime.startsWith("audio/")
@@ -440,7 +434,7 @@ class LosslessEngineImpl @Inject constructor(
                         }
                     }
 
-                    val copier = com.tazztone.losslesscut.engine.muxing.ExtractorSampleCopier(
+                    val copier = ExtractorSampleCopier(
                         clipExtractor,
                         muxerWriter,
                         timeMapper
@@ -448,7 +442,7 @@ class LosslessEngineImpl @Inject constructor(
                     val keepSegments = clip.segments.filter { it.action == SegmentAction.KEEP }
                     
                     for (segment in keepSegments) {
-                        val segmentPlan = com.tazztone.losslesscut.engine.muxing.SelectedTrackPlan(
+                        val segmentPlan = SelectedTrackPlan(
                             trackMap = clipTrackMap,
                             isVideoTrackMap = isVideoTrackMap,
                             bufferSize = maxBufferSize,
@@ -492,3 +486,10 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 }
+
+data class EngineCollaborators @Inject constructor(
+    val dataSource: MediaDataSource,
+    val inspector: TrackInspector,
+    val timeMapper: SampleTimeMapper,
+    val mergeValidator: MergeValidator
+)

@@ -22,6 +22,7 @@ import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.viewmodel.ExportSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -235,7 +236,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                     layoutInflater
                 ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
                     val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks)
+                    val settings = ExportSettings(
+                        isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+                    )
+                    viewModel.exportSegments(settings)
                 }
                 presenter.show(state)
             }

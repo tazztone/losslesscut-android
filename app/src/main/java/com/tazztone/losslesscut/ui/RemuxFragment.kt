@@ -7,6 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentRemuxBinding
+import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
@@ -69,12 +70,14 @@ class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
             .setMessage(R.string.remux_dialog_message)
             .setPositiveButton(R.string.export) { _, _ ->
                 viewModel.exportSegments(
-                    isLossless = true,
-                    keepAudio = true,
-                    keepVideo = true,
-                    rotationOverride = null,
-                    mergeSegments = false,
-                    selectedTracks = null
+                    ExportSettings(
+                        isLossless = true,
+                        keepAudio = true,
+                        keepVideo = true,
+                        rotationOverride = null,
+                        mergeSegments = false,
+                        selectedTracks = null
+                    )
                 )
             }
             .setNegativeButton(R.string.cancel) { _, _ ->

@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.engine.muxing
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.util.Log
+import javax.inject.Inject
 
 data class SelectedTrackPlan(
     val trackMap: Map<Int, Int>, // Extractor index -> Muxer index
@@ -15,7 +16,7 @@ data class SelectedTrackPlan(
 /**
  * Isolates the logic for selecting tracks and calculating the required buffer size.
  */
-class TrackInspector {
+class TrackInspector @Inject constructor() {
 
     fun inspect(
         extractor: MediaExtractor,

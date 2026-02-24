@@ -4,6 +4,10 @@ import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import com.tazztone.losslesscut.data.AppPreferences
+import com.tazztone.losslesscut.engine.muxing.MediaDataSource
+import com.tazztone.losslesscut.engine.muxing.MergeValidator
+import com.tazztone.losslesscut.engine.muxing.SampleTimeMapper
+import com.tazztone.losslesscut.engine.muxing.TrackInspector
 import com.tazztone.losslesscut.utils.StorageUtils
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
@@ -19,7 +23,17 @@ class RobolectricEngineTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val preferences = AppPreferences(context)
     private val storageUtils = StorageUtils(context, preferences)
-    private val engine = LosslessEngineImpl(context, storageUtils, kotlinx.coroutines.Dispatchers.IO)
+    private val dataSource = MediaDataSource(context)
+    private val inspector = TrackInspector()
+    private val timeMapper = SampleTimeMapper()
+    private val mergeValidator = MergeValidator()
+    private val collaborators = EngineCollaborators(dataSource, inspector, timeMapper, mergeValidator)
+    private val engine = LosslessEngineImpl(
+        context, 
+        storageUtils, 
+        collaborators, 
+        kotlinx.coroutines.Dispatchers.IO
+    )
 
     @Test
     fun getKeyframes_withContentUriString_parsesCorrectly() = runBlocking {

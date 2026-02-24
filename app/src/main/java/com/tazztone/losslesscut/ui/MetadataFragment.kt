@@ -7,6 +7,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentMetadataBinding
+import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
@@ -81,8 +82,11 @@ class MetadataFragment : BaseEditingFragment(R.layout.fragment_metadata) {
                     4 -> 270
                     else -> null // Keep Original
                 }
-                viewModel.exportSegments(true, keepAudio = true, keepVideo = true,
-                    rotationOverride = selectedRotation, mergeSegments = false)
+                val settings = ExportSettings(
+                    isLossless = true, keepAudio = true, keepVideo = true,
+                    rotationOverride = selectedRotation, mergeSegments = false
+                )
+                viewModel.exportSegments(settings)
             }
             .setNegativeButton(R.string.cancel) { _, _ ->
                 activity?.finish()

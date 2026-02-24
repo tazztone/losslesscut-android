@@ -71,14 +71,18 @@ class VideoEditingViewModelTest {
         coEvery { mockRepo.loadWaveformFromCache(any()) } returns null
         coEvery { mockRepo.extractWaveform(any()) } returns null
         
-        val viewModel = VideoEditingViewModel(
-            mockRepo,
-            mockPrefs,
+        val useCases = VideoEditingUseCases(
             mockClipUseCase,
             mockExportUseCase,
             mockSnapUseCase,
             mockSilenceUseCase,
-            mockSessionUseCase,
+            mockSessionUseCase
+        )
+        
+        val viewModel = VideoEditingViewModel(
+            mockRepo,
+            mockPrefs,
+            useCases,
             testDispatcher
         )
         

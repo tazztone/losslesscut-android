@@ -5,13 +5,15 @@ import android.media.MediaExtractor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.IOException
+import javax.inject.Inject
 
 /**
  * Handles setting data sources for MediaExtractor and MediaMetadataRetriever,
  * dealing with Android SAF Uri challenges.
  */
-class MediaDataSource(private val context: Context) {
+class MediaDataSource @Inject constructor(@ApplicationContext private val context: Context) {
 
     fun setExtractorSource(extractor: MediaExtractor, uriString: String) {
         val uri = Uri.parse(uriString)
