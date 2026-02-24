@@ -212,15 +212,19 @@ class VideoEditingViewModel @Inject constructor(
                 }
                 historyManager.save(currentClips)
                 val newList = currentClips.toMutableList()
-                newList.removeAt(index)
-                currentClips = newList
-                if (selectedClipIndex >= currentClips.size) {
-                    selectedClipIndex = currentClips.size - 1
-                }
-                loadClipDataInternal(selectedClipIndex)
+            newList.removeAt(index)
+            currentClips = newList
+            
+            if (index < selectedClipIndex) {
+                selectedClipIndex--
+            } else if (selectedClipIndex >= currentClips.size) {
+                selectedClipIndex = currentClips.size - 1
             }
+            
+            loadClipDataInternal(selectedClipIndex)
         }
     }
+}
 
     fun reorderClips(from: Int, to: Int) {
         viewModelScope.launch(ioDispatcher) {

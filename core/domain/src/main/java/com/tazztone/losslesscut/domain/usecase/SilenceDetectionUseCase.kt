@@ -78,8 +78,10 @@ class SilenceDetectionUseCase @Inject constructor(
         
         val resultSegments = mutableListOf<TrimSegment>()
         var currentPos = seg.startMs
+        
         segRanges.forEach { keepRange ->
-            if (keepRange.first > currentPos + minSegmentDurationMs) {
+            // Fill any gap before the keep range with a DISCARD segment
+            if (keepRange.first > currentPos) {
                 resultSegments.add(seg.copy(
                     id = UUID.randomUUID(), 
                     startMs = currentPos, 
@@ -87,6 +89,7 @@ class SilenceDetectionUseCase @Inject constructor(
                     action = SegmentAction.DISCARD
                 ))
             }
+            // Add the KEEP segment
             resultSegments.add(seg.copy(
                 id = UUID.randomUUID(), 
                 startMs = keepRange.first, 
@@ -95,7 +98,9 @@ class SilenceDetectionUseCase @Inject constructor(
             ))
             currentPos = keepRange.last
         }
-        if (currentPos < seg.endMs - minSegmentDurationMs) {
+        
+        // Fill any remaining gap at the end with a DISCARD segment
+        if (currentPos < seg.endMs) {
             resultSegments.add(seg.copy(
                 id = UUID.randomUUID(), 
                 startMs = currentPos, 
