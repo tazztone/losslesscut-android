@@ -36,7 +36,7 @@ class LosslessEngineInstrumentedTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val appPreferences = AppPreferences(context)
     private val storageUtils = StorageUtils(context, appPreferences)
-    private val engine = LosslessEngineImpl(storageUtils, kotlinx.coroutines.Dispatchers.IO)
+    private val engine = LosslessEngineImpl(context, storageUtils, kotlinx.coroutines.Dispatchers.IO)
 
     @Test
     fun executeLosslessCut_validVideo_succeeds() = runBlocking {
@@ -50,19 +50,20 @@ class LosslessEngineInstrumentedTest {
         
         // Cut the first 1 second
         val result = engine.executeLosslessCut(
-            context = context,
-            inputUri = inputUri,
-            outputUri = outputUri!!,
+            inputUriString = inputUri.toString(),
+            outputUriString = outputUri!!.toString(),
             startMs = 0,
             endMs = 1000,
             keepAudio = true,
-            keepVideo = true
+            keepVideo = true,
+            rotationOverride = null,
+            selectedTracks = null
         )
         
         assertTrue("Lossless cut should succeed: ${result.exceptionOrNull()?.message}", result.isSuccess)
         
         // Verify output exists and has some data
-        val metadataResult = engine.getMediaMetadata(context, outputUri)
+        val metadataResult = engine.getMediaMetadata(outputUri.toString())
         assertTrue("Get metadata should succeed", metadataResult.isSuccess)
         val metadata = metadataResult.getOrThrow()
         assertTrue("Output video should have a duration > 0", metadata.durationMs > 0)
@@ -76,7 +77,7 @@ class LosslessEngineInstrumentedTest {
         val testFile = copyAssetToCache("test_video.mp4") ?: return@runBlocking
         val inputUri = Uri.fromFile(testFile)
         
-        val result = engine.getKeyframes(context, inputUri)
+        val result = engine.getKeyframes(inputUri.toString())
         
         assertTrue("Get keyframes should succeed", result.isSuccess)
         val keyframes = result.getOrThrow()

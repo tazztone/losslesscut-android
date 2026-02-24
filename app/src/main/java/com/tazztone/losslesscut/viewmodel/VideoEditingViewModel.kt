@@ -68,6 +68,10 @@ class VideoEditingViewModel @Inject constructor(
     private val _isDirty = MutableStateFlow(false)
     val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
 
+    fun clearDirty() {
+        _isDirty.value = false
+    }
+
     private val _waveformData = MutableStateFlow<FloatArray?>(null)
     val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
 

@@ -38,48 +38,18 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private lateinit var shortcutHandler: ShortcutHandler
     private lateinit var clipAdapter: MediaClipAdapter
     
+    private lateinit var progressTicker: com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker
+    private lateinit var seekerDelegate: com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate
+    private lateinit var addClipsDelegate: com.tazztone.losslesscut.ui.editor.AddClipsDelegate
+    private lateinit var silenceController: com.tazztone.losslesscut.ui.editor.SilenceDetectionOverlayController
+    private lateinit var backPressDelegate: com.tazztone.losslesscut.ui.editor.BackPressDelegate
+    
     private var isDraggingTimeline = false
     private var isLosslessMode = true
-    private var updateJob: Job? = null
     private var lastLoadedClipId: UUID? = null
 
     private val addClipsLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
-        if (uris.isNotEmpty()) {
-            val currentState = viewModel.uiState.value
-            if (currentState is VideoEditingUiState.Success) {
-                val existingUris = currentState.clips.map { it.uri }.toSet()
-                val duplicates = uris.filter { it.toString() in existingUris }
-                val nonDuplicates = uris.filter { it.toString() !in existingUris }
-
-                if (duplicates.isEmpty()) {
-                    viewModel.addClips(uris)
-                } else {
-                    val message = if (uris.size == 1) {
-                        getString(R.string.duplicate_files_msg)
-                    } else if (nonDuplicates.isEmpty()) {
-                        getString(R.string.duplicate_files_msg)
-                    } else {
-                        getString(R.string.duplicate_files_confirm_msg, duplicates.size)
-                    }
-
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.add_video)
-                        .setMessage(message)
-                        .setPositiveButton(R.string.import_anyway) { _, _ ->
-                            viewModel.addClips(uris)
-                        }
-                        .setNegativeButton(R.string.skip) { _, _ ->
-                            if (nonDuplicates.isNotEmpty()) {
-                                viewModel.addClips(nonDuplicates)
-                            }
-                        }
-                        .setNeutralButton(android.R.string.cancel, null)
-                        .show()
-                }
-            } else {
-                viewModel.addClips(uris)
-            }
-        }
+        addClipsDelegate.onClipsReceived(uris)
     }
 
     override fun getPlayerView() = binding.playerView
@@ -94,7 +64,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             viewModel = viewModel,
             onStateChanged = { state ->
                 if (state == Player.STATE_READY) {
-                    binding.customVideoSeeker.setVideoDuration(playerManager.duration)
+                    seekerDelegate.setVideoDuration(playerManager.duration)
                     updateDurationDisplay(playerManager.currentPosition, playerManager.duration)
                     binding.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
                 }
@@ -109,7 +79,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             },
             onIsPlayingChanged = { isPlaying ->
                 updatePlaybackIcons()
-                if (isPlaying) startProgressUpdate() else stopProgressUpdate()
+                if (isPlaying) progressTicker.start() else progressTicker.stop()
             },
             onPlaybackParametersChanged = { speed, pitch ->
                 updatePlaybackSpeedUI(speed)
@@ -117,6 +87,43 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             }
         )
         playerManager.initialize()
+
+        progressTicker = com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker(
+            scope = viewLifecycleOwner.lifecycleScope,
+            binding = binding,
+            playerManager = playerManager,
+            onUpdate = { current, total -> updateDurationDisplay(current, total) }
+        )
+
+        seekerDelegate = com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate(
+            binding = binding,
+            viewModel = viewModel,
+            playerManager = playerManager,
+            onSeek = { pos -> updateDurationDisplay(pos, playerManager.duration) },
+            onDraggingChanged = { dragging -> 
+                isDraggingTimeline = dragging
+                progressTicker.isDraggingTimeline = dragging
+            }
+        )
+
+        addClipsDelegate = com.tazztone.losslesscut.ui.editor.AddClipsDelegate(requireContext(), viewModel)
+        
+        silenceController = com.tazztone.losslesscut.ui.editor.SilenceDetectionOverlayController(
+            context = requireContext(),
+            scope = viewLifecycleOwner.lifecycleScope,
+            binding = binding,
+            viewModel = viewModel
+        )
+
+        backPressDelegate = com.tazztone.losslesscut.ui.editor.BackPressDelegate(
+            context = requireContext(),
+            isDirty = viewModel.isDirty,
+            onConfirmExit = {
+                // Disable dirty check and exit
+                viewModel.clearDirty()
+                activity?.onBackPressedDispatcher?.onBackPressed()
+            }
+        )
 
         rotationManager = RotationManager(
             badgeRotate = binding.badgeRotate,
@@ -219,7 +226,20 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.playerView.setOnClickListener { playerManager.togglePlayback() }
 
         binding.btnHome.setOnClickListener { activity?.onBackPressedDispatcher?.onBackPressed() }
-        binding.btnExport?.setOnClickListener { showExportOptionsDialog() }
+        binding.btnExport?.setOnClickListener { 
+            val state = viewModel.uiState.value as? VideoEditingUiState.Success
+            if (state != null) {
+                playerManager.pause()
+                val presenter = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
+                    requireContext(),
+                    layoutInflater
+                ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
+                    val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
+                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks)
+                }
+                presenter.show(state)
+            }
+        }
         binding.btnUndo.setOnClickListener { viewModel.undo() }
         binding.btnRedo?.setOnClickListener { viewModel.redo() }
         
@@ -263,35 +283,21 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             }
         }
 
-        binding.btnSilenceCut?.setOnClickListener { showSilenceDetectionDialog() }
-        binding.containerSilenceCut?.setOnClickListener { showSilenceDetectionDialog() }
+        binding.btnSilenceCut?.setOnClickListener { 
+            playerManager.pause()
+            silenceController.show()
+        }
+        binding.containerSilenceCut?.setOnClickListener { 
+            playerManager.pause()
+            silenceController.show()
+        }
 
         binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
         binding.btnNudgeForward?.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
     private fun setupCustomSeeker() {
-        binding.customVideoSeeker.onSeekStart = {
-            isDraggingTimeline = true
-        }
-        binding.customVideoSeeker.onSeekEnd = {
-            isDraggingTimeline = false
-        }
-        binding.customVideoSeeker.onSeekListener = { pos ->
-            playerManager.seekTo(pos)
-            updateDurationDisplay(pos, playerManager.duration)
-        }
-        binding.customVideoSeeker.onSegmentSelected = { id -> viewModel.selectSegment(id) }
-        binding.customVideoSeeker.onSegmentBoundsChanged = { id, start, end, seekPos ->
-            isDraggingTimeline = true
-            viewModel.updateSegmentBounds(id, start, end)
-            playerManager.seekTo(seekPos)
-            updateDurationDisplay(seekPos, playerManager.duration)
-        }
-        binding.customVideoSeeker.onSegmentBoundsDragEnd = {
-            isDraggingTimeline = false
-            viewModel.commitSegmentBounds()
-        }
+        seekerDelegate.setup()
     }
 
     private fun observeViewModel() {
@@ -385,43 +391,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private fun setupBackPressed() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (viewModel.isDirty.value) {
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(R.string.exit_confirm_title)
-                        .setMessage(R.string.exit_confirm_message)
-                        .setPositiveButton(R.string.exit_confirm_discard) { _, _ ->
-                            isEnabled = false
-                            activity?.onBackPressedDispatcher?.onBackPressed()
-                        }
-                        .setNegativeButton(R.string.exit_confirm_keep_editing, null)
-                        .show()
-                } else {
+                if (!backPressDelegate.handleBackPress()) {
                     isEnabled = false
                     activity?.onBackPressedDispatcher?.onBackPressed()
                 }
             }
         })
-    }
-
-    private fun startProgressUpdate() {
-        updateJob?.cancel()
-        updateJob = lifecycleScope.launch {
-            while (isActive && playerManager.isPlaying) {
-                if (!isDraggingTimeline) {
-                    val pos = playerManager.currentPosition
-                    binding.customVideoSeeker.setSeekPosition(pos)
-                    updateDurationDisplay(pos, playerManager.duration)
-                }
-                delay(30)
-            }
-        }
-    }
-
-    private fun stopProgressUpdate() {
-        updateJob?.cancel()
-        val pos = playerManager.currentPosition
-        binding.customVideoSeeker.setSeekPosition(pos)
-        updateDurationDisplay(pos, playerManager.duration)
     }
 
     private fun updateDurationDisplay(current: Long, total: Long) {
@@ -460,141 +435,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         val currentPos = playerManager.currentPosition
         viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentSeg.startMs, currentPos)
         viewModel.commitSegmentBounds()
-    }
-
-    private fun showExportOptionsDialog() {
-        playerManager.pause()
-        val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
-        val cbKeepVideo = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepVideo)
-        val cbKeepAudio = dialogView.findViewById<android.widget.CheckBox>(R.id.cbKeepAudio)
-        val cbMergeSegments = dialogView.findViewById<android.widget.CheckBox>(R.id.cbMergeSegments)
-        val tvTracksHeader = dialogView.findViewById<android.widget.TextView>(R.id.tvTracksHeader)
-        val tracksContainer = dialogView.findViewById<android.widget.LinearLayout>(R.id.tracksContainer)
-        
-        val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
-        val totalKeepSegments = currentState?.clips?.sumOf { clip -> 
-            clip.segments.count { it.action == SegmentAction.KEEP } 
-        } ?: 0
-        
-        if (totalKeepSegments > 1 || (currentState?.clips?.size ?: 0) > 1) {
-            cbMergeSegments.visibility = View.VISIBLE
-        }
-
-        val availableTracks = currentState?.availableTracks ?: emptyList()
-        val selectedTracks = mutableSetOf<Int>()
-        
-        if (availableTracks.size > 2) {
-            tvTracksHeader.visibility = View.VISIBLE
-            tracksContainer.visibility = View.VISIBLE
-            
-            availableTracks.forEach { track ->
-                val cb = android.widget.CheckBox(requireContext()).apply {
-                    val type = if (track.isVideo) "Video" else if (track.isAudio) "Audio" else "Other"
-                    text = getString(R.string.track_item_format, track.id, type, track.mimeType)
-                    isChecked = true
-                    selectedTracks.add(track.id)
-                    setOnCheckedChangeListener { _, isChecked ->
-                        if (isChecked) selectedTracks.add(track.id) else selectedTracks.remove(track.id)
-                    }
-                }
-                tracksContainer.addView(cb)
-            }
-        }
-
-        if (currentState?.hasAudioTrack == false) {
-            cbKeepVideo.isEnabled = false
-            cbKeepVideo.alpha = 0.5f
-            cbKeepVideo.setOnClickListener {
-                Toast.makeText(requireContext(), getString(R.string.error_cannot_exclude_video), Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.export_options))
-            .setView(dialogView)
-            .setPositiveButton(getString(R.string.export)) { _, _ ->
-                val keepVideo = cbKeepVideo.isChecked
-                val keepAudio = cbKeepAudio.isChecked
-                val mergeSegments = cbMergeSegments.isChecked
-                if (!keepVideo && !keepAudio && selectedTracks.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
-                } else {
-                    val rotationOverride = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-                    val trackList = if (selectedTracks.isNotEmpty() && availableTracks.size > 2) selectedTracks.toList() else null
-                    viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments, trackList)
-                }
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
-
-    private fun showSilenceDetectionDialog() {
-        playerManager.pause()
-        val overlay = binding.silenceDetectionContainer?.root ?: return
-        overlay.visibility = View.VISIBLE
-        
-        val sliderThreshold = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
-        val sliderDuration = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderDuration)
-        val sliderMinSegment = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderMinSegment)
-        val sliderPadding = overlay.findViewById<com.google.android.material.slider.Slider>(R.id.sliderPadding)
-        
-        val tvThresholdValue = overlay.findViewById<TextView>(R.id.tvThresholdValue)
-        val tvDurationValue = overlay.findViewById<TextView>(R.id.tvDurationValue)
-        val tvMinSegmentValue = overlay.findViewById<TextView>(R.id.tvMinSegmentValue)
-        val tvPaddingValue = overlay.findViewById<TextView>(R.id.tvPaddingValue)
-        
-        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
-        val btnCancel = overlay.findViewById<android.widget.Button>(R.id.btnCancel)
-        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
-
-        val updatePreview = {
-            val threshold = sliderThreshold.value
-            val duration = sliderDuration.value.toLong()
-            val minSegment = sliderMinSegment.value.toLong()
-            val padding = sliderPadding.value.toLong()
-            
-            tvThresholdValue.text = String.format("%.1f%%", threshold * 100)
-            tvDurationValue.text = String.format("%.1fs", duration / 1000f)
-            tvMinSegmentValue.text = String.format("%.1fs", minSegment / 1000f)
-            tvPaddingValue.text = String.format("%.1fs", padding / 1000f)
-            
-            viewModel.previewSilenceSegments(threshold, duration, padding, minSegment)
-        }
-
-        sliderThreshold.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderDuration.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderMinSegment.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderPadding.addOnChangeListener { _, _, _ -> updatePreview() }
-
-        val silencePreviewJob = viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
-                if (state is VideoEditingUiState.Success) {
-                    val ranges = state.silencePreviewRanges
-                    if (ranges.isNotEmpty()) {
-                        val totalSilenceMs = ranges.sumOf { it.last - it.first }
-                        tvEstimatedCut.text = getString(R.string.silence_detected_preview, TimeUtils.formatDuration(totalSilenceMs), ranges.size)
-                        btnApply.isEnabled = true
-                    } else {
-                        tvEstimatedCut.text = getString(R.string.no_silence_detected)
-                        btnApply.isEnabled = false
-                    }
-                }
-            }
-        }
-
-        btnCancel.setOnClickListener {
-            silencePreviewJob.cancel()
-            viewModel.clearSilencePreview()
-            overlay.visibility = View.GONE
-        }
-
-        btnApply.setOnClickListener {
-            silencePreviewJob.cancel()
-            viewModel.applySilenceDetection()
-            overlay.visibility = View.GONE
-        }
-
-        updatePreview()
     }
 
     override fun onLosslessModeToggled(isChecked: Boolean) {
