@@ -1,4 +1,4 @@
-name: Build & Publish Android Release
+name: "🚀 Production Release (AAB/APK)"
 
 on:
   push:
@@ -99,7 +99,7 @@ jobs:
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ steps.meta.outputs.versionName }}
+          name: "Production Release v${{ steps.meta.outputs.versionName }} (Build ${{ steps.meta.outputs.versionCode }})"
           generate_release_notes: true
           draft: false
           prerelease: false

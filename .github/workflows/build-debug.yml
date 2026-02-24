@@ -1,4 +1,4 @@
-name: Build Debug APK
+name: Development Build (Debug APK)
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-debug:
-    name: Build Debug APK
+    name: Development Build (Debug APK)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,10 +34,12 @@ jobs:
         id: meta
         run: |
           VERSION_CODE=$(git rev-list --count HEAD)
+          TIMESTAMP=$(date +'%Y-%m-%d %H:%M')
           echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "versionName=debug-$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+          echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
 
-      - name: Build Debug APK
+      - name: Development Build (Debug APK)
         run: ./gradlew assembleDebug -PversionCode=${{ steps.meta.outputs.versionCode }} -PversionName=${{ steps.meta.outputs.versionName }}
 
       - name: Upload Debug APK to Artifacts
@@ -50,7 +52,7 @@ jobs:
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: debug-build
-          name: ${{ inputs.release_name || 'Debug Build' }}
+          name: "Debug Build v${{ steps.meta.outputs.versionCode }} (${{ steps.meta.outputs.timestamp }})"
           files: app/build/outputs/apk/debug/app-debug.apk
           prerelease: true
           make_latest: false
