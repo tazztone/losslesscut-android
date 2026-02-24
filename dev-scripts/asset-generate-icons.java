@@ -6,22 +6,29 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import java.util.Map;
 import java.util.HashMap;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class IconGenerator {
+/**
+ * Consolidated icon generation tool for LosslessCut Android.
+ * This file is directly executable via 'java --source 21 asset-generate-icons.java' 
+ * or './asset-generate-icons.java' if chmod +x is set.
+ */
+public class AssetGenerateIcons {
     public static void main(String[] args) throws IOException {
-        if (args.length < 2) {
-            System.out.println("Usage: java IconGenerator <logo-path> <res-dir-path>");
-            System.exit(1);
-        }
-
-        File logoFile = new File(args[0]);
-        File resDir = new File(args[1]);
+        // Calculate paths relative to the script location
+        Path scriptPath = Paths.get("dev-scripts", "asset-generate-icons.java");
+        Path projectRoot = Paths.get("").toAbsolutePath();
+        
+        File logoFile = projectRoot.resolve("docs/logo.png").toFile();
+        File resDir = projectRoot.resolve("app/src/main/res").toFile();
 
         if (!logoFile.exists()) {
-            System.out.println("Logo file not found: " + logoFile.getAbsolutePath());
+            System.err.println("❌ Error: Logo file not found at " + logoFile.getAbsolutePath());
             System.exit(1);
         }
 
+        System.out.println("🚀 Generating Android icons from: " + logoFile.getName());
         BufferedImage originalImage = ImageIO.read(logoFile);
 
         Map<String, Integer> configs = new HashMap<>();
@@ -48,7 +55,7 @@ public class IconGenerator {
             ImageIO.write(bufferedImage, "png", new File(targetDir, "ic_launcher.png"));
             ImageIO.write(bufferedImage, "png", new File(targetDir, "ic_launcher_round.png"));
             
-            System.out.println("Generated icons for " + dirName);
+            System.out.println("  ✅ Generated: " + dirName);
         }
 
         // Generate Banner
@@ -66,6 +73,7 @@ public class IconGenerator {
         File bannerDir = new File(resDir, "mipmap-xhdpi");
         if (!bannerDir.exists()) bannerDir.mkdirs();
         ImageIO.write(bannerImage, "png", new File(bannerDir, "ic_banner.png"));
-        System.out.println("Generated ic_banner.png");
+        System.out.println("✨ Generated ic_banner.png in mipmap-xhdpi");
+        System.out.println("Done!");
     }
 }

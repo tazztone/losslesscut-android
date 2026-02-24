@@ -57,8 +57,8 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 # Clone the repo
 git clone https://github.com/tazztone/lossless-video-cut.git
 
-# Generate icons (AWT standalone)
-./dev-scripts/asset-generate-icons.sh
+# Generate icons (Consolidated tool)
+java dev-scripts/asset-generate-icons.java
 
 # Build debug APK using Gradle Kotlin DSL
 ./gradlew assembleDebug
