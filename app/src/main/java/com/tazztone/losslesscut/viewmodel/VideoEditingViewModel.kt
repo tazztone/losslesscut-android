@@ -423,7 +423,13 @@ public class VideoEditingViewModel @Inject constructor(
         )
     }
 
-    public fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingStartMs: Long, paddingEndMs: Long, minSegmentMs: Long) {
+    public fun previewSilenceSegments(
+        threshold: Float,
+        minSilenceMs: Long,
+        paddingStartMs: Long,
+        paddingEndMs: Long,
+        minSegmentMs: Long
+    ) {
         if (_waveformData.value == null) {
             viewModelScope.launch {
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_waveform_not_ready)))
