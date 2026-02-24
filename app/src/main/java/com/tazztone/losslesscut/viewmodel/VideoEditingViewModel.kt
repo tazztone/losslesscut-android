@@ -24,8 +24,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
@@ -89,26 +89,18 @@ class VideoEditingViewModel @Inject constructor(
     private val stateMutex = Mutex()
     private val isExporting = AtomicBoolean(false)
     
-    private val keyframeCache = Collections.synchronizedMap(
-        object : LinkedHashMap<String, List<Long>>(20, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Long>>?): Boolean {
-                return size > 20
-            }
-        }
-    )
+    private val keyframeCache = ConcurrentHashMap<String, List<Long>>()
     
     init {
         // Collect reactive state from controllers
         viewModelScope.launch {
             exportController.isSnapshotInProgress
-                .distinctUntilChanged()
                 .collect {
                     stateMutex.withLock { updateStateInternal() }
                 }
         }
         viewModelScope.launch {
             waveformController.waveformData
-                .distinctUntilChanged()
                 .collect { data ->
                     _waveformData.value = data
                     stateMutex.withLock { updateStateInternal() }
@@ -116,7 +108,6 @@ class VideoEditingViewModel @Inject constructor(
         }
         viewModelScope.launch {
             waveformController.silencePreviewRanges
-                .distinctUntilChanged()
                 .collect { ranges ->
                     _silencePreviewRanges.value = ranges
                     stateMutex.withLock { updateStateInternal() }
@@ -170,8 +161,13 @@ class VideoEditingViewModel @Inject constructor(
     private suspend fun loadClipDataInternal(index: Int) {
         val clip = currentClips.getOrNull(index) ?: return
         val cacheKey = clip.uri
-        val kfs = keyframeCache[cacheKey] ?: repository.getKeyframes(clip.uri)
-        keyframeCache[cacheKey] = kfs
+        
+        // Atomic check-and-compute to prevent redundant work
+        val kfs = keyframeCache[cacheKey] ?: run {
+            val fetched = repository.getKeyframes(clip.uri)
+            keyframeCache[cacheKey] = fetched
+            fetched
+        }
         currentKeyframes = kfs
         
         extractWaveformInternal(clip)
@@ -428,6 +424,12 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingMs: Long, minSegmentMs: Long) {
+        if (_waveformData.value == null) {
+            viewModelScope.launch {
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_waveform_not_ready)))
+            }
+            return
+        }
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             val params = WaveformController.SilenceDetectionParams(

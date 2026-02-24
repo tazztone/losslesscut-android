@@ -45,6 +45,7 @@
     <string name="export_options">Export Options</string>
     <string name="precise_mode_coming_soon">Precise mode coming in v2.0</string>
     <string name="error_load_video">Failed to load video: %1$s</string>
+    <string name="error_waveform_not_ready">Waveform is still loading, please wait</string>
     <string name="error_no_segments_export">No segments to export</string>
     <string name="error_create_file">Cannot create output file</string>
     <string name="error_segment_failed">Segment %1$d failed: %2$s</string>

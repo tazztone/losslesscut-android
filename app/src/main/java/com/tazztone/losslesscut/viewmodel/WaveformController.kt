@@ -40,6 +40,7 @@ class WaveformController @Inject constructor(
 
     fun extractWaveform(scope: CoroutineScope, clip: MediaClip) {
         waveformJob?.cancel()
+        _silencePreviewRanges.value = emptyList()
         waveformJob = scope.launch(ioDispatcher) {
             _waveformData.value = null
             val cacheKey = "waveform_${clip.uri.hashCode()}.bin"

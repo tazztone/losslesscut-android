@@ -29,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.currentCoroutineContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -269,6 +270,7 @@ class LosslessEngineImpl @Inject constructor(
         val gapUs = SegmentGapCalculator.calculateGapUs(init.audioSampleRate, init.videoFps)
         var maxBuf = init.plan.bufferSize; var buffer = ByteBuffer.allocateDirect(maxBuf); var offUs = 0L
         for (clip in params.clips) {
+            currentCoroutineContext().ensureActive()
             val ex = MediaExtractor()
             try {
                 dataSource.setExtractorSource(ex, clip.uri)
