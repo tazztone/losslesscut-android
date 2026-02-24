@@ -96,21 +96,21 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch {
             exportController.isSnapshotInProgress
                 .collect {
-                    stateMutex.withLock { updateStateInternal() }
+                    updateStateInternal()
                 }
         }
         viewModelScope.launch {
             waveformController.waveformData
                 .collect { data ->
                     _waveformData.value = data
-                    stateMutex.withLock { updateStateInternal() }
+                    updateStateInternal()
                 }
         }
         viewModelScope.launch {
             waveformController.silencePreviewRanges
                 .collect { ranges ->
                     _silencePreviewRanges.value = ranges
-                    stateMutex.withLock { updateStateInternal() }
+                    updateStateInternal()
                 }
         }
     }
@@ -226,19 +226,19 @@ class VideoEditingViewModel @Inject constructor(
                 }
                 historyManager.save(currentClips)
                 val newList = currentClips.toMutableList()
-            newList.removeAt(index)
-            currentClips = newList
+                newList.removeAt(index)
+                currentClips = newList
             
-            if (index < selectedClipIndex) {
-                selectedClipIndex--
-            } else if (selectedClipIndex >= currentClips.size) {
-                selectedClipIndex = currentClips.size - 1
+                if (index < selectedClipIndex) {
+                    selectedClipIndex--
+                } else if (selectedClipIndex >= currentClips.size) {
+                    selectedClipIndex = currentClips.size - 1
+                }
+            
+                loadClipDataInternal(selectedClipIndex)
             }
-            
-            loadClipDataInternal(selectedClipIndex)
         }
     }
-}
 
     fun reorderClips(from: Int, to: Int) {
         viewModelScope.launch(ioDispatcher) {
