@@ -1,16 +1,30 @@
-# LosslessCut Android
-Stack: Media3, MediaExtractor, MediaMuxer, Coroutines, DataStore.
+# LosslessCut Android — Agent Rules
 
-## Architecture & Rules
-- `:core:domain`: Use Cases/Interfaces. STRICTLY NO Android framework deps (No `Context`, `Uri`, `Bitmap`).
-- `:core:data`: `AppPreferences` (DataStore), `StorageUtils` (SAF).
-- `:engine`: `LosslessEngine` handles actual muxing/merging.
-- **DI:** Dagger Hilt (`@HiltViewModel`, `@AndroidEntryPoint`, `@Inject`).
-- **Errors:** Avoid exception-as-control-flow. Never swallow `CancellationException` in coroutines.
+## Module Boundaries
+| Module | Scope | Allowed Dependencies |
+| :--- | :--- | :--- |
+| `:core:domain` | **Pure logic** | NO Android deps (No Context/Uri/Bitmap). |
+| `:core:data` | **Data Access** | Context, Uri, ContentResolver, DataStore. |
+| `:engine` | **Muxing/Cutting** | MediaExtractor, MediaMuxer, MetadataRetriever. |
+| `:app` | **UI/Playback** | Full Android, Media3/ExoPlayer, ViewModels. |
 
-## UI Layer (`:app`)
-- XML + ViewBinding (No Compose, no `findViewById`).
-- Jetpack Navigation (`Editor`, `Remux`, `Metadata` fragments).
-- ViewModels expose `StateFlow` (state) and `SharedFlow` (events). No `LiveData`.
-- `CustomVideoSeeker` handles the timeline and zoom.
-- Design: Vibrant HSL, dark mode, glassmorphism.
+## Critical Constraints
+1.  **URI Handling (SAF):**
+    *   Pass URIs as `String` between layers.
+    *   **NEVER** use `java.io.File(path)` for content URIs; they are not files.
+    *   Only `:engine` and `:core:data` may parse URIs via `ContentResolver`.
+2.  **Concurrency:**
+    *   **NEVER** swallow `CancellationException`. Always rethrow.
+    *   Engine loops must check `currentCoroutineContext().isActive`.
+3.  **Engine Implementation:**
+    *   Use `setDataSourceSafely` helper (handles file descriptors).
+    *   Use `TrackType` enum (do not use raw Ints).
+    *   Report progress via `Flow<Float>` (0.0–1.0).
+    *   **DO NOT** use Media3/ExoPlayer in `:engine`; strict separation.
+4.  **Domain Purity:**
+    *   Images cross boundaries as `ByteArray`, never `Bitmap`.
+    *   Use `Result<T>` for errors; avoid exceptions for control flow.
+
+## Quality Gates
+*   **Detekt:** `maxIssues: 0`. No new `LongMethod` or `LargeClass` violations.
+*   **Legacy:** `LosslessEngineImpl.kt` is a known God Class. Do not expand it; refactor into smaller helpers.
