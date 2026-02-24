@@ -3,9 +3,14 @@
 # Configuration
 PACKAGE_NAME="com.tazztone.losslesscut"
 MAIN_ACTIVITY=".ui.MainActivity"
-ADB="/home/tazztone/Android/Sdk/platform-tools/adb"
 
-echo "🚀 Building and installing debug APK..."
+# Use system ADB or fall back
+ADB=$(command -v adb || echo "/home/tazztone/Android/Sdk/platform-tools/adb")
+
+echo "⚠️ Uninstalling existing app to resolve signature/version conflicts..."
+$ADB uninstall $PACKAGE_NAME
+
+echo "🚀 Building and installing clean debug APK..."
 ./gradlew installDebug
 
 if [ $? -eq 0 ]; then

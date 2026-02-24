@@ -6,6 +6,12 @@ DATE_TAG=$(date +"%Y%m%d%H%M%S")
 RELEASE_TAG="debug-build-$DATE_TAG"
 RELEASE_TITLE="Debug Build $(date +"%Y-%m-%d %H:%M")"
 
+# Check dependencies
+if ! command -v gh &> /dev/null; then
+    echo "❌ GitHub CLI (gh) is not installed. Please install it to push releases."
+    exit 1
+fi
+
 echo "🚀 Building fresh debug APK..."
 ./gradlew assembleDebug
 

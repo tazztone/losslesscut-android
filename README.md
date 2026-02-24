@@ -58,7 +58,7 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 git clone https://github.com/tazztone/lossless-video-cut.git
 
 # Generate icons (AWT standalone)
-./dev-scripts/generate-icons.sh
+./dev-scripts/asset-generate-icons.sh
 
 # Build debug APK using Gradle Kotlin DSL
 ./gradlew assembleDebug
@@ -177,7 +177,7 @@ The project is organized into a modular feature/layer-based structure:
 - **Testing**: 
     - JVM: `./gradlew test` (Robolectric).
     - Android: `./gradlew connectedAndroidTest` (Espresso).
-- **Scripts**: `dev-scripts/` contains `IconGenerator.java` and maintenance scripts like `clean_gradle.sh`.
+- **Scripts**: `dev-scripts/` contains `IconGenerator.java` and maintenance scripts like `project-clean.sh`.
 - **CI/CD**: GitHub Actions (`release.yml`) builds and signs production APKs on tag push. Includes a **Lint gate** and static analysis with **Detekt**.
 
 ### 6. Context7 Library IDs
