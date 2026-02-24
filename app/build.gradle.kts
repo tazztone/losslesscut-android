@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.tazztone.losslesscut"
-    compileSdk = 35
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     // Built-in Kotlin support in AGP 9.0+
     kotlin {
@@ -35,7 +35,7 @@ android {
     defaultConfig {
         applicationId = "com.tazztone.losslesscut"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: Int.MAX_VALUE
         versionName = project.findProperty("versionName")?.toString() ?: "debug-dev"
 

@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.tazztone.losslesscut.engine"
-    compileSdk = 35
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         minSdk = 26
