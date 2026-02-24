@@ -7,6 +7,7 @@ import com.tazztone.losslesscut.domain.model.TrimSegment
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import java.util.UUID
 import javax.inject.Inject
 
@@ -20,6 +21,8 @@ open class ClipManagementUseCase @Inject constructor(
                 repository.createClipFromUri(uri).getOrThrow()
             }
             Result.success(clips)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }

@@ -99,10 +99,11 @@ class VideoEditingViewModel @Inject constructor(
     private val historyManager = HistoryManager(limit = 30)
     private val sessionController = SessionController(useCases.sessionUseCase, ioDispatcher)
     private val exportController = ExportController(
-        useCases.exportUseCase, useCases.snapshotUseCase, preferences, ioDispatcher
+        useCases.exportUseCase, useCases.snapshotUseCase, preferences
     )
-    private val clipController = ClipController(
-        useCases.clipManagementUseCase, MIN_SEGMENT_DURATION_MS
+    private val clipController = ClipController(useCases.clipManagementUseCase)
+    private val waveformController = WaveformController(
+        repository, useCases.silenceDetectionUseCase, ioDispatcher
     )
     private val stateMutex = Mutex()
     
@@ -113,12 +114,27 @@ class VideoEditingViewModel @Inject constructor(
             }
         }
     )
-    private var waveformJob: Job? = null
-    private var silencePreviewJob: Job? = null
-
-    companion object {
-        const val MIN_SEGMENT_DURATION_MS = 100L
+    
+    init {
+        // Collect reactive state from controllers
+        viewModelScope.launch {
+            exportController.isSnapshotInProgress.collect {
+                stateMutex.withLock { updateStateInternal() }
+            }
+        }
+        viewModelScope.launch {
+            waveformController.waveformData.collect { data ->
+                _waveformData.value = data
+            }
+        }
+        viewModelScope.launch {
+            waveformController.silencePreviewRanges.collect { ranges ->
+                _silencePreviewRanges.value = ranges
+            }
+        }
     }
+
+    // MIN_SEGMENT_DURATION_MS moved to ClipController
 
     fun setPlaybackParameters(speed: Float, pitchCorrection: Boolean) {
         viewModelScope.launch(ioDispatcher) {
@@ -150,7 +166,9 @@ class VideoEditingViewModel @Inject constructor(
                             )
                         }
                     )
-                } catch (e: Exception) {
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                     _uiState.value = VideoEditingUiState.Error(
                         UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
                     )
@@ -171,22 +189,7 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     private fun extractWaveformInternal(clip: MediaClip) {
-        waveformJob?.cancel()
-        waveformJob = viewModelScope.launch(ioDispatcher) {
-            _waveformData.value = null
-            val cacheKey = "waveform_${clip.uri.hashCode()}.bin"
-            val cached = repository.loadWaveformFromCache(cacheKey)
-            if (cached != null) {
-                _waveformData.value = cached
-                return@launch
-            }
-            
-            repository.extractWaveform(clip.uri)
-                ?.let { waveform ->
-                    _waveformData.value = waveform
-                    repository.saveWaveformToCache(cacheKey, waveform)
-                }
-        }
+        waveformController.extractWaveform(viewModelScope, clip)
     }
 
     fun selectClip(index: Int) {
@@ -216,6 +219,10 @@ class VideoEditingViewModel @Inject constructor(
                     ))
                 }
             )
+        }.invokeOnCompletion { cause ->
+            if (cause is CancellationException) {
+                // Handled by scope
+            }
         }
     }
 
@@ -393,6 +400,7 @@ class VideoEditingViewModel @Inject constructor(
         _sessionExists.value = false
         currentPlaybackSpeed = 1.0f
         isPitchCorrectionEnabled = false
+        waveformController.clearInternal()
     }
 
     private fun updateStateInternal() {
@@ -414,7 +422,7 @@ class VideoEditingViewModel @Inject constructor(
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
-            isSnapshotInProgress = exportController.isSnapshotInProgress,
+            isSnapshotInProgress = exportController.isSnapshotInProgress.value,
             silencePreviewRanges = _silencePreviewRanges.value,
             availableTracks = clip.availableTracks,
             playbackSpeed = currentPlaybackSpeed,
@@ -423,28 +431,20 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingMs: Long, minSegmentMs: Long) {
-        val waveform = _waveformData.value ?: return
-        
-        silencePreviewJob?.cancel()
-        silencePreviewJob = viewModelScope.launch(ioDispatcher) {
+        viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
-            val ranges = useCases.silenceDetectionUseCase.findSilence(
-                waveform, threshold, minSilenceMs, clip.durationMs, paddingMs, minSegmentMs
+            val params = WaveformController.SilenceDetectionParams(
+                threshold, minSilenceMs, paddingMs, minSegmentMs, clip
             )
-            stateMutex.withLock {
-                _silencePreviewRanges.value = ranges
-                updateStateInternal()
+            waveformController.previewSilenceSegments(viewModelScope, params) {
+                stateMutex.withLock { updateStateInternal() }
             }
         }
     }
 
     fun clearSilencePreview() {
-        silencePreviewJob?.cancel()
-        viewModelScope.launch(ioDispatcher) {
-            stateMutex.withLock {
-                _silencePreviewRanges.value = emptyList()
-                updateStateInternal()
-            }
+        waveformController.clearSilencePreview(viewModelScope) {
+            stateMutex.withLock { updateStateInternal() }
         }
     }
 
@@ -458,7 +458,7 @@ class VideoEditingViewModel @Inject constructor(
                 val clip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
                 
                 val updatedClip = useCases.silenceDetectionUseCase.applySilenceDetection(
-                    clip, ranges, MIN_SEGMENT_DURATION_MS
+                    clip, ranges, ClipController.MIN_SEGMENT_DURATION_MS
                 )
                 
                 currentClips = currentClips.toMutableList().apply {
@@ -504,10 +504,14 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        waveformController.cancelJobs()
+    }
+
     fun extractSnapshot(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { 
-                updateStateInternal()
                 currentClips.getOrNull(selectedClipIndex) 
             }
             if (clip == null) {
@@ -515,6 +519,7 @@ class VideoEditingViewModel @Inject constructor(
                 return@launch
             }
             
+            // Note: exportController.isSnapshotInProgress is observed to update UI state
             val result = exportController.extractSnapshot(clip, positionMs)
             
             when (result) {
@@ -569,7 +574,9 @@ class VideoEditingViewModel @Inject constructor(
                 }
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.session_restored)))
                 _uiEvents.send(VideoEditingEvent.SessionRestored)
-            } catch (e: Exception) {
+            } catch (e: CancellationException) {
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
                 Log.e("VideoEditingViewModel", "Failed to restore session", e)
                 _uiEvents.send(VideoEditingEvent.ShowToast(
                     UiText.StringResource(R.string.error_restore_failed, e.message ?: "")

@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.utils
 
 import com.tazztone.losslesscut.domain.model.DetectionUtils
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -8,7 +9,7 @@ import org.junit.Test
 class DetectionUtilsTest {
 
     @Test
-    fun `test findSilence basic detection`() {
+    fun `test findSilence basic detection`() = runTest {
         // Mock waveform: 0 is silence, 1 is loud
         // 0-100ms loud, 100-300ms silent, 300-500ms loud
         val waveform = FloatArray(500) { i ->
@@ -29,7 +30,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun `test findSilence with padding`() {
+    fun `test findSilence with padding`() = runTest {
         val waveform = FloatArray(500) { i ->
             if (i in 100 until 300) 0.01f else 0.5f
         }
@@ -49,7 +50,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun `test minSegmentMs merging`() {
+    fun `test minSegmentMs merging`() = runTest {
         // High loudness at 0-50, silence 50-100, high 100-110 (SHORT), silence 110-200, high 200-300
         val waveform = FloatArray(300) { i ->
             when (i) {
@@ -78,7 +79,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun `test findSilence with empty waveform or zero duration`() {
+    fun `test findSilence with empty waveform or zero duration`() = runTest {
         val result1 = DetectionUtils.findSilence(FloatArray(0), 0.1f, 100, 1000)
         assertTrue(result1.isEmpty())
 

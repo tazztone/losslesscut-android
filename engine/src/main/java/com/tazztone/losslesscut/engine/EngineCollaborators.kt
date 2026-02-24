@@ -9,7 +9,7 @@ import javax.inject.Inject
 /**
  * Groups engine collaborators to avoid long parameter lists in constructor.
  */
-data class EngineCollaborators @Inject constructor(
+class EngineCollaborators @Inject constructor(
     val dataSource: MediaDataSource,
     val inspector: TrackInspector,
     val timeMapper: SampleTimeMapper,
