@@ -25,7 +25,7 @@ jobs:
           java-version: '21'
       
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@748248d6129a30d72001a1fb2cad217ad758ed2d # v4.4.4
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
@@ -41,13 +41,13 @@ jobs:
         run: ./gradlew assembleDebug -PversionCode=${{ steps.meta.outputs.versionCode }} -PversionName=${{ steps.meta.outputs.versionName }}
 
       - name: Upload Debug APK to Artifacts
-        uses: actions/upload-artifact@4cea0028a04e2d762c938a5a0904130f9f3478d1 # v4.6.1
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload Debug APK to Release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8ad5fc06c3b555 # v2.0.4
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: debug-build
           name: ${{ inputs.release_name || 'Debug Build' }}
