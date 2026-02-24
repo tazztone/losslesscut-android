@@ -21,7 +21,7 @@ import java.util.*
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
-class VideoEditingConcurrencyTest {
+public class VideoEditingConcurrencyTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val mockRepo = mockk<IVideoEditingRepository>(relaxed = true)
@@ -35,7 +35,7 @@ class VideoEditingConcurrencyTest {
         Dispatchers.setMain(testDispatcher)
         
         coEvery { mockRepo.loadWaveformFromCache(any()) } returns null
-        coEvery { mockRepo.extractWaveform(any(), any()) } returns null
+        coEvery { mockRepo.extractWaveform(any(), any(), any()) } returns null
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
         
         val useCases = VideoEditingUseCases(
@@ -56,6 +56,7 @@ class VideoEditingConcurrencyTest {
 
     @After
     fun tearDown() {
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
@@ -73,7 +74,7 @@ class VideoEditingConcurrencyTest {
     }
 
     @Test
-    fun testExportReentrancyGuard() = runTest {
+    public fun testExportReentrancyGuard() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip(uri.toString()))
         
@@ -103,7 +104,7 @@ class VideoEditingConcurrencyTest {
     }
 
     @Test
-    fun testClipSelectionWaveformRace() = runTest {
+    public fun testClipSelectionWaveformRace() = runTest {
         val uri0 = "content://mock/0.mp4"
         val uri1 = "content://mock/1.mp4"
         
@@ -113,13 +114,13 @@ class VideoEditingConcurrencyTest {
         }
         
         // Slow waveform extraction for clip 0
-        coEvery { mockRepo.extractWaveform(uri0, any()) } coAnswers {
+        coEvery { mockRepo.extractWaveform(uri0, any(), any()) } coAnswers {
             delay(1000)
             floatArrayOf(0f, 0f, 0f)
         }
         
         // Fast waveform extraction for clip 1
-        coEvery { mockRepo.extractWaveform(uri1, any()) } coAnswers {
+        coEvery { mockRepo.extractWaveform(uri1, any(), any()) } coAnswers {
             delay(100)
             floatArrayOf(1f, 1f, 1f)
         }
@@ -142,7 +143,7 @@ class VideoEditingConcurrencyTest {
     }
 
     @Test
-    fun testSilencePreviewCleanupOnClipSwitch() = runTest {
+    public fun testSilencePreviewCleanupOnClipSwitch() = runTest {
         val uri0 = "content://mock/0.mp4"
         val uri1 = "content://mock/1.mp4"
         
@@ -162,7 +163,7 @@ class VideoEditingConcurrencyTest {
         viewModel.selectClip(0)
         advanceUntilIdle()
         
-        viewModel.previewSilenceSegments(0.5f, 10, 0, 10)
+        viewModel.previewSilenceSegments(0.5f, 10, 0, 10, 100)
         advanceUntilIdle()
         
         assertTrue(viewModel.silencePreviewRanges.value.isNotEmpty())

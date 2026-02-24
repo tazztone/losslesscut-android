@@ -2,20 +2,20 @@ package com.tazztone.losslesscut.domain.repository
 
 import com.tazztone.losslesscut.domain.model.MediaClip
 
-interface IVideoEditingRepository {
-    suspend fun createClipFromUri(uri: String): Result<MediaClip>
-    suspend fun getKeyframes(uri: String): List<Long>
-    suspend fun extractWaveform(
+public interface IVideoEditingRepository {
+    public suspend fun createClipFromUri(uri: String): Result<MediaClip>
+    public suspend fun getKeyframes(uri: String): List<Long>
+    public suspend fun extractWaveform(
         uri: String, bucketCount: Int = 1000, onProgress: ((FloatArray) -> Unit)? = null
     ): FloatArray?
-    suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
-    suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String?
-    suspend fun createImageOutputUri(fileName: String): String?
-    fun finalizeImage(uri: String)
-    fun finalizeVideo(uri: String)
-    fun finalizeAudio(uri: String)
-    fun getFileName(uriString: String): String
-    suspend fun executeLosslessCut(
+    public suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
+    public suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String?
+    public suspend fun createImageOutputUri(fileName: String): String?
+    public fun finalizeImage(uri: String)
+    public fun finalizeVideo(uri: String)
+    public fun finalizeAudio(uri: String)
+    public fun getFileName(uriString: String): String
+    public suspend fun executeLosslessCut(
         inputUri: String,
         outputUri: String,
         startMs: Long,
@@ -25,7 +25,7 @@ interface IVideoEditingRepository {
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<String>
-    suspend fun executeLosslessMerge(
+    public suspend fun executeLosslessMerge(
         outputUri: String,
         clips: List<MediaClip>,
         keepAudio: Boolean,
@@ -33,11 +33,11 @@ interface IVideoEditingRepository {
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<String>
-    suspend fun saveSession(clips: List<MediaClip>)
-    suspend fun restoreSession(uri: String): List<MediaClip>?
-    suspend fun hasSavedSession(uri: String): Boolean
-    suspend fun saveWaveformToCache(cacheKey: String, waveform: FloatArray)
-    suspend fun loadWaveformFromCache(cacheKey: String): FloatArray?
-    suspend fun evictOldCacheFiles()
-    suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean
+    public suspend fun saveSession(clips: List<MediaClip>)
+    public suspend fun restoreSession(uri: String): List<MediaClip>?
+    public suspend fun hasSavedSession(uri: String): Boolean
+    public suspend fun saveWaveformToCache(cacheKey: String, waveform: FloatArray)
+    public suspend fun loadWaveformFromCache(cacheKey: String): FloatArray?
+    public suspend fun evictOldCacheFiles()
+    public suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean
 }

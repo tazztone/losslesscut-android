@@ -6,10 +6,10 @@ import org.junit.Assert.*
 import org.junit.Test
 import java.util.*
 
-class HistoryManagerTest {
+public class HistoryManagerTest {
 
     @Test
-    fun testUndoRedo() {
+    public fun testUndoRedo() {
         val manager = HistoryManager(limit = 10)
         
         val clip1 = createMockClip("uri1")
@@ -33,7 +33,7 @@ class HistoryManagerTest {
     }
 
     @Test
-    fun testHistoryLimit() {
+    public fun testHistoryLimit() {
         val manager = HistoryManager(limit = 2)
         val state1 = listOf(createMockClip("1"))
         val state2 = listOf(createMockClip("2"))

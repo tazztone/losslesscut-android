@@ -5,17 +5,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.absoluteValue
 
-class AudioWaveformProcessorTest {
+public class AudioWaveformProcessorTest {
 
     @Test
-    fun testFindPeak_allZeros() {
+    public fun testFindPeak_allZeros(): Unit {
         val buffer = ByteArray(100) { 0 }
         val peak = AudioWaveformProcessor.findPeak(buffer, buffer.size)
         assertEquals(0, peak)
     }
 
     @Test
-    fun testFindPeak_positiveValues() {
+    public fun testFindPeak_positiveValues(): Unit {
         // 16-bit PCM, little-endian. 
         // Sample 1: 0x0001 (1)
         // Sample 2: 0x00FF (255)
@@ -30,7 +30,7 @@ class AudioWaveformProcessorTest {
     }
 
     @Test
-    fun testFindPeak_negativeValues() {
+    public fun testFindPeak_negativeValues(): Unit {
         // Sample 1: 0x0080 (-32768 - Max negative Short)
         val buffer = byteArrayOf(
             0x00, 0x80.toByte(), 0x00, 0x00
@@ -40,7 +40,7 @@ class AudioWaveformProcessorTest {
     }
 
     @Test
-    fun testNormalize() {
+    public fun testNormalize(): Unit {
         val buckets = floatArrayOf(0.1f, 0.5f, 0.2f)
         AudioWaveformProcessor.normalize(buckets)
         // Max is 0.5, so divide all by 0.5
@@ -50,14 +50,14 @@ class AudioWaveformProcessorTest {
     }
 
     @Test
-    fun testNormalize_allZeros() {
+    public fun testNormalize_allZeros(): Unit {
         val buckets = floatArrayOf(0f, 0f, 0f)
         AudioWaveformProcessor.normalize(buckets)
         assertEquals(0f, buckets[0], 0.001f)
     }
 
     @Test
-    fun testGetBucketIndex() {
+    public fun testGetBucketIndex(): Unit {
         val duration = 1000L
         val bucketCount = 10
         
@@ -68,14 +68,14 @@ class AudioWaveformProcessorTest {
     }
 
     @Test
-    fun testCalculateAdaptiveBucketCount() {
+    public fun testCalculateAdaptiveBucketCount(): Unit {
         assertEquals(500, AudioWaveformProcessor.calculateAdaptiveBucketCount(1000)) // 1s -> 10, but min 500
         assertEquals(1000, AudioWaveformProcessor.calculateAdaptiveBucketCount(100_000)) // 100s -> 1000
         assertEquals(5000, AudioWaveformProcessor.calculateAdaptiveBucketCount(1_000_000)) // 1000s -> 5000
     }
 
     @Test
-    fun testUpdateBuckets() {
+    public fun testUpdateBuckets(): Unit {
         val buckets = FloatArray(10)
         val buffer = ByteArray(40) { (it % 10).toByte() }
         

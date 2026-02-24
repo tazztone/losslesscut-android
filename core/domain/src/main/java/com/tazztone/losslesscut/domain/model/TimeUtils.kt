@@ -3,11 +3,11 @@ package com.tazztone.losslesscut.domain.model
 
 import java.util.Locale
 
-object TimeUtils {
+public object TimeUtils {
     /**
      * Formats milliseconds into a string: "HH:mm:ss.mmm" or "mm:ss.mmm".
      */
-    fun formatDuration(milliseconds: Long): String {
+    public fun formatDuration(milliseconds: Long): String {
         val secondsTotal = milliseconds / 1000
         val millis = milliseconds % 1000
         val hours = secondsTotal / 3600
@@ -24,7 +24,7 @@ object TimeUtils {
      * Formats milliseconds into a filename-friendly string: "00h00m00s000ms"
      * Only includes non-zero larger units.
      */
-    fun formatFilenameDuration(milliseconds: Long): String {
+    public fun formatFilenameDuration(milliseconds: Long): String {
         val secondsTotal = milliseconds / 1000
         val ms = milliseconds % 1000
         val hrs = secondsTotal / 3600

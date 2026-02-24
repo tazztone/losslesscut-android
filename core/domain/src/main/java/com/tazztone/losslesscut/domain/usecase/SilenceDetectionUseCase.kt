@@ -11,11 +11,11 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
-class SilenceDetectionUseCase @Inject constructor(
+public class SilenceDetectionUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    suspend fun findSilence(
+    public suspend fun findSilence(
         waveform: FloatArray,
         totalDurationMs: Long,
         config: DetectionUtils.SilenceDetectionConfig
@@ -27,7 +27,7 @@ class SilenceDetectionUseCase @Inject constructor(
         )
     }
 
-    fun applySilenceDetection(
+    public fun applySilenceDetection(
         clip: MediaClip,
         silenceRanges: List<LongRange>,
         minSegmentDurationMs: Long

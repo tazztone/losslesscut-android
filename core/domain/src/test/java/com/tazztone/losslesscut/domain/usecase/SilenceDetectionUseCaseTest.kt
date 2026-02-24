@@ -9,13 +9,13 @@ import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class SilenceDetectionUseCaseTest {
+public class SilenceDetectionUseCaseTest {
 
     private val repository = mockk<IVideoEditingRepository>()
     private val useCase = SilenceDetectionUseCase(repository, Dispatchers.Unconfined)
 
     @Test
-    fun testApplySilenceDetection() {
+    public fun testApplySilenceDetection(): Unit {
         val clip = MediaClip(
             uri = "uri",
             fileName = "file",

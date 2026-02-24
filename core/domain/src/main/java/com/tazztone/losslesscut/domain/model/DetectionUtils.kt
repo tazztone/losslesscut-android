@@ -3,12 +3,12 @@ package com.tazztone.losslesscut.domain.model
 import kotlinx.coroutines.yield
 import kotlin.math.absoluteValue
 
-object DetectionUtils {
+public object DetectionUtils {
 
     private const val YIELD_THRESHOLD = 1000
     private const val MIN_RANGE_DURATION_MS = 10L
 
-    data class SilenceDetectionConfig(
+    public data class SilenceDetectionConfig(
         val threshold: Float,
         val minSilenceMs: Long,
         val paddingStartMs: Long,
@@ -19,7 +19,7 @@ object DetectionUtils {
     /**
      * Finds silent regions in a waveform.
      */
-    suspend fun findSilence(
+    public suspend fun findSilence(
         waveform: FloatArray,
         totalDurationMs: Long,
         config: SilenceDetectionConfig

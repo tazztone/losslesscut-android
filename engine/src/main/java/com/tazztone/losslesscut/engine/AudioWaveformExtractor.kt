@@ -7,6 +7,7 @@ import android.media.MediaFormat
 import android.net.Uri
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
+import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -17,7 +18,7 @@ import javax.inject.Singleton
 
 @Singleton
 class AudioWaveformExtractorImpl @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    private val dataSource: MediaDataSource
 ) : AudioWaveformExtractor {
 
     override suspend fun extract(
@@ -25,10 +26,9 @@ class AudioWaveformExtractorImpl @Inject constructor(
         bucketCount: Int,
         onProgress: ((FloatArray) -> Unit)?
     ): FloatArray? = withContext(Dispatchers.IO) {
-        val uriParsed = Uri.parse(uri)
         val extractor = MediaExtractor()
         try {
-            extractor.setDataSource(context, uriParsed, null)
+            dataSource.setExtractorSource(extractor, uri)
             val trackInfo = findAudioTrack(extractor) ?: return@withContext null
             extractor.selectTrack(trackInfo.index)
             

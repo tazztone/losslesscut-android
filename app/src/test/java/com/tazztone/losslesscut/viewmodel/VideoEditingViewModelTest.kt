@@ -21,7 +21,7 @@ import java.util.*
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
-class VideoEditingViewModelTest {
+public class VideoEditingViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
 
@@ -32,12 +32,13 @@ class VideoEditingViewModelTest {
 
     @After
     fun tearDown() {
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
 
     @Test
-    fun testInitialization_success() = runTest {
+    public fun testInitialization_success() = runTest {
         val uris = listOf(Uri.parse("content://mock/video1.mp4"))
         val mockRepo = mockk<IVideoEditingRepository>()
         val mockPrefs = mockk<AppPreferences>()
@@ -69,7 +70,7 @@ class VideoEditingViewModelTest {
         coEvery { mockRepo.evictOldCacheFiles() } returns Unit
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
         coEvery { mockRepo.loadWaveformFromCache(any()) } returns null
-        coEvery { mockRepo.extractWaveform(any()) } returns null
+        coEvery { mockRepo.extractWaveform(any(), any(), any()) } returns null
         
         val useCases = VideoEditingUseCases(
             mockClipUseCase,

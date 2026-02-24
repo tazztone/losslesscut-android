@@ -2,11 +2,11 @@ package com.tazztone.losslesscut.domain.engine
 
 import com.tazztone.losslesscut.domain.model.MediaClip
 
-interface ILosslessEngine {
-    suspend fun getKeyframes(videoUri: String): Result<List<Long>>
-    suspend fun getMediaMetadata(uri: String): Result<MediaMetadata>
-    suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
-    suspend fun executeLosslessCut(
+public interface ILosslessEngine {
+    public suspend fun getKeyframes(videoUri: String): Result<List<Long>>
+    public suspend fun getMediaMetadata(uri: String): Result<MediaMetadata>
+    public suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
+    public suspend fun executeLosslessCut(
         inputUri: String,
         outputUri: String,
         startMs: Long,
@@ -17,7 +17,7 @@ interface ILosslessEngine {
         selectedTracks: List<Int>? = null
     ): Result<String>
 
-    suspend fun executeLosslessMerge(
+    public suspend fun executeLosslessMerge(
         outputUri: String,
         clips: List<MediaClip>,
         keepAudio: Boolean = true,
@@ -27,7 +27,7 @@ interface ILosslessEngine {
     ): Result<String>
 }
 
-data class MediaMetadata(
+public data class MediaMetadata(
     val durationMs: Long,
     val width: Int,
     val height: Int,
@@ -40,7 +40,7 @@ data class MediaMetadata(
     val tracks: List<TrackMetadata>
 )
 
-data class TrackMetadata(
+public data class TrackMetadata(
     val id: Int,
     val mimeType: String,
     val language: String?,

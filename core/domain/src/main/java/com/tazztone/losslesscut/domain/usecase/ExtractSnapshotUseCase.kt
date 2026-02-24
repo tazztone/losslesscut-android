@@ -7,16 +7,21 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
-class ExtractSnapshotUseCase @Inject constructor(
+public class ExtractSnapshotUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    sealed class Result {
-        data class Success(val fileName: String) : Result()
-        data class Failure(val error: String) : Result()
+    public sealed class Result {
+        public data class Success(val fileName: String) : Result()
+        public data class Failure(val error: String) : Result()
     }
 
-    suspend fun execute(uri: String, positionMs: Long, format: String, quality: Int): Result = withContext(ioDispatcher) {
+    public suspend fun execute(
+        uri: String, 
+        positionMs: Long, 
+        format: String, 
+        quality: Int
+    ): Result = withContext(ioDispatcher) {
         try {
             val bitmapBytes = repository.getFrameAt(uri, positionMs)
             if (bitmapBytes != null) {

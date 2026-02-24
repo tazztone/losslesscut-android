@@ -5,10 +5,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlinx.coroutines.test.runTest
 
-class DetectionUtilsTest {
+public class DetectionUtilsTest {
 
     @Test
-    fun testFindSilence_basic() = runTest {
+    public fun testFindSilence_basic(): Unit = runTest {
         val waveform = floatArrayOf(0.1f, 0.0f, 0.0f, 0.5f)
         val duration = 1000L
         val config = DetectionUtils.SilenceDetectionConfig(
@@ -31,7 +31,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun testFindSilence_dualPadding() = runTest {
+    public fun testFindSilence_dualPadding(): Unit = runTest {
         val waveform = floatArrayOf(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f)
         val duration = 6000L // 1000ms per sample
         val config = DetectionUtils.SilenceDetectionConfig(
@@ -52,7 +52,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun testFindSilence_minSegmentMerging() = runTest {
+    public fun testFindSilence_minSegmentMerging(): Unit = runTest {
         val waveform = FloatArray(300) { i ->
             when (i) {
                 in 0 until 50 -> 0.5f
@@ -78,7 +78,7 @@ class DetectionUtilsTest {
     }
 
     @Test
-    fun testFindSilence_edgeCases() = runTest {
+    public fun testFindSilence_edgeCases(): Unit = runTest {
         val config = DetectionUtils.SilenceDetectionConfig(0.1f, 100, 0, 0, 0)
         
         assertTrue(DetectionUtils.findSilence(FloatArray(0), 1000, config).isEmpty())

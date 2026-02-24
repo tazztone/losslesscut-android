@@ -59,7 +59,7 @@ class WaveformController @Inject constructor(
             }
             
             val bucketCount = AudioWaveformProcessor.calculateAdaptiveBucketCount(clip.durationMs)
-            repository.extractWaveform(clip.uri, bucketCount = bucketCount)
+            repository.extractWaveform(clip.uri, bucketCount = bucketCount, onProgress = null)
                 ?.let { waveform ->
                     _waveformData.value = waveform
                     repository.saveWaveformToCache(cacheKey, waveform)

@@ -2,6 +2,6 @@ package com.tazztone.losslesscut.domain.engine
 
 import java.io.FileDescriptor
 
-interface IMediaDataSourceProvider {
-    fun openFileDescriptor(uriString: String, mode: String): FileDescriptor?
+public interface IMediaDataSourceProvider {
+    public fun openFileDescriptor(uriString: String, mode: String): FileDescriptor?
 }

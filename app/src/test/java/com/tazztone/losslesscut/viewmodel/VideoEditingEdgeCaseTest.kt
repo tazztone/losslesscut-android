@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
-class VideoEditingEdgeCaseTest {
+public class VideoEditingEdgeCaseTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val mockRepo = mockk<IVideoEditingRepository>(relaxed = true)
@@ -38,7 +38,7 @@ class VideoEditingEdgeCaseTest {
         
         // Explicitly stub common repository calls to avoid MockK/Coroutine ClassCastException
         coEvery { mockRepo.loadWaveformFromCache(any()) } returns null
-        coEvery { mockRepo.extractWaveform(any(), any()) } returns null
+        coEvery { mockRepo.extractWaveform(any(), any(), any()) } returns null
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
         
         val useCases = VideoEditingUseCases(
@@ -59,6 +59,7 @@ class VideoEditingEdgeCaseTest {
 
     @After
     fun tearDown() {
+        testDispatcher.scheduler.advanceUntilIdle()
         Dispatchers.resetMain()
         unmockkAll()
     }
@@ -84,7 +85,7 @@ class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    fun testClipRemovalIndexStability() = runTest {
+    public fun testClipRemovalIndexStability() = runTest {
         val uris = listOf(
             Uri.parse("content://mock/0.mp4"),
             Uri.parse("content://mock/1.mp4"),
@@ -116,7 +117,7 @@ class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    fun testRapidSwitchingCancellation() = runTest {
+    public fun testRapidSwitchingCancellation() = runTest {
         val uri0 = Uri.parse("content://mock/0.mp4")
         val uri1 = Uri.parse("content://mock/1.mp4")
         
@@ -143,7 +144,7 @@ class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    fun testHistoryRotation() = runTest {
+    public fun testHistoryRotation() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         
@@ -169,7 +170,7 @@ class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    fun testSilenceDetectionContiguity() = runTest {
+    public fun testSilenceDetectionContiguity() = runTest {
         val uri = Uri.parse("content://mock/contiguity.mp4")
         val clip = createMockClip(uri.toString(), 1000L)
         
@@ -181,7 +182,7 @@ class VideoEditingEdgeCaseTest {
         viewModel.initialize(listOf(uri))
         advanceUntilIdle()
 
-        viewModel.previewSilenceSegments(0.05f, 100, 0, 100)
+        viewModel.previewSilenceSegments(0.05f, 100, 0, 100, 100)
         advanceUntilIdle()
         viewModel.applySilenceDetection()
         advanceUntilIdle()
@@ -198,7 +199,7 @@ class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    fun testExportDelegation() = runTest {
+    public fun testExportDelegation() = runTest {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         

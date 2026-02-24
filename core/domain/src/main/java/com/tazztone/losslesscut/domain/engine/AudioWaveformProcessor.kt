@@ -5,7 +5,7 @@ import kotlin.math.absoluteValue
 /**
  * Pure logic for processing raw PCM data into waveform peaks and normalizing them.
  */
-object AudioWaveformProcessor {
+public object AudioWaveformProcessor {
 
     private const val BITS_PER_BYTE = 8
     private const val BYTE_MASK = 0xFF
@@ -15,7 +15,7 @@ object AudioWaveformProcessor {
     private const val MAX_BUCKET_COUNT = 5000
     private const val MS_PER_SEC = 1000.0
 
-    data class WaveformBufferInfo(
+    public data class WaveformBufferInfo(
         val buffer: ByteArray,
         val size: Int,
         val startTimeUs: Long,
@@ -32,7 +32,7 @@ object AudioWaveformProcessor {
      * @param step Number of bytes per sample (e.g., 4 for 16-bit stereo).
      * @return The maximum absolute value found in the buffer (0 to 32767).
      */
-    fun findPeak(buffer: ByteArray, size: Int, step: Int = 4): Int {
+    public fun findPeak(buffer: ByteArray, size: Int, step: Int = 4): Int {
         var peak = 0
         for (j in 0 until size - 1 step step) {
             val low = buffer[j].toInt() and BYTE_MASK
@@ -47,7 +47,7 @@ object AudioWaveformProcessor {
     /**
      * Normalizes a FloatArray of peaks so the maximum value is 1.0.
      */
-    fun normalize(buckets: FloatArray) {
+    public fun normalize(buckets: FloatArray) {
         val maxPeak = buckets.maxOrNull() ?: 0f
         if (maxPeak > 0f) {
             for (i in buckets.indices) {
@@ -60,7 +60,7 @@ object AudioWaveformProcessor {
      * Updates multiple buckets with PCM data from a buffer.
      * Accurately distributes samples across all buckets they span.
      */
-    fun updateBuckets(
+    public fun updateBuckets(
         info: WaveformBufferInfo,
         buckets: FloatArray,
         step: Int = 2 * info.channelCount
@@ -92,7 +92,7 @@ object AudioWaveformProcessor {
     /**
      * Maps a timestamp to a bucket index.
      */
-    fun getBucketIndex(presentationTimeUs: Long, totalDurationUs: Long, bucketCount: Int): Int {
+    public fun getBucketIndex(presentationTimeUs: Long, totalDurationUs: Long, bucketCount: Int): Int {
         if (totalDurationUs <= 0) return 0
         return ((presentationTimeUs.toDouble() / totalDurationUs) * (bucketCount - 1))
             .toInt()
@@ -103,7 +103,7 @@ object AudioWaveformProcessor {
      * Calculates an appropriate bucket count based on duration.
      * Target: 10 buckets per second, min 500, max 5000.
      */
-    fun calculateAdaptiveBucketCount(durationMs: Long): Int {
+    public fun calculateAdaptiveBucketCount(durationMs: Long): Int {
         val calculated = (durationMs / MS_PER_SEC * TARGET_BUCKETS_PER_SEC).toInt()
         return calculated.coerceIn(MIN_BUCKET_COUNT, MAX_BUCKET_COUNT)
     }

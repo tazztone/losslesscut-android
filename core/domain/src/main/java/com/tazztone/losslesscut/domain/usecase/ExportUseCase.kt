@@ -9,17 +9,17 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
-class ExportUseCase @Inject constructor(
+public class ExportUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    sealed class Result {
-        data class Success(val count: Int) : Result()
-        data class Failure(val error: String) : Result()
-        data class Progress(val percentage: Int, val message: String) : Result()
+    public sealed class Result {
+        public data class Success(val count: Int) : Result()
+        public data class Failure(val error: String) : Result()
+        public data class Progress(val percentage: Int, val message: String) : Result()
     }
 
-    data class Params(
+    public data class Params(
         val clips: List<MediaClip>,
         val selectedClipIndex: Int,
         val isLossless: Boolean,
@@ -30,7 +30,7 @@ class ExportUseCase @Inject constructor(
         val selectedTracks: List<Int>? = null
     )
 
-    fun execute(params: Params): Flow<Result> = flow {
+    public fun execute(params: Params): Flow<Result> = flow {
         try {
             if (params.mergeSegments) {
                 mergeSegments(params).collect { emit(it) }
