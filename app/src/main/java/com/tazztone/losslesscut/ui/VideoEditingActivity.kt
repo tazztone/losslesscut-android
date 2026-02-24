@@ -54,6 +54,11 @@ class VideoEditingActivity : BaseActivity() {
         }
     }
 
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        viewModel.onUserInteraction()
+    }
+
     private fun setupNavigation() {
         val launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment

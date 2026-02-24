@@ -175,6 +175,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     private var showZoomHint = true
     private var showHandleHint = true
+    private val dismissRunnable = Runnable { dismissHints() }
 
     private val segmentRect = RectF()
 
@@ -217,9 +218,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
     }
 
     fun dismissHints() {
+        if (!showZoomHint && !showHandleHint && pinchAnimator == null) return
         showZoomHint = false
         showHandleHint = false
         stopPinchAnimation()
+        removeCallbacks(dismissRunnable)
+        invalidate()
     }
 
     // Hit testing
@@ -279,10 +283,18 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (showZoomHint || showHandleHint) {
+            postDelayed(dismissRunnable, 5000)
+        }
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         isAutoPanning = false
         removeCallbacks(autoPanRunnable)
+        removeCallbacks(dismissRunnable)
     }
     private val scaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScale(detector: ScaleGestureDetector): Boolean {
@@ -290,7 +302,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val prevZoom = zoomFactor
             val newFactor = zoomFactor * detector.scaleFactor
             if (kotlin.math.abs(newFactor - zoomFactor) > 0.01f) {
-                showZoomHint = false
+                dismissHints()
             }
             zoomFactor = newFactor.coerceIn(1f, 20f)
             
@@ -621,9 +633,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                 // Only allow dragging handles if touched near the bottom where the circle is
                 val isTouchingBottom = event.y > height - 80f
 
-                showZoomHint = false // hide hint on any interaction
-                showHandleHint = false
-                stopPinchAnimation()
+                dismissHints()
 
                 if (isTouchingBottom && !isRemuxMode) {
                     val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }

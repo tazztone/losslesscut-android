@@ -33,4 +33,5 @@ sealed class VideoEditingEvent {
     data class ShowToast(val message: UiText) : VideoEditingEvent()
     data class ExportComplete(val success: Boolean, val count: Int = 0) : VideoEditingEvent()
     object SessionRestored : VideoEditingEvent()
+    object DismissHints : VideoEditingEvent()
 }

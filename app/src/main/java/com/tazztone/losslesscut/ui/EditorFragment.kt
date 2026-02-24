@@ -389,6 +389,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                 when (event) {
                     is VideoEditingEvent.ShowToast -> Toast.makeText(requireContext(), event.message.asString(requireContext()), Toast.LENGTH_LONG).show()
                     is VideoEditingEvent.ExportComplete -> { /* keep playing or show results */ }
+                    is VideoEditingEvent.DismissHints -> binding.customVideoSeeker.dismissHints()
                     else -> {}
                 }
             }

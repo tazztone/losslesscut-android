@@ -56,6 +56,16 @@ class VideoEditingViewModel @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private var hintsDismissed = false
+
+    fun onUserInteraction() {
+        if (hintsDismissed) return
+        hintsDismissed = true
+        viewModelScope.launch {
+            _uiEvents.send(VideoEditingEvent.DismissHints)
+        }
+    }
+
     private val _sessionExists = MutableStateFlow(false)
     val sessionExists: StateFlow<Boolean> = _sessionExists.asStateFlow()
 
