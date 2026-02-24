@@ -27,103 +27,10 @@ class AudioWaveformExtractorImpl @Inject constructor(
         val extractor = MediaExtractor()
         try {
             extractor.setDataSource(context, uriParsed, null)
-
-            // Find first audio track
-            var audioTrackIndex = -1
-            var format: MediaFormat? = null
-            for (i in 0 until extractor.trackCount) {
-                val f = extractor.getTrackFormat(i)
-                if (f.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
-                    audioTrackIndex = i
-                    format = f
-                    break
-                }
-            }
-
-            if (audioTrackIndex == -1 || format == null) return@withContext null
-
-            extractor.selectTrack(audioTrackIndex)
-            val mime = format.getString(MediaFormat.KEY_MIME)!!
-            val durationUs = format.getLong(MediaFormat.KEY_DURATION)
+            val trackInfo = findAudioTrack(extractor) ?: return@withContext null
+            extractor.selectTrack(trackInfo.index)
             
-            val codec = MediaCodec.createDecoderByType(mime)
-            try {
-                codec.configure(format, null, null, 0)
-                codec.start()
-
-                val buckets = FloatArray(bucketCount)
-                val info = MediaCodec.BufferInfo()
-                var sawInputEOS = false
-                var sawOutputEOS = false
-
-                var bufferArray = ByteArray(8192) 
-                
-                var lastProgressUpdateUs = 0L
-                val progressIntervalUs = if (durationUs > 0) durationUs / 10 else 1_000_000L 
-
-                while (!sawOutputEOS) {
-                    if (!sawInputEOS) {
-                        val inIdx = codec.dequeueInputBuffer(10_000)
-                        if (inIdx >= 0) {
-                            val buf = codec.getInputBuffer(inIdx)!!
-                            val sampleSize = extractor.readSampleData(buf, 0)
-                            if (sampleSize < 0) {
-                                codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                                sawInputEOS = true
-                            } else {
-                                codec.queueInputBuffer(inIdx, 0, sampleSize, extractor.sampleTime, 0)
-                                extractor.advance()
-                            }
-                        }
-                    }
-
-                    var outIdx = codec.dequeueOutputBuffer(info, 10_000)
-                    while (outIdx >= 0) {
-                        val outBuf = codec.getOutputBuffer(outIdx)!!
-                        
-                        if (info.size > 0) {
-                            if (info.size > bufferArray.size) {
-                                bufferArray = ByteArray(info.size)
-                            }
-                            outBuf.position(info.offset)
-                            outBuf.limit(info.offset + info.size)
-                            outBuf.get(bufferArray, 0, info.size)
-
-                            val peak = AudioWaveformProcessor.findPeak(bufferArray, info.size)
-                            val bucketIndex = AudioWaveformProcessor.getBucketIndex(
-                                info.presentationTimeUs, durationUs, bucketCount
-                            )
-
-                            val normalizedPeak = peak.toFloat() / Short.MAX_VALUE
-                            if (normalizedPeak > buckets[bucketIndex]) {
-                                buckets[bucketIndex] = normalizedPeak
-                            }
-                        }
-
-                        codec.releaseOutputBuffer(outIdx, false)
-                        
-                        if (onProgress != null && info.presentationTimeUs - lastProgressUpdateUs > progressIntervalUs) {
-                            lastProgressUpdateUs = info.presentationTimeUs
-                            
-                            val currentBuckets = buckets.clone()
-                            AudioWaveformProcessor.normalize(currentBuckets)
-                            onProgress(currentBuckets) 
-                        }
-
-                        if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                            sawOutputEOS = true
-                            break
-                        }
-                        outIdx = codec.dequeueOutputBuffer(info, 0)
-                    }
-                }
-
-                codec.stop()
-                AudioWaveformProcessor.normalize(buckets)
-                buckets
-            } finally {
-                codec.release()
-            }
+            decodeAndProcess(extractor, trackInfo.format, bucketCount, onProgress)
         } catch (e: Exception) {
             e.printStackTrace()
             null
@@ -131,4 +38,131 @@ class AudioWaveformExtractorImpl @Inject constructor(
             try { extractor.release() } catch (e: Exception) {}
         }
     }
+
+    private fun findAudioTrack(extractor: MediaExtractor): TrackInfo? {
+        for (i in 0 until extractor.trackCount) {
+            val format = extractor.getTrackFormat(i)
+            if (format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                return TrackInfo(i, format)
+            }
+        }
+        return null
+    }
+
+    private fun decodeAndProcess(
+        extractor: MediaExtractor,
+        format: MediaFormat,
+        bucketCount: Int,
+        onProgress: ((FloatArray) -> Unit)?
+    ): FloatArray? {
+        val mime = format.getString(MediaFormat.KEY_MIME)!!
+        val durationUs = format.getLong(MediaFormat.KEY_DURATION)
+        val codec = MediaCodec.createDecoderByType(mime)
+        
+        return try {
+            codec.configure(format, null, null, 0)
+            codec.start()
+            val result = runDecodeLoop(extractor, codec, durationUs, bucketCount, onProgress)
+            codec.stop()
+            result
+        } finally {
+            codec.release()
+        }
+    }
+
+    private fun runDecodeLoop(
+        extractor: MediaExtractor,
+        codec: MediaCodec,
+        durationUs: Long,
+        bucketCount: Int,
+        onProgress: ((FloatArray) -> Unit)?
+    ): FloatArray {
+        val buckets = FloatArray(bucketCount)
+        val info = MediaCodec.BufferInfo()
+        var sawInputEOS = false
+        var sawOutputEOS = false
+        var bufferArray = ByteArray(8192) 
+        var lastProgressUpdateUs = 0L
+
+        while (!sawOutputEOS) {
+            if (!sawInputEOS) {
+                sawInputEOS = feedInput(extractor, codec)
+            }
+            val params = DrainParams(codec, info, buckets, durationUs, bucketCount, onProgress)
+            val drainResult = drainOutput(params, bufferArray, lastProgressUpdateUs)
+            bufferArray = drainResult.buffer
+            lastProgressUpdateUs = drainResult.lastUpdate
+            if (drainResult.eos) sawOutputEOS = true
+        }
+        AudioWaveformProcessor.normalize(buckets)
+        return buckets
+    }
+
+    private fun feedInput(extractor: MediaExtractor, codec: MediaCodec): Boolean {
+        val inIdx = codec.dequeueInputBuffer(10_000)
+        if (inIdx >= 0) {
+            val buf = codec.getInputBuffer(inIdx)!!
+            val sampleSize = extractor.readSampleData(buf, 0)
+            if (sampleSize < 0) {
+                codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                return true
+            } else {
+                codec.queueInputBuffer(inIdx, 0, sampleSize, extractor.sampleTime, 0)
+                extractor.advance()
+            }
+        }
+        return false
+    }
+
+    private fun drainOutput(
+        params: DrainParams,
+        bufferArray: ByteArray,
+        lastProgressUpdateUs: Long
+    ): DrainResult {
+        var currentLastUpdate = lastProgressUpdateUs
+        var currentBuffer = bufferArray
+        var outIdx = params.codec.dequeueOutputBuffer(params.info, 10_000)
+        while (outIdx >= 0) {
+            val outBuf = params.codec.getOutputBuffer(outIdx)!!
+            if (params.info.size > 0) {
+                if (params.info.size > currentBuffer.size) currentBuffer = ByteArray(params.info.size)
+                outBuf.position(params.info.offset)
+                outBuf.limit(params.info.offset + params.info.size)
+                outBuf.get(currentBuffer, 0, params.info.size)
+
+                val peak = AudioWaveformProcessor.findPeak(currentBuffer, params.info.size)
+                val bucketIndex = AudioWaveformProcessor.getBucketIndex(
+                    params.info.presentationTimeUs, params.durationUs, params.bucketCount
+                )
+                val normalizedPeak = peak.toFloat() / Short.MAX_VALUE
+                if (normalizedPeak > params.buckets[bucketIndex]) params.buckets[bucketIndex] = normalizedPeak
+            }
+            params.codec.releaseOutputBuffer(outIdx, false)
+
+            val progressIntervalUs = if (params.durationUs > 0) params.durationUs / 10 else 1_000_000L
+            if (params.onProgress != null && params.info.presentationTimeUs - currentLastUpdate > progressIntervalUs) {
+                currentLastUpdate = params.info.presentationTimeUs
+                val currentBuckets = params.buckets.clone()
+                AudioWaveformProcessor.normalize(currentBuckets)
+                params.onProgress.invoke(currentBuckets) 
+            }
+
+            if (params.info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+                return DrainResult(true, currentLastUpdate, currentBuffer)
+            }
+            outIdx = params.codec.dequeueOutputBuffer(params.info, 0)
+        }
+        return DrainResult(false, currentLastUpdate, currentBuffer)
+    }
+
+    private data class TrackInfo(val index: Int, val format: MediaFormat)
+    private data class DrainParams(
+        val codec: MediaCodec,
+        val info: MediaCodec.BufferInfo,
+        val buckets: FloatArray,
+        val durationUs: Long,
+        val bucketCount: Int,
+        val onProgress: ((FloatArray) -> Unit)?
+    )
+    private data class DrainResult(val eos: Boolean, val lastUpdate: Long, val buffer: ByteArray)
 }
