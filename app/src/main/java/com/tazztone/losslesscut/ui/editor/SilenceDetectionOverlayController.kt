@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.ui.editor
 
 import android.content.Context
 import android.view.View
+import android.widget.ImageButton
 import android.widget.TextView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
@@ -24,6 +25,19 @@ class SilenceDetectionOverlayController(
     private val viewModel: VideoEditingViewModel
 ) {
     private var silencePreviewJob: Job? = null
+    private var isPaddingLinked = true
+
+    private var sliderThreshold: Slider? = null
+    private var sliderDuration: Slider? = null
+    private var sliderMinSegment: Slider? = null
+    private var sliderPaddingPrefix: Slider? = null
+    private var sliderPaddingPostfix: Slider? = null
+
+    private var tvThresholdValue: TextView? = null
+    private var tvDurationValue: TextView? = null
+    private var tvMinSegmentValue: TextView? = null
+    private var tvPaddingPrefixValue: TextView? = null
+    private var tvPaddingPostfixValue: TextView? = null
 
     companion object {
         private const val PERCENT_SCALE = 100
@@ -34,44 +48,59 @@ class SilenceDetectionOverlayController(
         val overlay = binding.silenceDetectionContainer?.root ?: return
         overlay.visibility = View.VISIBLE
         
-        val sliderThreshold = overlay.findViewById<Slider>(R.id.sliderThreshold)
-        val sliderDuration = overlay.findViewById<Slider>(R.id.sliderDuration)
-        val sliderMinSegment = overlay.findViewById<Slider>(R.id.sliderMinSegment)
-        val sliderPadding = overlay.findViewById<Slider>(R.id.sliderPadding)
+        initializeViews(overlay)
+        setupListeners(overlay)
+        observeState(overlay)
         
-        val tvThresholdValue = overlay.findViewById<TextView>(R.id.tvThresholdValue)
-        val tvDurationValue = overlay.findViewById<TextView>(R.id.tvDurationValue)
-        val tvMinSegmentValue = overlay.findViewById<TextView>(R.id.tvMinSegmentValue)
-        val tvPaddingValue = overlay.findViewById<TextView>(R.id.tvPaddingValue)
+        updatePreview()
+    }
+
+    private fun initializeViews(overlay: View) {
+        sliderThreshold = overlay.findViewById(R.id.sliderThreshold)
+        sliderDuration = overlay.findViewById(R.id.sliderDuration)
+        sliderMinSegment = overlay.findViewById(R.id.sliderMinSegment)
+        sliderPaddingPrefix = overlay.findViewById(R.id.sliderPaddingPrefix)
+        sliderPaddingPostfix = overlay.findViewById(R.id.sliderPaddingPostfix)
         
-        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
+        tvThresholdValue = overlay.findViewById(R.id.tvThresholdValue)
+        tvDurationValue = overlay.findViewById(R.id.tvDurationValue)
+        tvMinSegmentValue = overlay.findViewById(R.id.tvMinSegmentValue)
+        tvPaddingPrefixValue = overlay.findViewById(R.id.tvPaddingPrefixValue)
+        tvPaddingPostfixValue = overlay.findViewById(R.id.tvPaddingPostfixValue)
+    }
+
+    private fun setupListeners(overlay: View) {
+        val btnLinkPadding = overlay.findViewById<ImageButton>(R.id.btnLinkPadding)
         val btnCancel = overlay.findViewById<android.widget.Button>(R.id.btnCancel)
         val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
 
-        val updatePreview = {
-            val threshold = sliderThreshold.value
-            val duration = sliderDuration.value.toLong()
-            val minSegment = sliderMinSegment.value.toLong()
-            val padding = sliderPadding.value.toLong()
-            
-            tvThresholdValue.text = String.format(Locale.getDefault(), "%.1f%%", threshold * PERCENT_SCALE)
-            tvDurationValue.text = String.format(Locale.getDefault(), "%.1fs", duration / MS_TO_SEC)
-            tvMinSegmentValue.text = String.format(Locale.getDefault(), "%.1fs", minSegment / MS_TO_SEC)
-            tvPaddingValue.text = String.format(Locale.getDefault(), "%.1fs", padding / MS_TO_SEC)
-            
-            viewModel.previewSilenceSegments(threshold, duration, padding, minSegment)
+        val updateLinkIcon = {
+            btnLinkPadding.setImageResource(
+                if (isPaddingLinked) R.drawable.ic_link_24 else R.drawable.ic_link_off_24
+            )
         }
 
-        sliderThreshold.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderDuration.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderMinSegment.addOnChangeListener { _, _, _ -> updatePreview() }
-        sliderPadding.addOnChangeListener { _, _, _ -> updatePreview() }
-
-        silencePreviewJob?.cancel()
-        silencePreviewJob = scope.launch {
-            viewModel.uiState.collect { state ->
-                handleUiStateUpdate(state, tvEstimatedCut, btnApply)
+        btnLinkPadding.setOnClickListener {
+            isPaddingLinked = !isPaddingLinked
+            updateLinkIcon()
+            if (isPaddingLinked) {
+                sliderPaddingPostfix?.value = sliderPaddingPrefix?.value ?: 0f
+                updatePreview()
             }
+        }
+
+        sliderThreshold?.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderDuration?.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderMinSegment?.addOnChangeListener { _, _, _ -> updatePreview() }
+        
+        sliderPaddingPrefix?.addOnChangeListener { _, value, fromUser -> 
+            if (fromUser && isPaddingLinked) sliderPaddingPostfix?.value = value
+            updatePreview() 
+        }
+        
+        sliderPaddingPostfix?.addOnChangeListener { _, value, fromUser -> 
+            if (fromUser && isPaddingLinked) sliderPaddingPrefix?.value = value
+            updatePreview() 
         }
 
         btnCancel.setOnClickListener { hide() }
@@ -79,8 +108,35 @@ class SilenceDetectionOverlayController(
             viewModel.applySilenceDetection()
             hide()
         }
+        updateLinkIcon()
+    }
 
-        updatePreview()
+    private fun updatePreview() {
+        val threshold = sliderThreshold?.value ?: 0f
+        val duration = sliderDuration?.value?.toLong() ?: 0L
+        val minSegment = sliderMinSegment?.value?.toLong() ?: 0L
+        val paddingPrefix = sliderPaddingPrefix?.value?.toLong() ?: 0L
+        val paddingPostfix = sliderPaddingPostfix?.value?.toLong() ?: 0L
+        
+        tvThresholdValue?.text = String.format(Locale.getDefault(), "%.1f%%", threshold * PERCENT_SCALE)
+        tvDurationValue?.text = String.format(Locale.getDefault(), "%.1fs", duration / MS_TO_SEC)
+        tvMinSegmentValue?.text = String.format(Locale.getDefault(), "%.1fs", minSegment / MS_TO_SEC)
+        tvPaddingPrefixValue?.text = String.format(Locale.getDefault(), "%.1fs", paddingPrefix / MS_TO_SEC)
+        tvPaddingPostfixValue?.text = String.format(Locale.getDefault(), "%.1fs", paddingPostfix / MS_TO_SEC)
+        
+        viewModel.previewSilenceSegments(threshold, duration, paddingPrefix, paddingPostfix, minSegment)
+    }
+
+    private fun observeState(overlay: View) {
+        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
+        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
+
+        silencePreviewJob?.cancel()
+        silencePreviewJob = scope.launch {
+            viewModel.uiState.collect { state ->
+                handleUiStateUpdate(state, tvEstimatedCut, btnApply)
+            }
+        }
     }
 
     private fun handleUiStateUpdate(state: VideoEditingUiState, tvEst: TextView, btnApply: View) {

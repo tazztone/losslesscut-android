@@ -5,7 +5,9 @@ import com.tazztone.losslesscut.domain.model.MediaClip
 interface IVideoEditingRepository {
     suspend fun createClipFromUri(uri: String): Result<MediaClip>
     suspend fun getKeyframes(uri: String): List<Long>
-    suspend fun extractWaveform(uri: String, onProgress: ((FloatArray) -> Unit)? = null): FloatArray?
+    suspend fun extractWaveform(
+        uri: String, bucketCount: Int = 1000, onProgress: ((FloatArray) -> Unit)? = null
+    ): FloatArray?
     suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
     suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String?
     suspend fun createImageOutputUri(fileName: String): String?

@@ -2,7 +2,10 @@ package com.tazztone.losslesscut.viewmodel
 
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.HashUtils
+import com.tazztone.losslesscut.domain.model.DetectionUtils
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
+import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -24,7 +27,8 @@ class WaveformController @Inject constructor(
     data class SilenceDetectionParams(
         val threshold: Float,
         val minSilenceMs: Long,
-        val paddingMs: Long,
+        val paddingStartMs: Long,
+        val paddingEndMs: Long,
         val minSegmentMs: Long,
         val clip: MediaClip
     )
@@ -43,14 +47,19 @@ class WaveformController @Inject constructor(
         _silencePreviewRanges.value = emptyList()
         waveformJob = scope.launch(ioDispatcher) {
             _waveformData.value = null
-            val cacheKey = "waveform_${clip.uri.hashCode()}.bin"
+            
+            // SHA-256 caching with duration/dims to detect content changes (best effort)
+            val cacheKeyInput = "${clip.uri}_${clip.durationMs}_${clip.width}x${clip.height}"
+            val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.bin"
+            
             val cached = repository.loadWaveformFromCache(cacheKey)
             if (cached != null) {
                 _waveformData.value = cached
                 return@launch
             }
             
-            repository.extractWaveform(clip.uri)
+            val bucketCount = AudioWaveformProcessor.calculateAdaptiveBucketCount(clip.durationMs)
+            repository.extractWaveform(clip.uri, bucketCount = bucketCount)
                 ?.let { waveform ->
                     _waveformData.value = waveform
                     repository.saveWaveformToCache(cacheKey, waveform)
@@ -67,13 +76,17 @@ class WaveformController @Inject constructor(
         
         silencePreviewJob?.cancel()
         silencePreviewJob = scope.launch(ioDispatcher) {
+            val config = DetectionUtils.SilenceDetectionConfig(
+                threshold = params.threshold,
+                minSilenceMs = params.minSilenceMs,
+                paddingStartMs = params.paddingStartMs,
+                paddingEndMs = params.paddingEndMs,
+                minSegmentMs = params.minSegmentMs
+            )
             val ranges = silenceDetectionUseCase.findSilence(
                 waveform, 
-                params.threshold, 
-                params.minSilenceMs, 
                 params.clip.durationMs, 
-                params.paddingMs, 
-                params.minSegmentMs
+                config
             )
             _silencePreviewRanges.value = ranges
             onComplete()

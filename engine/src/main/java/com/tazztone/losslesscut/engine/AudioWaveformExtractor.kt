@@ -9,7 +9,9 @@ import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
+import kotlin.coroutines.coroutineContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,7 +51,7 @@ class AudioWaveformExtractorImpl @Inject constructor(
         return null
     }
 
-    private fun decodeAndProcess(
+    private suspend fun decodeAndProcess(
         extractor: MediaExtractor,
         format: MediaFormat,
         bucketCount: Int,
@@ -57,12 +59,17 @@ class AudioWaveformExtractorImpl @Inject constructor(
     ): FloatArray? {
         val mime = format.getString(MediaFormat.KEY_MIME)!!
         val durationUs = format.getLong(MediaFormat.KEY_DURATION)
+        val sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+        val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
         val codec = MediaCodec.createDecoderByType(mime)
         
         return try {
             codec.configure(format, null, null, 0)
             codec.start()
-            val result = runDecodeLoop(extractor, codec, durationUs, bucketCount, onProgress)
+            val params = ExtractionParams(
+                extractor, codec, durationUs, bucketCount, sampleRate, channelCount, onProgress
+            )
+            val result = runDecodeLoop(params)
             codec.stop()
             result
         } finally {
@@ -70,26 +77,34 @@ class AudioWaveformExtractorImpl @Inject constructor(
         }
     }
 
-    private fun runDecodeLoop(
-        extractor: MediaExtractor,
-        codec: MediaCodec,
-        durationUs: Long,
-        bucketCount: Int,
-        onProgress: ((FloatArray) -> Unit)?
-    ): FloatArray {
-        val buckets = FloatArray(bucketCount)
+    private data class ExtractionParams(
+        val extractor: MediaExtractor,
+        val codec: MediaCodec,
+        val durationUs: Long,
+        val bucketCount: Int,
+        val sampleRate: Int,
+        val channelCount: Int,
+        val onProgress: ((FloatArray) -> Unit)?
+    )
+
+    private suspend fun runDecodeLoop(params: ExtractionParams): FloatArray {
+        val buckets = FloatArray(params.bucketCount)
         val info = MediaCodec.BufferInfo()
         var sawInputEOS = false
         var sawOutputEOS = false
-        var bufferArray = ByteArray(8192) 
+        var bufferArray = ByteArray(8192)
         var lastProgressUpdateUs = 0L
 
         while (!sawOutputEOS) {
+            coroutineContext.ensureActive()
             if (!sawInputEOS) {
-                sawInputEOS = feedInput(extractor, codec)
+                sawInputEOS = feedInput(params.extractor, params.codec)
             }
-            val params = DrainParams(codec, info, buckets, durationUs, bucketCount, onProgress)
-            val drainResult = drainOutput(params, bufferArray, lastProgressUpdateUs)
+            val drainParams = DrainParams(
+                params.codec, info, buckets, params.durationUs, params.bucketCount,
+                params.sampleRate, params.channelCount, params.onProgress
+            )
+            val drainResult = drainOutput(drainParams, bufferArray, lastProgressUpdateUs)
             bufferArray = drainResult.buffer
             lastProgressUpdateUs = drainResult.lastUpdate
             if (drainResult.eos) sawOutputEOS = true
@@ -130,12 +145,17 @@ class AudioWaveformExtractorImpl @Inject constructor(
                 outBuf.limit(params.info.offset + params.info.size)
                 outBuf.get(currentBuffer, 0, params.info.size)
 
-                val peak = AudioWaveformProcessor.findPeak(currentBuffer, params.info.size)
-                val bucketIndex = AudioWaveformProcessor.getBucketIndex(
-                    params.info.presentationTimeUs, params.durationUs, params.bucketCount
+                AudioWaveformProcessor.updateBuckets(
+                    info = AudioWaveformProcessor.WaveformBufferInfo(
+                        buffer = currentBuffer,
+                        size = params.info.size,
+                        startTimeUs = params.info.presentationTimeUs,
+                        totalDurationUs = params.durationUs,
+                        sampleRate = params.sampleRate,
+                        channelCount = params.channelCount
+                    ),
+                    buckets = params.buckets
                 )
-                val normalizedPeak = peak.toFloat() / Short.MAX_VALUE
-                if (normalizedPeak > params.buckets[bucketIndex]) params.buckets[bucketIndex] = normalizedPeak
             }
             params.codec.releaseOutputBuffer(outIdx, false)
 
@@ -162,6 +182,8 @@ class AudioWaveformExtractorImpl @Inject constructor(
         val buckets: FloatArray,
         val durationUs: Long,
         val bucketCount: Int,
+        val sampleRate: Int,
+        val channelCount: Int,
         val onProgress: ((FloatArray) -> Unit)?
     )
     private data class DrainResult(val eos: Boolean, val lastUpdate: Long, val buffer: ByteArray)

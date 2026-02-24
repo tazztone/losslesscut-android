@@ -423,7 +423,7 @@ class VideoEditingViewModel @Inject constructor(
         )
     }
 
-    fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingMs: Long, minSegmentMs: Long) {
+    fun previewSilenceSegments(threshold: Float, minSilenceMs: Long, paddingStartMs: Long, paddingEndMs: Long, minSegmentMs: Long) {
         if (_waveformData.value == null) {
             viewModelScope.launch {
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_waveform_not_ready)))
@@ -433,7 +433,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             val params = WaveformController.SilenceDetectionParams(
-                threshold, minSilenceMs, paddingMs, minSegmentMs, clip
+                threshold, minSilenceMs, paddingStartMs, paddingEndMs, minSegmentMs, clip
             )
             waveformController.previewSilenceSegments(viewModelScope, params) {
                 stateMutex.withLock { updateStateInternal() }

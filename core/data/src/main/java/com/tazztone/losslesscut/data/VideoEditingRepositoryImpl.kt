@@ -64,8 +64,8 @@ class VideoEditingRepository @Inject constructor(
         engine.getKeyframes(uri).getOrElse { emptyList() }
     }
 
-    override suspend fun extractWaveform(uri: String, onProgress: ((FloatArray) -> Unit)?): FloatArray? {
-        return waveformExtractor.extract(uri, onProgress = onProgress)
+    override suspend fun extractWaveform(uri: String, bucketCount: Int, onProgress: ((FloatArray) -> Unit)?): FloatArray? {
+        return waveformExtractor.extract(uri, bucketCount = bucketCount, onProgress = onProgress)
     }
 
     override suspend fun getFrameAt(uri: String, positionMs: Long) = withContext(ioDispatcher) {

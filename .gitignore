@@ -38,3 +38,7 @@ logo.png
 release.keystore
 *.jks
 test_output.txt
+detekt_output.txt
+.gitignore
+app_compile_output.txt
+compile_output.txt

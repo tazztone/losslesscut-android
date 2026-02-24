@@ -29,4 +29,5 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockk.agent)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

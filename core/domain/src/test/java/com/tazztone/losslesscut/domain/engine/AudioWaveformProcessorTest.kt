@@ -1,7 +1,9 @@
 package com.tazztone.losslesscut.domain.engine
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.absoluteValue
 
 class AudioWaveformProcessorTest {
 
@@ -63,5 +65,32 @@ class AudioWaveformProcessorTest {
         assertEquals(4, AudioWaveformProcessor.getBucketIndex(500, duration, bucketCount))
         assertEquals(9, AudioWaveformProcessor.getBucketIndex(1000, duration, bucketCount))
         assertEquals(9, AudioWaveformProcessor.getBucketIndex(1200, duration, bucketCount)) // Coerced
+    }
+
+    @Test
+    fun testCalculateAdaptiveBucketCount() {
+        assertEquals(500, AudioWaveformProcessor.calculateAdaptiveBucketCount(1000)) // 1s -> 10, but min 500
+        assertEquals(1000, AudioWaveformProcessor.calculateAdaptiveBucketCount(100_000)) // 100s -> 1000
+        assertEquals(5000, AudioWaveformProcessor.calculateAdaptiveBucketCount(1_000_000)) // 1000s -> 5000
+    }
+
+    @Test
+    fun testUpdateBuckets() {
+        val buckets = FloatArray(10)
+        val buffer = ByteArray(40) { (it % 10).toByte() }
+        
+        AudioWaveformProcessor.updateBuckets(
+            info = AudioWaveformProcessor.WaveformBufferInfo(
+                buffer = buffer,
+                size = buffer.size,
+                startTimeUs = 0,
+                totalDurationUs = 1000,
+                sampleRate = 44100,
+                channelCount = 2
+            ),
+            buckets = buckets
+        )
+        
+        assertTrue(buckets.any { it > 0 })
     }
 }

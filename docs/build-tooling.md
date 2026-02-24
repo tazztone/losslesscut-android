@@ -37,8 +37,17 @@ This document tracks the current stable toolchain and dependency matrix for Loss
 | **Media3** | 1.5.1 | baseline |
 | **Hilt** | 2.59.1 | baseline |
 
+## Known Compatibility Warnings
+
+| Warning | Source | Resolution Plan |
+| :--- | :--- | :--- |
+| `ReportingExtension.file(String)` deprecation | Detekt 1.23.8 | Upgrade to **Detekt 2.0 stable** when released. |
+| Gradle 10 incompatibility notice | Plugin Internals | Upgrade to **AGP 9.1 stable** when released. |
+
 ## Modernization Roadmap
 
 1. [x] Upgrade Compose BOM to 2026.02.00
 2. [x] Upgrade Core KTX to 1.17.0
 3. [x] Upgrade Coroutines Test to 1.10.x (Current: 1.10.2)
+4. [ ] Upgrade to AGP 9.1 (Stability pending)
+5. [ ] Upgrade to Detekt 2.0 (Stability pending)

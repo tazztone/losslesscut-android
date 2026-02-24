@@ -17,19 +17,13 @@ class SilenceDetectionUseCase @Inject constructor(
 ) {
     suspend fun findSilence(
         waveform: FloatArray,
-        threshold: Float,
-        minSilenceMs: Long,
         totalDurationMs: Long,
-        paddingMs: Long,
-        minSegmentMs: Long
+        config: DetectionUtils.SilenceDetectionConfig
     ): List<LongRange> = withContext(ioDispatcher) {
         DetectionUtils.findSilence(
             waveform = waveform,
-            threshold = threshold,
-            minSilenceMs = minSilenceMs,
             totalDurationMs = totalDurationMs,
-            paddingMs = paddingMs,
-            minSegmentMs = minSegmentMs
+            config = config
         )
     }
 
