@@ -29,35 +29,6 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
-sealed class VideoEditingUiState {
-    object Initial : VideoEditingUiState()
-    data class Loading(val progress: Int = 0, val message: UiText? = null) : VideoEditingUiState()
-    data class Success(
-        val clips: List<MediaClip>,
-        val selectedClipIndex: Int = 0,
-        val keyframes: List<Long>,
-        val segments: List<TrimSegment>,
-        val selectedSegmentId: UUID? = null,
-        val canUndo: Boolean = false,
-        val canRedo: Boolean = false,
-        val videoFps: Float = 30f,
-        val isAudioOnly: Boolean = false,
-        val hasAudioTrack: Boolean = true,
-        val isSnapshotInProgress: Boolean = false,
-        val silencePreviewRanges: List<LongRange> = emptyList(),
-        val availableTracks: List<MediaTrack> = emptyList(),
-        val playbackSpeed: Float = 1.0f,
-        val isPitchCorrectionEnabled: Boolean = false
-    ) : VideoEditingUiState()
-    data class Error(val error: UiText) : VideoEditingUiState()
-}
-
-sealed class VideoEditingEvent {
-    data class ShowToast(val message: UiText) : VideoEditingEvent()
-    data class ExportComplete(val success: Boolean, val count: Int = 0) : VideoEditingEvent()
-    object SessionRestored : VideoEditingEvent()
-}
-
 @HiltViewModel
 class VideoEditingViewModel @Inject constructor(
     private val repository: IVideoEditingRepository,
@@ -125,11 +96,13 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch {
             waveformController.waveformData.collect { data ->
                 _waveformData.value = data
+                stateMutex.withLock { updateStateInternal() }
             }
         }
         viewModelScope.launch {
             waveformController.silencePreviewRanges.collect { ranges ->
                 _silencePreviewRanges.value = ranges
+                stateMutex.withLock { updateStateInternal() }
             }
         }
     }

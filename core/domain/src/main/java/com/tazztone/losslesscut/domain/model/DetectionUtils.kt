@@ -23,13 +23,13 @@ object DetectionUtils {
             return emptyList()
         }
 
-        val msPerBucket = totalDurationMs.toDouble() / waveform.size
-        val raw = getRawSilenceRanges(waveform, threshold, minSilenceMs, msPerBucket, totalDurationMs)
+        val sampleDurationMs = totalDurationMs.toDouble() / waveform.size
+        val rawRanges = getRawSilenceRanges(waveform, threshold, minSilenceMs, sampleDurationMs, totalDurationMs)
         
-        return if (raw.isEmpty()) {
+        return if (rawRanges.isEmpty()) {
             emptyList()
         } else {
-            val filtered = filterByMinSegmentMs(raw, minSegmentMs, totalDurationMs)
+            val filtered = filterByMinSegmentMs(rawRanges, minSegmentMs, totalDurationMs)
             applyPaddingAndFilter(filtered, paddingMs)
         }
     }
