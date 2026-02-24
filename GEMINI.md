@@ -1,25 +1,16 @@
-# LosslessCut Android Context
-Android lossless video editor (Media3, MediaExtractor, MediaMuxer).
-Clean Architecture (MVVM), multi-module Gradle.
+# LosslessCut Android
+Stack: Media3, MediaExtractor, MediaMuxer, Coroutines, DataStore.
 
-## Modules & Rules
-- `:app`: UI (Fragments, ViewModels), Jetpack Navigation. Fragments: `Editor`, `Remux`, `Metadata`.
-- `:core:domain`: Use Cases, Models, Interfaces. STRICT: Zero Android framework deps (No `Context`, `Uri`, `Bitmap`).
-- `:core:data`: Repo Impls, Persistence (`AppPreferences` DataStore), SAF (`StorageUtils`).
-- `:engine`: Media processing. `LosslessEngine` handles muxing/merging.
+## Architecture & Rules
+- `:core:domain`: Use Cases/Interfaces. STRICTLY NO Android framework deps (No `Context`, `Uri`, `Bitmap`).
+- `:core:data`: `AppPreferences` (DataStore), `StorageUtils` (SAF).
+- `:engine`: `LosslessEngine` handles actual muxing/merging.
+- **DI:** Dagger Hilt (`@HiltViewModel`, `@AndroidEntryPoint`, `@Inject`).
+- **Errors:** Avoid exception-as-control-flow. Never swallow `CancellationException` in coroutines.
 
-## Design Specs
-- Palette: Vibrant HSL, dark mode, glassmorphism.
-- Timeline: Use `CustomVideoSeeker` (supports zoom/a11y).
-
-## Tooling & CI
-- JDK 21, GitHub Actions (Pinned SHAs).
-- Verify: `./gradlew test lintDebug detekt`
-
-## Key Libraries
-Media3, Coroutines, DataStore, Material Components.
-
-## LLM Directives
-- Never swallow `CancellationException` in coroutines.
-- Avoid exception-as-control-flow (e.g., redundant `setDataSource` try/catch).
-- Do not pass `Context` into `:core:domain`.
+## UI Layer (`:app`)
+- XML + ViewBinding (No Compose, no `findViewById`).
+- Jetpack Navigation (`Editor`, `Remux`, `Metadata` fragments).
+- ViewModels expose `StateFlow` (state) and `SharedFlow` (events). No `LiveData`.
+- `CustomVideoSeeker` handles the timeline and zoom.
+- Design: Vibrant HSL, dark mode, glassmorphism.

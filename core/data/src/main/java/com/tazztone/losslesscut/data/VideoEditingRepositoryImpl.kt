@@ -36,10 +36,11 @@ class VideoEditingRepository @Inject constructor(
         encodeDefaults = true
     }
 
-    override suspend fun createClipFromUri(uri: Uri): Result<MediaClip> = withContext(ioDispatcher) {
-        engine.getMediaMetadata(context, uri).map { meta ->
+    override suspend fun createClipFromUri(uriString: String): Result<MediaClip> = withContext(ioDispatcher) {
+        val uri = Uri.parse(uriString)
+        engine.getMediaMetadata(uriString).map { meta ->
             MediaClip(
-                uri = uri,
+                uri = uriString,
                 fileName = storageUtils.getFileName(uri),
                 durationMs = meta.durationMs,
                 width = meta.width,
@@ -59,68 +60,68 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    override suspend fun getKeyframes(uri: Uri): List<Long> = withContext(ioDispatcher) {
-        engine.getKeyframes(context, uri).getOrElse { emptyList() }
+    override suspend fun getKeyframes(uri: String): List<Long> = withContext(ioDispatcher) {
+        engine.getKeyframes(uri).getOrElse { emptyList() }
     }
 
-    override suspend fun extractWaveform(uri: Uri, onProgress: ((FloatArray) -> Unit)?): FloatArray? {
-        return waveformExtractor.extract(context, uri, onProgress = onProgress)
+    override suspend fun extractWaveform(uri: String, onProgress: ((FloatArray) -> Unit)?): FloatArray? {
+        return waveformExtractor.extract(uri, onProgress = onProgress)
     }
 
-    override suspend fun getFrameAt(uri: Uri, positionMs: Long) = withContext(ioDispatcher) {
-        engine.getFrameAt(context, uri, positionMs)
+    override suspend fun getFrameAt(uri: String, positionMs: Long) = withContext(ioDispatcher) {
+        engine.getFrameAt(uri, positionMs)
     }
 
-    override suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): Uri? {
-        return storageUtils.createMediaOutputUri(fileName, isAudio)
+    override suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String? {
+        return storageUtils.createMediaOutputUri(fileName, isAudio)?.toString()
     }
 
-    override suspend fun createImageOutputUri(fileName: String): Uri? {
-        return storageUtils.createImageOutputUri(fileName)
+    override suspend fun createImageOutputUri(fileName: String): String? {
+        return storageUtils.createImageOutputUri(fileName)?.toString()
     }
 
-    override fun finalizeImage(uri: Uri) {
-        storageUtils.finalizeImage(uri)
+    override fun finalizeImage(uri: String) {
+        storageUtils.finalizeImage(Uri.parse(uri))
     }
 
-    override fun finalizeVideo(uri: Uri) {
-        storageUtils.finalizeVideo(uri)
+    override fun finalizeVideo(uri: String) {
+        storageUtils.finalizeVideo(Uri.parse(uri))
     }
 
-    override fun finalizeAudio(uri: Uri) {
-        storageUtils.finalizeAudio(uri)
+    override fun finalizeAudio(uri: String) {
+        storageUtils.finalizeAudio(Uri.parse(uri))
     }
 
-    override fun getFileName(uri: Uri): String {
-        return storageUtils.getFileName(uri)
+    override fun getFileName(uriString: String): String {
+        return storageUtils.getFileName(Uri.parse(uriString))
     }
 
     override suspend fun executeLosslessCut(
-        inputUri: Uri,
-        outputUri: Uri,
+        inputUri: String,
+        outputUri: String,
         startMs: Long,
         endMs: Long,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ) = engine.executeLosslessCut(context, inputUri, outputUri, startMs, endMs, keepAudio, keepVideo, rotationOverride, selectedTracks)
+    ) = engine.executeLosslessCut(inputUri, outputUri, startMs, endMs, keepAudio, keepVideo, rotationOverride, selectedTracks)
 
     override suspend fun executeLosslessMerge(
-        outputUri: Uri,
+        outputUri: String,
         clips: List<MediaClip>,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ) = engine.executeLosslessMerge(context, outputUri, clips, keepAudio, keepVideo, rotationOverride, selectedTracks)
+    ) = engine.executeLosslessMerge(outputUri, clips, keepAudio, keepVideo, rotationOverride, selectedTracks)
 
     // --- Session & Cache Management ---
 
     override suspend fun saveSession(clips: List<MediaClip>) = withContext(ioDispatcher) {
         if (clips.isEmpty()) return@withContext
         try {
-            val sessionId = getSessionId(clips.first().uri)
+            val sessionId = getSessionId(clips.first().uri.toString())
             val sessionFile = File(context.cacheDir, "session_$sessionId.json")
             val jsonText = json.encodeToString(clips)
             sessionFile.writeText(jsonText)
@@ -129,7 +130,7 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    override suspend fun restoreSession(uri: Uri): List<MediaClip>? = withContext(ioDispatcher) {
+    override suspend fun restoreSession(uri: String): List<MediaClip>? = withContext(ioDispatcher) {
         try {
             val sessionId = getSessionId(uri)
             val sessionFile = File(context.cacheDir, "session_$sessionId.json")
@@ -141,7 +142,8 @@ class VideoEditingRepository @Inject constructor(
             // Filter valid clips
             restoredClips.filter { clip ->
                 try {
-                    context.contentResolver.query(clip.uri, null, null, null, null)?.use { 
+                    val clipUri = Uri.parse(clip.uri)
+                    context.contentResolver.query(clipUri, null, null, null, null)?.use { 
                         it.moveToFirst() 
                     } ?: false
                 } catch (e: Exception) {
@@ -154,7 +156,7 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    override suspend fun hasSavedSession(uri: Uri): Boolean = withContext(ioDispatcher) {
+    override suspend fun hasSavedSession(uri: String): Boolean = withContext(ioDispatcher) {
         val sessionFile = File(context.cacheDir, "session_${getSessionId(uri)}.json")
         sessionFile.exists()
     }
@@ -203,11 +205,11 @@ class VideoEditingRepository @Inject constructor(
 
     // --- Snapshot Management ---
 
-    override suspend fun writeSnapshot(bitmap: Bitmap, outputUri: Uri, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
+    override suspend fun writeSnapshot(bitmapBytes: ByteArray, outputUriString: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
         try {
-            val compressFormat = if (format == "PNG") Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG
+            val outputUri = Uri.parse(outputUriString)
             context.contentResolver.openOutputStream(outputUri)?.use { outputStream ->
-                bitmap.compress(compressFormat, quality, outputStream)
+                outputStream.write(bitmapBytes)
                 true
             } ?: false
         } catch (e: Exception) {
@@ -216,8 +218,8 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    private fun getSessionId(uri: Uri): String {
+    private fun getSessionId(uriString: String): String {
         // Optimized: simple hash code is enough for local cache key
-        return uri.toString().hashCode().toString()
+        return uriString.hashCode().toString()
     }
 }

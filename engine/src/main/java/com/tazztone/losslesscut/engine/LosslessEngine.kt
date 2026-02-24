@@ -1,12 +1,9 @@
 package com.tazztone.losslesscut.engine
 
 import android.content.Context
-import android.media.MediaCodec
-import android.media.MediaExtractor
-import android.media.MediaFormat
-import android.media.MediaMuxer
-import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
@@ -15,10 +12,13 @@ import com.tazztone.losslesscut.domain.engine.TrackMetadata
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.utils.StorageUtils
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.currentCoroutineContext
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 import javax.inject.Inject
@@ -26,28 +26,55 @@ import javax.inject.Singleton
 
 @Singleton
 class LosslessEngineImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val storageUtils: StorageUtils,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
     
+    enum class TrackType { VIDEO, AUDIO }
+
     companion object {
         private const val TAG = "LosslessEngine"
+        private const val MAX_KEYFRAME_COUNT = 3000
+        private const val MAX_PROBE_SAMPLES = 15000
+        private const val DEFAULT_BUFFER_SIZE = 1024 * 1024 // 1MB
+        private const val DEFAULT_FPS = 30f
+        private const val AUDIO_SAMPLE_RATE_44100 = 44100
+        private const val AUDIO_FRAME_SIZE = 1024.0
+        private const val MICROSECONDS_IN_SECOND = 1_000_000.0
+        private const val VIDEO_FRAME_DURATION_DEFAULT_US = 33333L
+        private const val SNAPSHOT_QUALITY = 90
     }
 
+    private fun setDataSourceSafely(extractor: MediaExtractor, context: Context, uri: Uri) {
+        try {
+            extractor.setDataSource(context, uri, null)
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaExtractor failed for $uri, trying FileDescriptor", e)
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                extractor.setDataSource(pfd.fileDescriptor)
+            } ?: throw IOException("Could not open FileDescriptor for $uri")
+        }
+    }
 
-    override suspend fun getKeyframes(context: Context, videoUri: Uri): Result<List<Long>> = withContext(ioDispatcher) {
+    private fun setDataSourceSafely(retriever: MediaMetadataRetriever, context: Context, uri: Uri) {
+        try {
+            retriever.setDataSource(context, uri)
+        } catch (e: Exception) {
+            Log.e(TAG, "MediaMetadataRetriever failed for $uri, trying FileDescriptor", e)
+            context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
+                retriever.setDataSource(pfd.fileDescriptor)
+            } ?: throw IOException("Could not open FileDescriptor for $uri")
+        }
+    }
+
+    override suspend fun getKeyframes(videoUri: String): Result<List<Long>> = withContext(ioDispatcher) {
+        val uri = Uri.parse(videoUri)
         val keyframes = mutableListOf<Long>()
         val extractor = MediaExtractor()
 
         try {
-            try {
-                extractor.setDataSource(context, videoUri, null)
-            } catch (e: Exception) {
-                Log.e(TAG, "MediaExtractor (keyframes) failed for $videoUri, trying FileDescriptor", e)
-                context.contentResolver.openFileDescriptor(videoUri, "r")?.use { pfd ->
-                    extractor.setDataSource(pfd.fileDescriptor)
-                } ?: throw IOException("Could not open FileDescriptor for $videoUri")
-            }
+            setDataSourceSafely(extractor, context, uri)
             val trackCount = extractor.trackCount
             var videoTrackIndex = -1
 
@@ -64,7 +91,7 @@ class LosslessEngineImpl @Inject constructor(
                 extractor.selectTrack(videoTrackIndex)
                 var count = 0
                 var totalSamples = 0
-                while (extractor.sampleTime >= 0 && count < 3000 && totalSamples < 15000 && currentCoroutineContext().isActive) {
+                while (extractor.sampleTime >= 0 && count < MAX_KEYFRAME_COUNT && totalSamples < MAX_PROBE_SAMPLES && currentCoroutineContext().isActive) {
                     val sampleTime = extractor.sampleTime
                     if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
                         keyframes.add(sampleTime / 1000)
@@ -75,6 +102,8 @@ class LosslessEngineImpl @Inject constructor(
                 }
             }
             Result.success(keyframes)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error probing keyframes", e)
             Result.failure(e)
@@ -83,17 +112,11 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 
-    override suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata> = withContext(ioDispatcher) {
+    override suspend fun getMediaMetadata(uriString: String): Result<MediaMetadata> = withContext(ioDispatcher) {
+        val uri = Uri.parse(uriString)
         val retriever = MediaMetadataRetriever()
         try {
-            try {
-                retriever.setDataSource(context, uri)
-            } catch (e: Exception) {
-                Log.e(TAG, "MediaMetadataRetriever failed for $uri, trying FileDescriptor", e)
-                context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                    retriever.setDataSource(pfd.fileDescriptor)
-                } ?: throw IOException("Could not open FileDescriptor for $uri")
-            }
+            setDataSourceSafely(retriever, context, uri)
 
             val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
             val duration = durationStr?.toLong() ?: 0L
@@ -110,19 +133,12 @@ class LosslessEngineImpl @Inject constructor(
             var audioMime: String? = null
             var sampleRate = 0
             var channelCount = 0
-            var fps = 30f
+            var fps = DEFAULT_FPS
 
             val extractor = MediaExtractor()
             val tracks = mutableListOf<TrackMetadata>()
             try {
-                try {
-                    extractor.setDataSource(context, uri, null)
-                } catch (e: Exception) {
-                    Log.e(TAG, "MediaExtractor failed for $uri, trying FileDescriptor", e)
-                    context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
-                        extractor.setDataSource(pfd.fileDescriptor)
-                    } ?: throw IOException("Could not open FileDescriptor for $uri")
-                }
+                setDataSourceSafely(extractor, context, uri)
 
                 if (extractor.trackCount == 0) {
                     return@withContext Result.failure(IOException("No tracks found in the media file"))
@@ -140,7 +156,7 @@ class LosslessEngineImpl @Inject constructor(
                             fps = try {
                                 format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
                             } catch (_: Exception) {
-                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                                try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }
                             }
                         }
                     } else if (isAudio) {
@@ -182,6 +198,8 @@ class LosslessEngineImpl @Inject constructor(
                     tracks = tracks
                 )
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get metadata for $uri", e)
             Result.failure(Exception("Could not read media file: ${e.localizedMessage ?: e.javaClass.simpleName}", e))
@@ -190,11 +208,17 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 
-    override suspend fun getFrameAt(context: Context, uri: Uri, positionMs: Long): android.graphics.Bitmap? = withContext(ioDispatcher) {
+    override suspend fun getFrameAt(uriString: String, positionMs: Long): ByteArray? = withContext(ioDispatcher) {
+        val uri = Uri.parse(uriString)
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(context, uri)
-            retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+            setDataSourceSafely(retriever, context, uri)
+            val bitmap = retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+            bitmap?.let {
+                val stream = ByteArrayOutputStream()
+                it.compress(Bitmap.CompressFormat.JPEG, SNAPSHOT_QUALITY, stream)
+                stream.toByteArray()
+            }
         } catch (e: Exception) {
             null
         } finally {
@@ -203,16 +227,17 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     override suspend fun executeLosslessCut(
-        context: Context,
-        inputUri: Uri,
-        outputUri: Uri,
+        inputUriString: String,
+        outputUriString: String,
         startMs: Long,
         endMs: Long,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ): Result<Uri> = withContext(ioDispatcher) {
+    ): Result<String> = withContext(ioDispatcher) {
+        val inputUri = Uri.parse(inputUriString)
+        val outputUri = Uri.parse(outputUriString)
         if (endMs <= startMs) return@withContext Result.failure(
             IllegalArgumentException("endMs ($endMs) must be > startMs ($startMs)")
         )
@@ -220,17 +245,10 @@ class LosslessEngineImpl @Inject constructor(
         val extractor = MediaExtractor()
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
-        var pfd: android.os.ParcelFileDescriptor? = null
+        var pfd: ParcelFileDescriptor? = null
 
         try {
-            try {
-                extractor.setDataSource(context, inputUri, null)
-            } catch (e: Exception) {
-                Log.e(TAG, "MediaExtractor (cut) failed for $inputUri, trying FileDescriptor", e)
-                context.contentResolver.openFileDescriptor(inputUri, "r")?.use { pfd_in ->
-                    extractor.setDataSource(pfd_in.fileDescriptor)
-                } ?: throw IOException("Could not open FileDescriptor for $inputUri")
-            }
+            setDataSourceSafely(extractor, context, inputUri)
             
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
             if (pfd == null) return@withContext Result.failure(IOException("Failed to open file descriptor"))
@@ -251,11 +269,12 @@ class LosslessEngineImpl @Inject constructor(
                 val isVideo = mime.startsWith("video/")
                 val isAudio = mime.startsWith("audio/")
                 
-                val isSelected = selectedTracks?.contains(i) ?: true
+                val isSelected = if (selectedTracks != null) {
+                    selectedTracks.contains(i)
+                } else {
+                    (isVideo && keepVideo) || (isAudio && keepAudio)
+                }
                 if (!isSelected) continue
-                
-                if (isVideo && !keepVideo && selectedTracks == null) continue
-                if (isAudio && !keepAudio && selectedTracks == null) continue
                 
                 if (isVideo || isAudio) {
                     if (isVideo && format.containsKey(MediaFormat.KEY_DURATION)) {
@@ -277,22 +296,14 @@ class LosslessEngineImpl @Inject constructor(
             }
             
             if (trackMap.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))
-            if (bufferSize < 0) bufferSize = 1024 * 1024 // Default 1MB buffer
+            if (bufferSize < 0) bufferSize = DEFAULT_BUFFER_SIZE
             val hasVideoTrack = isVideoTrackMap.values.any { it }
 
             val startUs = startMs * 1000
             val endUs = if (endMs > 0) endMs * 1000 else if (durationUs > 0) durationUs else Long.MAX_VALUE
 
-            val retriever = MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(context, inputUri)
-                val originalRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
-                val finalRotation = rotationOverride ?: originalRotation
-                if (hasVideoTrack) {
-                    mMuxer.setOrientationHint(finalRotation)
-                }
-            } finally {
-                retriever.release()
+            if (hasVideoTrack && rotationOverride != null) {
+                mMuxer.setOrientationHint(rotationOverride)
             }
 
             mMuxer.start()
@@ -363,8 +374,10 @@ class LosslessEngineImpl @Inject constructor(
             } else {
                 storageUtils.finalizeAudio(outputUri)
             }
-            Result.success(outputUri)
+            Result.success(outputUriString)
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error executing lossless cut", e)
             Result.failure(e)
@@ -383,19 +396,19 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     override suspend fun executeLosslessMerge(
-        context: Context,
-        outputUri: Uri,
+        outputUriString: String,
         clips: List<MediaClip>,
         keepAudio: Boolean,
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ): Result<Uri> = withContext(ioDispatcher) {
+    ): Result<String> = withContext(ioDispatcher) {
+        val outputUri = Uri.parse(outputUriString)
         if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips to merge"))
 
         var muxer: MediaMuxer? = null
         var isMuxerStarted = false
-        var pfd: android.os.ParcelFileDescriptor? = null
+        var pfd: ParcelFileDescriptor? = null
 
         try {
             pfd = context.contentResolver.openFileDescriptor(outputUri, "rw")
@@ -404,39 +417,33 @@ class LosslessEngineImpl @Inject constructor(
             muxer = MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
             val mMuxer = muxer
 
-            val muxerTrackByType = mutableMapOf<Int, Int>() // Muxer Track Index -> Type (0 for Video, 1 for Audio)
+            val muxerTrackByType = mutableMapOf<Int, TrackType>() // Muxer Track Index -> Type (VIDEO/AUDIO)
             var bufferSize = -1
-            var audioSampleRate = 44100
-            var videoFps = 30f
+            var audioSampleRate = AUDIO_SAMPLE_RATE_44100
+            var videoFps = DEFAULT_FPS
             var expectedVideoMime: String? = null
             var expectedAudioMime: String? = null
 
             // Initialize muxer tracks using the first clip
             val firstExtractor = MediaExtractor()
             try {
-                try {
-                    firstExtractor.setDataSource(context, clips[0].uri, null)
-                } catch (e: Exception) {
-                    Log.e(TAG, "MediaExtractor (merge init) failed for ${clips[0].uri}, trying FileDescriptor", e)
-                    context.contentResolver.openFileDescriptor(clips[0].uri, "r")?.use { pfd_in ->
-                        firstExtractor.setDataSource(pfd_in.fileDescriptor)
-                    } ?: throw IOException("Could not open FileDescriptor for ${clips[0].uri}")
-                }
+                setDataSourceSafely(firstExtractor, context, Uri.parse(clips[0].uri))
                 for (i in 0 until firstExtractor.trackCount) {
                     val format = firstExtractor.getTrackFormat(i)
                     val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
                     val isVideo = mime.startsWith("video/")
                     val isAudio = mime.startsWith("audio/")
 
-                    val isSelected = selectedTracks?.contains(i) ?: true
+                    val isSelected = if (selectedTracks != null) {
+                        selectedTracks.contains(i)
+                    } else {
+                        (isVideo && keepVideo) || (isAudio && keepAudio)
+                    }
                     if (!isSelected) continue
-
-                    if (isVideo && !keepVideo && selectedTracks == null) continue
-                    if (isAudio && !keepAudio && selectedTracks == null) continue
 
                     if (isVideo || isAudio) {
                         val muxIdx = mMuxer.addTrack(format)
-                        muxerTrackByType[muxIdx] = if (isVideo) 0 else 1
+                        muxerTrackByType[muxIdx] = if (isVideo) TrackType.VIDEO else TrackType.AUDIO
                         
                         if (isVideo) {
                             expectedVideoMime = mime
@@ -444,7 +451,7 @@ class LosslessEngineImpl @Inject constructor(
                                 videoFps = try {
                                     format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
                                 } catch (_: Exception) {
-                                    try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { 30f }
+                                    try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }
                                 }
                             }
                         } else {
@@ -453,22 +460,36 @@ class LosslessEngineImpl @Inject constructor(
                                 audioSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                             }
                         }
-
-                        if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
-                            val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
-                            if (size > bufferSize) bufferSize = size
-                        }
                     }
                 }
             } finally {
                 firstExtractor.release()
             }
 
+            // Find the maximum buffer size across all clips
+            for (clip in clips) {
+                val clipExtractor = MediaExtractor()
+                try {
+                    setDataSourceSafely(clipExtractor, context, Uri.parse(clip.uri))
+                    for (i in 0 until clipExtractor.trackCount) {
+                        val format = clipExtractor.getTrackFormat(i)
+                        if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
+                            val size = format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE)
+                            if (size > bufferSize) bufferSize = size
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Could not probe buffer size for ${clip.uri}", e)
+                } finally {
+                    clipExtractor.release()
+                }
+            }
+
             if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))
-            if (bufferSize < 0) bufferSize = 1024 * 1024
+            if (bufferSize < 0) bufferSize = DEFAULT_BUFFER_SIZE
 
             val finalRotation = rotationOverride ?: clips[0].rotation
-            if (muxerTrackByType.any { it.value == 0 }) {
+            if (muxerTrackByType.any { it.value == TrackType.VIDEO }) {
                 mMuxer.setOrientationHint(finalRotation)
             }
 
@@ -476,13 +497,13 @@ class LosslessEngineImpl @Inject constructor(
             isMuxerStarted = true
 
             // Pre-calculate gap constants outside the loop
-            val audioFrameDurationUs = (1024.0 * 1_000_000.0 / audioSampleRate).toLong()
-            val videoFrameDurationUs = if (videoFps > 0) (1_000_000.0 / videoFps).toLong() else 33333L
+            val audioFrameDurationUs = (AUDIO_FRAME_SIZE * MICROSECONDS_IN_SECOND / audioSampleRate).toLong()
+            val videoFrameDurationUs = if (videoFps > 0) (MICROSECONDS_IN_SECOND / videoFps).toLong() else VIDEO_FRAME_DURATION_DEFAULT_US
             val segmentGapUs = maxOf(audioFrameDurationUs, videoFrameDurationUs)
 
             // Pre-calculate muxer tracks outside the clip loop
-            val videoMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == 0 }?.key
-            val audioMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == 1 }?.key
+            val videoMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == TrackType.VIDEO }?.key
+            val audioMuxerTrack = muxerTrackByType.entries.firstOrNull { it.value == TrackType.AUDIO }?.key
 
             val buffer = ByteBuffer.allocateDirect(bufferSize)
             val bufferInfo = MediaCodec.BufferInfo()
@@ -492,14 +513,7 @@ class LosslessEngineImpl @Inject constructor(
             for (clip in clips) {
                 val clipExtractor = MediaExtractor()
                 try {
-                    try {
-                        clipExtractor.setDataSource(context, clip.uri, null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "MediaExtractor (merge step) failed for ${clip.uri}, trying FileDescriptor", e)
-                        context.contentResolver.openFileDescriptor(clip.uri, "r")?.use { pfd_in ->
-                            clipExtractor.setDataSource(pfd_in.fileDescriptor)
-                        } ?: throw IOException("Could not open FileDescriptor for ${clip.uri}")
-                    }
+                    setDataSourceSafely(clipExtractor, context, Uri.parse(clip.uri))
 
                     val clipTrackMap = mutableMapOf<Int, Int>() // Clip Track Index -> Muxer Track Index
                     for (i in 0 until clipExtractor.trackCount) {
@@ -510,10 +524,14 @@ class LosslessEngineImpl @Inject constructor(
                         val isAudio = mime.startsWith("audio/")
                         
                         // respect selectedTracks if provided
-                        val isSelected = selectedTracks?.contains(i) ?: true
+                        val isSelected = if (selectedTracks != null) {
+                            selectedTracks.contains(i)
+                        } else {
+                            (isVideo && keepVideo) || (isAudio && keepAudio)
+                        }
                         if (!isSelected) continue
 
-                        if (isVideo && keepVideo) {
+                        if (isVideo) {
                             if (mime != expectedVideoMime) {
                                 return@withContext Result.failure(IOException("Codec mismatch: expected $expectedVideoMime, got $mime in ${clip.uri}"))
                             }
@@ -521,7 +539,7 @@ class LosslessEngineImpl @Inject constructor(
                                 clipTrackMap[i] = it
                                 actuallyHasVideo = true
                             }
-                        } else if (isAudio && keepAudio) {
+                        } else if (isAudio) {
                             if (mime != expectedAudioMime) {
                                 return@withContext Result.failure(IOException("Codec mismatch: expected $expectedAudioMime, got $mime in ${clip.uri}"))
                             }
@@ -596,8 +614,10 @@ class LosslessEngineImpl @Inject constructor(
             } else {
                 storageUtils.finalizeAudio(outputUri)
             }
-            Result.success(outputUri)
+            Result.success(outputUriString)
 
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error executing lossless merge", e)
             Result.failure(e)

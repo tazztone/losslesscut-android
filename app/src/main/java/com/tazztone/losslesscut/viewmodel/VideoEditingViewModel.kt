@@ -114,7 +114,7 @@ class VideoEditingViewModel @Inject constructor(
             _uiState.value = VideoEditingUiState.Loading()
             try {
                 repository.evictOldCacheFiles()
-                val result = clipManagementUseCase.createClips(uris)
+                val result = clipManagementUseCase.createClips(uris.map { it.toString() })
                 result.fold(
                     onSuccess = { clips ->
                         currentClips = clips
@@ -138,7 +138,7 @@ class VideoEditingViewModel @Inject constructor(
     private fun loadClipData(index: Int) {
         val clip = currentClips[index]
         viewModelScope.launch(ioDispatcher) {
-            val cacheKey = clip.uri.toString()
+            val cacheKey = clip.uri
             val kfs = keyframeCache[cacheKey] ?: withContext(ioDispatcher) { repository.getKeyframes(clip.uri) }
             keyframeCache[cacheKey] = kfs
             currentKeyframes = kfs
@@ -152,7 +152,7 @@ class VideoEditingViewModel @Inject constructor(
         waveformJob?.cancel()
         waveformJob = viewModelScope.launch(ioDispatcher) {
             _waveformData.value = null
-            val cacheKey = "waveform_${clip.uri.toString().hashCode()}.bin"
+            val cacheKey = "waveform_${clip.uri.hashCode()}.bin"
             val cached = repository.loadWaveformFromCache(cacheKey)
             if (cached != null) {
                 _waveformData.value = cached
@@ -175,7 +175,7 @@ class VideoEditingViewModel @Inject constructor(
 
     fun addClips(uris: List<Uri>) {
         viewModelScope.launch(ioDispatcher) {
-            val result = clipManagementUseCase.createClips(uris)
+            val result = clipManagementUseCase.createClips(uris.map { it.toString() })
             result.fold(
                 onSuccess = { newClips ->
                     saveToHistory()
@@ -487,14 +487,14 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     suspend fun hasSavedSession(uri: Uri): Boolean {
-        return sessionUseCase.hasSavedSession(uri)
+        return sessionUseCase.hasSavedSession(uri.toString())
     }
 
     fun restoreSession(uri: Uri) {
         viewModelScope.launch(ioDispatcher) {
             try {
                 _uiState.value = VideoEditingUiState.Loading()
-                val validClips = sessionUseCase.restoreSession(uri)
+                val validClips = sessionUseCase.restoreSession(uri.toString())
 
                 if (validClips.isNullOrEmpty()) {
                     _uiEvents.send(VideoEditingEvent.ShowToast(

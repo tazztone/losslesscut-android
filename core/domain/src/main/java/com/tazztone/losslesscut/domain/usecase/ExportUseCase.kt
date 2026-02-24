@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import android.net.Uri
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
@@ -94,8 +93,8 @@ class ExportUseCase @Inject constructor(
                     }
 
                     val result = repository.executeLosslessCut(
-                        selectedClip.uri, outputUri, segment.startMs, segment.endMs,
-                        keepAudio, keepVideo, rotationOverride, selectedTracks
+                        selectedClip.uri.toString(), outputUri, segment.startMs, segment.endMs,
+                        keepAudio, keepVideo, rotationOverride ?: selectedClip.rotation, selectedTracks
                     )
                     result.fold(
                         onSuccess = { successCount++ },

@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.domain.model
 
-import android.net.Uri
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -9,12 +8,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import java.util.UUID
-
-object UriSerializer : KSerializer<Uri> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Uri", PrimitiveKind.STRING)
-    override fun serialize(encoder: Encoder, value: Uri) = encoder.encodeString(value.toString())
-    override fun deserialize(decoder: Decoder): Uri = Uri.parse(decoder.decodeString())
-}
 
 object UuidSerializer : KSerializer<UUID> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("UUID", PrimitiveKind.STRING)
@@ -48,8 +41,7 @@ data class MediaTrack(
 data class MediaClip(
     @Serializable(with = UuidSerializer::class)
     val id: UUID = UUID.randomUUID(),
-    @Serializable(with = UriSerializer::class)
-    val uri: Uri,
+    val uri: String,
     val fileName: String,
     val durationMs: Long,
     val width: Int,

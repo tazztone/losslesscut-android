@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import android.net.Uri
 import android.util.Log
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
@@ -17,16 +16,16 @@ class ExtractSnapshotUseCase @Inject constructor(
         data class Failure(val error: String) : Result()
     }
 
-    suspend fun execute(uri: Uri, positionMs: Long, format: String, quality: Int): Result = withContext(ioDispatcher) {
+    suspend fun execute(uri: String, positionMs: Long, format: String, quality: Int): Result = withContext(ioDispatcher) {
         try {
-            val bitmap = repository.getFrameAt(uri, positionMs)
-            if (bitmap != null) {
+            val bitmapBytes = repository.getFrameAt(uri, positionMs)
+            if (bitmapBytes != null) {
                 val ext = if (format == "PNG") "png" else "jpg"
                 val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
                 val outputUri = repository.createImageOutputUri(fileName)
 
                 if (outputUri != null) {
-                    val success = repository.writeSnapshot(bitmap, outputUri, format, quality)
+                    val success = repository.writeSnapshot(bitmapBytes, outputUri, format, quality)
                     if (success) {
                         repository.finalizeImage(outputUri)
                         Result.Success(fileName)

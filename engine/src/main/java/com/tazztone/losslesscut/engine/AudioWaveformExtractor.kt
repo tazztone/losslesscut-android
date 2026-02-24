@@ -6,20 +6,23 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class AudioWaveformExtractorImpl @Inject constructor() : AudioWaveformExtractor {
+class AudioWaveformExtractorImpl @Inject constructor(
+    @ApplicationContext private val context: Context
+) : AudioWaveformExtractor {
 
     override suspend fun extract(
-        context: Context, 
-        uri: Uri, 
+        uriString: String, 
         bucketCount: Int,
         onProgress: ((FloatArray) -> Unit)?
     ): FloatArray? = withContext(Dispatchers.IO) {
+        val uri = Uri.parse(uriString)
         val extractor = MediaExtractor()
         try {
             extractor.setDataSource(context, uri, null)

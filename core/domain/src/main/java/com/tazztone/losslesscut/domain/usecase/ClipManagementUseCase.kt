@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import android.net.Uri
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
@@ -15,7 +14,7 @@ open class ClipManagementUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
-    open suspend fun createClips(uris: List<Uri>): Result<List<MediaClip>> = withContext(ioDispatcher) {
+    open suspend fun createClips(uris: List<String>): Result<List<MediaClip>> = withContext(ioDispatcher) {
         try {
             val clips = uris.map { uri ->
                 repository.createClipFromUri(uri).getOrThrow()

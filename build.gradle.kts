@@ -6,5 +6,15 @@ plugins {
     alias(libs.plugins.google.hilt.android) apply false
     alias(libs.plugins.google.devtools.ksp) apply false
     alias(libs.plugins.kotlin.serialization) apply false
-    alias(libs.plugins.detekt) apply false
+    alias(libs.plugins.detekt)
+}
+
+subprojects {
+    apply(plugin = rootProject.libs.plugins.detekt.get().pluginId)
+    
+    detekt {
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+        buildUponDefaultConfig = true
+        allRules = false
+    }
 }

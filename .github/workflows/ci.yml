@@ -33,3 +33,6 @@ jobs:
 
       - name: Run Lint
         run: ./gradlew lintDebug
+
+      - name: Run Detekt
+        run: ./gradlew detekt

@@ -1,35 +1,30 @@
 package com.tazztone.losslesscut.domain.engine
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.net.Uri
 import com.tazztone.losslesscut.domain.model.MediaClip
 
 interface ILosslessEngine {
-    suspend fun getKeyframes(context: Context, videoUri: Uri): Result<List<Long>>
-    suspend fun getMediaMetadata(context: Context, uri: Uri): Result<MediaMetadata>
-    suspend fun getFrameAt(context: Context, uri: Uri, positionMs: Long): Bitmap?
+    suspend fun getKeyframes(videoUri: String): Result<List<Long>>
+    suspend fun getMediaMetadata(uri: String): Result<MediaMetadata>
+    suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
     suspend fun executeLosslessCut(
-        context: Context,
-        inputUri: Uri,
-        outputUri: Uri,
+        inputUri: String,
+        outputUri: String,
         startMs: Long,
         endMs: Long,
         keepAudio: Boolean = true,
         keepVideo: Boolean = true,
         rotationOverride: Int? = null,
         selectedTracks: List<Int>? = null
-    ): Result<Uri>
+    ): Result<String>
 
     suspend fun executeLosslessMerge(
-        context: Context,
-        outputUri: Uri,
+        outputUri: String,
         clips: List<MediaClip>,
         keepAudio: Boolean = true,
         keepVideo: Boolean = true,
         rotationOverride: Int? = null,
         selectedTracks: List<Int>? = null
-    ): Result<Uri>
+    ): Result<String>
 }
 
 data class MediaMetadata(
