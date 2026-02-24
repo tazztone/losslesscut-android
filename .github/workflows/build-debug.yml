@@ -20,10 +20,11 @@ jobs:
   build-debug:
     name: Development Build (Debug APK)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      
+
       - name: Setup Java
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
@@ -71,6 +72,7 @@ jobs:
         with:
           name: ${{ steps.prepare_apk.outputs.apk_name }}
           path: ${{ steps.prepare_apk.outputs.apk_path }}
+          if-no-files-found: error
 
       - name: Upload Debug APK to Release
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
