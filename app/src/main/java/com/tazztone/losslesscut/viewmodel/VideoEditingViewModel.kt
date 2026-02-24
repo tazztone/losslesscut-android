@@ -87,6 +87,7 @@ class VideoEditingViewModel @Inject constructor(
         repository, useCases.silenceDetectionUseCase, ioDispatcher
     )
     private val stateMutex = Mutex()
+    private val isExporting = AtomicBoolean(false)
     
     private val keyframeCache = Collections.synchronizedMap(
         object : LinkedHashMap<String, List<Long>>(20, 0.75f, true) {
@@ -99,21 +100,27 @@ class VideoEditingViewModel @Inject constructor(
     init {
         // Collect reactive state from controllers
         viewModelScope.launch {
-            exportController.isSnapshotInProgress.collect {
-                stateMutex.withLock { updateStateInternal() }
-            }
+            exportController.isSnapshotInProgress
+                .distinctUntilChanged()
+                .collect {
+                    stateMutex.withLock { updateStateInternal() }
+                }
         }
         viewModelScope.launch {
-            waveformController.waveformData.collect { data ->
-                _waveformData.value = data
-                stateMutex.withLock { updateStateInternal() }
-            }
+            waveformController.waveformData
+                .distinctUntilChanged()
+                .collect { data ->
+                    _waveformData.value = data
+                    stateMutex.withLock { updateStateInternal() }
+                }
         }
         viewModelScope.launch {
-            waveformController.silencePreviewRanges.collect { ranges ->
-                _silencePreviewRanges.value = ranges
-                stateMutex.withLock { updateStateInternal() }
-            }
+            waveformController.silencePreviewRanges
+                .distinctUntilChanged()
+                .collect { ranges ->
+                    _silencePreviewRanges.value = ranges
+                    stateMutex.withLock { updateStateInternal() }
+                }
         }
     }
 
@@ -193,6 +200,7 @@ class VideoEditingViewModel @Inject constructor(
                     stateMutex.withLock {
                         historyManager.save(currentClips)
                         currentClips = currentClips + newClips
+                        _isDirty.value = true
                         updateStateInternal()
                     }
                 },
@@ -332,6 +340,7 @@ class VideoEditingViewModel @Inject constructor(
             stateMutex.withLock {
                 historyManager.save(currentClips)
                 _isDirty.value = true
+                updateStateInternal()
             }
         }
     }
@@ -380,6 +389,7 @@ class VideoEditingViewModel @Inject constructor(
         _uiState.value = VideoEditingUiState.Initial
         currentClips = emptyList()
         selectedClipIndex = 0
+        selectedSegmentId = null
         historyManager.clear()
         _isDirty.value = false
         _waveformData.value = null
@@ -460,33 +470,45 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun exportSegments(settings: ExportSettings) {
+        if (!isExporting.compareAndSet(false, true)) return
+
         viewModelScope.launch(ioDispatcher) {
-            _uiState.value = VideoEditingUiState.Loading()
-            
-            val (clips, clipIndex) = stateMutex.withLock { 
-                currentClips to selectedClipIndex 
-            }
-            
-            exportController.exportSegments(clips, clipIndex, settings).collect { result ->
-                when (result) {
-                    is ExportUseCase.Result.Progress -> {
-                        _uiState.value = VideoEditingUiState.Loading(
-                            result.percentage, 
-                            UiText.DynamicString(result.message)
-                        )
-                    }
-                    is ExportUseCase.Result.Success -> {
-                        _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))
-                        _uiEvents.send(VideoEditingEvent.ExportComplete(true, result.count))
-                        _isDirty.value = false
-                        stateMutex.withLock { updateStateInternal() }
-                    }
-                    is ExportUseCase.Result.Failure -> {
-                        _uiEvents.send(VideoEditingEvent.ShowToast(UiText.DynamicString(result.error)))
-                        _uiEvents.send(VideoEditingEvent.ExportComplete(false))
-                        stateMutex.withLock { updateStateInternal() }
+            try {
+                val (clips, clipIndex) = stateMutex.withLock {
+                    _uiState.value = VideoEditingUiState.Loading()
+                    currentClips to selectedClipIndex
+                }
+
+                exportController.exportSegments(clips, clipIndex, settings).collect { result ->
+                    when (result) {
+                        is ExportUseCase.Result.Progress -> {
+                            _uiState.value = VideoEditingUiState.Loading(
+                                result.percentage,
+                                UiText.DynamicString(result.message)
+                            )
+                        }
+                        is ExportUseCase.Result.Success -> {
+                            _uiEvents.send(
+                                VideoEditingEvent.ShowToast(
+                                    UiText.StringResource(
+                                        R.string.export_success,
+                                        result.count
+                                    )
+                                )
+                            )
+                            _uiEvents.send(VideoEditingEvent.ExportComplete(true, result.count))
+                            _isDirty.value = false
+                            stateMutex.withLock { updateStateInternal() }
+                        }
+                        is ExportUseCase.Result.Failure -> {
+                            _uiEvents.send(VideoEditingEvent.ShowToast(UiText.DynamicString(result.error)))
+                            _uiEvents.send(VideoEditingEvent.ExportComplete(false))
+                            stateMutex.withLock { updateStateInternal() }
+                        }
                     }
                 }
+            } finally {
+                isExporting.set(false)
             }
         }
     }

@@ -148,6 +148,7 @@ class LosslessEngineImpl @Inject constructor(
         if (endMs <= startMs) return@withContext Result.failure(IllegalArgumentException("endMs <= startMs"))
         val extractor = MediaExtractor()
         var muxerWriter: MuxerWriter? = null; var pfd: ParcelFileDescriptor? = null
+        var success = false
         try {
             dataSource.setExtractorSource(extractor, inputUri)
             pfd = context.contentResolver.openFileDescriptor(outUriParsed, "rw") ?: 
@@ -171,9 +172,21 @@ class LosslessEngineImpl @Inject constructor(
             } else {
                 storageUtils.finalizeAudio(outUriParsed)
             }
+            success = true
             Result.success(outputUri)
-        } catch (e: CancellationException) { throw e } catch (e: Exception) { Result.failure(e) } finally {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
             muxerWriter?.stopAndRelease(); pfd?.close(); extractor.release()
+            if (!success) {
+                try {
+                    context.contentResolver.delete(outUriParsed, null, null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete corrupted file $outputUri", e)
+                }
+            }
         }
     }
 
@@ -184,6 +197,7 @@ class LosslessEngineImpl @Inject constructor(
         val outUriParsed = Uri.parse(outputUri)
         if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips"))
         var muxerWriter: MuxerWriter? = null; var pfd: ParcelFileDescriptor? = null
+        var success = false
         try {
             pfd = context.contentResolver.openFileDescriptor(outUriParsed, "rw") ?: 
                 return@withContext Result.failure(IOException("Failed to open PFD"))
@@ -201,9 +215,21 @@ class LosslessEngineImpl @Inject constructor(
             } else {
                 storageUtils.finalizeAudio(outUriParsed)
             }
+            success = true
             Result.success(outputUri)
-        } catch (e: CancellationException) { throw e } catch (e: Exception) { Result.failure(e) } finally {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        } finally {
             muxerWriter?.stopAndRelease(); pfd?.close()
+            if (!success) {
+                try {
+                    context.contentResolver.delete(outUriParsed, null, null)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to delete corrupted file $outputUri", e)
+                }
+            }
         }
     }
 
