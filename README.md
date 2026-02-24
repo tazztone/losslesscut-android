@@ -86,9 +86,9 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 
 ## 🗺️ Roadmap
 
-- [ ] **Smart Cut (v2.0)**: Frame-accurate editing by re-encoding only the boundary GOPs using `MediaCodec`.
+- [ ] ~~**Smart Cut (v2.0)**~~ (Shelved: Native lossless cutting is sufficiently fast)
 - [ ] **AI Tools**: Integration of on-device ML for automatic scene change detection.
-- [ ] **Task Orchestration**: Migrate export to `WorkManager` for background processing.
+- [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [ ] **Multi-track Wizard**: Batch track stripping and extraction UI.
 - [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
