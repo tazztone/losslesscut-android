@@ -1,0 +1,279 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ComplexCondition:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$(currentTouchTarget == TouchTarget.HANDLE_RIGHT &amp;&amp; scrollOffsetX &lt; maxScrollOffset()) || (currentTouchTarget == TouchTarget.HANDLE_LEFT &amp;&amp; scrollOffsetX &gt; 0f)</ID>
+    <ID>ComplexCondition:LosslessEngine.kt$LosslessEngineImpl$extractor.sampleTime &gt;= 0 &amp;&amp; count &lt; MAX_KEYFRAME_COUNT &amp;&amp; totalSamples &lt; MAX_PROBE_SAMPLES &amp;&amp; currentCoroutineContext().isActive</ID>
+    <ID>CyclomaticComplexMethod:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$override suspend fun extract( uriString: String, bucketCount: Int, onProgress: ((FloatArray) -&gt; Unit)? ): FloatArray?</ID>
+    <ID>CyclomaticComplexMethod:CustomVideoSeeker.kt$CustomVideoSeeker$@SuppressLint("ClickableViewAccessibility") override fun onTouchEvent(event: MotionEvent): Boolean</ID>
+    <ID>CyclomaticComplexMethod:DetectionUtils.kt$DetectionUtils$fun findSilence( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 ): List&lt;LongRange&gt;</ID>
+    <ID>CyclomaticComplexMethod:EditorFragment.kt$EditorFragment$private fun observeViewModel()</ID>
+    <ID>CyclomaticComplexMethod:EditorFragment.kt$EditorFragment$private fun showExportOptionsDialog()</ID>
+    <ID>CyclomaticComplexMethod:ExportUseCase.kt$ExportUseCase$suspend fun execute( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
+    <ID>CyclomaticComplexMethod:ShortcutHandler.kt$ShortcutHandler$fun handleKeyEvent(event: KeyEvent): Boolean</ID>
+    <ID>EmptyCatchBlock:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl${}</ID>
+    <ID>EmptyFunctionBlock:EditorFragment.kt$EditorFragment.&lt;no name provided&gt;${}</ID>
+    <ID>EmptyFunctionBlock:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment.&lt;no name provided&gt;${}</ID>
+    <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1f%%", threshold * 100)</ID>
+    <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1fs", duration / 1000f)</ID>
+    <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1fs", minSegment / 1000f)</ID>
+    <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1fs", padding / 1000f)</ID>
+    <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.2gx", speed)</ID>
+    <ID>ImplicitDefaultLocale:MetadataFragment.kt$MetadataFragment$String.format("%.2gx", speed)</ID>
+    <ID>ImplicitDefaultLocale:RemuxFragment.kt$RemuxFragment$String.format("%.2gx", speed)</ID>
+    <ID>LongMethod:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$override suspend fun extract( uriString: String, bucketCount: Int, onProgress: ((FloatArray) -&gt; Unit)? ): FloatArray?</ID>
+    <ID>LongMethod:CustomVideoSeeker.kt$CustomVideoSeeker$@SuppressLint("ClickableViewAccessibility") override fun onTouchEvent(event: MotionEvent): Boolean</ID>
+    <ID>LongMethod:CustomVideoSeeker.kt$CustomVideoSeeker$override fun onDraw(canvas: Canvas)</ID>
+    <ID>LongMethod:DetectionUtils.kt$DetectionUtils$fun findSilence( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 ): List&lt;LongRange&gt;</ID>
+    <ID>LongMethod:EditorFragment.kt$EditorFragment$override fun onViewCreated(view: View, savedInstanceState: Bundle?)</ID>
+    <ID>LongMethod:EditorFragment.kt$EditorFragment$private fun initializeViews()</ID>
+    <ID>LongMethod:EditorFragment.kt$EditorFragment$private fun observeViewModel()</ID>
+    <ID>LongMethod:ExportUseCase.kt$ExportUseCase$suspend fun execute( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
+    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
+    <ID>LongParameterList:DetectionUtils.kt$DetectionUtils$( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 )</ID>
+    <ID>LongParameterList:ExportUseCase.kt$ExportUseCase$( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
+    <ID>LongParameterList:ILosslessEngine.kt$ILosslessEngine$( inputUri: String, outputUri: String, startMs: Long, endMs: Long, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null, selectedTracks: List&lt;Int&gt;? = null )</ID>
+    <ID>LongParameterList:ILosslessEngine.kt$ILosslessEngine$( outputUri: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null, selectedTracks: List&lt;Int&gt;? = null )</ID>
+    <ID>LongParameterList:IVideoEditingRepository.kt$IVideoEditingRepository$( inputUri: String, outputUri: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? )</ID>
+    <ID>LongParameterList:IVideoEditingRepository.kt$IVideoEditingRepository$( outputUri: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? )</ID>
+    <ID>LongParameterList:PlayerManager.kt$PlayerManager$( private val context: Context, private val playerView: androidx.media3.ui.PlayerView, private val viewModel: VideoEditingViewModel, onStateChanged: (Int) -&gt; Unit = {}, onMediaTransition: (Int) -&gt; Unit = {}, onIsPlayingChanged: (Boolean) -&gt; Unit = {}, onPlaybackParametersChanged: (Float, Boolean) -&gt; Unit = { _, _ -&gt; } )</ID>
+    <ID>LongParameterList:ShortcutHandler.kt$ShortcutHandler$( private val viewModel: VideoEditingViewModel, private val playerManager: PlayerManager, private val launchMode: String, private val onSplit: () -&gt; Unit, private val onSetIn: () -&gt; Unit, private val onSetOut: () -&gt; Unit, private val onRestore: () -&gt; Unit )</ID>
+    <ID>LongParameterList:SilenceDetectionUseCase.kt$SilenceDetectionUseCase$( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long, minSegmentMs: Long )</ID>
+    <ID>LongParameterList:VideoEditingViewModel.kt$VideoEditingViewModel$( private val repository: IVideoEditingRepository, private val preferences: AppPreferences, private val clipManagementUseCase: ClipManagementUseCase, private val exportUseCase: ExportUseCase, private val snapshotUseCase: ExtractSnapshotUseCase, private val silenceDetectionUseCase: SilenceDetectionUseCase, private val sessionUseCase: SessionUseCase, @IoDispatcher private val ioDispatcher: CoroutineDispatcher )</ID>
+    <ID>LongParameterList:VideoEditingViewModel.kt$VideoEditingViewModel$(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null)</ID>
+    <ID>LoopWithTooManyJumpStatements:LosslessEngine.kt$LosslessEngineImpl$for</ID>
+    <ID>LoopWithTooManyJumpStatements:LosslessEngine.kt$LosslessEngineImpl$while</ID>
+    <ID>MagicNumber:AppPreferences.kt$AppPreferences$100</ID>
+    <ID>MagicNumber:AppPreferences.kt$AppPreferences$30</ID>
+    <ID>MagicNumber:AppPreferences.kt$AppPreferences$95</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$0xFF</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$10</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$10_000</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$1_000_000L</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$4</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$8</ID>
+    <ID>MagicNumber:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$8192</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$0.01f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$0.02f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$0.5f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$0.95f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$1.5f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$10</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$1000</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$10000</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$1000L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$100f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$10f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$1500</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$15000L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$15f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$180000</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$20f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$255</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$25f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$3000</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$30f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$3600</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$4</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$40f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$4f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$5000L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$500L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$50f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$5f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$60</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$60000</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$60000L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$60f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$64f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$80f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$85</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker$8f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$0.01f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$16</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$20f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$30f</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$100</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$1000L</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$20</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$25</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$60</ID>
+    <ID>MagicNumber:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$60f</ID>
+    <ID>MagicNumber:DetectionUtils.kt$DetectionUtils$10</ID>
+    <ID>MagicNumber:EditorFragment.kt$EditorFragment$0.5f</ID>
+    <ID>MagicNumber:EditorFragment.kt$EditorFragment$100</ID>
+    <ID>MagicNumber:EditorFragment.kt$EditorFragment$1000f</ID>
+    <ID>MagicNumber:EditorFragment.kt$EditorFragment$30</ID>
+    <ID>MagicNumber:EditorFragment.kt$EditorFragment$90</ID>
+    <ID>MagicNumber:ExportUseCase.kt$ExportUseCase$100</ID>
+    <ID>MagicNumber:LosslessEngine.kt$LosslessEngineImpl$1000</ID>
+    <ID>MagicNumber:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$128</ID>
+    <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$180</ID>
+    <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$270</ID>
+    <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$3</ID>
+    <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$4</ID>
+    <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$90</ID>
+    <ID>MagicNumber:PlayerManager.kt$PlayerManager$0.25f</ID>
+    <ID>MagicNumber:PlayerManager.kt$PlayerManager$0.5f</ID>
+    <ID>MagicNumber:PlayerManager.kt$PlayerManager$10</ID>
+    <ID>MagicNumber:PlayerManager.kt$PlayerManager$100L</ID>
+    <ID>MagicNumber:PlayerManager.kt$PlayerManager$4.0f</ID>
+    <ID>MagicNumber:RotationManager.kt$RotationManager$250</ID>
+    <ID>MagicNumber:RotationManager.kt$RotationManager$360</ID>
+    <ID>MagicNumber:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment$0.6f</ID>
+    <ID>MagicNumber:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment$1.2f</ID>
+    <ID>MagicNumber:TimeUtils.kt$TimeUtils$1000</ID>
+    <ID>MagicNumber:TimeUtils.kt$TimeUtils$3600</ID>
+    <ID>MagicNumber:TimeUtils.kt$TimeUtils$60</ID>
+    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepository$7</ID>
+    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepository$86_400_000L</ID>
+    <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel$30</ID>
+    <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel.&lt;no name provided&gt;$0.75f</ID>
+    <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel.&lt;no name provided&gt;$20</ID>
+    <ID>MatchingDeclarationName:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl : AudioWaveformExtractor</ID>
+    <ID>MatchingDeclarationName:LosslessEngine.kt$LosslessEngineImpl : ILosslessEngine</ID>
+    <ID>MatchingDeclarationName:VideoEditingRepositoryImpl.kt$VideoEditingRepository : IVideoEditingRepository</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$(leftDist == bestDist &amp;&amp; touchTimeMs &gt; segment.startMs)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$(rightDist == bestDist &amp;&amp; touchTimeMs &lt; segment.endMs)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$color = Color.argb(85, Color.red(colorOnSurfaceVariant), Color.green(colorOnSurfaceVariant), Color.blue(colorOnSurfaceVariant))</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$newTimeMs = keyframes.filter { it &gt; segment.startMs }.firstOrNull() ?: videoDurationMs</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$private</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$val bgRect = RectF(px - textWidth / 2 - padding, py - textHeight - padding / 2, px + textWidth / 2 + padding, py + padding / 2)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }.sortedBy { it.startMs }</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$val nextSegment = if (currentIndex &gt;= 0 &amp;&amp; currentIndex &lt; keepSegments.size - 1) keepSegments[currentIndex + 1] else null</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$if</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$if (kotlin.math.abs(segment.endMs - touchTimeMs) &lt; thresholdMs) return VIRTUAL_ID_HANDLE_START + (index * 2) + 1</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$if (kotlin.math.abs(segment.startMs - touchTimeMs) &lt; thresholdMs) return VIRTUAL_ID_HANDLE_START + (index * 2)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$node.contentDescription = context.getString(R.string.accessibility_playhead_pos_format, formatTimeShort(seekPositionMs))</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$node.contentDescription = context.getString(R.string.accessibility_segment_handle_format, index + 1, type, formatTimeShort(timeMs))</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$val newEnd = (segment.endMs + direction * stepMs).coerceIn(segment.startMs + VideoEditingViewModel.MIN_SEGMENT_DURATION_MS, videoDurationMs)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$val newStart = (segment.startMs + direction * stepMs).coerceIn(0, segment.endMs - VideoEditingViewModel.MIN_SEGMENT_DURATION_MS)</ID>
+    <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$val type = context.getString(if (isStart) R.string.accessibility_handle_type_start else R.string.accessibility_handle_type_end)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$holder.binding.ivActionIcon.imageTintList = android.content.res.ColorStateList.valueOf(colorOnPrimaryContainer)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val colorOnPrimaryContainer = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnPrimaryContainer)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val colorOnSurface = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurface)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val colorOnSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurfaceVariant)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val colorPrimary = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimary)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val colorSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorSurfaceVariant)</ID>
+    <ID>MaxLineLength:DashboardAdapter.kt$DashboardAdapter$val primaryContainer = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimaryContainer)</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$(0 until count).map { i -&gt; playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$Toast.makeText(requireContext(), getString(R.string.error_cannot_exclude_video), Toast.LENGTH_SHORT).show()</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$Toast.makeText(requireContext(), state.error.asString(requireContext()), Toast.LENGTH_LONG).show()</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$binding.btnDelete.setImageResource(if (selectedSeg?.action == SegmentAction.DISCARD) R.drawable.ic_restore_24 else R.drawable.ic_delete_24)</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$binding.loadingScreen.loadingProgress.visibility = if (state.progress &gt; 0) View.VISIBLE else View.GONE</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$binding.tvDuration?.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$class</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$if</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$is VideoEditingEvent.ShowToast -&gt; Toast.makeText(requireContext(), event.message.asString(requireContext()), Toast.LENGTH_LONG).show()</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$tvEstimatedCut.text = getString(R.string.silence_detected_preview, TimeUtils.formatDuration(totalSilenceMs), ranges.size)</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$val</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$val rotationOverride = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$val trackList = if (selectedTracks.isNotEmpty() &amp;&amp; availableTracks.size &gt; 2) selectedTracks.toList() else null</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment$viewModel.exportSegments(isLosslessMode, keepAudio, keepVideo, rotationOverride, mergeSegments, trackList)</ID>
+    <ID>MaxLineLength:EditorFragment.kt$EditorFragment.&lt;no name provided&gt;$override</ID>
+    <ID>MaxLineLength:ExportUseCase.kt$ExportUseCase$val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"</ID>
+    <ID>MaxLineLength:ExtractSnapshotUseCase.kt$ExtractSnapshotUseCase$suspend</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedAudioMime, got $mime in ${clip.uri}"))</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedVideoMime, got $mime in ${clip.uri}"))</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$val videoFrameDurationUs = if (videoFps &gt; 0) (MICROSECONDS_IN_SECOND / videoFps).toLong() else VIDEO_FRAME_DURATION_DEFAULT_US</ID>
+    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$while</ID>
+    <ID>MaxLineLength:MediaClipAdapter.kt$MediaClipAdapter.AddViewHolder$androidx.appcompat.widget.TooltipCompat.setTooltipText(itemView, itemView.context.getString(R.string.add_video))</ID>
+    <ID>MaxLineLength:MetadataFragment.kt$MetadataFragment$val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }</ID>
+    <ID>MaxLineLength:PlayerManager.kt$PlayerManager$fun</ID>
+    <ID>MaxLineLength:RemuxFragment.kt$RemuxFragment$val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }</ID>
+    <ID>MaxLineLength:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment$private</ID>
+    <ID>MaxLineLength:StorageUtils.kt$StorageUtils$val mimeType = if (fileName.endsWith(".jpeg", ignoreCase = true) || fileName.endsWith(".jpg", ignoreCase = true)) "image/jpeg" else "image/png"</ID>
+    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepository$)</ID>
+    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepository$override suspend</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split)))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_saved, result.fileName)))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiState.value = VideoEditingUiState.Loading(result.percentage, UiText.DynamicString(result.message))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$fun</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = currentPos, endMs = keepRange.first, action = SegmentAction.DISCARD))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = currentPos, endMs = seg.endMs, action = SegmentAction.DISCARD))</ID>
+    <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$newSegments.add(seg.copy(id = UUID.randomUUID(), startMs = keepRange.first, endMs = keepRange.last, action = SegmentAction.KEEP))</ID>
+    <ID>NestedBlockDepth:CustomVideoSeeker.kt$CustomVideoSeeker$@SuppressLint("ClickableViewAccessibility") override fun onTouchEvent(event: MotionEvent): Boolean</ID>
+    <ID>NestedBlockDepth:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$override fun onPerformActionForVirtualView(virtualViewId: Int, action: Int, arguments: Bundle?): Boolean</ID>
+    <ID>NestedBlockDepth:DetectionUtils.kt$DetectionUtils$fun findSilence( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 ): List&lt;LongRange&gt;</ID>
+    <ID>NestedBlockDepth:EditorFragment.kt$EditorFragment$private fun showExportOptionsDialog()</ID>
+    <ID>NestedBlockDepth:VideoEditingViewModel.kt$VideoEditingViewModel$fun applySilenceDetection()</ID>
+    <ID>NewLineAtEndOfFile:MainActivity.kt$com.tazztone.losslesscut.ui.MainActivity.kt</ID>
+    <ID>ReturnCount:ClipManagementUseCase.kt$ClipManagementUseCase$fun markSegmentDiscarded(clip: MediaClip, id: UUID): MediaClip?</ID>
+    <ID>ReturnCount:ClipManagementUseCase.kt$ClipManagementUseCase$fun splitSegment(clip: MediaClip, positionMs: Long, minDurationMs: Long): MediaClip?</ID>
+    <ID>ReturnCount:CustomVideoSeeker.kt$CustomVideoSeeker$@SuppressLint("ClickableViewAccessibility") override fun onTouchEvent(event: MotionEvent): Boolean</ID>
+    <ID>ReturnCount:CustomVideoSeeker.kt$CustomVideoSeeker$private fun xToTime(x: Float): Long</ID>
+    <ID>ReturnCount:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$override fun getVirtualViewAt(x: Float, y: Float): Int</ID>
+    <ID>ReturnCount:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$override fun onPerformActionForVirtualView(virtualViewId: Int, action: Int, arguments: Bundle?): Boolean</ID>
+    <ID>ReturnCount:DetectionUtils.kt$DetectionUtils$fun findSilence( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 ): List&lt;LongRange&gt;</ID>
+    <ID>ReturnCount:EditorFragment.kt$EditorFragment$private fun setInPoint()</ID>
+    <ID>ReturnCount:EditorFragment.kt$EditorFragment$private fun setOutPoint()</ID>
+    <ID>ReturnCount:ShortcutHandler.kt$ShortcutHandler$fun handleKeyEvent(event: KeyEvent): Boolean</ID>
+    <ID>SpreadOperator:UiText.kt$UiText$(resId, *args)</ID>
+    <ID>SwallowedException:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$e: Exception</ID>
+    <ID>SwallowedException:LosslessEngine.kt$LosslessEngineImpl$e: Exception</ID>
+    <ID>SwallowedException:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$e: Exception</ID>
+    <ID>SwallowedException:VideoEditingRepositoryImpl.kt$VideoEditingRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ClipManagementUseCase.kt$ClipManagementUseCase$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExportUseCase.kt$ExportUseCase$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ExtractSnapshotUseCase.kt$ExtractSnapshotUseCase$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LosslessEngine.kt$LosslessEngineImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:VideoEditingRepositoryImpl.kt$VideoEditingRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:VideoEditingViewModel.kt$VideoEditingViewModel$e: Exception</ID>
+    <ID>TooManyFunctions:CustomVideoSeeker.kt$CustomVideoSeeker : View</ID>
+    <ID>TooManyFunctions:EditorFragment.kt$EditorFragment : BaseEditingFragmentSettingsListener</ID>
+    <ID>TooManyFunctions:IVideoEditingRepository.kt$IVideoEditingRepository</ID>
+    <ID>TooManyFunctions:PlayerManager.kt$PlayerManager</ID>
+    <ID>TooManyFunctions:VideoEditingRepositoryImpl.kt$VideoEditingRepository : IVideoEditingRepository</ID>
+    <ID>TooManyFunctions:VideoEditingViewModel.kt$VideoEditingViewModel : ViewModel</ID>
+    <ID>UnusedParameter:ExportUseCase.kt$ExportUseCase$isLossless: Boolean</ID>
+    <ID>UnusedPrivateMember:MainActivity.kt$MainActivity$private fun showToast(message: String)</ID>
+    <ID>UnusedPrivateProperty:CustomVideoSeeker.kt$CustomVideoSeeker$private val maxZoom = 20f</ID>
+    <ID>UnusedPrivateProperty:CustomVideoSeeker.kt$CustomVideoSeeker$private val minZoom = 1f</ID>
+    <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$private lateinit var requestPermissionsLauncher: ActivityResultLauncher&lt;Array&lt;String&gt;&gt;</ID>
+    <ID>UnusedPrivateProperty:MetadataFragment.kt$MetadataFragment$val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: run { Toast.makeText(requireContext(), R.string.please_wait, Toast.LENGTH_SHORT).show() return }</ID>
+    <ID>UnusedPrivateProperty:ShortcutHandler.kt$ShortcutHandler$private val viewModel: VideoEditingViewModel</ID>
+    <ID>UnusedPrivateProperty:SilenceDetectionUseCase.kt$SilenceDetectionUseCase$private val repository: IVideoEditingRepository</ID>
+    <ID>VariableNaming:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$private val VIRTUAL_ID_HANDLE_START = 100</ID>
+    <ID>VariableNaming:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$private val VIRTUAL_ID_PLAYHEAD = 0</ID>
+    <ID>WildcardImport:EditorFragment.kt$import com.tazztone.losslesscut.domain.model.*</ID>
+    <ID>WildcardImport:EditorFragment.kt$import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:ExportUseCase.kt$import com.tazztone.losslesscut.domain.model.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.customviews.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.data.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.di.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.ui.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.utils.*</ID>
+    <ID>WildcardImport:LosslessCutApplication.kt$import com.tazztone.losslesscut.viewmodel.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.customviews.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.data.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.di.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.ui.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.utils.*</ID>
+    <ID>WildcardImport:MainActivity.kt$import com.tazztone.losslesscut.viewmodel.*</ID>
+    <ID>WildcardImport:MediaClipAdapter.kt$import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:PlayerManager.kt$import com.tazztone.losslesscut.viewmodel.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.customviews.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.data.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.di.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.ui.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.utils.*</ID>
+    <ID>WildcardImport:SettingsBottomSheetDialogFragment.kt$import com.tazztone.losslesscut.viewmodel.*</ID>
+    <ID>WildcardImport:VideoEditingRepositoryImpl.kt$import com.tazztone.losslesscut.domain.model.*</ID>
+    <ID>WildcardImport:VideoEditingViewModel.kt$import com.tazztone.losslesscut.domain.model.*</ID>
+    <ID>WildcardImport:VideoEditingViewModel.kt$import com.tazztone.losslesscut.domain.usecase.*</ID>
+    <ID>WildcardImport:VideoEditingViewModel.kt$import kotlinx.coroutines.*</ID>
+    <ID>WildcardImport:VideoEditingViewModel.kt$import kotlinx.coroutines.flow.*</ID>
+  </CurrentIssues>
+</SmellBaseline>

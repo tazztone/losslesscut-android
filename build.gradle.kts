@@ -9,12 +9,15 @@ plugins {
     alias(libs.plugins.detekt)
 }
 
-subprojects {
-    apply(plugin = rootProject.libs.plugins.detekt.get().pluginId)
-    
-    detekt {
-        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
-        buildUponDefaultConfig = true
-        allRules = false
-    }
+detekt {
+    toolVersion = libs.versions.detekt.get()
+    source.setFrom(files(
+        "app/src/main/java",
+        "engine/src/main/java",
+        "core/data/src/main/java",
+        "core/domain/src/main/java"
+    ))
+    config.setFrom(files("config/detekt/detekt.yml"))
+    baseline = file("config/detekt/baseline.xml")
+    buildUponDefaultConfig = true
 }
