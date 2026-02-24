@@ -14,7 +14,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       
       - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v4
+        uses: gradle/actions/wrapper-validation@748248d6129a30d72001a1fb2cad217ad758ed2d # v4.4.4
       
       - name: Set up JDK 21
         uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
@@ -23,7 +23,7 @@ jobs:
           distribution: 'zulu'
       
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@748248d6129a30d72001a1fb2cad217ad758ed2d # v4.4.4
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew

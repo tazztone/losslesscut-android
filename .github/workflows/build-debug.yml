@@ -25,7 +25,7 @@ jobs:
           java-version: '21'
       
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@748248d6129a30d72001a1fb2cad217ad758ed2d # v4.4.4
 
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew

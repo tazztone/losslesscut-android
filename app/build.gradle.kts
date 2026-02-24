@@ -1,5 +1,3 @@
-import java.util.Properties
-import java.io.FileInputStream
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -28,15 +26,10 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystorePropertiesFile = rootProject.file("keystore.properties")
-            if (keystorePropertiesFile.exists()) {
-                val keystoreProperties = Properties()
-                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-            }
+            storeFile = project.findProperty("storeFile")?.toString()?.takeIf { it.isNotEmpty() }?.let { file(it) }
+            storePassword = project.findProperty("storePassword")?.toString()
+            keyAlias = project.findProperty("keyAlias")?.toString()
+            keyPassword = project.findProperty("keyPassword")?.toString()
         }
     }
 
@@ -44,8 +37,8 @@ android {
         applicationId = "com.tazztone.losslesscut"
         minSdk = 26
         targetSdk = 35
-        versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: 2
-        versionName = project.findProperty("versionName")?.toString() ?: "2.0.0"
+        versionCode = project.findProperty("versionCode")?.toString()?.toInt() ?: Int.MAX_VALUE
+        versionName = project.findProperty("versionName")?.toString() ?: "debug-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
