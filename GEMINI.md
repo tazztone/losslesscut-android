@@ -1,22 +1,15 @@
 # LosslessCut Android — Agent Rules
 
-## Module Boundaries
-| Module | Scope | Allowed Dependencies |
-| :--- | :--- | :--- |
-| `:core:domain` | Pure Logic | NO Android deps. |
-| `:core:data` | Data Access | Context, Uri, ContentResolver. |
-| `:engine` | Muxing | MediaExtractor, MediaMuxer. |
-| `:app` | UI | Android, Media3, ViewModels. |
+## Hard Rules
+- **No `java.io.File`**: All I/O is SAF/Scoped Storage. Pass URIs as `String`; use `DocumentFile`/`ContentResolver`.
+- **UI System**: The project uses XML ViewBinding. DO NOT generate Jetpack Compose code.
+- **`:core:domain` is pure Kotlin**: zero Android imports. Use `ByteArray` for images.
+- **Media3 / ExoPlayer**: Allowed ONLY in `:app` for UI playback. `:engine` must strictly use native `MediaExtractor`/`MediaMuxer`.
+- **Injection Trap**: `:app` uses `runtimeOnly` on `:engine`. You cannot import `:engine` classes into `:app`. Use `:core:domain` interfaces bound via Hilt.
+- **Activity is just a Host**: `VideoEditingActivity` routes via Jetpack Navigation. Put all UI logic in Fragments.
+- **State & Concurrency**: Use Coroutines (`viewModelScope`, `IoDispatcher`). Use `StateFlow` for state and `Channel` for one-time events in ViewModels. No RxJava or LiveData.
+- **`LosslessEngineImpl` is a legacy God Class**: shrink it, never add to it.
 
-## Critical Constraints
-1. **URI (SAF):** Pass as `String`. **NEVER** use `java.io.File`. Parse only in `:engine`/`:core:data`.
-2. **Concurrency:** Rethrow `CancellationException`. Check `isActive` in loops.
-3. **Engine:** Use `setDataSourceSafely`. Use `TrackType`. Progress via `Flow`. **NO** Media3/ExoPlayer.
-4. **Domain:** Images as `ByteArray` (no `Bitmap`). Use `Result<T>` for errors.
-
-## Workflow & Gates
-1. **Detekt:** Max params=5 for pure logic. Exempt `@Composable` and `@Inject` constructors. `maxIssues: 0` blocks PRs.
-2. **Safety:** Run `./gradlew test detekt lint` pre-push.
-3. **API:** Use explicit return types for domain functions. Update interface/impls atomically.
-4. **Tooling:** Document breaking matrix changes in `docs/build-tooling.md`. Batch related dependency updates (e.g., Kotlin/KSP) together.
-5. **Legacy:** `LosslessEngineImpl` is legacy God Class. Shrink, don't grow.
+## CI & Testing Gates
+- **Static Analysis**: `./gradlew test detekt lint` — `maxIssues: 0` blocks merges. Suppress `@UnstableApi` for Media3 when necessary.
+- **Testing Stack**: Use JUnit4, MockK, Robolectric, and `kotlinx-coroutines-test`. Do not use Mockito.
