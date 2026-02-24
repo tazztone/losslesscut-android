@@ -179,6 +179,10 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     private val segmentRect = RectF()
 
+    companion object {
+        private const val HINT_DISMISS_DELAY_MS = 5000L
+    }
+
     init {
         keepSegmentPaint.color = colorSegmentKeep
         contentDescription = context.getString(R.string.video_timeline_description)
@@ -286,7 +290,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         if (showZoomHint || showHandleHint) {
-            postDelayed(dismissRunnable, 5000)
+            postDelayed(dismissRunnable, HINT_DISMISS_DELAY_MS)
         }
     }
 

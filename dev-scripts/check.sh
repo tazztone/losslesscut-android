@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "🔍 Running Lint and Unit Tests..."
-./gradlew lint testDebugUnitTest
+./gradlew detekt lint testDebugUnitTest
 
 if [ $? -eq 0 ]; then
     echo "✅ All checks passed successfully."
