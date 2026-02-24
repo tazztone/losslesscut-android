@@ -85,6 +85,9 @@ class VideoEditingViewModel @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private val _sessionExists = MutableStateFlow(false)
+    val sessionExists: StateFlow<Boolean> = _sessionExists.asStateFlow()
+
     private var currentPlaybackSpeed = 1.0f
     private var isPitchCorrectionEnabled = false
 
@@ -95,6 +98,12 @@ class VideoEditingViewModel @Inject constructor(
     
     private val historyManager = HistoryManager(limit = 30)
     private val sessionController = SessionController(useCases.sessionUseCase, ioDispatcher)
+    private val exportController = ExportController(
+        useCases.exportUseCase, useCases.snapshotUseCase, preferences, ioDispatcher
+    )
+    private val clipController = ClipController(
+        useCases.clipManagementUseCase, MIN_SEGMENT_DURATION_MS
+    )
     private val stateMutex = Mutex()
     
     private val keyframeCache = Collections.synchronizedMap(
@@ -104,7 +113,6 @@ class VideoEditingViewModel @Inject constructor(
             }
         }
     )
-    private val isSnapshotInProgress = AtomicBoolean(false)
     private var waveformJob: Job? = null
     private var silencePreviewJob: Job? = null
 
@@ -123,33 +131,30 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun initialize(uris: List<Uri>) {
-        if (_uiState.value is VideoEditingUiState.Success || _uiState.value is VideoEditingUiState.Loading) {
-            reset()
-        }
-        
         viewModelScope.launch(ioDispatcher) {
-            _uiState.value = VideoEditingUiState.Loading()
-            try {
-                repository.evictOldCacheFiles()
-                val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
-                result.fold(
-                    onSuccess = { clips ->
-                        stateMutex.withLock {
+            stateMutex.withLock {
+                resetInternal()
+                _uiState.value = VideoEditingUiState.Loading()
+                try {
+                    repository.evictOldCacheFiles()
+                    val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
+                    result.fold(
+                        onSuccess = { clips ->
                             currentClips = clips
                             selectedClipIndex = 0
                             loadClipDataInternal(selectedClipIndex)
+                        },
+                        onFailure = { e ->
+                            _uiState.value = VideoEditingUiState.Error(
+                                UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
+                            )
                         }
-                    },
-                    onFailure = { e ->
-                        _uiState.value = VideoEditingUiState.Error(
-                            UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
-                        )
-                    }
-                )
-            } catch (e: Exception) {
-                _uiState.value = VideoEditingUiState.Error(
-                    UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
-                )
+                    )
+                } catch (e: Exception) {
+                    _uiState.value = VideoEditingUiState.Error(
+                        UiText.StringResource(R.string.error_load_video, e.message ?: "Unknown error")
+                    )
+                }
             }
         }
     }
@@ -243,7 +248,7 @@ class VideoEditingViewModel @Inject constructor(
                 if (from == to || from !in currentClips.indices || to !in currentClips.indices) return@withLock
                 
                 historyManager.save(currentClips)
-                currentClips = useCases.clipManagementUseCase.reorderClips(
+                currentClips = clipController.reorderClips(
                     currentClips, from, to
                 )
                 
@@ -275,8 +280,8 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.splitSegment(
-                    currentClip, positionMs, MIN_SEGMENT_DURATION_MS
+                val updatedClip = clipController.splitSegment(
+                    currentClip, positionMs
                 )
                 
                 if (updatedClip == null) {
@@ -296,7 +301,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.markSegmentDiscarded(
+                val updatedClip = clipController.markSegmentDiscarded(
                     currentClip, id
                 )
                 
@@ -321,7 +326,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.updateSegmentBounds(currentClip, id, start, end)
+                val updatedClip = clipController.updateSegmentBounds(currentClip, id, start, end)
                 currentClips = currentClips.toMutableList().apply { this[selectedClipIndex] = updatedClip }
                 updateStateInternal()
             }
@@ -372,17 +377,22 @@ class VideoEditingViewModel @Inject constructor(
     fun reset() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                _uiState.value = VideoEditingUiState.Initial
-                currentClips = emptyList()
-                selectedClipIndex = 0
-                historyManager.clear()
-                _isDirty.value = false
-                _waveformData.value = null
-                _silencePreviewRanges.value = emptyList()
-                currentPlaybackSpeed = 1.0f
-                isPitchCorrectionEnabled = false
+                resetInternal()
             }
         }
+    }
+
+    private fun resetInternal() {
+        _uiState.value = VideoEditingUiState.Initial
+        currentClips = emptyList()
+        selectedClipIndex = 0
+        historyManager.clear()
+        _isDirty.value = false
+        _waveformData.value = null
+        _silencePreviewRanges.value = emptyList()
+        _sessionExists.value = false
+        currentPlaybackSpeed = 1.0f
+        isPitchCorrectionEnabled = false
     }
 
     private fun updateStateInternal() {
@@ -404,7 +414,7 @@ class VideoEditingViewModel @Inject constructor(
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
-            isSnapshotInProgress = isSnapshotInProgress.get(),
+            isSnapshotInProgress = exportController.isSnapshotInProgress,
             silencePreviewRanges = _silencePreviewRanges.value,
             availableTracks = clip.availableTracks,
             playbackSpeed = currentPlaybackSpeed,
@@ -465,21 +475,12 @@ class VideoEditingViewModel @Inject constructor(
     fun exportSegments(settings: ExportSettings) {
         viewModelScope.launch(ioDispatcher) {
             _uiState.value = VideoEditingUiState.Loading()
-            val clips = stateMutex.withLock { currentClips }
-            val clipIndex = stateMutex.withLock { selectedClipIndex }
             
-            val params = ExportUseCase.Params(
-                clips = clips,
-                selectedClipIndex = clipIndex,
-                isLossless = settings.isLossless,
-                keepAudio = settings.keepAudio,
-                keepVideo = settings.keepVideo,
-                rotationOverride = settings.rotationOverride,
-                mergeSegments = settings.mergeSegments,
-                selectedTracks = settings.selectedTracks
-            )
+            val (clips, clipIndex) = stateMutex.withLock { 
+                currentClips to selectedClipIndex 
+            }
             
-            useCases.exportUseCase.execute(params).collect { result ->
+            exportController.exportSegments(clips, clipIndex, settings).collect { result ->
                 when (result) {
                     is ExportUseCase.Result.Progress -> {
                         _uiState.value = VideoEditingUiState.Loading(
@@ -505,20 +506,16 @@ class VideoEditingViewModel @Inject constructor(
 
     fun extractSnapshot(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
-            if (!isSnapshotInProgress.compareAndSet(false, true)) return@launch
-            stateMutex.withLock { updateStateInternal() }
-            
-            val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) }
+            val clip = stateMutex.withLock { 
+                updateStateInternal()
+                currentClips.getOrNull(selectedClipIndex) 
+            }
             if (clip == null) {
-                isSnapshotInProgress.set(false)
                 stateMutex.withLock { updateStateInternal() }
                 return@launch
             }
             
-            val format = preferences.snapshotFormatFlow.first()
-            val quality = preferences.jpgQualityFlow.first()
-            
-            val result = useCases.snapshotUseCase.execute(clip.uri, positionMs, format, quality)
+            val result = exportController.extractSnapshot(clip, positionMs)
             
             when (result) {
                 is ExtractSnapshotUseCase.Result.Success -> {
@@ -527,9 +524,9 @@ class VideoEditingViewModel @Inject constructor(
                 is ExtractSnapshotUseCase.Result.Failure -> {
                     _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_failed)))
                 }
+                null -> {} // already in progress
             }
             
-            isSnapshotInProgress.set(false)
             stateMutex.withLock { updateStateInternal() }
         }
     }
@@ -541,8 +538,13 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    suspend fun hasSavedSession(uri: Uri): Boolean {
-        return sessionController.hasSavedSession(uri.toString())
+    fun checkSessionExists(uri: Uri) {
+        viewModelScope.launch(ioDispatcher) {
+            val exists = sessionController.checkSessionExists(uri.toString())
+            stateMutex.withLock {
+                _sessionExists.value = exists
+            }
+        }
     }
 
     fun restoreSession(uri: Uri) {

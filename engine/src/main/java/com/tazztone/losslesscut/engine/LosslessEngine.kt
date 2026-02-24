@@ -288,8 +288,3 @@ class LosslessEngineImpl @Inject constructor(
 
     private data class InitialTrackInfo(val audioRate: Int, val videoFps: Float, val vMime: String?, val aMime: String?)
 }
-
-data class EngineCollaborators @Inject constructor(
-    val dataSource: MediaDataSource, val inspector: TrackInspector, 
-    val timeMapper: SampleTimeMapper, val mergeValidator: MergeValidator
-)

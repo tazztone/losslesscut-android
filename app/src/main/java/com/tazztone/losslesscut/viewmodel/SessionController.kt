@@ -20,7 +20,7 @@ class SessionController(
         sessionUseCase.restoreSession(uri)
     }
 
-    suspend fun hasSavedSession(uri: String): Boolean = withContext(ioDispatcher) {
+    suspend fun checkSessionExists(uri: String): Boolean = withContext(ioDispatcher) {
         sessionUseCase.hasSavedSession(uri)
     }
 }
