@@ -18,7 +18,7 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import java.util.UUID
 import androidx.core.view.ViewCompat
 
-class CustomVideoSeeker @JvmOverloads constructor(
+open class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
