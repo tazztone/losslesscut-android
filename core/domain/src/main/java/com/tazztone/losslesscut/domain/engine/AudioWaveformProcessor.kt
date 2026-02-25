@@ -49,6 +49,13 @@ public object AudioWaveformProcessor {
      */
     public fun normalize(buckets: FloatArray) {
         val maxPeak = buckets.maxOrNull() ?: 0f
+        normalize(buckets, maxPeak)
+    }
+
+    /**
+     * Normalizes a FloatArray using a known maximum peak.
+     */
+    public fun normalize(buckets: FloatArray, maxPeak: Float) {
         if (maxPeak > 0f) {
             for (i in buckets.indices) {
                 buckets[i] /= maxPeak

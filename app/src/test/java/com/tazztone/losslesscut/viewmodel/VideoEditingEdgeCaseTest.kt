@@ -4,6 +4,7 @@ import android.net.Uri
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
@@ -85,7 +86,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testClipRemovalIndexStability() = runTest {
+    public fun testClipRemovalIndexStability() = runTest(testDispatcher) {
         val uris = listOf(
             Uri.parse("content://mock/0.mp4"),
             Uri.parse("content://mock/1.mp4"),
@@ -117,7 +118,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testRapidSwitchingCancellation() = runTest {
+    public fun testRapidSwitchingCancellation() = runTest(testDispatcher) {
         val uri0 = Uri.parse("content://mock/0.mp4")
         val uri1 = Uri.parse("content://mock/1.mp4")
         
@@ -144,7 +145,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testHistoryRotation() = runTest {
+    public fun testHistoryRotation() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         
@@ -170,14 +171,14 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testSilenceDetectionContiguity() = runTest {
+    public fun testSilenceDetectionContiguity() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/contiguity.mp4")
         val clip = createMockClip(uri.toString(), 1000L)
         
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
         
         val waveform = FloatArray(100) { i -> if (i in 2..50) 0.01f else 0.5f }
-        coEvery { mockRepo.loadWaveformFromCache(any()) } returns waveform
+        coEvery { mockRepo.loadWaveformFromCache(any()) } returns WaveformResult(waveform, 0.5f, 1000L)
         
         viewModel.initialize(listOf(uri))
         advanceUntilIdle()
@@ -199,7 +200,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testExportDelegation() = runTest {
+    public fun testExportDelegation() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         

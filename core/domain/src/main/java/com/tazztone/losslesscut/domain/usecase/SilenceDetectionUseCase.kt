@@ -1,10 +1,11 @@
 package com.tazztone.losslesscut.domain.usecase
 
 import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.model.DetectionUtils
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.domain.model.TrimSegment
-import com.tazztone.losslesscut.domain.model.DetectionUtils
+import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -16,13 +17,12 @@ public class SilenceDetectionUseCase @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     public suspend fun findSilence(
-        waveform: FloatArray,
-        totalDurationMs: Long,
+        waveformResult: WaveformResult,
         config: DetectionUtils.SilenceDetectionConfig
     ): List<LongRange> = withContext(ioDispatcher) {
         DetectionUtils.findSilence(
-            waveform = waveform,
-            totalDurationMs = totalDurationMs,
+            waveform = waveformResult.rawAmplitudes,
+            totalDurationMs = waveformResult.durationUs / 1000,
             config = config
         )
     }

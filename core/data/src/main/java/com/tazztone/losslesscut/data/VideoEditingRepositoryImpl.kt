@@ -64,7 +64,11 @@ class VideoEditingRepository @Inject constructor(
         engine.getKeyframes(uri).getOrElse { emptyList() }
     }
 
-    override suspend fun extractWaveform(uri: String, bucketCount: Int, onProgress: ((FloatArray) -> Unit)?): FloatArray? {
+    override suspend fun extractWaveform(
+        uri: String,
+        bucketCount: Int,
+        onProgress: ((WaveformResult) -> Unit)?
+    ): WaveformResult? {
         return waveformExtractor.extract(uri, bucketCount = bucketCount, onProgress = onProgress)
     }
 
@@ -139,7 +143,6 @@ class VideoEditingRepository @Inject constructor(
             val jsonText = sessionFile.readText()
             val restoredClips: List<MediaClip> = json.decodeFromString(jsonText)
             
-            // Filter valid clips
             restoredClips.filter { clip ->
                 try {
                     val clipUri = Uri.parse(clip.uri)
@@ -161,13 +164,16 @@ class VideoEditingRepository @Inject constructor(
         sessionFile.exists()
     }
 
-    override suspend fun saveWaveformToCache(cacheKey: String, waveform: FloatArray) {
+    override suspend fun saveWaveformToCache(cacheKey: String, result: WaveformResult) {
         withContext(ioDispatcher) {
             try {
                 val cacheFile = File(context.cacheDir, cacheKey)
                 DataOutputStream(FileOutputStream(cacheFile)).use { out ->
-                    out.writeInt(waveform.size)
-                    waveform.forEach { out.writeFloat(it) }
+                    out.writeInt(1) // Version
+                    out.writeLong(result.durationUs)
+                    out.writeFloat(result.maxAmplitude)
+                    out.writeInt(result.rawAmplitudes.size)
+                    result.rawAmplitudes.forEach { out.writeFloat(it) }
                 }
             } catch (e: Exception) {
                 Log.e("VideoEditingRepository", "Failed to save waveform to cache", e)
@@ -175,13 +181,24 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    override suspend fun loadWaveformFromCache(cacheKey: String): FloatArray? = withContext(ioDispatcher) {
+    override suspend fun loadWaveformFromCache(cacheKey: String): WaveformResult? = withContext(ioDispatcher) {
         val cacheFile = File(context.cacheDir, cacheKey)
         if (!cacheFile.exists()) return@withContext null
         try {
             DataInputStream(FileInputStream(cacheFile)).use { input ->
-                val size = input.readInt()
-                FloatArray(size) { input.readFloat() }
+                val version = input.readInt()
+                if (version == 1) {
+                    val durationUs = input.readLong()
+                    val maxAmplitude = input.readFloat()
+                    val size = input.readInt()
+                    val amplitudes = FloatArray(size)
+                    for (i in 0 until size) {
+                        amplitudes[i] = input.readFloat()
+                    }
+                    WaveformResult(amplitudes, maxAmplitude, durationUs)
+                } else {
+                    null // Version mismatch, ignore old cache
+                }
             }
         } catch (e: Exception) {
             Log.e("VideoEditingRepository", "Failed to load waveform from cache", e)
@@ -203,8 +220,6 @@ class VideoEditingRepository @Inject constructor(
         }
     }
 
-    // --- Snapshot Management ---
-
     override suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
         try {
             val uriParsed = Uri.parse(outputUri)
@@ -219,7 +234,6 @@ class VideoEditingRepository @Inject constructor(
     }
 
     private fun getSessionId(uriString: String): String {
-        // Optimized: simple hash code is enough for local cache key
         return uriString.hashCode().toString()
     }
 }

@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.viewmodel
 import android.net.Uri
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
@@ -116,13 +117,13 @@ public class VideoEditingConcurrencyTest {
         // Slow waveform extraction for clip 0
         coEvery { mockRepo.extractWaveform(uri0, any(), any()) } coAnswers {
             delay(1000)
-            floatArrayOf(0f, 0f, 0f)
+            WaveformResult(floatArrayOf(0f, 0f, 0f), 0f, 10000L)
         }
         
         // Fast waveform extraction for clip 1
         coEvery { mockRepo.extractWaveform(uri1, any(), any()) } coAnswers {
             delay(100)
-            floatArrayOf(1f, 1f, 1f)
+            WaveformResult(floatArrayOf(1f, 1f, 1f), 1f, 10000L)
         }
 
         viewModel.initialize(listOf(Uri.parse(uri0), Uri.parse(uri1)))
@@ -139,6 +140,9 @@ public class VideoEditingConcurrencyTest {
         advanceUntilIdle()
         
         // Verify clip 1's waveform is shown, and clip 0's didn't overwrite it
+        // Note: waveformData holds normalized FloatArray.
+        // My WaveformController logic normalizes using maxAmplitude.
+        // For clip 1, max is 1f. So buckets [1,1,1] / 1 = [1,1,1].
         assertArrayEquals(floatArrayOf(1f, 1f, 1f), viewModel.waveformData.value, 0.0001f)
     }
 
@@ -153,7 +157,7 @@ public class VideoEditingConcurrencyTest {
         }
         
         coEvery { mockRepo.loadWaveformFromCache(any()) } answers {
-            floatArrayOf(0.1f, 0.1f, 0.1f, 0.1f, 0.1f)
+            WaveformResult(floatArrayOf(0.1f, 0.1f, 0.1f, 0.1f, 0.1f), 0.1f, 20000L)
         }
 
         viewModel.initialize(listOf(Uri.parse(uri0), Uri.parse(uri1)))
