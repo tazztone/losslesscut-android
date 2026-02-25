@@ -131,6 +131,42 @@ public class SilenceDetectionUseCaseTest {
         assertEquals(0L..1000L, silenceRanges[0])
     }
 
+    @Test
+    public fun testFindSilence_minSilenceDoesNotCreateBridges(): Unit = kotlinx.coroutines.runBlocking {
+        // [Silence 400ms] [Noise 200ms] [Silence 400ms]
+        // Buckets of 10ms
+        val waveform = FloatArray(100) { i ->
+            if (i in 40..59) 1.0f else 0.0f
+        }
+        val waveformResult = WaveformResult(waveform, 1.0f, 1000_000L)
+        
+        // config with minSilenceMs = 500ms.
+        // PREVIOUS PIPELINE (Broken):
+        // 1. Raw discovery sees 400ms silence. 400 < 500, so it drops it.
+        // 2. Result: Empty silence list -> Full 0..1000 KEEP segment.
+        // This "created a keeper out of thin air" and bridged the 200ms noise into a 1000ms block.
+        
+        // NEW PIPELINE (Fixed):
+        // 1. Raw discovery finds [0..400] and [600..1000].
+        // 2. mergeCloseSilences(minSegment=300) sees gap=200ms. Merges into [0..1000].
+        // 3. filterShortSilences(minSilence=500) sees 1000ms > 500ms. Range stays.
+        // Result: [0..1000] DISCARD.
+        
+        val config = DetectionUtils.SilenceDetectionConfig(
+            threshold = 0.5f,
+            minSilenceMs = 500L,
+            paddingStartMs = 0,
+            paddingEndMs = 0
+        )
+        
+        val silenceRanges = useCase.findSilence(waveformResult, config, 300L)
+        
+        // Should be one single range covering everything, because the noise was absorbed
+        // and the resulting silence block was long enough to survive the 500ms filter.
+        assertEquals(1, silenceRanges.size)
+        assertEquals(0L..1000L, silenceRanges[0])
+    }
+
     private fun createClip(durationMs: Long) = MediaClip(
         uri = "uri", fileName = "file", durationMs = durationMs,
         width = 0, height = 0, videoMime = null, audioMime = null,

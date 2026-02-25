@@ -14,13 +14,10 @@ public object DetectionUtils {
         val paddingEndMs: Long
     )
 
-    /**
-     * Finds silent regions in a waveform. Returns RAW unpadded ranges.
-     */
     public suspend fun findSilence(
         waveform: FloatArray,
         totalDurationMs: Long,
-        config: SilenceDetectionConfig
+        threshold: Float
     ): List<LongRange> {
         if (waveform.isEmpty() || totalDurationMs <= 0) {
             return emptyList()
@@ -28,18 +25,16 @@ public object DetectionUtils {
 
         val msPerBucket = totalDurationMs.toDouble() / waveform.size
         return getRawSilenceRanges(
-            waveform, config.threshold, config.minSilenceMs, msPerBucket, totalDurationMs
+            waveform, threshold, msPerBucket, totalDurationMs
         )
     }
 
     private suspend fun getRawSilenceRanges(
         waveform: FloatArray,
         threshold: Float,
-        minSilenceMs: Long,
         msPerBucket: Double,
         totalDurationMs: Long
     ): List<LongRange> {
-        val minSilenceBuckets = (minSilenceMs / msPerBucket).toInt().coerceAtLeast(1)
         val ranges = mutableListOf<LongRange>()
         var startBucket = -1
 
@@ -50,20 +45,33 @@ public object DetectionUtils {
             if (isSilent) {
                 if (startBucket == -1) startBucket = i
             } else if (startBucket != -1) {
-                val durationBuckets = i - startBucket
-                val isAtStart = startBucket == 0
-                if (isAtStart || durationBuckets >= minSilenceBuckets) {
-                    ranges.add((startBucket * msPerBucket).toLong()..(i * msPerBucket).toLong())
-                }
+                ranges.add((startBucket * msPerBucket).toLong()..(i * msPerBucket).toLong())
                 startBucket = -1
             }
         }
 
         if (startBucket != -1) {
-            // Silence that goes to the end is always included regardless of duration
             ranges.add((startBucket * msPerBucket).toLong()..totalDurationMs)
         }
         return ranges
+    }
+
+    /**
+     * Filters out silence ranges that are shorter than minSilenceMs,
+     * unless they touch the start or end of the clip.
+     */
+    public fun filterShortSilences(
+        ranges: List<LongRange>,
+        minSilenceMs: Long,
+        totalDurationMs: Long
+    ): List<LongRange> {
+        if (minSilenceMs <= 0) return ranges
+        return ranges.filter { range ->
+            val duration = range.last - range.first
+            val isAtStart = range.first == 0L
+            val isAtEnd = range.last >= totalDurationMs
+            isAtStart || isAtEnd || duration >= minSilenceMs
+        }
     }
 
     public fun applyPaddingAndFilter(

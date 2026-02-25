@@ -23,23 +23,32 @@ public class SilenceDetectionUseCase @Inject constructor(
     ): List<LongRange> = withContext(ioDispatcher) {
         val totalDurationMs = waveformResult.durationUs / US_PER_MS
         
-        // 1. Find RAW silence (unpadded)
+        // 1. Find RAW silence (threshold only, NO duration filtering yet)
         val rawRanges = DetectionUtils.findSilence(
             waveform = waveformResult.rawAmplitudes,
             totalDurationMs = totalDurationMs,
-            config = config
+            threshold = config.threshold
         )
         
-        // 2. Merge close silences based on RAW gaps (before padding shrinks them)
-        val mergedRanges = if (minSegmentMs > 0) {
+        // 2. Merge close silences (Drop short noises/Keepers)
+        // This surgically identifies the true discard/keep blocks.
+        val noiseMergedRanges = if (minSegmentMs > 0) {
             DetectionUtils.mergeCloseSilences(rawRanges, minSegmentMs)
         } else {
             rawRanges
         }
+
+        // 3. Filter short silences (Drop short Discards)
+        // Discard any remaining silences that are too short to bothered cutting out.
+        val durationFilteredRanges = DetectionUtils.filterShortSilences(
+            ranges = noiseMergedRanges,
+            minSilenceMs = config.minSilenceMs,
+            totalDurationMs = totalDurationMs
+        )
         
-        // 3. Apply padding cosmeticly AFTER structural merging
+        // 4. Apply padding cosmeticly AFTER structural merging
         DetectionUtils.applyPaddingAndFilter(
-            ranges = mergedRanges,
+            ranges = durationFilteredRanges,
             paddingStartMs = config.paddingStartMs,
             paddingEndMs = config.paddingEndMs,
             totalDurationMs = totalDurationMs

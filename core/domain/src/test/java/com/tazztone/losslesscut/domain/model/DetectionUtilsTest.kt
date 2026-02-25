@@ -11,14 +11,8 @@ public class DetectionUtilsTest {
     public fun testFindSilence_basic(): Unit = runTest {
         val waveform = floatArrayOf(0.1f, 0.0f, 0.0f, 0.5f)
         val duration = 1000L
-        val config = DetectionUtils.SilenceDetectionConfig(
-            threshold = 0.2f,
-            minSilenceMs = 200,
-            paddingStartMs = 0,
-            paddingEndMs = 0
-        )
         
-        val ranges = DetectionUtils.findSilence(waveform, duration, config)
+        val ranges = DetectionUtils.findSilence(waveform, duration, 0.2f)
         
         // Index 0, 1, 2 are silence (< 0.2f).
         // Sample duration = 1000/4 = 250ms per sample.
@@ -30,20 +24,13 @@ public class DetectionUtilsTest {
     }
 
     @Test
-    public fun testFindSilence_raw_noPadding(): Unit = runTest {
+    public fun testFindSilence_raw(): Unit = runTest {
         val waveform = floatArrayOf(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5f)
         val duration = 6000L // 1000ms per sample
-        val config = DetectionUtils.SilenceDetectionConfig(
-            threshold = 0.1f,
-            minSilenceMs = 1000,
-            paddingStartMs = 500, 
-            paddingEndMs = 1500  
-        )
         
-        val ranges = DetectionUtils.findSilence(waveform, duration, config)
+        val ranges = DetectionUtils.findSilence(waveform, duration, 0.1f)
         
         // Raw silence: 1000..5000 (indices 1,2,3,4)
-        // Padding is now a separate step! findSilence returns RAW ranges.
         assertEquals(1, ranges.size)
         assertEquals(1000L..5000L, ranges[0])
     }
@@ -81,40 +68,37 @@ public class DetectionUtilsTest {
             }
         }
         
-        val config = DetectionUtils.SilenceDetectionConfig(
-            threshold = 0.02f,
-            minSilenceMs = 10,
-            paddingStartMs = 0,
-            paddingEndMs = 0
-        )
+        val silence = DetectionUtils.findSilence(waveform, 300, 0.02f)
         
-        val silence = DetectionUtils.findSilence(waveform, 300, config)
-        
-        // Should return two ranges since merging is now done in UseCase
+        // Should return two ranges
         assertEquals(2, silence.size)
         assertEquals(50L..100L, silence[0])
         assertEquals(110L..200L, silence[1])
     }
 
     @Test
-    public fun testFindSilence_boundaryExempt(): Unit = runTest {
-        // 100ms silence at start, noise in middle, 100ms silence at end
-        // Buckets of 10ms
-        val waveform = FloatArray(100) { i ->
-            if (i < 10 || i >= 90) 0.0f else 1.00f
-        }
-        val config = DetectionUtils.SilenceDetectionConfig(
-            threshold = 0.5f,
-            minSilenceMs = 1000, // Very strict! 
-            paddingStartMs = 0,
-            paddingEndMs = 0
-        )
-        
-        val ranges = DetectionUtils.findSilence(waveform, 1000L, config)
-        
-        // Both boundaries should be detected as silence despite being < 1000ms
-        assertEquals(2, ranges.size)
-        assertEquals(0L..100L, ranges[0])
-        assertEquals(900L..1000L, ranges[1])
+    public fun testFilterShortSilences_basic(): Unit {
+        val ranges = listOf(0L..100L, 200L..500L, 800L..1000L)
+        // minSilence = 200ms
+        // 0..100: dur 100. BUT at start -> keep
+        // 200..500: dur 300 -> keep
+        // 800..1000: dur 200. AT end -> keep
+        val filtered = DetectionUtils.filterShortSilences(ranges, 200, 1000)
+        assertEquals(3, filtered.size)
     }
+
+    @Test
+    public fun testFilterShortSilences_internalDropped(): Unit {
+        val ranges = listOf(200L..300L) // dur 100
+        val filtered = DetectionUtils.filterShortSilences(ranges, 200, 1000)
+        assertTrue(filtered.isEmpty())
+    }
+
+    @Test
+    public fun testFilterShortSilences_boundaryExempt(): Unit {
+        val ranges = listOf(0L..100L, 900L..1000L) 
+        val filtered = DetectionUtils.filterShortSilences(ranges, 500, 1000)
+        assertEquals(2, filtered.size)
+    }
+
 }

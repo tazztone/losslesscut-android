@@ -66,44 +66,6 @@
                 android:textColor="@android:color/white"/>
         </LinearLayout>
 
-        <!-- Silence Duration -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Min Silence\nDuration"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderDuration"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="200"
-                android:valueTo="5000"
-                android:stepSize="100"
-                android:value="1000"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvDurationValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="1.0s"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-
         <!-- Min Segment -->
         <TextView
             android:layout_width="wrap_content"
@@ -138,6 +100,44 @@
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="0.5s"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <!-- Silence Duration -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Min Silence\nDuration"
+            android:textSize="11sp"
+            android:textColor="#CCCCCC"
+            android:layout_gravity="center_vertical"
+            android:lineSpacingExtra="-2dp"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderDuration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:valueFrom="200"
+                android:valueTo="5000"
+                android:stepSize="100"
+                android:value="1000"
+                app:haloRadius="0dp"
+                app:thumbRadius="6dp"
+                app:trackHeight="2dp"/>
+            <TextView
+                android:id="@+id/tvDurationValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="1.0s"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
         </LinearLayout>
