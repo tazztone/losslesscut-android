@@ -52,6 +52,7 @@ class SilenceDetectionOverlayController(
         setupListeners(overlay)
         observeState(overlay)
         
+        binding.customVideoSeeker.segmentsVisible = false
         updatePreview()
     }
 
@@ -177,6 +178,7 @@ class SilenceDetectionOverlayController(
         silencePreviewJob?.cancel()
         viewModel.clearSilencePreview()
         binding.customVideoSeeker.noiseThresholdPreview = null
+        binding.customVideoSeeker.segmentsVisible = true
         binding.silenceDetectionContainer?.root?.visibility = View.GONE
     }
 }

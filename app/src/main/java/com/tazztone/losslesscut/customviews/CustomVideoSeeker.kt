@@ -51,6 +51,15 @@ class CustomVideoSeeker @JvmOverloads constructor(
     private var segments = listOf<TrimSegment>()
     private var selectedSegmentId: UUID? = null
 
+    var segmentsVisible: Boolean = true
+        set(value) {
+            if (field != value) {
+                field = value
+                accessibilityHelper.invalidateRoot()
+                invalidate()
+            }
+        }
+
     private var waveformData: FloatArray? = null
     private val waveformPaint by lazy {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -427,30 +436,15 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val endTime = xToTime(scrollOffsetX + width)
             val visibleDuration = endTime - startTime
 
-            val stepMs = when {
-                visibleDuration < 3000 -> 500L     // < 3s visible -> every 0.5s
-                visibleDuration < 10000 -> 1000L   // < 10s visible -> every 1s
-                visibleDuration < 60000 -> 5000L   // < 1m visible -> every 5s
-                visibleDuration < 180000 -> 15000L // < 3m visible -> every 15s
-                else -> 60000L                     // > 3m visible -> every 1m
-            }
-
-            // Snap start to nearest step
-            var currentTime = (startTime / stepMs) * stepMs
-            if (currentTime < startTime) currentTime += stepMs
-
-            while (currentTime <= endTime) {
-                val x = timeToX(currentTime)
-                canvas.drawLine(x, height - 30f, x, height.toFloat(), keyframePaint)
-                canvas.drawText(formatTimeShort(currentTime), x, height - 40f, timeLabelPaint)
-                currentTime += stepMs
-            }
+            drawTimeLabels(canvas, startTime, endTime)
         }
 
         // Draw waveform
         drawWaveform(canvas)
         drawSilencePreviews(canvas)
-        drawSegments(canvas)
+        if (segmentsVisible) {
+            drawSegments(canvas)
+        }
 
         // Draw keyframes
         for (kfMs in keyframes) {
@@ -461,25 +455,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
 
         // Draw Playhead
-        val seekX = timeToX(seekPositionMs)
-        canvas.drawLine(seekX, 0f, seekX, height.toFloat(), playheadPaint)
-
-        // Draw Playhead Handle (Rounded Rectangle)
-        val handleWidth = 40f
-        val handleHeight = 50f
-        val handleRect = RectF(seekX - handleWidth / 2, 0f, seekX + handleWidth / 2, handleHeight)
-        canvas.drawRoundRect(handleRect, 10f, 10f, playheadTrianglePaint)
-
-        // Draw a small arrow pointing down inside the handle
-        playheadPath.reset()
-        playheadPath.moveTo(seekX - 10f, 10f)
-        playheadPath.lineTo(seekX + 10f, 10f)
-        playheadPath.lineTo(seekX, 25f)
-        playheadPath.close()
-        // We can reuse playheadPaint for white arrow inside red handle
-        playheadPaint.style = Paint.Style.FILL
-        canvas.drawPath(playheadPath, playheadPaint)
-        playheadPaint.style = Paint.Style.STROKE // restore
+        drawPlayhead(canvas)
 
         canvas.restore()
 
@@ -540,10 +516,12 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
         override fun getVisibleVirtualViews(virtualViewIds: MutableList<Int>) {
             virtualViewIds.add(VIRTUAL_ID_PLAYHEAD)
-            val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
-            for (i in keepSegments.indices) {
-                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2))
-                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2) + 1)
+            if (segmentsVisible) {
+                val keepSegments = segments.filter { it.action == SegmentAction.KEEP }
+                for (i in keepSegments.indices) {
+                    virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2))
+                    virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2) + 1)
+                }
             }
         }
 
@@ -654,7 +632,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
                 dismissHints()
 
-                if (isTouchingBottom && !isRemuxMode) {
+                if (segmentsVisible && isTouchingBottom && !isRemuxMode) {
                     val keepSegments = segments.filter { it.action != SegmentAction.DISCARD }
                     var bestDist = hitTestThresholdMs + 1
                     var bestHandle: TouchTarget = TouchTarget.NONE
@@ -917,5 +895,49 @@ class CustomVideoSeeker @JvmOverloads constructor(
             if (showHandleHint) drawHandleArrow(canvas, endX, height.toFloat() - 25f, isLeft = false)
             if (segment.id == selectedSegmentId) canvas.drawRect(segmentRect, selectedBorderPaint)
         }
+    }
+
+    private fun drawTimeLabels(canvas: Canvas, startTime: Long, endTime: Long) {
+        val visibleDuration = endTime - startTime
+        val stepMs = when {
+            visibleDuration < 3000 -> 500L     // < 3s visible -> every 0.5s
+            visibleDuration < 10000 -> 1000L   // < 10s visible -> every 1s
+            visibleDuration < 60000 -> 5000L   // < 1m visible -> every 5s
+            visibleDuration < 180000 -> 15000L // < 3m visible -> every 15s
+            else -> 60000L                     // > 3m visible -> every 1m
+        }
+
+        // Snap start to nearest step
+        var currentTime = (startTime / stepMs) * stepMs
+        if (currentTime < startTime) currentTime += stepMs
+
+        while (currentTime <= endTime) {
+            val x = timeToX(currentTime)
+            canvas.drawLine(x, height - 30f, x, height.toFloat(), keyframePaint)
+            canvas.drawText(formatTimeShort(currentTime), x, height - 40f, timeLabelPaint)
+            currentTime += stepMs
+        }
+    }
+
+    private fun drawPlayhead(canvas: Canvas) {
+        val seekX = timeToX(seekPositionMs)
+        canvas.drawLine(seekX, 0f, seekX, height.toFloat(), playheadPaint)
+
+        // Draw Playhead Handle (Rounded Rectangle)
+        val handleWidth = 40f
+        val handleHeight = 50f
+        val handleRect = RectF(seekX - handleWidth / 2, 0f, seekX + handleWidth / 2, handleHeight)
+        canvas.drawRoundRect(handleRect, 10f, 10f, playheadTrianglePaint)
+
+        // Draw a small arrow pointing down inside the handle
+        playheadPath.reset()
+        playheadPath.moveTo(seekX - 10f, 10f)
+        playheadPath.lineTo(seekX + 10f, 10f)
+        playheadPath.lineTo(seekX, 25f)
+        playheadPath.close()
+        // We can reuse playheadPaint for white arrow inside red handle
+        playheadPaint.style = Paint.Style.FILL
+        canvas.drawPath(playheadPath, playheadPaint)
+        playheadPaint.style = Paint.Style.STROKE // restore
     }
 }
