@@ -30,6 +30,7 @@
 - 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.
 - 🏷️ **Quick Metadata Fix**: Correct video orientation and rotation flags in seconds.
 - 🏗️ **Clean Architecture**: Context-free ViewModels and a centralized Repository pattern for maximum maintainability.
+- 🧊 **Format Compatibility**: Optimized for modern codecs and containers (MP4, AAC). See [Technical Reference](#7-format-compatibility) for details.
 
 ## 📸 Screenshots
 
@@ -187,6 +188,20 @@ Use these IDs for documentation queries:
 - `/kotlin/kotlinx.coroutines` (Concurrency)
 - `/androidx/datastore` (Preferences)
 - `/material-components/material-components-android` (UI)
+
+### 7. Format Compatibility
+LosslessCut is optimized for modern media containers and codecs supported by the Android [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer) and [MediaExtractor](https://developer.android.com/reference/android/media/MediaExtractor).
+
+| Feature | Supported | Notes |
+| :--- | :--- | :--- |
+| **Containers** | `.mp4`, `.m4a` | Standard MPEG-4 containers. |
+| **Video Codecs** | H.264 (AVC), H.265 (HEVC) | Standard bitrates; depends on device hardware decoder limits. |
+| **Audio Codecs** | AAC (LC, HE-AAC) | Primary audio format for MP4/M4A remuxing. |
+| **MP3 Support** | ❌ (Remux) / ✅ (Play) | MP3 tracks cannot be losslessly remuxed into MP4 containers via `MediaMuxer` without transcoding. |
+| **MKV/WebM** | ✅ (Remux ONLY) | Can remux MKV to MP4 if the internal tracks are compatible (H.264/AAC). |
+
+> [!NOTE]
+> LosslessCut focuses on **remuxing**, not transcoding. If the input codec is incompatible with the MPEG-4 container (like MP3 or Vorbis), the muxer will reject the track to avoid quality loss via silent corruption.
 
 ## 📄 License
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
