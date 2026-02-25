@@ -53,6 +53,17 @@
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="14sp"/>
 
+        <TextView
+            android:id="@+id/tvFormatHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            android:text="@string/supported_formats_hint"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp"
+            android:alpha="0.7"/>
+
     </LinearLayout>
 
 </RelativeLayout>

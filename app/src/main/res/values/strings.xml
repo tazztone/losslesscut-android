@@ -136,4 +136,6 @@
     <string name="pitch_correction_off">Audio pitch correction OFF</string>
     <string name="export_merging">Merging segments…</string>
     <string name="export_saving_segment">Saving segment %1$d of %2$d…</string>
+    <string name="supported_formats_hint">Supported: .mp4, .m4a (H.264, H.265, AAC)</string>
+    <string name="error_incompatible_format_title">Unsupported Format</string>
 </resources>

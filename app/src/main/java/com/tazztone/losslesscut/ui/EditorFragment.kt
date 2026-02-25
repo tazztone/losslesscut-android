@@ -378,7 +378,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
-                        Toast.makeText(requireContext(), state.error.asString(requireContext()), Toast.LENGTH_LONG).show()
+                        showErrorDialog(state.error.asString(requireContext()))
                     }
                     else -> {}
                 }

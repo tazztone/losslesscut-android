@@ -24,4 +24,17 @@ abstract class BaseEditingFragment(@LayoutRes layoutId: Int) : Fragment(layoutId
         super.onDestroyView()
         playerManager.release()
     }
+
+    @Suppress("ThrowsCount", "UseRequire")
+    protected fun showErrorDialog(message: String) {
+        val ctx = context ?: return
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle(com.tazztone.losslesscut.R.string.error_incompatible_format_title)
+            .setMessage(message)
+            .setPositiveButton(com.tazztone.losslesscut.R.string.ok) { _, _ ->
+                activity?.finish()
+            }
+            .setCancelable(false)
+            .show()
+    }
 }

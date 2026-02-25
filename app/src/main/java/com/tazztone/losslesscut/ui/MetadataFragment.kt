@@ -9,6 +9,7 @@ import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentMetadataBinding
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
+import com.tazztone.losslesscut.util.asString
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -54,6 +55,8 @@ class MetadataFragment : BaseEditingFragment(R.layout.fragment_metadata) {
             val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }
             if (finalState is VideoEditingUiState.Success) {
                 showMetadataDialog()
+            } else if (finalState is VideoEditingUiState.Error) {
+                showErrorDialog(finalState.error.asString(requireContext()))
             } else {
                 activity?.finish()
             }
