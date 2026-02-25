@@ -89,7 +89,20 @@ class SilenceDetectionOverlayController(
             }
         }
 
-        sliderThreshold?.addOnChangeListener { _, _, _ -> updatePreview() }
+        sliderThreshold?.addOnChangeListener { _, value, _ ->
+            binding.customVideoSeeker.noiseThresholdPreview = value
+            updatePreview()
+        }
+
+        sliderThreshold?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.noiseThresholdPreview = slider.value
+            }
+
+            override fun onStopTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.noiseThresholdPreview = null
+            }
+        })
         sliderDuration?.addOnChangeListener { _, _, _ -> updatePreview() }
         sliderMinSegment?.addOnChangeListener { _, _, _ -> updatePreview() }
         
@@ -160,6 +173,7 @@ class SilenceDetectionOverlayController(
     fun hide() {
         silencePreviewJob?.cancel()
         viewModel.clearSilencePreview()
+        binding.customVideoSeeker.noiseThresholdPreview = null
         binding.silenceDetectionContainer?.root?.visibility = View.GONE
     }
 }

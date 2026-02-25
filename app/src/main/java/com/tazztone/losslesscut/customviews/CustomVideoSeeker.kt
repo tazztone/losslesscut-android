@@ -73,6 +73,21 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
     }
 
+    var noiseThresholdPreview: Float? = null
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
+    private val thresholdMaskPaint by lazy {
+        Paint().apply {
+            color = 0x6600FFFF.toInt() // Cyan with ~40% opacity
+            style = Paint.Style.FILL
+        }
+    }
+
     // Colors
     private val colorOnSurface: Int by lazy { resolveColor(R.attr.colorOnSurface, Color.WHITE) }
     private val colorOnSurfaceVariant: Int by lazy { resolveColor(R.attr.colorOnSurfaceVariant, Color.LTGRAY) }
@@ -847,6 +862,18 @@ class CustomVideoSeeker @JvmOverloads constructor(
             val timelineEnd = timeToX(videoDurationMs).toInt()
             val startPx = (scrollOffsetX.toInt()).coerceAtLeast(timelineStart)
             val endPx = (scrollOffsetX + width).toInt().coerceAtMost(timelineEnd)
+
+            // Draw Threshold Mask
+            noiseThresholdPreview?.let { threshold ->
+                val thresholdH = (threshold * maxAvailableHeight).coerceIn(1f, maxAvailableHeight)
+                canvas.drawRect(
+                    scrollOffsetX,
+                    midY - thresholdH,
+                    scrollOffsetX + width,
+                    midY + thresholdH,
+                    thresholdMaskPaint
+                )
+            }
 
             for (px in startPx..endPx) {
                 val timeMs = xToTime(px.toFloat())

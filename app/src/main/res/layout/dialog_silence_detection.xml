@@ -90,7 +90,7 @@
                 android:valueFrom="100"
                 android:valueTo="5000"
                 android:stepSize="100"
-                android:value="500"
+                android:value="100"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
                 app:trackHeight="2dp"/>
@@ -99,7 +99,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:text="0.5s"
+                android:text="0.1s"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
         </LinearLayout>
@@ -128,7 +128,7 @@
                 android:valueFrom="200"
                 android:valueTo="5000"
                 android:stepSize="100"
-                android:value="1000"
+                android:value="200"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
                 app:trackHeight="2dp"/>
@@ -137,7 +137,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:text="1.0s"
+                android:text="0.2s"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
         </LinearLayout>
@@ -166,7 +166,7 @@
                 android:valueFrom="0"
                 android:valueTo="2000"
                 android:stepSize="50"
-                android:value="200"
+                android:value="0"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
                 app:trackHeight="2dp"/>
@@ -175,7 +175,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:text="0.2s"
+                android:text="0.0s"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
         </LinearLayout>
@@ -218,7 +218,7 @@
                 android:valueFrom="0"
                 android:valueTo="2000"
                 android:stepSize="50"
-                android:value="200"
+                android:value="0"
                 app:haloRadius="0dp"
                 app:thumbRadius="6dp"
                 app:trackHeight="2dp"/>
@@ -227,7 +227,7 @@
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:text="0.2s"
+                android:text="0.0s"
                 android:textSize="12sp"
                 android:textColor="@android:color/white"/>
         </LinearLayout>
