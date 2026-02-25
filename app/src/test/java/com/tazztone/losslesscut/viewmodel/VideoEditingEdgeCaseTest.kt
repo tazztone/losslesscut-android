@@ -86,7 +86,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testClipRemovalIndexStability() = runTest {
+    public fun testClipRemovalIndexStability() = runTest(testDispatcher) {
         val uris = listOf(
             Uri.parse("content://mock/0.mp4"),
             Uri.parse("content://mock/1.mp4"),
@@ -118,7 +118,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testRapidSwitchingCancellation() = runTest {
+    public fun testRapidSwitchingCancellation() = runTest(testDispatcher) {
         val uri0 = Uri.parse("content://mock/0.mp4")
         val uri1 = Uri.parse("content://mock/1.mp4")
         
@@ -145,7 +145,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testHistoryRotation() = runTest {
+    public fun testHistoryRotation() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         
@@ -171,7 +171,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testSilenceDetectionContiguity() = runTest {
+    public fun testSilenceDetectionContiguity() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/contiguity.mp4")
         val clip = createMockClip(uri.toString(), 1000L)
         
@@ -200,7 +200,7 @@ public class VideoEditingEdgeCaseTest {
     }
 
     @Test
-    public fun testExportDelegation() = runTest {
+    public fun testExportDelegation() = runTest(testDispatcher) {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip("v.mp4", 10000L))
         
