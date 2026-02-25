@@ -16,11 +16,18 @@ public class SilenceDetectionUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+    public data class DetectionResult(
+        val rawRanges: List<LongRange>,
+        val noiseMergedRanges: List<LongRange>,
+        val durationFilteredRanges: List<LongRange>,
+        val finalRanges: List<LongRange>
+    )
+
     public suspend fun findSilence(
         waveformResult: WaveformResult,
         config: DetectionUtils.SilenceDetectionConfig,
         minSegmentMs: Long
-    ): List<LongRange> = withContext(ioDispatcher) {
+    ): DetectionResult = withContext(ioDispatcher) {
         val totalDurationMs = waveformResult.durationUs / US_PER_MS
         
         // 1. Find RAW silence (threshold only, NO duration filtering yet)
@@ -31,7 +38,6 @@ public class SilenceDetectionUseCase @Inject constructor(
         )
         
         // 2. Merge close silences (Drop short noises/Keepers)
-        // This surgically identifies the true discard/keep blocks.
         val noiseMergedRanges = if (minSegmentMs > 0) {
             DetectionUtils.mergeCloseSilences(rawRanges, minSegmentMs)
         } else {
@@ -39,7 +45,6 @@ public class SilenceDetectionUseCase @Inject constructor(
         }
 
         // 3. Filter short silences (Drop short Discards)
-        // Discard any remaining silences that are too short to bothered cutting out.
         val durationFilteredRanges = DetectionUtils.filterShortSilences(
             ranges = noiseMergedRanges,
             minSilenceMs = config.minSilenceMs,
@@ -47,11 +52,18 @@ public class SilenceDetectionUseCase @Inject constructor(
         )
         
         // 4. Apply padding cosmeticly AFTER structural merging
-        DetectionUtils.applyPaddingAndFilter(
+        val finalRanges = DetectionUtils.applyPaddingAndFilter(
             ranges = durationFilteredRanges,
             paddingStartMs = config.paddingStartMs,
             paddingEndMs = config.paddingEndMs,
             totalDurationMs = totalDurationMs
+        )
+
+        DetectionResult(
+            rawRanges = rawRanges,
+            noiseMergedRanges = noiseMergedRanges,
+            durationFilteredRanges = durationFilteredRanges,
+            finalRanges = finalRanges
         )
     }
 

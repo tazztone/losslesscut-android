@@ -124,7 +124,7 @@ public class SilenceDetectionUseCaseTest {
             paddingEndMs = 200L
         )
         
-        val silenceRanges = useCase.findSilence(waveformResult, config, 400L)
+        val silenceRanges = useCase.findSilence(waveformResult, config, 400L).finalRanges
         
         // Should be merged into one single range covering everything
         assertEquals(1, silenceRanges.size)
@@ -159,7 +159,7 @@ public class SilenceDetectionUseCaseTest {
             paddingEndMs = 0
         )
         
-        val silenceRanges = useCase.findSilence(waveformResult, config, 300L)
+        val silenceRanges = useCase.findSilence(waveformResult, config, 300L).finalRanges
         
         // Should be one single range covering everything, because the noise was absorbed
         // and the resulting silence block was long enough to survive the 500ms filter.

@@ -40,6 +40,10 @@ class WaveformController @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private val _rawSilencePreviewRanges = MutableStateFlow<SilenceDetectionUseCase.DetectionResult?>(null)
+    val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> = 
+        _rawSilencePreviewRanges.asStateFlow()
+
     private val _maxAmplitude = MutableStateFlow(1f)
     val maxAmplitude: StateFlow<Float> = _maxAmplitude.asStateFlow()
 
@@ -103,12 +107,13 @@ class WaveformController @Inject constructor(
                 paddingStartMs = params.paddingStartMs,
                 paddingEndMs = params.paddingEndMs
             )
-            val ranges = silenceDetectionUseCase.findSilence(
+            val resultObj = silenceDetectionUseCase.findSilence(
                 result,
                 config,
                 params.minSegmentMs
             )
-            _silencePreviewRanges.value = ranges
+            _rawSilencePreviewRanges.value = resultObj
+            _silencePreviewRanges.value = resultObj.finalRanges
             onComplete()
         }
     }
@@ -117,6 +122,7 @@ class WaveformController @Inject constructor(
         silencePreviewJob?.cancel()
         scope.launch(ioDispatcher) {
             _silencePreviewRanges.value = emptyList()
+            _rawSilencePreviewRanges.value = null
             onComplete()
         }
     }
@@ -126,6 +132,7 @@ class WaveformController @Inject constructor(
         silencePreviewJob?.cancel()
         _waveformData.value = null
         _silencePreviewRanges.value = emptyList()
+        _rawSilencePreviewRanges.value = null
         rawWaveformResult = null
     }
 

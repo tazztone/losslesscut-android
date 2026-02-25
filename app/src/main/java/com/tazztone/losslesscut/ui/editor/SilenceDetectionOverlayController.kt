@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.domain.model.TimeUtils
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
@@ -108,6 +109,35 @@ class SilenceDetectionOverlayController(
                 binding.customVideoSeeker.noiseThresholdPreview = null
             }
         })
+
+        sliderDuration?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SILENCE
+            }
+            override fun onStopTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+            }
+        })
+
+        sliderMinSegment?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SEGMENT
+            }
+            override fun onStopTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+            }
+        })
+
+        val paddingTouchListener = object : Slider.OnSliderTouchListener {
+            override fun onStartTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.PADDING
+            }
+            override fun onStopTrackingTouch(slider: Slider) {
+                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+            }
+        }
+        sliderPaddingPrefix?.addOnSliderTouchListener(paddingTouchListener)
+        sliderPaddingPostfix?.addOnSliderTouchListener(paddingTouchListener)
         sliderDuration?.addOnChangeListener { _, _, _ -> updatePreview() }
         sliderMinSegment?.addOnChangeListener { _, _, _ -> updatePreview() }
         
@@ -153,6 +183,11 @@ class SilenceDetectionOverlayController(
         silencePreviewJob = scope.launch {
             viewModel.uiState.collect { state ->
                 handleUiStateUpdate(state, tvEstimatedCut, btnApply)
+            }
+        }
+        scope.launch {
+            viewModel.rawSilencePreviewRanges.collect { result ->
+                binding.customVideoSeeker.rawSilenceResult = result
             }
         }
     }

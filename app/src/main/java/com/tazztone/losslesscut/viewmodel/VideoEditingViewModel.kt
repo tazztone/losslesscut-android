@@ -56,6 +56,10 @@ public class VideoEditingViewModel @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     public val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private val _rawSilencePreviewRanges = MutableStateFlow<SilenceDetectionUseCase.DetectionResult?>(null)
+    public val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> = 
+        _rawSilencePreviewRanges.asStateFlow()
+
     private var hintsDismissed = false
 
     public fun onUserInteraction() {
@@ -113,6 +117,12 @@ public class VideoEditingViewModel @Inject constructor(
                 .collect { ranges ->
                     _silencePreviewRanges.value = ranges
                     updateStateInternal()
+                }
+        }
+        viewModelScope.launch {
+            waveformController.rawSilencePreviewRanges
+                .collect { rawResult ->
+                    _rawSilencePreviewRanges.value = rawResult
                 }
         }
     }
@@ -392,6 +402,7 @@ public class VideoEditingViewModel @Inject constructor(
         _isDirty.value = false
         _waveformData.value = null
         _silencePreviewRanges.value = emptyList()
+        _rawSilencePreviewRanges.value = null
         _sessionExists.value = false
         currentPlaybackSpeed = 1.0f
         isPitchCorrectionEnabled = false
@@ -474,6 +485,7 @@ public class VideoEditingViewModel @Inject constructor(
                 }
                 
                 _silencePreviewRanges.value = emptyList()
+                _rawSilencePreviewRanges.value = null
                 _isDirty.value = true
                 updateStateInternal()
             }
