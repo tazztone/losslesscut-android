@@ -1,22 +1,20 @@
-package com.tazztone.losslesscut.viewmodel
+package com.tazztone.losslesscut.domain.model
 
-import com.tazztone.losslesscut.domain.model.SegmentAction
-import com.tazztone.losslesscut.domain.model.TrimSegment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 import java.util.UUID
 
-class TrimSegmentTest {
+public class TrimSegmentTest {
 
     @Test
-    fun testSegmentDefaultAction() {
+    public fun testSegmentDefaultAction(): Unit {
         val segment = TrimSegment(UUID.randomUUID(), 0, 1000)
         assertEquals(SegmentAction.KEEP, segment.action)
     }
 
     @Test
-    fun testSegmentCopy() {
+    public fun testSegmentCopy(): Unit {
         val id = UUID.randomUUID()
         val original = TrimSegment(id, 100, 500, SegmentAction.KEEP)
         val copy = original.copy()
@@ -28,7 +26,7 @@ class TrimSegmentTest {
     }
 
     @Test
-    fun testSegmentIdUniqueness() {
+    public fun testSegmentIdUniqueness(): Unit {
         val seg1 = TrimSegment(UUID.randomUUID(), 0, 1000)
         val seg2 = TrimSegment(UUID.randomUUID(), 0, 1000)
         assertNotEquals(seg1.id, seg2.id)
