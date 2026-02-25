@@ -55,6 +55,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         private const val ZOOM_HINT_FINGER_SPACING_ANIM = 100f
         private const val ZOOM_HINT_FINGER_RADIUS_SHRINK = 0.5f
         private const val ZOOM_HINT_Y_OFFSET_SCALE = 1.5f
+        private const val CACHE_TILE_SIZE = 2048
         private const val DURATION_3S = 3000L
         private const val DURATION_10S = 10000L
         private const val DURATION_60S = 60000L
@@ -199,7 +200,6 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
     }
 
     private inner class WaveformCache {
-        private val TILE_SIZE = 2048
         // Keep ~50MB of bitmaps (2048 * 200 * 4 ~= 1.6MB per tile -> 30 tiles)
         private val cache = android.util.LruCache<Int, android.graphics.Bitmap>(30)
 
@@ -216,12 +216,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
             val currentWidth = seeker.width
             val currentColor = waveformPaint.color
 
-            if (lastData !== currentData ||
-                lastZoom != currentZoom ||
-                lastHeight != currentHeight ||
-                lastWidth != currentWidth ||
-                lastColor != currentColor
-            ) {
+            if (shouldInvalidate(currentData, currentZoom, currentHeight, currentWidth, currentColor)) {
                 cache.evictAll()
                 lastData = currentData
                 lastZoom = currentZoom
@@ -241,8 +236,8 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
 
             if (drawStart >= drawEnd) return
 
-            val startTile = drawStart / TILE_SIZE
-            val endTile = drawEnd / TILE_SIZE
+            val startTile = drawStart / CACHE_TILE_SIZE
+            val endTile = drawEnd / CACHE_TILE_SIZE
 
             for (i in startTile..endTile) {
                 var bitmap = cache.get(i)
@@ -250,17 +245,31 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
                     bitmap = generateTile(i, currentData, timelineStart, timelineEnd)
                     cache.put(i, bitmap)
                 }
-                canvas.drawBitmap(bitmap, (i * TILE_SIZE).toFloat(), 0f, null)
+                canvas.drawBitmap(bitmap, (i * CACHE_TILE_SIZE).toFloat(), 0f, null)
             }
+        }
+
+        private fun shouldInvalidate(
+            data: FloatArray,
+            zoom: Float,
+            h: Int,
+            w: Int,
+            color: Int
+        ): Boolean {
+            return lastData !== data ||
+                lastZoom != zoom ||
+                lastHeight != h ||
+                lastWidth != w ||
+                lastColor != color
         }
 
         private fun generateTile(index: Int, data: FloatArray, timelineStart: Int, timelineEnd: Int): android.graphics.Bitmap {
             val height = seeker.height.coerceAtLeast(1)
-            val bitmap = android.graphics.Bitmap.createBitmap(TILE_SIZE, height, android.graphics.Bitmap.Config.ARGB_8888)
+            val bitmap = android.graphics.Bitmap.createBitmap(CACHE_TILE_SIZE, height, android.graphics.Bitmap.Config.ARGB_8888)
             val canvas = Canvas(bitmap)
 
-            val tileStartPx = index * TILE_SIZE
-            val tileEndPx = (index + 1) * TILE_SIZE
+            val tileStartPx = index * CACHE_TILE_SIZE
+            val tileEndPx = (index + 1) * CACHE_TILE_SIZE
 
             // Translate so we can draw using world coordinates relative to the tile start
             canvas.translate(-tileStartPx.toFloat(), 0f)
