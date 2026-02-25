@@ -136,4 +136,11 @@
     <string name="export_saving_segment">Saving segment %1$d of %2$d…</string>
     <string name="supported_formats_hint">Supported: .mp4, .m4a (H.264, H.265, AAC)</string>
     <string name="error_incompatible_format_title">Unsupported Format</string>
+    <string name="save_snapshots_as_jpeg">Save Snapshots as JPEG</string>
+    <string name="jpg_quality">JPG Quality</string>
+    <string name="undo_limit">Undo Limit</string>
+    <string name="theme_accent_color">Theme Accent Color</string>
+    <string name="default_export_path">Default (Movies/LosslessCut)</string>
+    <string name="change">Change</string>
+    <string name="reset">Reset</string>
 </resources>
