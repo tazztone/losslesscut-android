@@ -5,6 +5,8 @@
 * **Player & Playback Controls**: Refactored player state handling into a dedicated `PlayerManager`. Added playback speed controls, pitch correction toggling, and nudge functionality for precise seeking. 
 * **UI State & Accessibility**: Transitioned to an event-driven UI state management system. Introduced customizable accent colors, improved theme support, and expanded tooltips and accessibility labels.
 * **Editing Enhancements**: Added redo stack functionality, multi-file sharing support via `SEND_MULTIPLE` intents, and streamlined adapter mechanisms with UUID-based selection.
+* **Seeker Architecture**: Decomposed the monolithic `CustomVideoSeeker` into modular, highly-testable components for rendering, touch handling, and accessibility.
+* **Timeline Visuals & Snapping**: Added color-coded "Ghost State" visualizations and interactive threshold previews for silence detection. Enforced mandatory, frame-accurate keyframe snapping in lossless mode.
 
 ### Mid-Late February 2026: Specialized Modes & Automation Features
 * **Dedicated Launch Modes**: Introduced `MODE_CUT` (full editor), `MODE_REMUX` (full-file pass-through), and `MODE_METADATA` (rotation/metadata overrides without timeline overhead).

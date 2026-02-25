@@ -14,7 +14,7 @@
 - 🚀 **Zero Quality Loss**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer`—no transcoding involved.
 - 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
 - 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
-- 🧲 **Keyframe Snapping**: Haptic feedback and visual snapping to keyframes ensure cuts are perfectly aligned for lossless export.
+- 🧲 **Keyframe Snapping**: Mandatory, strict keyframe snapping in lossless mode ensures frame-perfect cuts. Features haptic feedback and visual snapping.
 - 📱 **Adaptive UI**: Ergonomic landscape sidebars and a unified floating player overlay for maximum screen real estate.
 - ➕ **Smart Playlist**: Inline "Add Media" shortcut and intelligent duplicate detection on import.
 - 🎵 **Audio-Only Mode**: Intelligent UI adaptation for audio files with waveform visualization.
@@ -22,7 +22,7 @@
 - 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
 - 🔄 **Non-Destructive Workflow**: Full **Undo/Redo** stack for all segment operations.
-- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with live savings preview and intuitive "Mute" status.
+- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations, live savings previews, and intuitive threshold adjustments.
 - ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
 - ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.

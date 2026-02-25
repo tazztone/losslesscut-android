@@ -169,6 +169,15 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         waveformPaint.color = Color.argb(85, Color.red(color), Color.green(color), Color.blue(color))
     }
 
+    fun updateAccentColor(color: Int) {
+        val r = Color.red(color)
+        val g = Color.green(color)
+        val b = Color.blue(color)
+        thresholdMaskPaint.color = Color.argb(0x66, r, g, b)
+        droppedSilencePaint.color = Color.argb(0x88, r, g, b)
+        bridgedNoisePaint.color = Color.argb(0x88, r, g, b)
+    }
+
     fun drawWaveform(canvas: Canvas) {
         seeker.waveformData?.let { data ->
             val midY = seeker.height / 2f

@@ -129,6 +129,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
 
     init {
         seekerRenderer.updateWaveformColor(colorOnSurfaceVariant)
+        seekerRenderer.updateAccentColor(colorAccent)
         seekerRenderer.keepSegmentPaint.color = colorSegmentKeep
         contentDescription = context.getString(R.string.video_timeline_description)
         ViewCompat.setAccessibilityDelegate(this, accessibilityHelper)
