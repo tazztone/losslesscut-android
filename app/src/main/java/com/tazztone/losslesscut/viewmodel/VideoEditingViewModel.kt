@@ -86,6 +86,7 @@ public class VideoEditingViewModel @Inject constructor(
     private val waveformController = WaveformController(
         repository, useCases.silenceDetectionUseCase, ioDispatcher
     )
+    public val waveformMaxAmplitude: StateFlow<Float> = waveformController.maxAmplitude
     private val stateMutex = Mutex()
     private val isExporting = AtomicBoolean(false)
     

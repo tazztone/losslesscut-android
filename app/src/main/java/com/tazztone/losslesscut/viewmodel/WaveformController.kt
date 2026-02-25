@@ -40,6 +40,9 @@ class WaveformController @Inject constructor(
     private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
     val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
 
+    private val _maxAmplitude = MutableStateFlow(1f)
+    val maxAmplitude: StateFlow<Float> = _maxAmplitude.asStateFlow()
+
     private var waveformJob: Job? = null
     private var silencePreviewJob: Job? = null
 
@@ -81,6 +84,7 @@ class WaveformController @Inject constructor(
         val downsampled = AudioWaveformProcessor.downsample(result.rawAmplitudes, uiBucketCount)
         AudioWaveformProcessor.fillEdgeBuckets(downsampled)
         AudioWaveformProcessor.normalize(downsampled, result.maxAmplitude)
+        _maxAmplitude.value = if (result.maxAmplitude > 0f) result.maxAmplitude else 1f
         _waveformData.value = downsampled
     }
 

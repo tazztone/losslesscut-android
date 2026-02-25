@@ -90,13 +90,16 @@ class SilenceDetectionOverlayController(
         }
 
         sliderThreshold?.addOnChangeListener { _, value, _ ->
-            binding.customVideoSeeker.noiseThresholdPreview = value
+            val maxAmp = viewModel.waveformMaxAmplitude.value
+            binding.customVideoSeeker.noiseThresholdPreview = if (maxAmp > 0f) value / maxAmp else value
             updatePreview()
         }
 
         sliderThreshold?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.noiseThresholdPreview = slider.value
+                val maxAmp = viewModel.waveformMaxAmplitude.value
+                val scaledThreshold = if (maxAmp > 0f) slider.value / maxAmp else slider.value
+                binding.customVideoSeeker.noiseThresholdPreview = scaledThreshold
             }
 
             override fun onStopTrackingTouch(slider: Slider) {
