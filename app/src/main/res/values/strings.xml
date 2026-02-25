@@ -88,14 +88,12 @@
     <string name="error_no_tracks_found">No video or audio tracks found in file</string>
     <string name="export_success_audio">Successfully exported %1$d audio clip(s) to Music/LosslessCut</string>
     <string name="audio_only_placeholder_desc">Audio file: %1$s</string>
-    <string name="include_video_track">Include Video Track</string>
-    <string name="include_audio_track">Include Audio Track</string>
     <string name="merge_keep_segments">Merge "KEEP" segments into one file</string>
     <string name="error_incompatible_format">Clip \"%1$s\" has an incompatible format and was skipped.</string>
     <string name="error_no_valid_clips">No valid clips were imported.</string>
     <string name="clips_added">Added %1$d new clip(s)</string>
     <string name="remove_clip_confirm">Are you sure you want to remove this clip from the playlist?</string>
-    <string name="error_cannot_exclude_video">Cannot exclude video track as no audio track is available.</string>
+
     <string name="duplicate_files_msg">Selected files are already in the playlist.</string>
     <string name="duplicate_files_confirm_msg">%1$d selected file(s) are already in the playlist. Skip duplicates?</string>
     <string name="skip_duplicates">Skip Duplicates</string>
@@ -121,8 +119,8 @@
     <string name="silence_detected_preview">Silence detected: %1$s (%2$d regions)</string>
     <string name="estimated_savings">Estimated saving: %1$s (%2$.1f%% of total)</string>
     <string name="no_silence_detected">No silence detected at this level</string>
-    <string name="select_tracks">Select individual tracks</string>
-    <string name="track_item_format">Track %1$d: %2$s (%3$s)</string>
+    <string name="tracks_header">Tracks</string>
+    <string name="track_item_format">Track %1$d: %2$s%3$s%4$s (%5$s)</string>
     <string name="error_export_failed_msg">Export failed: %1$s</string>
     <string name="error_restore_failed_files_missing">Could not restore session: files are missing or inaccessible.</string>
     <string name="error_restore_failed">Failed to restore session: %1$s</string>

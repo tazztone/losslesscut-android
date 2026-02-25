@@ -25,29 +25,19 @@ class ExportOptionsDialogPresenter(
         selectedTracks: List<Int>?
     ) -> Unit
 ) {
-    companion object {
-        private const val MIN_TRACKS_FOR_SELECTION = 2
-        private const val DISABLED_ALPHA = 0.5f
-    }
 
     fun show(state: VideoEditingUiState.Success) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
-        val cbKeepVideo = dialogView.findViewById<CheckBox>(R.id.cbKeepVideo)
-        val cbKeepAudio = dialogView.findViewById<CheckBox>(R.id.cbKeepAudio)
         val cbMergeSegments = dialogView.findViewById<CheckBox>(R.id.cbMergeSegments)
         
         setupMergeVisibility(cbMergeSegments, state)
         val selectedTracks = setupTrackList(dialogView, state)
 
-        if (!state.hasAudioTrack) {
-            disableVideoExclusion(cbKeepVideo)
-        }
-
         MaterialAlertDialogBuilder(context)
             .setTitle(context.getString(R.string.export_options))
             .setView(dialogView)
             .setPositiveButton(context.getString(R.string.export)) { _, _ ->
-                handleExportClick(cbKeepVideo, cbKeepAudio, cbMergeSegments, state, selectedTracks)
+                handleExportClick(cbMergeSegments, state, selectedTracks)
             }
             .setNegativeButton(context.getString(R.string.cancel), null)
             .show()
@@ -65,18 +55,34 @@ class ExportOptionsDialogPresenter(
     private fun setupTrackList(dialogView: View, state: VideoEditingUiState.Success): MutableSet<Int> {
         val tvTracksHeader = dialogView.findViewById<TextView>(R.id.tvTracksHeader)
         val tracksContainer = dialogView.findViewById<LinearLayout>(R.id.tracksContainer)
-        val availableTracks = state.availableTracks
+        
+        // Sort: Video first, then Audio, then others
+        val availableTracks = state.availableTracks.sortedWith(compareBy({ !it.isVideo }, { !it.isAudio }, { it.id }))
         val selectedTracks = mutableSetOf<Int>()
         
-        if (availableTracks.size <= MIN_TRACKS_FOR_SELECTION) return selectedTracks
+        if (availableTracks.isEmpty()) {
+            tvTracksHeader.visibility = View.GONE
+            tracksContainer.visibility = View.GONE
+            return selectedTracks
+        }
         
         tvTracksHeader.visibility = View.VISIBLE
         tracksContainer.visibility = View.VISIBLE
         
         availableTracks.forEach { track ->
+            val emoji = when {
+                track.isVideo -> "🎬"
+                track.isAudio -> "🎵"
+                else -> "📄"
+            }
             val type = if (track.isVideo) "Video" else if (track.isAudio) "Audio" else "Other"
+            val typeWithEmoji = "$emoji $type"
+            
+            val langInfo = if (!track.language.isNullOrBlank()) " — ${track.language}" else ""
+            val titleInfo = if (!track.title.isNullOrBlank()) " (${track.title})" else ""
+            
             val cb = CheckBox(context).apply {
-                text = context.getString(R.string.track_item_format, track.id, type, track.mimeType)
+                text = context.getString(R.string.track_item_format, track.id, typeWithEmoji, titleInfo, langInfo, track.mimeType)
                 isChecked = true
                 selectedTracks.add(track.id)
                 setOnCheckedChangeListener { _, isChecked ->
@@ -88,33 +94,32 @@ class ExportOptionsDialogPresenter(
         return selectedTracks
     }
 
-    private fun disableVideoExclusion(cbKeepVideo: CheckBox) {
-        cbKeepVideo.isEnabled = false
-        cbKeepVideo.alpha = DISABLED_ALPHA
-        cbKeepVideo.setOnClickListener {
-            Toast.makeText(context, context.getString(R.string.error_cannot_exclude_video), Toast.LENGTH_SHORT).show()
-        }
-    }
-
     private fun handleExportClick(
-        cbVideo: CheckBox,
-        cbAudio: CheckBox,
         cbMerge: CheckBox,
         state: VideoEditingUiState.Success,
         selectedTracks: Set<Int>
     ) {
-        val keepVideo = cbVideo.isChecked
-        val keepAudio = cbAudio.isChecked
-        val mergeSegments = cbMerge.isChecked
-        
-        if (!keepVideo && !keepAudio && selectedTracks.isEmpty()) {
+        if (selectedTracks.isEmpty() && state.availableTracks.isNotEmpty()) {
             Toast.makeText(context, context.getString(R.string.select_track_export), Toast.LENGTH_SHORT).show()
             return
         }
 
-        val trackList = if (selectedTracks.isNotEmpty() && state.availableTracks.size > MIN_TRACKS_FOR_SELECTION) {
-            selectedTracks.toList()
-        } else null
+        val trackList = if (selectedTracks.isNotEmpty()) selectedTracks.toList() else null
+        
+        // Derive keepVideo/keepAudio for file extension logic in ExportUseCase
+        val keepVideo = if (trackList != null) {
+            trackList.any { id -> state.availableTracks.find { it.id == id }?.isVideo == true }
+        } else {
+            true // default to true if no track info (safety)
+        }
+        
+        val keepAudio = if (trackList != null) {
+            trackList.any { id -> state.availableTracks.find { it.id == id }?.isAudio == true }
+        } else {
+            state.hasAudioTrack // default to existing
+        }
+
+        val mergeSegments = cbMerge.isChecked
         onExport(keepAudio, keepVideo, mergeSegments, trackList)
     }
 }

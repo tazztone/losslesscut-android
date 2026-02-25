@@ -6,48 +6,28 @@
     android:padding="24dp">
 
     <CheckBox
-        android:id="@+id/cbKeepVideo"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/include_video_track"
-        android:checked="true"
-        android:textSize="16sp"/>
-
-    <CheckBox
-        android:id="@+id/cbKeepAudio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/include_audio_track"
-        android:checked="true"
-        android:textSize="16sp"/>
-
-    <CheckBox
         android:id="@+id/cbMergeSegments"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/merge_keep_segments"
-        android:checked="false"
-        android:textSize="16sp"
-        android:visibility="gone"/>
+        android:checked="true"
+        android:textSize="16sp"/>
 
     <TextView
         android:id="@+id/tvTracksHeader"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="@string/select_tracks"
+        android:text="@string/tracks_header"
         android:textStyle="bold"
-        android:textSize="14sp"
-        android:visibility="gone"/>
+        android:textSize="14sp"/>
 
     <LinearLayout
         android:id="@+id/tracksContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_marginTop="8dp"
-        android:visibility="gone"/>
+        android:layout_marginTop="8dp"/>
 
 </LinearLayout>
