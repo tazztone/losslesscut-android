@@ -469,7 +469,7 @@ public class VideoEditingViewModel @Inject constructor(
             lastMinSegmentMs = config.minSegmentDurationMs
 
             _uiState.value = VideoEditingUiState.Loading(
-                UiText.StringResource(R.string.analyzing_video)
+                message = UiText.StringResource(R.string.analyzing_video)
             )
 
             try {
