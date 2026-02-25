@@ -39,6 +39,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
     override suspend fun createClipFromUri(uri: String): Result<MediaClip> = withContext(ioDispatcher) {
         val uriParsed = Uri.parse(uri)
         engine.getMediaMetadata(uri).map { meta ->
+            validateMimeCompatibility(meta.videoMime, meta.audioMime)
+
             MediaClip(
                 uri = uri,
                 fileName = storageUtils.getFileName(uriParsed),
@@ -234,5 +236,25 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     private fun getSessionId(uriString: String): String {
         return uriString.hashCode().toString()
+    }
+
+    private fun validateMimeCompatibility(videoMime: String?, audioMime: String?) {
+        val unsupportedAudio = setOf("audio/mpeg", "audio/flac", "audio/vorbis", "audio/ac3", "audio/eac3", "audio/opus")
+        val isAudioUnsupported = audioMime != null && unsupportedAudio.contains(audioMime.lowercase())
+        
+        require(!isAudioUnsupported) {
+            if (videoMime == null) {
+                "Unsupported audio format: $audioMime. Only AAC/M4A is supported for lossless remuxing."
+            } else {
+                "Unsupported audio format inside video: $audioMime. Lossless remuxing requires AAC."
+            }
+        }
+
+        val unsupportedVideo = setOf("video/x-vnd.on2.vp8", "video/x-vnd.on2.vp9", "video/av01")
+        val isVideoUnsupported = videoMime != null && unsupportedVideo.contains(videoMime.lowercase())
+        
+        require(!isVideoUnsupported) {
+            "Unsupported video format: $videoMime. Lossless remuxing requires H.264 or H.265."
+        }
     }
 }
