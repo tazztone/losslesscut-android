@@ -32,6 +32,7 @@ documentfile = "1.0.1"
 gson = "2.10.1"
 detekt = "1.23.8"
 javaxInject = "1"
+konsist = "0.17.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -76,6 +77,7 @@ androidx-documentfile = { group = "androidx.documentfile", name = "documentfile"
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version = "1.6.3" }
 javax-inject = { group = "javax.inject", name = "javax.inject", version.ref = "javaxInject" }
+konsist = { group = "com.lemonappdev", name = "konsist", version.ref = "konsist" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

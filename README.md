@@ -90,7 +90,8 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 - [ ] **AI Tools**: Integration of on-device ML for automatic scene change detection.
 - [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
-- [ ] **Multi-track Wizard**: Batch track stripping and extraction UI.
+- [ ] **Architectural Enforcement**: Implement Konsist testing to safeguard module boundaries in the CI pipeline.
+- [x] **Domain Purification**: Extracted standard JVM domain module for maximum portability and testability.
 - [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
 - [x] **Remux Utility**: Instant container switching.
 - [x] **Activity Decomposition**: Refactored major UI logic into specialized delegates.

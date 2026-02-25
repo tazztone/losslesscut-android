@@ -102,6 +102,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.konsist)
     testImplementation(libs.mockk.android)
     testImplementation(libs.hilt.android.testing)
     debugImplementation(libs.androidx.fragment.testing)

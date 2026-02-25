@@ -3,7 +3,7 @@
 ## 1. Architectural Boundaries (Build-Enforced)
 - **Storage (External)**: SAF/Scoped Storage ONLY for user-facing media. Pass URIs as `String`; use `DocumentFile`/`ContentResolver`. NO `java.io.File` for shared storage.
 - **Storage (Internal)**: App-private directories (`cacheDir`, `filesDir`) may use `java.io.File` — Scoped Storage does not apply.
-- **Modules**: `:core:domain` is a **Pure JVM library** (compiler-enforced; no Android/Hilt). `:app` has `runtimeOnly(:engine)`; do NOT import `:engine` directly from `:app`. Route through Hilt and `:core:domain` interfaces.
+- **Modules**: `:core:domain` is a **Pure JVM library** (compiler-enforced; no `androidx.*` or Hilt). `:app` has `runtimeOnly(:engine)`; do NOT import `:engine` directly from `:app`. Route through Hilt and `:core:domain` interfaces.
 - **Media**: `Media3/ExoPlayer` is strictly for playback UI in `:app`. Processing in `:engine` isolated from the data layer via `IMediaFinalizer`. Use `MediaExtractor`/`MediaMuxer` only.
 
 ## 2. UI & Compose Policy (Hybrid)
