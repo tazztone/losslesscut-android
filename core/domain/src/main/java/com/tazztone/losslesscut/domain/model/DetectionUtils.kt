@@ -50,14 +50,17 @@ public object DetectionUtils {
             if (isSilent) {
                 if (startBucket == -1) startBucket = i
             } else if (startBucket != -1) {
-                if (i - startBucket >= minSilenceBuckets) {
+                val durationBuckets = i - startBucket
+                val isAtStart = startBucket == 0
+                if (isAtStart || durationBuckets >= minSilenceBuckets) {
                     ranges.add((startBucket * msPerBucket).toLong()..(i * msPerBucket).toLong())
                 }
                 startBucket = -1
             }
         }
 
-        if (startBucket != -1 && waveform.size - startBucket >= minSilenceBuckets) {
+        if (startBucket != -1) {
+            // Silence that goes to the end is always included regardless of duration
             ranges.add((startBucket * msPerBucket).toLong()..totalDurationMs)
         }
         return ranges

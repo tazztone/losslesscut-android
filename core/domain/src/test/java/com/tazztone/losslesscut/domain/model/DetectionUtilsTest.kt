@@ -95,4 +95,26 @@ public class DetectionUtilsTest {
         assertEquals(50L..100L, silence[0])
         assertEquals(110L..200L, silence[1])
     }
+
+    @Test
+    public fun testFindSilence_boundaryExempt(): Unit = runTest {
+        // 100ms silence at start, noise in middle, 100ms silence at end
+        // Buckets of 10ms
+        val waveform = FloatArray(100) { i ->
+            if (i < 10 || i >= 90) 0.0f else 1.00f
+        }
+        val config = DetectionUtils.SilenceDetectionConfig(
+            threshold = 0.5f,
+            minSilenceMs = 1000, // Very strict! 
+            paddingStartMs = 0,
+            paddingEndMs = 0
+        )
+        
+        val ranges = DetectionUtils.findSilence(waveform, 1000L, config)
+        
+        // Both boundaries should be detected as silence despite being < 1000ms
+        assertEquals(2, ranges.size)
+        assertEquals(0L..100L, ranges[0])
+        assertEquals(900L..1000L, ranges[1])
+    }
 }
