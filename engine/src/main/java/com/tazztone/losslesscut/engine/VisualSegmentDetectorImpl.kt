@@ -19,14 +19,35 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sqrt
 
+@Suppress("MagicNumber")
 class VisualSegmentDetectorImpl @Inject constructor(
     private val dataSource: MediaDataSource
 ) : IVisualSegmentDetector {
 
+    private class DetectionContext(
+        val extractor: MediaExtractor,
+        val codec: MediaCodec,
+        val config: VisualDetectionConfig,
+        val detectedRanges: MutableList<TimeRangeMs> = mutableListOf()
+    ) {
+        var previousHash: Long? = null
+        var previousSmallY: ByteArray? = null
+        var currentHash: Long? = null
+        var currentSmallY: ByteArray? = null
+        var rangeStartUs: Long = -1L
+
+        var lastProcessedUs: Long = -1L
+        val sampleIntervalUs: Long = config.sampleIntervalMs * US_PER_MS
+        val info: MediaCodec.BufferInfo = MediaCodec.BufferInfo()
+
+        var sawInputEOS = false
+        var sawOutputEOS = false
+    }
+
     override suspend fun detect(uri: String, config: VisualDetectionConfig): List<TimeRangeMs> = withContext(Dispatchers.Default) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
-        val detectedRanges = mutableListOf<TimeRangeMs>()
+        var context: DetectionContext? = null
 
         try {
             dataSource.setExtractorSource(extractor, uri)
@@ -34,29 +55,29 @@ class VisualSegmentDetectorImpl @Inject constructor(
             if (trackIndex == -1) return@withContext emptyList()
 
             val format = extractor.getTrackFormat(trackIndex)
-            val durationUs = format.getLong(MediaFormat.KEY_DURATION)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext emptyList()
 
             codec = MediaCodec.createDecoderByType(mime)
-
-            // Configure for decode-only if supported (API 29+) to skip rendering
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
-
-            val flags = 0
-            codec.configure(format, null, null, flags)
+            codec.configure(format, null, null, NO_FLAGS)
             codec.start()
 
-            detectLoop(extractor, codec, config, durationUs, detectedRanges)
+            context = DetectionContext(extractor, codec, config)
+            detectLoop(context)
 
-        } catch (e: Exception) {
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             Log.e(TAG, "Error during visual detection", e)
         } finally {
-            try { codec?.stop() } catch (e: Exception) {}
-            try { codec?.release() } catch (e: Exception) {}
-            try { extractor.release() } catch (e: Exception) {}
+            cleanup(codec, extractor)
         }
 
-        return@withContext filterRanges(detectedRanges, config.minSegmentDurationMs)
+        return@withContext filterRanges(context?.detectedRanges ?: emptyList(), config.minSegmentDurationMs)
+    }
+
+    private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {
+        try { codec?.stop() } catch (_: Exception) {}
+        try { codec?.release() } catch (_: Exception) {}
+        try { extractor.release() } catch (_: Exception) {}
     }
 
     private fun selectVideoTrack(extractor: MediaExtractor): Int {
@@ -71,100 +92,84 @@ class VisualSegmentDetectorImpl @Inject constructor(
         return -1
     }
 
-    private fun detectLoop(
-        extractor: MediaExtractor,
-        codec: MediaCodec,
-        config: VisualDetectionConfig,
-        totalDurationUs: Long,
-        detectedRanges: MutableList<TimeRangeMs>
-    ) {
-        val info = MediaCodec.BufferInfo()
-        var sawInputEOS = false
-        var sawOutputEOS = false
-        val timeoutUs = 10000L
+    private fun detectLoop(ctx: DetectionContext) {
+        while (!ctx.sawOutputEOS) {
+            if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
-        var lastProcessedUs = -1L
-        val sampleIntervalUs = config.sampleIntervalMs * 1000L
-
-        var previousHash: Long? = null
-        var previousSmallY: ByteArray? = null
-
-        var rangeStartUs: Long = -1
-
-        while (!sawOutputEOS) {
-            if (!sawInputEOS) {
-                val inputBufferIndex = codec.dequeueInputBuffer(timeoutUs)
-                if (inputBufferIndex >= 0) {
-                    val inputBuffer = codec.getInputBuffer(inputBufferIndex)
-                    if (inputBuffer != null) {
-                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                        if (sampleSize < 0) {
-                            codec.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                            sawInputEOS = true
-                        } else {
-                            val time = extractor.sampleTime
-                            codec.queueInputBuffer(inputBufferIndex, 0, sampleSize, time, 0)
-                            extractor.advance()
-                        }
-                    }
-                }
-            }
-
-            val outputBufferIndex = codec.dequeueOutputBuffer(info, timeoutUs)
+            val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)
             if (outputBufferIndex >= 0) {
-                if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
-                    sawOutputEOS = true
-                }
-
-                if (info.size > 0) {
-                    val currentUs = info.presentationTimeUs
-
-                    if (lastProcessedUs == -1L || (currentUs - lastProcessedUs >= sampleIntervalUs)) {
-                        val outputBuffer = codec.getOutputBuffer(outputBufferIndex)
-                        val outputFormat = codec.getOutputFormat(outputBufferIndex)
-
-                        if (outputBuffer != null) {
-                            // Optimization: Calculate features once
-                            var currentHash: Long? = null
-                            var currentSmallY: ByteArray? = null
-
-                            if (config.strategy == VisualStrategy.SCENE_CHANGE) {
-                                currentHash = calculatePHash(outputBuffer, outputFormat, info)
-                            } else if (config.strategy == VisualStrategy.FREEZE_FRAME) {
-                                currentSmallY = downscaleY(outputBuffer, outputFormat, info, 32, 32)
-                            }
-
-                            val isMatch = processFrame(
-                                outputBuffer, outputFormat, info, config,
-                                currentHash, currentSmallY, previousHash, previousSmallY
-                            )
-
-                            // Update state
-                            if (currentHash != null) previousHash = currentHash
-                            if (currentSmallY != null) previousSmallY = currentSmallY
-
-                            if (isMatch) {
-                                if (rangeStartUs == -1L) {
-                                    rangeStartUs = currentUs
-                                }
-                            } else {
-                                if (rangeStartUs != -1L) {
-                                    detectedRanges.add((rangeStartUs / 1000)..(lastProcessedUs / 1000))
-                                    rangeStartUs = -1L
-                                }
-                            }
-                            lastProcessedUs = currentUs
-                        }
-                    }
-                }
-                codec.releaseOutputBuffer(outputBufferIndex, false)
+                processOutputBufferResult(ctx, outputBufferIndex)
             } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                // Handle format change
+                // Ignore
             }
         }
 
-        if (rangeStartUs != -1L) {
-            detectedRanges.add((rangeStartUs / 1000)..(lastProcessedUs / 1000))
+        if (ctx.rangeStartUs != -1L) {
+            ctx.detectedRanges.add((ctx.rangeStartUs / US_PER_MS)..(ctx.lastProcessedUs / US_PER_MS))
+        }
+    }
+
+    private fun processOutputBufferResult(ctx: DetectionContext, index: Int) {
+        if (ctx.info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
+            ctx.sawOutputEOS = true
+        }
+
+        if (ctx.info.size > 0) {
+            val currentUs = ctx.info.presentationTimeUs
+            if (shouldProcess(ctx.lastProcessedUs, currentUs, ctx.sampleIntervalUs)) {
+                processOutputBuffer(ctx, index)
+                ctx.lastProcessedUs = currentUs
+            }
+        }
+        ctx.codec.releaseOutputBuffer(index, false)
+    }
+
+    private fun feedInput(ctx: DetectionContext): Boolean {
+        val inputBufferIndex = ctx.codec.dequeueInputBuffer(TIMEOUT_US)
+        if (inputBufferIndex >= 0) {
+            val inputBuffer = ctx.codec.getInputBuffer(inputBufferIndex) ?: return false
+            val sampleSize = ctx.extractor.readSampleData(inputBuffer, 0)
+            if (sampleSize < 0) {
+                ctx.codec.queueInputBuffer(inputBufferIndex, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                return true
+            }
+            ctx.codec.queueInputBuffer(inputBufferIndex, 0, sampleSize, ctx.extractor.sampleTime, 0)
+            ctx.extractor.advance()
+        }
+        return false
+    }
+
+    private fun shouldProcess(lastProcessedUs: Long, currentUs: Long, intervalUs: Long): Boolean {
+        return lastProcessedUs == -1L || (currentUs - lastProcessedUs >= intervalUs)
+    }
+
+    private fun processOutputBuffer(ctx: DetectionContext, index: Int) {
+        val outputBuffer = ctx.codec.getOutputBuffer(index)
+        val outputFormat = ctx.codec.getOutputFormat(index)
+
+        if (outputBuffer != null) {
+            ctx.currentHash = null
+            ctx.currentSmallY = null
+
+            if (ctx.config.strategy == VisualStrategy.SCENE_CHANGE) {
+                ctx.currentHash = calculatePHash(outputBuffer, outputFormat, ctx.info)
+            } else if (ctx.config.strategy == VisualStrategy.FREEZE_FRAME) {
+                ctx.currentSmallY = downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
+            }
+
+            val isMatch = processFrame(outputBuffer, outputFormat, ctx.info, ctx.config, ctx)
+
+            if (ctx.currentHash != null) ctx.previousHash = ctx.currentHash
+            if (ctx.currentSmallY != null) ctx.previousSmallY = ctx.currentSmallY
+
+            if (isMatch) {
+                if (ctx.rangeStartUs == -1L) ctx.rangeStartUs = ctx.info.presentationTimeUs
+            } else {
+                if (ctx.rangeStartUs != -1L) {
+                    ctx.detectedRanges.add((ctx.rangeStartUs / US_PER_MS)..(ctx.info.presentationTimeUs / US_PER_MS))
+                    ctx.rangeStartUs = -1L
+                }
+            }
         }
     }
 
@@ -173,42 +178,37 @@ class VisualSegmentDetectorImpl @Inject constructor(
         format: MediaFormat,
         info: MediaCodec.BufferInfo,
         config: VisualDetectionConfig,
-        currentHash: Long?,
-        currentSmallY: ByteArray?,
-        previousHash: Long?,
-        previousSmallY: ByteArray?
+        ctx: DetectionContext
     ): Boolean {
         return when (config.strategy) {
             VisualStrategy.BLACK_FRAMES -> isBlackFrame(buffer, format, info, config.sensitivityThreshold)
             VisualStrategy.BLUR_QUALITY -> isBlurry(buffer, format, info, config.sensitivityThreshold)
-            VisualStrategy.SCENE_CHANGE -> isSceneChange(config.sensitivityThreshold, currentHash, previousHash)
-            VisualStrategy.FREEZE_FRAME -> isFreezeFrame(config.sensitivityThreshold, currentSmallY, previousSmallY)
+            VisualStrategy.SCENE_CHANGE -> isSceneChange(config.sensitivityThreshold, ctx.currentHash, ctx.previousHash)
+            VisualStrategy.FREEZE_FRAME -> isFreezeFrame(config.sensitivityThreshold, ctx.currentSmallY, ctx.previousSmallY)
         }
     }
 
+    @Suppress("MagicNumber")
     private fun isBlackFrame(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, threshold: Float): Boolean {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
         val stride = if (format.containsKey(MediaFormat.KEY_STRIDE)) format.getInteger(MediaFormat.KEY_STRIDE) else width
 
         var sum = 0L
-        val stepX = 10
-        val stepY = 10
-
         var count = 0
-        for (y in 0 until height step stepY) {
+        for (y in 0 until height step STEP_Y) {
             val rowStart = info.offset + y * stride
             if (rowStart >= buffer.limit()) break
-            for (x in 0 until width step stepX) {
+            for (x in 0 until width step STEP_X) {
                 val idx = rowStart + x
                 if (idx < buffer.limit()) {
-                    sum += buffer.get(idx).toInt() and 0xFF
+                    sum += buffer.get(idx).toInt() and PIXEL_MASK
                     count++
                 }
             }
         }
 
-        val mean = if (count > 0) sum.toDouble() / count else 255.0
+        val mean = if (count > MIN_COUNT) sum.toDouble() / count else MAX_LUMA
         return mean < threshold
     }
 
@@ -224,13 +224,13 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
         for (y in 1 until h - 1) {
             for (x in 1 until w - 1) {
-                val p = downscaled[y * w + x].toInt() and 0xFF
-                val pUp = downscaled[(y - 1) * w + x].toInt() and 0xFF
-                val pDown = downscaled[(y + 1) * w + x].toInt() and 0xFF
-                val pLeft = downscaled[y * w + (x - 1)].toInt() and 0xFF
-                val pRight = downscaled[y * w + (x + 1)].toInt() and 0xFF
+                val p = downscaled[y * w + x].toInt() and PIXEL_MASK
+                val pUp = downscaled[(y - 1) * w + x].toInt() and PIXEL_MASK
+                val pDown = downscaled[(y + 1) * w + x].toInt() and PIXEL_MASK
+                val pLeft = downscaled[y * w + (x - 1)].toInt() and PIXEL_MASK
+                val pRight = downscaled[y * w + (x + 1)].toInt() and PIXEL_MASK
 
-                val lap = pUp + pDown + pLeft + pRight - 4 * p
+                val lap = pUp + pDown + pLeft + pRight - LAPLACIAN_CENTER_WEIGHT * p
                 sumVar += lap
                 sumSqVar += lap * lap
                 count++
@@ -263,7 +263,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
         var sad = 0L
         for (i in currentSmallY.indices) {
-            sad += abs((currentSmallY[i].toInt() and 0xFF) - (previousSmallY[i].toInt() and 0xFF))
+            sad += abs((currentSmallY[i].toInt() and PIXEL_MASK) - (previousSmallY[i].toInt() and PIXEL_MASK))
         }
         val meanDiff = sad.toDouble() / currentSmallY.size
 
@@ -280,14 +280,14 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
         val out = ByteArray(targetW * finalH)
 
-        val xRatio = (width shl 16) / targetW
-        val yRatio = (height shl 16) / finalH
+        val xRatio = (width shl FIXED_POINT_SHIFT) / targetW
+        val yRatio = (height shl FIXED_POINT_SHIFT) / finalH
 
         for (y in 0 until finalH) {
-            val srcY = (y * yRatio) shr 16
+            val srcY = (y * yRatio) shr FIXED_POINT_SHIFT
             val rowOffset = info.offset + srcY * stride
             for (x in 0 until targetW) {
-                val srcX = (x * xRatio) shr 16
+                val srcX = (x * xRatio) shr FIXED_POINT_SHIFT
                 val offset = rowOffset + srcX
                 if (offset < buffer.limit()) {
                     out[y * targetW + x] = buffer.get(offset)
@@ -298,46 +298,46 @@ class VisualSegmentDetectorImpl @Inject constructor(
     }
 
     private fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
-        val small = downscaleY(buffer, format, info, 32, 32)
+        val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
 
-        val vals = DoubleArray(32 * 32)
-        for (i in small.indices) vals[i] = (small[i].toInt() and 0xFF).toDouble()
+        val vals = DoubleArray(DOWNSCALE_SIZE * DOWNSCALE_SIZE)
+        for (i in small.indices) vals[i] = (small[i].toInt() and PIXEL_MASK).toDouble()
 
-        val rowTransformed = Array(32) { DoubleArray(8) }
-        val c = DoubleArray(32)
+        val rowTransformed = Array(DOWNSCALE_SIZE) { DoubleArray(DCT_SIZE) }
+        val c = DoubleArray(DOWNSCALE_SIZE)
         c[0] = 1.0 / sqrt(2.0)
-        for (i in 1 until 32) c[i] = 1.0
+        for (i in 1 until DOWNSCALE_SIZE) c[i] = 1.0
 
-        for (y in 0 until 32) {
-            for (u in 0 until 8) {
+        for (y in 0 until DOWNSCALE_SIZE) {
+            for (u in 0 until DCT_SIZE) {
                 var sum = 0.0
-                for (x in 0 until 32) {
-                     sum += vals[y * 32 + x] * cos((2 * x + 1) * u * Math.PI / 64.0)
+                for (x in 0 until DOWNSCALE_SIZE) {
+                     sum += vals[y * DOWNSCALE_SIZE + x] * cos((2 * x + 1) * u * Math.PI / DCT_DENOMINATOR)
                 }
-                rowTransformed[y][u] = 0.25 * c[u] * sum
+                rowTransformed[y][u] = DCT_SCALE * c[u] * sum
             }
         }
 
-        val finalDct = DoubleArray(64)
-        for (u in 0 until 8) {
-            for (v in 0 until 8) {
+        val finalDct = DoubleArray(PHASH_SIZE)
+        for (u in 0 until DCT_SIZE) {
+            for (v in 0 until DCT_SIZE) {
                 var sum = 0.0
-                for (y in 0 until 32) {
-                    sum += rowTransformed[y][u] * cos((2 * y + 1) * v * Math.PI / 64.0)
+                for (y in 0 until DOWNSCALE_SIZE) {
+                    sum += rowTransformed[y][u] * cos((2 * y + 1) * v * Math.PI / DCT_DENOMINATOR)
                 }
-                finalDct[v * 8 + u] = 0.25 * c[v] * sum
+                finalDct[v * DCT_SIZE + u] = DCT_SCALE * c[v] * sum
             }
         }
 
         val acValues = mutableListOf<Double>()
-        for (i in 1 until 64) {
+        for (i in 1 until PHASH_SIZE) {
             acValues.add(finalDct[i])
         }
         acValues.sort()
         val median = acValues[acValues.size / 2]
 
         var hash = 0L
-        for (i in 0 until 64) {
+        for (i in 0 until PHASH_SIZE) {
             val bit = if (finalDct[i] > median) 1L else 0L
             hash = hash or (bit shl i)
         }
@@ -350,5 +350,20 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
     companion object {
         private const val TAG = "VisualSegmentDetector"
+        private const val TIMEOUT_US = 10000L
+        private const val US_PER_MS = 1000L
+        private const val DOWNSCALE_SIZE = 32
+        private const val DCT_SIZE = 8
+        private const val PHASH_SIZE = 64
+        private const val FIXED_POINT_SHIFT = 16
+        private const val MAX_LUMA = 255.0
+        private const val DCT_SCALE = 0.25
+        private const val PIXEL_MASK = 0xFF
+        private const val STEP_X = 10
+        private const val STEP_Y = 10
+        private const val LAPLACIAN_CENTER_WEIGHT = 4
+        private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
+        private const val NO_FLAGS = 0
+        private const val MIN_COUNT = 0
     }
 }

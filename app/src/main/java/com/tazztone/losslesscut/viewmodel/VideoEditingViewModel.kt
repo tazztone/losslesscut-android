@@ -476,7 +476,7 @@ public class VideoEditingViewModel @Inject constructor(
                 val ranges = useCases.visualSegmentDetector.detect(clip.uri, config)
                 _silencePreviewRanges.value = ranges
                 _rawSilencePreviewRanges.value = null // Visual detection doesn't have intermediate stages yet
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
                 _silencePreviewRanges.value = emptyList()
             } finally {
