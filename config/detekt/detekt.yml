@@ -107,7 +107,7 @@ complexity:
   CyclomaticComplexMethod:
     active: true
     threshold: 15
-    ignoreSingleWhenExpression: false
+    ignoreSingleWhenExpression: true
     ignoreSimpleWhenEntries: false
     ignoreNestingFunctions: false
     nestingFunctions:
@@ -129,6 +129,7 @@ complexity:
   LongMethod:
     active: true
     threshold: 60
+    ignoreAnnotated: ['Composable']
   LongParameterList:
     active: true
     functionThreshold: 6
@@ -136,6 +137,7 @@ complexity:
     ignoreDefaultParameters: false
     ignoreDataClasses: true
     ignoreAnnotatedParameter: []
+    ignoreAnnotated: ['Composable']
   MethodOverloading:
     active: false
     threshold: 6
@@ -180,7 +182,7 @@ complexity:
 coroutines:
   active: true
   GlobalCoroutineUsage:
-    active: false
+    active: true
   InjectDispatcher:
     active: true
     dispatcherNames:
@@ -217,7 +219,7 @@ empty-blocks:
     active: true
   EmptyFunctionBlock:
     active: true
-    ignoreOverridden: false
+    ignoreOverridden: true
   EmptyIfBlock:
     active: true
   EmptyInitBlock:
@@ -334,6 +336,7 @@ naming:
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/androidUnitTest/**', '**/androidInstrumentedTest/**', '**/jsTest/**', '**/iosTest/**']
     functionPattern: '[a-z][a-zA-Z0-9]*'
     excludeClassPattern: '$^'
+    ignoreAnnotated: ['Composable']
   FunctionParameterNaming:
     active: true
     parameterPattern: '[a-z][A-Za-z0-9]*'
