@@ -157,7 +157,7 @@ public class VideoEditingConcurrencyTest {
         }
         
         coEvery { mockRepo.loadWaveformFromCache(any()) } answers {
-            WaveformResult(floatArrayOf(0.1f, 0.1f, 0.1f, 0.1f, 0.1f), 0.1f, 10000L)
+            WaveformResult(floatArrayOf(0.1f, 0.1f, 0.1f, 0.1f, 0.1f), 0.1f, 20000L)
         }
 
         viewModel.initialize(listOf(Uri.parse(uri0), Uri.parse(uri1)))
