@@ -28,6 +28,7 @@ public class VideoEditingConcurrencyTest {
     private val mockRepo = mockk<IVideoEditingRepository>(relaxed = true)
     private val mockPrefs = mockk<AppPreferences>(relaxed = true)
     private val mockExportUseCase = mockk<ExportUseCase>(relaxed = true)
+    private val mockVisualDetector = mockk<IVisualSegmentDetector>(relaxed = true)
     
     private lateinit var viewModel: VideoEditingViewModel
 
@@ -44,7 +45,8 @@ public class VideoEditingConcurrencyTest {
             mockExportUseCase,
             ExtractSnapshotUseCase(mockRepo, testDispatcher),
             SilenceDetectionUseCase(mockRepo, testDispatcher),
-            SessionUseCase(mockRepo, testDispatcher)
+            SessionUseCase(mockRepo, testDispatcher),
+            mockVisualDetector
         )
         
         viewModel = VideoEditingViewModel(
