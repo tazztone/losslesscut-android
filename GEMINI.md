@@ -1,15 +1,14 @@
 # LosslessCut Android — Agent Rules
 
-## Hard Rules
+## Hard Boundaries & Traps
 - **No `java.io.File`**: All I/O is SAF/Scoped Storage. Pass URIs as `String`; use `DocumentFile`/`ContentResolver`.
-- **UI System**: The project uses XML ViewBinding. DO NOT generate Jetpack Compose code.
-- **`:core:domain` is pure Kotlin**: zero Android imports. Use `ByteArray` for images.
-- **Media3 / ExoPlayer**: Allowed ONLY in `:app` for UI playback. `:engine` must strictly use native `MediaExtractor`/`MediaMuxer`.
+- **No Jetpack Compose**: The project uses XML ViewBinding strictly. 
+- **`:core:domain` Isolation**: Pure Kotlin only. Zero Android imports allowed (e.g., use `ByteArray` for images).
 - **Injection Trap**: `:app` uses `runtimeOnly` on `:engine`. You cannot import `:engine` classes into `:app`. Use `:core:domain` interfaces bound via Hilt.
-- **Activity is just a Host**: `VideoEditingActivity` routes via Jetpack Navigation. Put all UI logic in Fragments.
-- **State & Concurrency**: Use Coroutines (`viewModelScope`, `IoDispatcher`). Use `StateFlow` for state and `Channel` for one-time events in ViewModels. No RxJava or LiveData.
-- **`LosslessEngineImpl` is a legacy God Class**: shrink it, never add to it.
+- **Media3 / ExoPlayer**: Allowed ONLY in `:app` for UI playback. `:engine` must strictly use native `MediaExtractor`/`MediaMuxer`.
 
-## CI & Testing Gates
-- **Static Analysis**: `./gradlew test detekt lint` — `maxIssues: 0` blocks merges. Suppress `@UnstableApi` for Media3 when necessary.
-- **Testing Stack**: Use JUnit4, MockK, Robolectric, and `kotlinx-coroutines-test`. Do not use Mockito.
+## Detekt & Code Quality
+- **Keep Methods Small**: Touch events (`handleActionMove`) and drawing logic get complex fast. Extract logic into small helper functions immediately to avoid `CyclomaticComplexMethod`.
+- **Flatten Code**: Use early returns (guard clauses) to avoid `NestedBlockDepth`. Extract complex conditions into well-named local boolean variables.
+- **Formatting**: Use trailing commas and put arguments on new lines to avoid `MaxLineLength` violations.
+- **Validation**: After generating code, run `./gradlew test detekt lint` and iteratively fix any flagged lines to ensure `maxIssues: 0`.
