@@ -178,14 +178,12 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         bridgedNoisePaint.color = Color.argb(0x88, r, g, b)
     }
 
+    private val waveformCache = WaveformCache()
+
     fun drawWaveform(canvas: Canvas) {
-        seeker.waveformData?.let { data ->
+        seeker.waveformData?.let {
             val midY = seeker.height / 2f
             val maxAvailableHeight = midY * WAVEFORM_HEIGHT_SCALE
-            val timelineStart = seeker.timeToX(0).toInt()
-            val timelineEnd = seeker.timeToX(seeker.videoDurationMs).toInt()
-            val startPx = (seeker.scrollOffsetX.toInt()).coerceAtLeast(timelineStart)
-            val endPx = (seeker.scrollOffsetX + seeker.width).toInt().coerceAtMost(timelineEnd)
 
             seeker.noiseThresholdPreview?.let { threshold ->
                 val thresholdH = (threshold * maxAvailableHeight).coerceIn(1f, maxAvailableHeight)
@@ -196,15 +194,105 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
                 )
             }
 
-            for (px in startPx..endPx) {
-                val timeMs = seeker.xToTime(px.toFloat())
-                val bucketIdx = ((timeMs.toDouble() / seeker.videoDurationMs) * (data.size - 1))
-                    .toInt().coerceIn(0, data.size - 1)
+            waveformCache.draw(canvas)
+        }
+    }
+
+    private inner class WaveformCache {
+        private val TILE_SIZE = 2048
+        // Keep ~50MB of bitmaps (2048 * 200 * 4 ~= 1.6MB per tile -> 30 tiles)
+        private val cache = android.util.LruCache<Int, android.graphics.Bitmap>(30)
+
+        private var lastData: FloatArray? = null
+        private var lastZoom: Float = -1f
+        private var lastHeight: Int = -1
+        private var lastWidth: Int = -1
+        private var lastColor: Int = -1
+
+        fun draw(canvas: Canvas) {
+            val currentData = seeker.waveformData ?: return
+            val currentZoom = seeker.zoomFactor
+            val currentHeight = seeker.height
+            val currentWidth = seeker.width
+            val currentColor = waveformPaint.color
+
+            if (lastData !== currentData ||
+                lastZoom != currentZoom ||
+                lastHeight != currentHeight ||
+                lastWidth != currentWidth ||
+                lastColor != currentColor
+            ) {
+                cache.evictAll()
+                lastData = currentData
+                lastZoom = currentZoom
+                lastHeight = currentHeight
+                lastWidth = currentWidth
+                lastColor = currentColor
+            }
+
+            val timelineStart = seeker.timeToX(0).toInt()
+            val timelineEnd = seeker.timeToX(seeker.videoDurationMs).toInt()
+
+            val visibleStart = seeker.scrollOffsetX.toInt()
+            val visibleEnd = (seeker.scrollOffsetX + seeker.width).toInt()
+
+            val drawStart = visibleStart.coerceAtLeast(timelineStart)
+            val drawEnd = visibleEnd.coerceAtMost(timelineEnd)
+
+            if (drawStart >= drawEnd) return
+
+            val startTile = drawStart / TILE_SIZE
+            val endTile = drawEnd / TILE_SIZE
+
+            for (i in startTile..endTile) {
+                var bitmap = cache.get(i)
+                if (bitmap == null || bitmap.isRecycled) {
+                    bitmap = generateTile(i, currentData, timelineStart, timelineEnd)
+                    cache.put(i, bitmap)
+                }
+                canvas.drawBitmap(bitmap, (i * TILE_SIZE).toFloat(), 0f, null)
+            }
+        }
+
+        private fun generateTile(index: Int, data: FloatArray, timelineStart: Int, timelineEnd: Int): android.graphics.Bitmap {
+            val height = seeker.height.coerceAtLeast(1)
+            val bitmap = android.graphics.Bitmap.createBitmap(TILE_SIZE, height, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+
+            val tileStartPx = index * TILE_SIZE
+            val tileEndPx = (index + 1) * TILE_SIZE
+
+            // Translate so we can draw using world coordinates relative to the tile start
+            canvas.translate(-tileStartPx.toFloat(), 0f)
+
+            // Optimized math logic
+            val midY = height / 2f
+            val maxAvailableHeight = midY * WAVEFORM_HEIGHT_SCALE
+
+            // Calculate effective range for this tile
+            val loopStart = tileStartPx.coerceAtLeast(timelineStart)
+            val loopEnd = (tileEndPx - 1).coerceAtMost(timelineEnd)
+
+            if (loopStart > loopEnd) return bitmap
+
+            // Math optimization: map pixel to index directly
+            // availableWidth = timelineEnd - timelineStart
+            // bucketIdx = ((px - timelineStart) / availableWidth) * (data.size - 1)
+            val availableWidth = (timelineEnd - timelineStart).toFloat()
+            if (availableWidth <= 0) return bitmap
+
+            val samplesPerPixel = (data.size - 1) / availableWidth
+
+            for (px in loopStart..loopEnd) {
+                val bucketIdx = ((px - timelineStart) * samplesPerPixel).toInt().coerceIn(0, data.size - 1)
                 val amp = data[bucketIdx]
                 val amplifiedAmp = if (amp < WAVEFORM_MIN_AMP_THRESHOLD) WAVEFORM_MIN_AMP_VALUE else amp
                 val barHalf = (amplifiedAmp * maxAvailableHeight).coerceIn(WAVEFORM_BAR_MIN_HALF, maxAvailableHeight)
+
                 canvas.drawLine(px.toFloat(), midY - barHalf, px.toFloat(), midY + barHalf, waveformPaint)
             }
+
+            return bitmap
         }
     }
 
