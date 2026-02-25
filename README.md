@@ -1,9 +1,9 @@
-# LosslessCut Android
+# LosslessCut (MP4)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=26)
 
-**LosslessCut** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating media containers directly, it preserves original quality and processes files at lightning speed without re-encoding.
+**LosslessCut (MP4)** is a high-performance, open-source Android application for **instant, lossless media trimming and merging** of MPEG-4 containers. By manipulating `.mp4` and `.m4a` files directly, it preserves original quality (H.264, H.265, AAC) and processes files at lightning speed without re-encoding.
 
 <p align="center">
   <img src="docs/images/ic_banner.webp" width="400" alt="LosslessCut Banner">
