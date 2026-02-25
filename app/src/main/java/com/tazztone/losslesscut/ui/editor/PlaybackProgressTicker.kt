@@ -23,7 +23,7 @@ class PlaybackProgressTicker(
     var isDraggingTimeline = false
 
     companion object {
-        private const val UPDATE_DELAY_MS = 30L
+        private const val UPDATE_DELAY_MS = 16L
     }
 
     fun start() {

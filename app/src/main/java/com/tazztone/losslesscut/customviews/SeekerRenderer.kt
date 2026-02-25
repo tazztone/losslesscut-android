@@ -144,6 +144,10 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         textAlign = Paint.Align.CENTER
     }
 
+    private val zoomHintBgRect = RectF()
+    private val playheadHandleRect = RectF()
+    private val bitmapPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+
     private val ghostRenderer = SeekerGhostRenderer(seeker, this)
 
     val fingerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -245,7 +249,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
                     bitmap = generateTile(i, currentData, timelineStart, timelineEnd)
                     cache.put(i, bitmap)
                 }
-                canvas.drawBitmap(bitmap, (i * CACHE_TILE_SIZE).toFloat(), 0f, null)
+                canvas.drawBitmap(bitmap, (i * CACHE_TILE_SIZE).toFloat(), 0f, bitmapPaint)
             }
         }
 
@@ -376,11 +380,11 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         val seekX = seeker.timeToX(seeker.seekPositionMs)
         canvas.drawLine(seekX, 0f, seekX, seeker.height.toFloat(), playheadPaint)
 
-        val handleRect = RectF(
+        playheadHandleRect.set(
             seekX - PLAYHEAD_HANDLE_WIDTH / 2, 0f,
             seekX + PLAYHEAD_HANDLE_WIDTH / 2, PLAYHEAD_HANDLE_HEIGHT
         )
-        canvas.drawRoundRect(handleRect, PLAYHEAD_ROUND_RECT_RADIUS, PLAYHEAD_ROUND_RECT_RADIUS, playheadTrianglePaint)
+        canvas.drawRoundRect(playheadHandleRect, PLAYHEAD_ROUND_RECT_RADIUS, PLAYHEAD_ROUND_RECT_RADIUS, playheadTrianglePaint)
 
         playheadPath.reset()
         playheadPath.moveTo(seekX - PLAYHEAD_ARROW_SIDE, PLAYHEAD_ARROW_SIDE)
@@ -401,11 +405,11 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         
         // Draw a rounded rect background
         val padding = ZOOM_HINT_PADDING
-        val bgRect = RectF(
+        zoomHintBgRect.set(
             px - textWidth / 2 - padding, py - textHeight - padding / 2,
             px + textWidth / 2 + padding, py + padding / 2
         )
-        canvas.drawRoundRect(bgRect, ZOOM_HINT_BG_RADIUS, ZOOM_HINT_BG_RADIUS, zoomHintBgPaint)
+        canvas.drawRoundRect(zoomHintBgRect, ZOOM_HINT_BG_RADIUS, ZOOM_HINT_BG_RADIUS, zoomHintBgPaint)
         
         canvas.drawText(text, px, py, zoomHintPaint)
 
