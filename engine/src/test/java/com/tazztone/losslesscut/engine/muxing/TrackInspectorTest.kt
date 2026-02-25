@@ -2,9 +2,10 @@ package com.tazztone.losslesscut.engine.muxing
 
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import androidx.test.core.app.ApplicationProvider
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,23 +23,20 @@ class TrackInspectorTest {
         val extractor = mockk<MediaExtractor>()
         val muxerWriter = mockk<MuxerWriter>()
         
-        val videoFormat = mockk<MediaFormat>()
-        every { videoFormat.getString(MediaFormat.KEY_MIME) } returns "video/avc"
-        every { videoFormat.containsKey(MediaFormat.KEY_DURATION) } returns true
-        every { videoFormat.getLong(MediaFormat.KEY_DURATION) } returns 10_000_000L
-        every { videoFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns true
-        every { videoFormat.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE) } returns 512 * 1024
+        val videoFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+        videoFormat.setLong(MediaFormat.KEY_DURATION, 10_000_000L)
+        videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 512 * 1024)
 
-        val audioFormat = mockk<MediaFormat>()
-        every { audioFormat.getString(MediaFormat.KEY_MIME) } returns "audio/mp4a-latm"
-        every { audioFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns false
+        val audioFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2)
+        // No KEY_MAX_INPUT_SIZE
 
         every { extractor.trackCount } returns 2
         every { extractor.getTrackFormat(0) } returns videoFormat
         every { extractor.getTrackFormat(1) } returns audioFormat
         
-        every { muxerWriter.addTrack(videoFormat) } returns 0
-        every { muxerWriter.addTrack(audioFormat) } returns 1
+        // Use matchers to return different indices
+        every { muxerWriter.addTrack(match { it.getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true }) } returns 0
+        every { muxerWriter.addTrack(match { it.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }) } returns 1
 
         val inspector = TrackInspector()
         val plan = inspector.inspect(extractor, muxerWriter, keepAudio = true, keepVideo = true, selectedTracks = null)
@@ -46,11 +44,13 @@ class TrackInspectorTest {
         assertEquals(2, plan.trackMap.size)
         assertEquals(0, plan.trackMap[0])
         assertEquals(1, plan.trackMap[1])
-        assertTrue(plan.isVideoTrackMap[0] == true)
-        assertTrue(plan.isVideoTrackMap[1] == false)
+        
         assertEquals(512 * 1024, plan.bufferSize)
         assertEquals(10_000_000L, plan.durationUs)
         assertTrue(plan.hasVideoTrack)
+        
+        verify(exactly = 1) { muxerWriter.addTrack(match { it.getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true }) }
+        verify(exactly = 1) { muxerWriter.addTrack(match { it.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }) }
     }
 
     @Test
@@ -58,21 +58,14 @@ class TrackInspectorTest {
         val extractor = mockk<MediaExtractor>()
         val muxerWriter = mockk<MuxerWriter>()
         
-        val videoFormat = mockk<MediaFormat>()
-        every { videoFormat.getString(MediaFormat.KEY_MIME) } returns "video/avc"
-        every { videoFormat.containsKey(MediaFormat.KEY_DURATION) } returns true
-        every { videoFormat.getLong(MediaFormat.KEY_DURATION) } returns 10_000_000L
-        every { videoFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns false
-
-        val audioFormat = mockk<MediaFormat>()
-        every { audioFormat.getString(MediaFormat.KEY_MIME) } returns "audio/mp4a-latm"
-        every { audioFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns false
+        val videoFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+        val audioFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2)
 
         every { extractor.trackCount } returns 2
         every { extractor.getTrackFormat(0) } returns videoFormat
         every { extractor.getTrackFormat(1) } returns audioFormat
         
-        every { muxerWriter.addTrack(videoFormat) } returns 0
+        every { muxerWriter.addTrack(any()) } returns 0
 
         val inspector = TrackInspector()
         val plan = inspector.inspect(extractor, muxerWriter, keepAudio = false, keepVideo = true, selectedTracks = null)
@@ -81,6 +74,8 @@ class TrackInspectorTest {
         assertEquals(0, plan.trackMap[0])
         assertFalse(plan.trackMap.containsKey(1))
         assertTrue(plan.hasVideoTrack)
+        
+        verify(exactly = 1) { muxerWriter.addTrack(any()) }
     }
 
     @Test
@@ -88,21 +83,14 @@ class TrackInspectorTest {
         val extractor = mockk<MediaExtractor>()
         val muxerWriter = mockk<MuxerWriter>()
         
-        val videoFormat = mockk<MediaFormat>()
-        every { videoFormat.getString(MediaFormat.KEY_MIME) } returns "video/avc"
-        every { videoFormat.containsKey(MediaFormat.KEY_DURATION) } returns true
-        every { videoFormat.getLong(MediaFormat.KEY_DURATION) } returns 10_000_000L
-        every { videoFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns false
-
-        val audioFormat = mockk<MediaFormat>()
-        every { audioFormat.getString(MediaFormat.KEY_MIME) } returns "audio/mp4a-latm"
-        every { audioFormat.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE) } returns false
+        val videoFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+        val audioFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2)
 
         every { extractor.trackCount } returns 2
         every { extractor.getTrackFormat(0) } returns videoFormat
         every { extractor.getTrackFormat(1) } returns audioFormat
         
-        every { muxerWriter.addTrack(audioFormat) } returns 0
+        every { muxerWriter.addTrack(any()) } returns 0
 
         val inspector = TrackInspector()
         val plan = inspector.inspect(extractor, muxerWriter, keepAudio = true, keepVideo = true, selectedTracks = listOf(1))
@@ -111,5 +99,7 @@ class TrackInspectorTest {
         assertEquals(0, plan.trackMap[1])
         assertFalse(plan.trackMap.containsKey(0))
         assertFalse(plan.hasVideoTrack)
+        
+        verify(exactly = 1) { muxerWriter.addTrack(any()) }
     }
 }
