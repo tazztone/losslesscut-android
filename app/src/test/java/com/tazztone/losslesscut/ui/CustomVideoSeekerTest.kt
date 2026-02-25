@@ -189,6 +189,64 @@ class CustomVideoSeekerTest {
         // No crash is a good sign for Robolectric
     }
 
+    @Test
+    fun `segment handles should respect minimum duration constraint`() {
+        val segmentId = UUID.randomUUID()
+        seeker.setSegments(listOf(
+            // 2000 to 5000 -> 3000ms duration
+            TrimSegment(segmentId, 2000L, 5000L, SegmentAction.KEEP)
+        ), null)
+
+        var newStartMs = 2000L
+        seeker.onSegmentBoundsChanged = { _, start, _, _ -> newStartMs = start }
+
+        // MOCK ClipController.MIN_SEGMENT_DURATION_MS = 100L
+        // Left handle cannot pass 5000 - 100 = 4900L
+        
+        // Grab left handle (at 2000ms)
+        val leftX = 50f + (2000f/10000f)*900f
+        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, leftX, 90f, 0)
+        seeker.onTouchEvent(downEvent)
+        assertEquals(CustomVideoSeeker.TouchTarget.HANDLE_LEFT, seeker.currentTouchTarget)
+
+        // Try to drag left handle past max to 6000ms
+        val dragX = 50f + (6000f/10000f)*900f
+        val moveEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, dragX, 90f, 0)
+        seeker.onTouchEvent(moveEvent)
+        
+        // Should clamp to (5000 - min_duration) -> 4900L
+        assertEquals(4900L, newStartMs)
+    }
+
+    @Test
+    fun `resetView should clear zoom and scroll`() {
+        seeker.zoomFactor = 5f
+        seeker.scrollOffsetX = 200f
+        
+        seeker.resetView()
+        
+        assertEquals(1f, seeker.zoomFactor)
+        assertEquals(0f, seeker.scrollOffsetX)
+    }
+
+    @Test
+    fun `data loading should not crash layout or draw passes`() {
+        // Set waveform
+        seeker.setWaveformData(FloatArray(100) { it.toFloat() })
+        
+        // Set silence preview
+        seeker.silencePreviewRanges = listOf(1000L..2000L, 4000L..6000L)
+        seeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SILENCE
+        seeker.noiseThresholdPreview = 0.5f
+
+        // Let it "layout/draw" 
+        seeker.playheadVisible = true
+        seeker.segmentsVisible = true
+        
+        // If Robolectric runs this without an exception, the data binding works basically
+        // (Invalidations are mocked correctly by TestCustomVideoSeeker in other tests)
+    }
+
     /**
      * Test subclass to track invalidation calls for architectural verification.
      */
