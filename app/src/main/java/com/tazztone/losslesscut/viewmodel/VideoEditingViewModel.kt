@@ -90,6 +90,7 @@ public class VideoEditingViewModel @Inject constructor(
     private val isExporting = AtomicBoolean(false)
     
     private val keyframeCache = ConcurrentHashMap<String, List<Long>>()
+    private var lastMinSegmentMs: Long = ClipController.MIN_SEGMENT_DURATION_MS
     
     init {
         // Collect reactive state from controllers
@@ -438,6 +439,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
+            lastMinSegmentMs = minSegmentMs
             val params = WaveformController.SilenceDetectionParams(
                 threshold, minSilenceMs, paddingStartMs, paddingEndMs, minSegmentMs, clip
             )
@@ -463,7 +465,7 @@ public class VideoEditingViewModel @Inject constructor(
                 val clip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
                 
                 val updatedClip = useCases.silenceDetectionUseCase.applySilenceDetection(
-                    clip, ranges, ClipController.MIN_SEGMENT_DURATION_MS
+                    clip, ranges, lastMinSegmentMs
                 )
                 
                 currentClips = currentClips.toMutableList().apply {
