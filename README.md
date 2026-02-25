@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=26)
 
-**LosslessCut (MP4)** is a high-performance, open-source Android application for **instant, lossless media trimming and merging** of MPEG-4 containers. By manipulating `.mp4` and `.m4a` files directly, it preserves original quality (H.264, H.265, AAC) and processes files at lightning speed without re-encoding.
+**LosslessCut (MP4)** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating compatible codecs (**H.264, H.265, AAC**) directly, it preserves original quality and processes files at lightning speed, remuxing them into standard `.mp4` and `.m4a` containers without re-encoding.
 
 <p align="center">
   <img src="docs/images/ic_banner.webp" width="400" alt="LosslessCut Banner">
@@ -190,18 +190,23 @@ Use these IDs for documentation queries:
 - `/material-components/material-components-android` (UI)
 
 ### 7. Format Compatibility
-LosslessCut is optimized for modern media containers and codecs supported by the Android [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer) and [MediaExtractor](https://developer.android.com/reference/android/media/MediaExtractor).
+LosslessCut is designed for maximum speed and compatibility by leveraging Android's native [MediaMuxer](https://developer.android.com/reference/android/media/MediaMuxer) for **MP4/MPEG-4** output.
 
-| Feature | Supported | Notes |
+| Category | Primary Support (Optimized) | Legacy/Technical Support |
 | :--- | :--- | :--- |
-| **Containers** | `.mp4`, `.m4a` | Standard MPEG-4 containers. |
-| **Video Codecs** | H.264 (AVC), H.265 (HEVC) | Standard bitrates; depends on device hardware decoder limits. |
-| **Audio Codecs** | AAC (LC, HE-AAC) | Primary audio format for MP4/M4A remuxing. |
-| **MP3 Support** | ❌ (Remux) / ✅ (Play) | MP3 tracks cannot be losslessly remuxed into MP4 containers via `MediaMuxer` without transcoding. |
-| **MKV/WebM** | ✅ (Remux ONLY) | Can remux MKV to MP4 if the internal tracks are compatible (H.264/AAC). |
+| **Output Container** | `.mp4`, `.m4a` | — |
+| **Video Codecs** | **H.264 (AVC)**, **H.265 (HEVC)** | H.263, MPEG-4 Visual (ES) |
+| **Audio Codecs** | **AAC (LC, HE)** | AMR-NB, AMR-WB |
+| **Input Container** | `.mp4`, `.m4a`, `.mov`, `.mkv`* | `.3gp`, `.webm`* |
 
-> [!NOTE]
-> LosslessCut focuses on **remuxing**, not transcoding. If the input codec is incompatible with the MPEG-4 container (like MP3 or Vorbis), the muxer will reject the track to avoid quality loss via silent corruption.
+\* *MKV/WebM inputs can be remuxed to MP4 ONLY if the internal codecs match the supported list above.*
+
+> [!IMPORTANT]
+> **Why are these the only supported formats?**
+> Standard Android APIs (`MediaMuxer`) enforce strict compliance for the MP4 container. Codecs like **MP3**, **FLAC**, **VP9**, or **Vorbis** require transcoding (re-encoding) to fit into an MP4 file, which would defeat the "lossless" purpose of this app.
+
+> [!TIP]
+> **Pro Tip**: If your file is a `.mov` or `.mkv` with H.264/AAC, LosslessCut will handle it perfectly by remuxing the streams into a new `.mp4` file.
 
 ## 📄 License
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
