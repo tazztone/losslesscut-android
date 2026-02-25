@@ -16,6 +16,8 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.usecase.ClipManagementUseCase
 import com.tazztone.losslesscut.domain.usecase.ExportUseCase
 import com.tazztone.losslesscut.domain.usecase.ExtractSnapshotUseCase
+import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
+import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
 import com.tazztone.losslesscut.domain.usecase.SessionUseCase
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -461,6 +463,28 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    public fun previewVisualSegments(config: VisualDetectionConfig) {
+        viewModelScope.launch(ioDispatcher) {
+            val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
+            lastMinSegmentMs = config.minSegmentDurationMs
+
+            _uiState.value = VideoEditingUiState.Loading(
+                UiText.StringResource(R.string.analyzing_video)
+            )
+
+            try {
+                val ranges = useCases.visualSegmentDetector.detect(clip.uri, config)
+                _silencePreviewRanges.value = ranges
+                _rawSilencePreviewRanges.value = null // Visual detection doesn't have intermediate stages yet
+            } catch (e: Exception) {
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
+                _silencePreviewRanges.value = emptyList()
+            } finally {
+                stateMutex.withLock { updateStateInternal() }
+            }
+        }
+    }
+
     public fun clearSilencePreview() {
         waveformController.clearSilencePreview(viewModelScope) {
             stateMutex.withLock { updateStateInternal() }
@@ -624,7 +648,8 @@ public data class VideoEditingUseCases @Inject constructor(
     public val exportUseCase: ExportUseCase,
     public val snapshotUseCase: ExtractSnapshotUseCase,
     public val silenceDetectionUseCase: SilenceDetectionUseCase,
-    public val sessionUseCase: SessionUseCase
+    public val sessionUseCase: SessionUseCase,
+    public val visualSegmentDetector: IVisualSegmentDetector
 )
 
 public data class ExportSettings(

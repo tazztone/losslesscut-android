@@ -143,4 +143,6 @@
     <string name="default_export_path">Default (Movies/LosslessCut)</string>
     <string name="change">Change</string>
     <string name="reset">Reset</string>
+    <string name="analyzing_video">Analyzing video content…</string>
+    <string name="error_visual_detection_failed">Visual analysis failed</string>
 </resources>
