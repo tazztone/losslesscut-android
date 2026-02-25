@@ -1,16 +1,19 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import android.util.Log
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import java.util.logging.Level
+import java.util.logging.Logger
 import javax.inject.Inject
 
 public class ExtractSnapshotUseCase @Inject constructor(
     private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
+    private val logger = Logger.getLogger(ExtractSnapshotUseCase::class.java.simpleName)
+
     public sealed class Result {
         public data class Success(val fileName: String) : Result()
         public data class Failure(val error: String) : Result()
@@ -44,7 +47,7 @@ public class ExtractSnapshotUseCase @Inject constructor(
                 Result.Failure("Failed to extract frame")
             }
         } catch (e: Exception) {
-            Log.e("ExtractSnapshotUseCase", "Snapshot failed", e)
+            logger.log(Level.SEVERE, "Snapshot failed", e)
             Result.Failure(e.message ?: "Unknown snapshot error")
         }
     }

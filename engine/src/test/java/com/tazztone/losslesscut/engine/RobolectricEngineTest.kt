@@ -3,12 +3,13 @@ package com.tazztone.losslesscut.engine
 import android.content.Context
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
-import com.tazztone.losslesscut.data.AppPreferences
+import com.tazztone.losslesscut.domain.engine.IMediaFinalizer
+import com.tazztone.losslesscut.domain.engine.TrackMetadata
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import com.tazztone.losslesscut.engine.muxing.MergeValidator
 import com.tazztone.losslesscut.engine.muxing.SampleTimeMapper
 import com.tazztone.losslesscut.engine.muxing.TrackInspector
-import com.tazztone.losslesscut.utils.StorageUtils
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -21,8 +22,7 @@ import org.robolectric.annotation.Config
 class RobolectricEngineTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val preferences = AppPreferences(context)
-    private val storageUtils = StorageUtils(context, preferences)
+    private val mediaFinalizer = mockk<IMediaFinalizer>(relaxed = true)
     private val dataSource = MediaDataSource(context)
     private val inspector = TrackInspector()
     private val timeMapper = SampleTimeMapper()
@@ -30,7 +30,7 @@ class RobolectricEngineTest {
     private val collaborators = EngineCollaborators(dataSource, inspector, timeMapper, mergeValidator)
     private val engine = LosslessEngineImpl(
         context, 
-        storageUtils, 
+        mediaFinalizer, 
         collaborators, 
         kotlinx.coroutines.Dispatchers.IO
     )

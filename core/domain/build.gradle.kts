@@ -1,39 +1,26 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.google.hilt.android)
-    alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
 
-android {
-    namespace = "com.tazztone.losslesscut.domain"
-    compileSdk = libs.versions.compileSdk.get().toInt()
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
 
-    defaultConfig {
-        minSdk = 26
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlin {
-        compilerOptions {
-            freeCompilerArgs.add("-Xexplicit-api=strict")
-        }
+kotlin {
+    jvmToolchain(17)
+    compilerOptions {
+        freeCompilerArgs.add("-Xexplicit-api=strict")
     }
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.javax.inject)
     
     testImplementation(libs.junit)
-    testImplementation(libs.robolectric)
     testImplementation(libs.mockk.agent)
     testImplementation(libs.kotlinx.coroutines.test)
 }

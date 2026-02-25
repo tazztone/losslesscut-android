@@ -14,6 +14,7 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.engine.MediaMetadata
 import com.tazztone.losslesscut.domain.engine.TrackMetadata
+import com.tazztone.losslesscut.domain.engine.IMediaFinalizer
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.engine.muxing.ExtractorSampleCopier
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
@@ -23,7 +24,6 @@ import com.tazztone.losslesscut.engine.muxing.SampleTimeMapper
 import com.tazztone.losslesscut.engine.muxing.SegmentGapCalculator
 import com.tazztone.losslesscut.engine.muxing.SelectedTrackPlan
 import com.tazztone.losslesscut.engine.muxing.TrackInspector
-import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -40,7 +40,7 @@ import javax.inject.Singleton
 @Singleton
 class LosslessEngineImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val storageUtils: StorageUtils,
+    private val mediaFinalizer: IMediaFinalizer,
     private val collaborators: EngineCollaborators,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
@@ -169,9 +169,9 @@ class LosslessEngineImpl @Inject constructor(
             val copier = ExtractorSampleCopier(extractor, muxerWriter, timeMapper)
             copier.copy(plan, startMs * MS_TO_US, endUs, ByteBuffer.allocateDirect(plan.bufferSize))
             if (plan.hasVideoTrack) {
-                storageUtils.finalizeVideo(outUriParsed)
+                mediaFinalizer.finalizeVideo(outputUri)
             } else {
-                storageUtils.finalizeAudio(outUriParsed)
+                mediaFinalizer.finalizeAudio(outputUri)
             }
             success = true
             Result.success(outputUri)
@@ -212,9 +212,9 @@ class LosslessEngineImpl @Inject constructor(
             )
             processClipsForMerge(mParams)
             if (init.plan.hasVideoTrack) {
-                storageUtils.finalizeVideo(outUriParsed)
+                mediaFinalizer.finalizeVideo(outputUri)
             } else {
-                storageUtils.finalizeAudio(outUriParsed)
+                mediaFinalizer.finalizeAudio(outputUri)
             }
             success = true
             Result.success(outputUri)

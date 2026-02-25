@@ -18,6 +18,7 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.*
+import com.tazztone.losslesscut.util.asString
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState

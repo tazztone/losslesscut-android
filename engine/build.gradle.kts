@@ -21,9 +21,7 @@ android {
 
 dependencies {
     implementation(project(":core:domain"))
-    implementation(project(":core:data"))
     implementation(libs.androidx.core.ktx)
-    implementation(libs.media3.exoplayer)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     

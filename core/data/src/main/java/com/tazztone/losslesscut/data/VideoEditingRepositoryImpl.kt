@@ -1,7 +1,6 @@
 package com.tazztone.losslesscut.data
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
@@ -24,7 +23,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class VideoEditingRepository @Inject constructor(
+@Suppress("TooManyFunctions")
+class VideoEditingRepositoryImpl @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val engine: ILosslessEngine,
     private val storageUtils: StorageUtils,
@@ -129,7 +129,7 @@ class VideoEditingRepository @Inject constructor(
             val jsonText = json.encodeToString(clips)
             sessionFile.writeText(jsonText)
         } catch (e: Exception) {
-            Log.e("VideoEditingRepository", "Failed to save session", e)
+            Log.e("VideoEditingRepositoryImpl", "Failed to save session", e)
         }
     }
 
@@ -153,7 +153,7 @@ class VideoEditingRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e("VideoEditingRepository", "Failed to restore session", e)
+            Log.e("VideoEditingRepositoryImpl", "Failed to restore session", e)
             null
         }
     }
@@ -175,7 +175,7 @@ class VideoEditingRepository @Inject constructor(
                     result.rawAmplitudes.forEach { out.writeFloat(it) }
                 }
             } catch (e: Exception) {
-                Log.e("VideoEditingRepository", "Failed to save waveform to cache", e)
+                Log.e("VideoEditingRepositoryImpl", "Failed to save waveform to cache", e)
             }
         }
     }
@@ -200,7 +200,7 @@ class VideoEditingRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e("VideoEditingRepository", "Failed to load waveform from cache", e)
+            Log.e("VideoEditingRepositoryImpl", "Failed to load waveform from cache", e)
             null
         }
     }
@@ -214,7 +214,7 @@ class VideoEditingRepository @Inject constructor(
                     ?.filter { it.lastModified() < sevenDaysAgo }
                     ?.forEach { it.delete() }
             } catch (e: Exception) {
-                Log.e("VideoEditingRepository", "Failed to evict old cache files", e)
+                Log.e("VideoEditingRepositoryImpl", "Failed to evict old cache files", e)
             }
         }
     }
@@ -227,7 +227,7 @@ class VideoEditingRepository @Inject constructor(
                 true
             } ?: false
         } catch (e: Exception) {
-            Log.e("VideoEditingRepository", "Failed to write snapshot", e)
+            Log.e("VideoEditingRepositoryImpl", "Failed to write snapshot", e)
             false
         }
     }

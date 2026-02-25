@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.di
 
-import com.tazztone.losslesscut.data.VideoEditingRepository
+import com.tazztone.losslesscut.data.VideoEditingRepositoryImpl
+import com.tazztone.losslesscut.domain.engine.IMediaFinalizer
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import dagger.Binds
 import dagger.Module
@@ -13,5 +14,9 @@ import javax.inject.Singleton
 abstract class RepositoryModule {
     @Binds
     @Singleton
-    abstract fun bindVideoEditingRepository(impl: VideoEditingRepository): IVideoEditingRepository
+    abstract fun bindVideoEditingRepository(impl: VideoEditingRepositoryImpl): IVideoEditingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMediaFinalizer(impl: MediaFinalizerImpl): IMediaFinalizer
 }

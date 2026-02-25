@@ -3,16 +3,16 @@
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
     <ID>ComplexCondition:CustomVideoSeeker.kt$CustomVideoSeeker.&lt;no name provided&gt;$(currentTouchTarget == TouchTarget.HANDLE_RIGHT &amp;&amp; scrollOffsetX &lt; maxScrollOffset()) || (currentTouchTarget == TouchTarget.HANDLE_LEFT &amp;&amp; scrollOffsetX &gt; 0f)</ID>
-    <ID>ComplexCondition:LosslessEngine.kt$LosslessEngineImpl$extractor.sampleTime &gt;= 0 &amp;&amp; count &lt; MAX_KEYFRAME_COUNT &amp;&amp; totalSamples &lt; MAX_PROBE_SAMPLES &amp;&amp; currentCoroutineContext().isActive</ID>
+    <ID>ComplexCondition:LosslessEngineImpl.kt$LosslessEngineImpl$extractor.sampleTime &gt;= 0 &amp;&amp; count &lt; MAX_KEYFRAME_COUNT &amp;&amp; totalSamples &lt; MAX_PROBE_SAMPLES &amp;&amp; currentCoroutineContext().isActive</ID>
     <ID>CyclomaticComplexMethod:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$override suspend fun extract( uriString: String, bucketCount: Int, onProgress: ((FloatArray) -&gt; Unit)? ): FloatArray?</ID>
     <ID>CyclomaticComplexMethod:CustomVideoSeeker.kt$CustomVideoSeeker$@SuppressLint("ClickableViewAccessibility") override fun onTouchEvent(event: MotionEvent): Boolean</ID>
     <ID>CyclomaticComplexMethod:DetectionUtils.kt$DetectionUtils$fun findSilence( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 ): List&lt;LongRange&gt;</ID>
     <ID>CyclomaticComplexMethod:EditorFragment.kt$EditorFragment$private fun observeViewModel()</ID>
     <ID>CyclomaticComplexMethod:EditorFragment.kt$EditorFragment$private fun showExportOptionsDialog()</ID>
     <ID>CyclomaticComplexMethod:ExportUseCase.kt$ExportUseCase$suspend fun execute( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
-    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
-    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
-    <ID>CyclomaticComplexMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>CyclomaticComplexMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
     <ID>CyclomaticComplexMethod:ShortcutHandler.kt$ShortcutHandler$fun handleKeyEvent(event: KeyEvent): Boolean</ID>
     <ID>EmptyCatchBlock:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl${}</ID>
     <ID>EmptyFunctionBlock:EditorFragment.kt$EditorFragment.&lt;no name provided&gt;${}</ID>
@@ -32,9 +32,9 @@
     <ID>LongMethod:EditorFragment.kt$EditorFragment$private fun initializeViews()</ID>
     <ID>LongMethod:EditorFragment.kt$EditorFragment$private fun observeViewModel()</ID>
     <ID>LongMethod:ExportUseCase.kt$ExportUseCase$suspend fun execute( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
-    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
-    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
-    <ID>LongMethod:LosslessEngine.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
+    <ID>LongMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun executeLosslessCut( inputUriString: String, outputUriString: String, startMs: Long, endMs: Long, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>LongMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun executeLosslessMerge( outputUriString: String, clips: List&lt;MediaClip&gt;, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List&lt;Int&gt;? ): Result&lt;String&gt;</ID>
+    <ID>LongMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
     <ID>LongParameterList:DetectionUtils.kt$DetectionUtils$( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long = 0, minSegmentMs: Long = 0 )</ID>
     <ID>LongParameterList:ExportUseCase.kt$ExportUseCase$( clips: List&lt;MediaClip&gt;, selectedClipIndex: Int, isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null, onStatus: suspend (Result) -&gt; Unit )</ID>
     <ID>LongParameterList:ILosslessEngine.kt$ILosslessEngine$( inputUri: String, outputUri: String, startMs: Long, endMs: Long, keepAudio: Boolean = true, keepVideo: Boolean = true, rotationOverride: Int? = null, selectedTracks: List&lt;Int&gt;? = null )</ID>
@@ -46,8 +46,8 @@
     <ID>LongParameterList:SilenceDetectionUseCase.kt$SilenceDetectionUseCase$( waveform: FloatArray, threshold: Float, minSilenceMs: Long, totalDurationMs: Long, paddingMs: Long, minSegmentMs: Long )</ID>
     <ID>LongParameterList:VideoEditingViewModel.kt$VideoEditingViewModel$( private val repository: IVideoEditingRepository, private val preferences: AppPreferences, private val clipManagementUseCase: ClipManagementUseCase, private val exportUseCase: ExportUseCase, private val snapshotUseCase: ExtractSnapshotUseCase, private val silenceDetectionUseCase: SilenceDetectionUseCase, private val sessionUseCase: SessionUseCase, @IoDispatcher private val ioDispatcher: CoroutineDispatcher )</ID>
     <ID>LongParameterList:VideoEditingViewModel.kt$VideoEditingViewModel$(isLossless: Boolean, keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, mergeSegments: Boolean, selectedTracks: List&lt;Int&gt;? = null)</ID>
-    <ID>LoopWithTooManyJumpStatements:LosslessEngine.kt$LosslessEngineImpl$for</ID>
-    <ID>LoopWithTooManyJumpStatements:LosslessEngine.kt$LosslessEngineImpl$while</ID>
+    <ID>LoopWithTooManyJumpStatements:LosslessEngineImpl.kt$LosslessEngineImpl$for</ID>
+    <ID>LoopWithTooManyJumpStatements:LosslessEngineImpl.kt$LosslessEngineImpl$while</ID>
     <ID>MagicNumber:AppPreferences.kt$AppPreferences$100</ID>
     <ID>MagicNumber:AppPreferences.kt$AppPreferences$30</ID>
     <ID>MagicNumber:AppPreferences.kt$AppPreferences$95</ID>
@@ -111,7 +111,7 @@
     <ID>MagicNumber:EditorFragment.kt$EditorFragment$30</ID>
     <ID>MagicNumber:EditorFragment.kt$EditorFragment$90</ID>
     <ID>MagicNumber:ExportUseCase.kt$ExportUseCase$100</ID>
-    <ID>MagicNumber:LosslessEngine.kt$LosslessEngineImpl$1000</ID>
+    <ID>MagicNumber:LosslessEngineImpl.kt$LosslessEngineImpl$1000</ID>
     <ID>MagicNumber:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$128</ID>
     <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$180</ID>
     <ID>MagicNumber:MetadataFragment.kt$MetadataFragment$270</ID>
@@ -130,14 +130,14 @@
     <ID>MagicNumber:TimeUtils.kt$TimeUtils$1000</ID>
     <ID>MagicNumber:TimeUtils.kt$TimeUtils$3600</ID>
     <ID>MagicNumber:TimeUtils.kt$TimeUtils$60</ID>
-    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepository$7</ID>
-    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepository$86_400_000L</ID>
+    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$7</ID>
+    <ID>MagicNumber:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$86_400_000L</ID>
     <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel$30</ID>
     <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel.&lt;no name provided&gt;$0.75f</ID>
     <ID>MagicNumber:VideoEditingViewModel.kt$VideoEditingViewModel.&lt;no name provided&gt;$20</ID>
     <ID>MatchingDeclarationName:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl : AudioWaveformExtractor</ID>
     <ID>MatchingDeclarationName:LosslessEngine.kt$LosslessEngineImpl : ILosslessEngine</ID>
-    <ID>MatchingDeclarationName:VideoEditingRepositoryImpl.kt$VideoEditingRepository : IVideoEditingRepository</ID>
+
     <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$(leftDist == bestDist &amp;&amp; touchTimeMs &gt; segment.startMs)</ID>
     <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$(rightDist == bestDist &amp;&amp; touchTimeMs &lt; segment.endMs)</ID>
     <ID>MaxLineLength:CustomVideoSeeker.kt$CustomVideoSeeker$color = Color.argb(85, Color.red(colorOnSurfaceVariant), Color.green(colorOnSurfaceVariant), Color.blue(colorOnSurfaceVariant))</ID>
@@ -178,22 +178,22 @@
     <ID>MaxLineLength:EditorFragment.kt$EditorFragment.&lt;no name provided&gt;$override</ID>
     <ID>MaxLineLength:ExportUseCase.kt$ExportUseCase$val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}-${TimeUtils.formatFilenameDuration(segment.endMs)}"</ID>
     <ID>MaxLineLength:ExtractSnapshotUseCase.kt$ExtractSnapshotUseCase$suspend</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedAudioMime, got $mime in ${clip.uri}"))</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedVideoMime, got $mime in ${clip.uri}"))</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$val videoFrameDurationUs = if (videoFps &gt; 0) (MICROSECONDS_IN_SECOND / videoFps).toLong() else VIDEO_FRAME_DURATION_DEFAULT_US</ID>
-    <ID>MaxLineLength:LosslessEngine.kt$LosslessEngineImpl$while</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$Log.d(TAG, "Extraction finished. Last Video Us: $lastVideoSampleTimeUs, Last Audio Us: $lastAudioSampleTimeUs")</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$if (muxerTrackByType.isEmpty()) return@withContext Result.failure(IOException("No tracks found in the media file"))</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedAudioMime, got $mime in ${clip.uri}"))</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$return@withContext Result.failure(IOException("Codec mismatch: expected $expectedVideoMime, got $mime in ${clip.uri}"))</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$try { format.getFloat(MediaFormat.KEY_FRAME_RATE) } catch (_: Exception) { DEFAULT_FPS }</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$val videoFrameDurationUs = if (videoFps &gt; 0) (MICROSECONDS_IN_SECOND / videoFps).toLong() else VIDEO_FRAME_DURATION_DEFAULT_US</ID>
+    <ID>MaxLineLength:LosslessEngineImpl.kt$LosslessEngineImpl$while</ID>
     <ID>MaxLineLength:MediaClipAdapter.kt$MediaClipAdapter.AddViewHolder$androidx.appcompat.widget.TooltipCompat.setTooltipText(itemView, itemView.context.getString(R.string.add_video))</ID>
     <ID>MaxLineLength:MetadataFragment.kt$MetadataFragment$val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }</ID>
     <ID>MaxLineLength:PlayerManager.kt$PlayerManager$fun</ID>
     <ID>MaxLineLength:RemuxFragment.kt$RemuxFragment$val finalState = viewModel.uiState.first { it is VideoEditingUiState.Success || it is VideoEditingUiState.Error }</ID>
     <ID>MaxLineLength:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment$private</ID>
     <ID>MaxLineLength:StorageUtils.kt$StorageUtils$val mimeType = if (fileName.endsWith(".jpeg", ignoreCase = true) || fileName.endsWith(".jpg", ignoreCase = true)) "image/jpeg" else "image/png"</ID>
-    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepository$)</ID>
-    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepository$override suspend</ID>
+    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$)</ID>
+    <ID>MaxLineLength:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$override suspend</ID>
     <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split)))</ID>
     <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_success, result.count)))</ID>
     <ID>MaxLineLength:VideoEditingViewModel.kt$VideoEditingViewModel$_uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.snapshot_saved, result.fileName)))</ID>
@@ -220,22 +220,22 @@
     <ID>ReturnCount:ShortcutHandler.kt$ShortcutHandler$fun handleKeyEvent(event: KeyEvent): Boolean</ID>
     <ID>SpreadOperator:UiText.kt$UiText$(resId, *args)</ID>
     <ID>SwallowedException:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$e: Exception</ID>
-    <ID>SwallowedException:LosslessEngine.kt$LosslessEngineImpl$e: Exception</ID>
+    <ID>SwallowedException:LosslessEngineImpl.kt$LosslessEngineImpl$e: Exception</ID>
     <ID>SwallowedException:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$e: Exception</ID>
-    <ID>SwallowedException:VideoEditingRepositoryImpl.kt$VideoEditingRepository$e: Exception</ID>
+    <ID>SwallowedException:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ClipManagementUseCase.kt$ClipManagementUseCase$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ExportUseCase.kt$ExportUseCase$e: Exception</ID>
     <ID>TooGenericExceptionCaught:ExtractSnapshotUseCase.kt$ExtractSnapshotUseCase$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:LosslessEngine.kt$LosslessEngineImpl$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:LosslessEngineImpl.kt$LosslessEngineImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:MediaClipAdapter.kt$MediaClipAdapter.ClipViewHolder$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:VideoEditingRepositoryImpl.kt$VideoEditingRepository$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl$e: Exception</ID>
     <ID>TooGenericExceptionCaught:VideoEditingViewModel.kt$VideoEditingViewModel$e: Exception</ID>
     <ID>TooManyFunctions:CustomVideoSeeker.kt$CustomVideoSeeker : View</ID>
     <ID>TooManyFunctions:EditorFragment.kt$EditorFragment : BaseEditingFragmentSettingsListener</ID>
     <ID>TooManyFunctions:IVideoEditingRepository.kt$IVideoEditingRepository</ID>
     <ID>TooManyFunctions:PlayerManager.kt$PlayerManager</ID>
-    <ID>TooManyFunctions:VideoEditingRepositoryImpl.kt$VideoEditingRepository : IVideoEditingRepository</ID>
+    <ID>TooManyFunctions:VideoEditingRepositoryImpl.kt$VideoEditingRepositoryImpl : IVideoEditingRepository</ID>
     <ID>TooManyFunctions:VideoEditingViewModel.kt$VideoEditingViewModel : ViewModel</ID>
     <ID>UnusedParameter:ExportUseCase.kt$ExportUseCase$isLossless: Boolean</ID>
     <ID>UnusedPrivateMember:MainActivity.kt$MainActivity$private fun showToast(message: String)</ID>

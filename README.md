@@ -103,21 +103,21 @@ LosslessCut follows **MVVM** architecture with a focus on reactive UI and native
 
 #### Tech Stack
 - **Languages**: Kotlin 1.9+, Gradle Kotlin DSL (`.gradle.kts`)
-- **Media Engine**: Media3 (ExoPlayer), `MediaExtractor`, `MediaMuxer`
-- **Dependency Injection**: Hilt
-- **Persistence**: Jetpack DataStore (AppPreferences), Scoped Storage (SAF)
+- **Media Engine**: `MediaExtractor`, `MediaMuxer` (Processing), Media3 (Playback UI in `:app`)
+- **Dependency Inversion**: Clean boundaries via `:core:domain` interfaces (JSR-330)
+- **Dependency Injection**: Hilt (in Android modules)
 - **Minimum SDK**: 26 (Android 8.0)
-- **Target SDK**: 35 (Android 15)
-- **Tooling**: AGP 9.0 (Built-in Kotlin Support)
+- **Target SDK**: 36 (Android 15)
+- **Tooling**: AGP 9.0 (Built-in Kotlin Support), JVM 17 Toolchain
 
 ### 2. Project Structure
 The project is organized into a modular feature/layer-based structure:
 - **`:app`**: Main Android application module.
   - **`ui`**: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`) and Navigation. `VideoEditingActivity` is now a thin host.
   - **`viewmodel`**: Jetpack ViewModels. `VideoEditingViewModel` delegates complex logic to Use Cases.
-  - **`domain`**: Domain layer containing Use Cases/Interactors for business logic separation.
-- **`:engine`**: Core media processing library. Contains `LosslessEngine` and specialized media engines.
-- **`:core:data`**: Shared data module containing models (`MediaClip`, `TrimSegment`), persistence (`AppPreferences`), and utilities (`StorageUtils`, `TimeUtils`).
+  - **`:core:domain`**: Pure Kotlin/JVM library. Contains Use Cases and domain interfaces. Zero Android/Hilt dependencies.
+- **`:engine`**: Core media processing library. Decoupled from storage and Media3 via domain interfaces.
+- **`:core:data`**: Shared data module containing models (`MediaClip`, `TrimSegment`), persistence (`AppPreferences`), and implementations of domain interfaces (`IMediaFinalizer`).
 
 ### 3. Component Blueprint
 
