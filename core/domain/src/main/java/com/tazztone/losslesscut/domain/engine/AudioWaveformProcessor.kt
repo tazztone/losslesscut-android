@@ -114,4 +114,19 @@ public object AudioWaveformProcessor {
         val calculated = (durationMs / MS_PER_SEC * TARGET_BUCKETS_PER_SEC).toInt()
         return calculated.coerceIn(MIN_BUCKET_COUNT, MAX_BUCKET_COUNT)
     }
+
+    /**
+     * Fills edge buckets that are 0 due to codec delay or padding.
+     * Propagates the first/last non-zero values to the edges.
+     */
+    public fun fillEdgeBuckets(buckets: FloatArray) {
+        val firstNonZero = buckets.indexOfFirst { it > 0f }
+        if (firstNonZero > 0) {
+            for (i in 0 until firstNonZero) buckets[i] = buckets[firstNonZero]
+        }
+        val lastNonZero = buckets.indexOfLast { it > 0f }
+        if (lastNonZero >= 0 && lastNonZero < buckets.size - 1) {
+            for (i in lastNonZero + 1 until buckets.size) buckets[i] = buckets[lastNonZero]
+        }
+    }
 }

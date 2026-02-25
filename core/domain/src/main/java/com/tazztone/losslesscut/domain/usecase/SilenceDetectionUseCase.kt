@@ -32,76 +32,42 @@ public class SilenceDetectionUseCase @Inject constructor(
         silenceRanges: List<LongRange>,
         minSegmentDurationMs: Long
     ): MediaClip {
-        val newSegments = clip.segments.flatMap { seg ->
-            if (seg.action == SegmentAction.DISCARD) {
-                listOf(seg)
-            } else {
-                splitSegmentBySilence(seg, silenceRanges, minSegmentDurationMs)
-            }
-        }
-        
-        return clip.copy(segments = newSegments.sortedBy { it.startMs })
+        val newSegments = buildSegmentsFromSilence(
+            clipEnd = clip.durationMs,
+            silenceRanges = silenceRanges.sortedBy { it.first },
+            minSegmentDurationMs = minSegmentDurationMs
+        )
+        return clip.copy(segments = newSegments)
     }
 
-    private fun splitSegmentBySilence(
-        seg: TrimSegment,
+    private fun buildSegmentsFromSilence(
+        clipEnd: Long,
         silenceRanges: List<LongRange>,
         minSegmentDurationMs: Long
     ): List<TrimSegment> {
-        var segRanges = listOf(seg.startMs..seg.endMs)
-        
-        silenceRanges.forEach { silenceRange ->
-            segRanges = segRanges.flatMap { curr ->
-                val overlapStart = maxOf(curr.first, silenceRange.first)
-                val overlapEnd = minOf(curr.last, silenceRange.last)
-                
-                if (overlapStart < overlapEnd && (overlapEnd - overlapStart) >= minSegmentDurationMs) {
-                    val result = mutableListOf<LongRange>()
-                    if (overlapStart > curr.first + minSegmentDurationMs) {
-                        result.add(curr.first..overlapStart)
-                    }
-                    if (overlapEnd < curr.last - minSegmentDurationMs) {
-                        result.add(overlapEnd..curr.last)
-                    }
-                    result
-                } else {
-                    listOf(curr)
-                }
+        val result = mutableListOf<TrimSegment>()
+        var cursor = 0L
+
+        for (silence in silenceRanges) {
+            val silStart = silence.first.coerceIn(0L, clipEnd)
+            val silEnd = silence.last.coerceIn(0L, clipEnd)
+
+            // KEEP the content before this silence
+            if (silStart - cursor >= minSegmentDurationMs) {
+                result.add(TrimSegment(UUID.randomUUID(), cursor, silStart, SegmentAction.KEEP))
             }
-        }
-        
-        val resultSegments = mutableListOf<TrimSegment>()
-        var currentPos = seg.startMs
-        
-        segRanges.forEach { keepRange ->
-            // Fill any gap before the keep range with a DISCARD segment
-            if (keepRange.first > currentPos) {
-                resultSegments.add(seg.copy(
-                    id = UUID.randomUUID(), 
-                    startMs = currentPos, 
-                    endMs = keepRange.first, 
-                    action = SegmentAction.DISCARD
-                ))
+            // DISCARD the silent region
+            if (silEnd > silStart) {
+                result.add(TrimSegment(UUID.randomUUID(), silStart, silEnd, SegmentAction.DISCARD))
             }
-            // Add the KEEP segment
-            resultSegments.add(seg.copy(
-                id = UUID.randomUUID(), 
-                startMs = keepRange.first, 
-                endMs = keepRange.last, 
-                action = SegmentAction.KEEP
-            ))
-            currentPos = keepRange.last
+            cursor = silEnd
         }
-        
-        // Fill any remaining gap at the end with a DISCARD segment
-        if (currentPos < seg.endMs) {
-            resultSegments.add(seg.copy(
-                id = UUID.randomUUID(), 
-                startMs = currentPos, 
-                endMs = seg.endMs, 
-                action = SegmentAction.DISCARD
-            ))
+
+        // KEEP any remaining content after the last silence
+        if (clipEnd - cursor >= minSegmentDurationMs) {
+            result.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.KEEP))
         }
-        return resultSegments
+
+        return result
     }
 }
