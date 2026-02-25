@@ -44,6 +44,7 @@ class WaveformController @Inject constructor(
     private var silencePreviewJob: Job? = null
 
     // Store raw result for silence detection
+    @Volatile
     private var rawWaveformResult: WaveformResult? = null
 
     fun extractWaveform(scope: CoroutineScope, clip: MediaClip) {

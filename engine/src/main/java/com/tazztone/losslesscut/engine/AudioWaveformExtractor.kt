@@ -47,6 +47,8 @@ class AudioWaveformExtractorImpl @Inject constructor(
                 }
             }
 
+            if (durationUs == 0L) return@withContext null
+
             val maxAmplitude = buckets.maxOrNull() ?: 0f
             WaveformResult(buckets, maxAmplitude, durationUs)
 

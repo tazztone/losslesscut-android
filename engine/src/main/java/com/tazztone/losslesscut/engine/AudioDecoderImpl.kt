@@ -91,18 +91,23 @@ class AudioDecoderImpl @Inject constructor(
 
     private fun processInput(extractor: MediaExtractor, codec: MediaCodec): Boolean {
         val inIdx = codec.dequeueInputBuffer(TIMEOUT_US)
+        var sawInputEOS = false
         if (inIdx >= 0) {
             val buffer = codec.getInputBuffer(inIdx)
-            val sampleSize = if (buffer != null) extractor.readSampleData(buffer, 0) else -1
-            if (sampleSize < 0) {
-                codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
-                return true
+            if (buffer == null) {
+                Log.w(TAG, "Null input buffer at index $inIdx, skipping")
             } else {
-                codec.queueInputBuffer(inIdx, 0, sampleSize, extractor.sampleTime, 0)
-                extractor.advance()
+                val sampleSize = extractor.readSampleData(buffer, 0)
+                if (sampleSize < 0) {
+                    codec.queueInputBuffer(inIdx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+                    sawInputEOS = true
+                } else {
+                    codec.queueInputBuffer(inIdx, 0, sampleSize, extractor.sampleTime, 0)
+                    extractor.advance()
+                }
             }
         }
-        return false
+        return sawInputEOS
     }
 
     private suspend fun FlowCollector<AudioDecoder.PcmData>.processOutput(
