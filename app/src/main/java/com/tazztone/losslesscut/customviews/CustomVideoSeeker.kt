@@ -60,6 +60,15 @@ class CustomVideoSeeker @JvmOverloads constructor(
             }
         }
 
+    var playheadVisible: Boolean = true
+        set(value) {
+            if (field != value) {
+                field = value
+                accessibilityHelper.invalidateVirtualView(0) // VIRTUAL_ID_PLAYHEAD
+                invalidate()
+            }
+        }
+
     private var waveformData: FloatArray? = null
     private val waveformPaint by lazy {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -455,7 +464,9 @@ class CustomVideoSeeker @JvmOverloads constructor(
         }
 
         // Draw Playhead
-        drawPlayhead(canvas)
+        if (playheadVisible) {
+            drawPlayhead(canvas)
+        }
 
         canvas.restore()
 
@@ -680,7 +691,7 @@ class CustomVideoSeeker @JvmOverloads constructor(
                     }
                 }
                 
-                if (kotlin.math.abs(seekPositionMs - touchTimeMs) < hitTestThresholdMs) {
+                if (playheadVisible && kotlin.math.abs(seekPositionMs - touchTimeMs) < hitTestThresholdMs) {
                     currentTouchTarget = TouchTarget.PLAYHEAD
                     onSeekStart?.invoke()
                     performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
