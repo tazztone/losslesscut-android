@@ -55,33 +55,33 @@ class WaveformController @Inject constructor(
             rawWaveformResult = null
             
             // SHA-256 caching with duration/dims to detect content changes (best effort)
-            // Use v2 suffix for new WaveformResult format
+            // Use v3 suffix for new fixed 100Hz WaveformResult format
             val cacheKeyInput = "${clip.uri}_${clip.durationMs}_${clip.width}x${clip.height}"
-            val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.v2.bin"
+            val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.v3.bin"
             
             val cached = repository.loadWaveformFromCache(cacheKey)
             if (cached != null) {
                 rawWaveformResult = cached
-                val normalized = cached.rawAmplitudes.clone()
-                AudioWaveformProcessor.normalize(normalized, cached.maxAmplitude)
-                _waveformData.value = normalized
+                updateUiWaveform(cached, clip.durationMs)
                 return@launch
             }
             
-            val bucketCount = AudioWaveformProcessor.calculateAdaptiveBucketCount(clip.durationMs)
-            repository.extractWaveform(clip.uri, bucketCount = bucketCount) { progressResult ->
-                // Update UI with normalized view of progress
-                val normalized = progressResult.rawAmplitudes.clone()
-                AudioWaveformProcessor.normalize(normalized, progressResult.maxAmplitude)
-                _waveformData.value = normalized
+            repository.extractWaveform(clip.uri) { progressResult ->
+                updateUiWaveform(progressResult, clip.durationMs)
             }?.let { finalResult ->
                 rawWaveformResult = finalResult
-                val normalized = finalResult.rawAmplitudes.clone()
-                AudioWaveformProcessor.normalize(normalized, finalResult.maxAmplitude)
-                _waveformData.value = normalized
+                updateUiWaveform(finalResult, clip.durationMs)
                 repository.saveWaveformToCache(cacheKey, finalResult)
             }
         }
+    }
+
+    private fun updateUiWaveform(result: WaveformResult, durationMs: Long) {
+        val uiBucketCount = AudioWaveformProcessor.calculateUiBucketCount(durationMs)
+        val downsampled = AudioWaveformProcessor.downsample(result.rawAmplitudes, uiBucketCount)
+        AudioWaveformProcessor.fillEdgeBuckets(downsampled)
+        AudioWaveformProcessor.normalize(downsampled, result.maxAmplitude)
+        _waveformData.value = downsampled
     }
 
     fun previewSilenceSegments(
@@ -97,12 +97,12 @@ class WaveformController @Inject constructor(
                 threshold = params.threshold,
                 minSilenceMs = params.minSilenceMs,
                 paddingStartMs = params.paddingStartMs,
-                paddingEndMs = params.paddingEndMs,
-                minSegmentMs = params.minSegmentMs
+                paddingEndMs = params.paddingEndMs
             )
             val ranges = silenceDetectionUseCase.findSilence(
                 result,
-                config
+                config,
+                params.minSegmentMs
             )
             _silencePreviewRanges.value = ranges
             onComplete()

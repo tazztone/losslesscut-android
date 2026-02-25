@@ -68,10 +68,16 @@ public class AudioWaveformProcessorTest {
     }
 
     @Test
-    public fun testCalculateAdaptiveBucketCount(): Unit {
-        assertEquals(500, AudioWaveformProcessor.calculateAdaptiveBucketCount(1000)) // 1s -> 10, but min 500
-        assertEquals(1000, AudioWaveformProcessor.calculateAdaptiveBucketCount(100_000)) // 100s -> 1000
-        assertEquals(5000, AudioWaveformProcessor.calculateAdaptiveBucketCount(1_000_000)) // 1000s -> 5000
+    public fun testCalculateUiBucketCount(): Unit {
+        assertEquals(500, AudioWaveformProcessor.calculateUiBucketCount(1000)) // 1s -> 10, but min 500
+        assertEquals(1000, AudioWaveformProcessor.calculateUiBucketCount(100_000)) // 100s -> 1000
+        assertEquals(5000, AudioWaveformProcessor.calculateUiBucketCount(1_000_000)) // 1000s -> 5000
+    }
+
+    @Test
+    public fun testCalculateEngineBucketCount(): Unit {
+        assertEquals(100, AudioWaveformProcessor.calculateEngineBucketCount(1000)) // 1s -> 100 Hz
+        assertEquals(10000, AudioWaveformProcessor.calculateEngineBucketCount(100_000)) // 100s -> 10000 buckets
     }
 
     @Test
@@ -92,5 +98,11 @@ public class AudioWaveformProcessorTest {
         )
         
         assertTrue(buckets.any { it > 0 })
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    public fun testDownsample_InvalidTargetCount(): Unit {
+        val source = floatArrayOf(0.1f, 0.2f)
+        AudioWaveformProcessor.downsample(source, 0)
     }
 }

@@ -7,7 +7,7 @@ public interface IVideoEditingRepository {
     public suspend fun createClipFromUri(uri: String): Result<MediaClip>
     public suspend fun getKeyframes(uri: String): List<Long>
     public suspend fun extractWaveform(
-        uri: String, bucketCount: Int = 1000, onProgress: ((WaveformResult) -> Unit)? = null
+        uri: String, onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
     public suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
     public suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String?

@@ -66,10 +66,9 @@ class VideoEditingRepository @Inject constructor(
 
     override suspend fun extractWaveform(
         uri: String,
-        bucketCount: Int,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? {
-        return waveformExtractor.extract(uri, bucketCount = bucketCount, onProgress = onProgress)
+        return waveformExtractor.extract(uri, onProgress = onProgress)
     }
 
     override suspend fun getFrameAt(uri: String, positionMs: Long) = withContext(ioDispatcher) {
@@ -169,7 +168,7 @@ class VideoEditingRepository @Inject constructor(
             try {
                 val cacheFile = File(context.cacheDir, cacheKey)
                 DataOutputStream(FileOutputStream(cacheFile)).use { out ->
-                    out.writeInt(1) // Version
+                    out.writeInt(2) // Version 2: 100Hz resolution
                     out.writeLong(result.durationUs)
                     out.writeFloat(result.maxAmplitude)
                     out.writeInt(result.rawAmplitudes.size)
@@ -187,7 +186,7 @@ class VideoEditingRepository @Inject constructor(
         try {
             DataInputStream(FileInputStream(cacheFile)).use { input ->
                 val version = input.readInt()
-                if (version == 1) {
+                if (version == 2) {
                     val durationUs = input.readLong()
                     val maxAmplitude = input.readFloat()
                     val size = input.readInt()

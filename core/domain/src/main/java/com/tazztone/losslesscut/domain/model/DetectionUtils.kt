@@ -5,19 +5,17 @@ import kotlin.math.absoluteValue
 
 public object DetectionUtils {
 
-    private const val YIELD_THRESHOLD = 1000
-    private const val MIN_RANGE_DURATION_MS = 10L
+    private const val YIELD_INTERVAL = 1024
 
     public data class SilenceDetectionConfig(
         val threshold: Float,
         val minSilenceMs: Long,
         val paddingStartMs: Long,
-        val paddingEndMs: Long,
-        val minSegmentMs: Long
+        val paddingEndMs: Long
     )
 
     /**
-     * Finds silent regions in a waveform.
+     * Finds silent regions in a waveform. Returns RAW unpadded ranges.
      */
     public suspend fun findSilence(
         waveform: FloatArray,
@@ -28,17 +26,10 @@ public object DetectionUtils {
             return emptyList()
         }
 
-        val sampleDurationMs = totalDurationMs.toDouble() / waveform.size
-        val rawRanges = getRawSilenceRanges(
-            waveform, config.threshold, config.minSilenceMs, sampleDurationMs, totalDurationMs
+        val msPerBucket = totalDurationMs.toDouble() / waveform.size
+        return getRawSilenceRanges(
+            waveform, config.threshold, config.minSilenceMs, msPerBucket, totalDurationMs
         )
-        
-        return if (rawRanges.isEmpty()) {
-            emptyList()
-        } else {
-            val filtered = filterByMinSegmentMs(rawRanges, config.minSegmentMs, totalDurationMs)
-            applyPaddingAndFilter(filtered, config.paddingStartMs, config.paddingEndMs)
-        }
     }
 
     private suspend fun getRawSilenceRanges(
@@ -53,7 +44,7 @@ public object DetectionUtils {
         var startBucket = -1
 
         for (i in waveform.indices) {
-            if (i % YIELD_THRESHOLD == 0) yield()
+            if (i and (YIELD_INTERVAL - 1) == 0) yield()
             val isSilent = waveform[i].absoluteValue <= threshold
 
             if (isSilent) {
@@ -72,22 +63,35 @@ public object DetectionUtils {
         return ranges
     }
 
-    private suspend fun filterByMinSegmentMs(
+    public fun applyPaddingAndFilter(
         ranges: List<LongRange>,
-        minSegmentMs: Long,
+        paddingStartMs: Long,
+        paddingEndMs: Long,
         totalDurationMs: Long
     ): List<LongRange> {
-        if (minSegmentMs <= 0) return ranges
+        return ranges.map { range ->
+            // Don't apply padding at clip boundaries — there's no speech to protect there
+            val isAtClipStart = range.first == 0L
+            val isAtClipEnd = range.last >= totalDurationMs
+            val start = if (isAtClipStart) range.first else (range.first + paddingStartMs).coerceAtMost(range.last)
+            val end = if (isAtClipEnd) range.last else (range.last - paddingEndMs).coerceAtLeast(start)
+            start..end
+        }
+    }
+
+    /**
+     * Merges silence ranges that are separated by a "keep" segment shorter than minSegmentMs.
+     */
+    public fun mergeCloseSilences(
+        ranges: List<LongRange>,
+        minSegmentMs: Long
+    ): List<LongRange> {
+        if (ranges.size < 2 || minSegmentMs <= 0) return ranges
 
         val merged = mutableListOf<LongRange>()
         var current = ranges[0]
-        
-        if (current.first < minSegmentMs) {
-            current = 0L..current.last
-        }
-        
+
         for (i in 1 until ranges.size) {
-            yield()
             val next = ranges[i]
             if (next.first - current.last < minSegmentMs) {
                 current = current.first..next.last
@@ -96,23 +100,7 @@ public object DetectionUtils {
                 current = next
             }
         }
-        
-        if (totalDurationMs - current.last < minSegmentMs) {
-            current = current.first..totalDurationMs
-        }
         merged.add(current)
         return merged
-    }
-
-    private fun applyPaddingAndFilter(
-        ranges: List<LongRange>,
-        paddingStartMs: Long,
-        paddingEndMs: Long
-    ): List<LongRange> {
-        return ranges.map { range ->
-            val start = (range.first + paddingStartMs).coerceAtMost(range.last)
-            val end = (range.last - paddingEndMs).coerceAtLeast(start)
-            start..end
-        }.filter { it.last - it.first >= MIN_RANGE_DURATION_MS }
     }
 }

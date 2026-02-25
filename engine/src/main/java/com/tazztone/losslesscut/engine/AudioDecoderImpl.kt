@@ -85,9 +85,20 @@ class AudioDecoderImpl @Inject constructor(
             if (!sawInputEOS) {
                 sawInputEOS = processInput(extractor, codec)
             }
-            sawOutputEOS = processOutput(codec, info, durationUs, sampleRate, channelCount)
+            val metadata = DecoderMetadata(durationUs, sampleRate, channelCount)
+            val bufferHolder = BufferHolder()
+            sawOutputEOS = processOutput(codec, info, metadata, bufferHolder)
+            kotlinx.coroutines.yield()
         }
     }
+
+    private class BufferHolder(var data: ByteArray = ByteArray(0))
+
+    private data class DecoderMetadata(
+        val durationUs: Long,
+        val sampleRate: Int,
+        val channelCount: Int
+    )
 
     private fun processInput(extractor: MediaExtractor, codec: MediaCodec): Boolean {
         val inIdx = codec.dequeueInputBuffer(TIMEOUT_US)
@@ -113,9 +124,8 @@ class AudioDecoderImpl @Inject constructor(
     private suspend fun FlowCollector<AudioDecoder.PcmData>.processOutput(
         codec: MediaCodec,
         info: MediaCodec.BufferInfo,
-        durationUs: Long,
-        sampleRate: Int,
-        channelCount: Int
+        metadata: DecoderMetadata,
+        bufferHolder: BufferHolder
     ): Boolean {
         var outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
         var sawOutputEOS = false
@@ -125,29 +135,48 @@ class AudioDecoderImpl @Inject constructor(
             }
 
             if (info.size > 0) {
-                val outBuf = codec.getOutputBuffer(outIdx)
-                if (outBuf != null) {
-                    val chunk = ByteArray(info.size)
-                    outBuf.position(info.offset)
-                    outBuf.limit(info.offset + info.size)
-                    outBuf.get(chunk)
-
-                    emit(AudioDecoder.PcmData(
-                        buffer = chunk,
-                        size = info.size,
-                        timeUs = info.presentationTimeUs,
-                        durationUs = durationUs,
-                        sampleRate = sampleRate,
-                        channelCount = channelCount,
-                        isEndOfStream = sawOutputEOS
-                    ))
-                }
+                val frame = OutputFrame(codec, outIdx, info, metadata, sawOutputEOS, bufferHolder)
+                emitPcmData(frame)
             }
             codec.releaseOutputBuffer(outIdx, false)
             if (sawOutputEOS) break
-            outIdx = codec.dequeueOutputBuffer(info, 0)
+            outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_NONE)
         }
         return sawOutputEOS
+    }
+
+    private data class OutputFrame(
+        val codec: MediaCodec,
+        val outIdx: Int,
+        val info: MediaCodec.BufferInfo,
+        val metadata: DecoderMetadata,
+        val isEOS: Boolean,
+        val bufferHolder: BufferHolder
+    )
+
+    private suspend fun FlowCollector<AudioDecoder.PcmData>.emitPcmData(frame: OutputFrame) {
+        val outBuf = frame.codec.getOutputBuffer(frame.outIdx) ?: return
+        val info = frame.info
+        val bufferHolder = frame.bufferHolder
+
+        // Reuse buffer if possible to reduce allocations
+        if (bufferHolder.data.size < info.size) {
+            bufferHolder.data = ByteArray(info.size)
+        }
+
+        outBuf.position(info.offset)
+        outBuf.limit(info.offset + info.size)
+        outBuf.get(bufferHolder.data, 0, info.size)
+
+        emit(AudioDecoder.PcmData(
+            buffer = bufferHolder.data,
+            size = info.size,
+            timeUs = info.presentationTimeUs,
+            durationUs = frame.metadata.durationUs,
+            sampleRate = frame.metadata.sampleRate,
+            channelCount = frame.metadata.channelCount,
+            isEndOfStream = frame.isEOS
+        ))
     }
 
     private fun cleanupResources(extractor: MediaExtractor, codec: MediaCodec?) {
@@ -183,6 +212,7 @@ class AudioDecoderImpl @Inject constructor(
     companion object {
         private const val TAG = "AudioDecoderImpl"
         private const val TIMEOUT_US = 5000L
+        private const val TIMEOUT_NONE = 0L
         private const val DEFAULT_SAMPLE_RATE = 44100
         private const val DEFAULT_CHANNEL_COUNT = 2
     }

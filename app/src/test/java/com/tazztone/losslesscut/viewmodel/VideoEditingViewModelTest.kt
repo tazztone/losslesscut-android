@@ -70,7 +70,7 @@ public class VideoEditingViewModelTest {
         coEvery { mockRepo.evictOldCacheFiles() } returns Unit
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
         coEvery { mockRepo.loadWaveformFromCache(any()) } returns null
-        coEvery { mockRepo.extractWaveform(any(), any(), any()) } returns null
+        coEvery { mockRepo.extractWaveform(any(), any()) } returns null
         
         val useCases = VideoEditingUseCases(
             mockClipUseCase,

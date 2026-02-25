@@ -16,17 +16,20 @@ class AudioWaveformExtractorImpl @Inject constructor(
 
     override suspend fun extract(
         uri: String, 
-        bucketCount: Int,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(Dispatchers.IO) {
-        val buckets = FloatArray(bucketCount)
-        var durationUs = 0L
+        var buckets = FloatArray(0)
+        var durationMs = 0L
         var lastProgressUpdateUs = 0L
 
         try {
             audioDecoder.decode(uri).collect { pcm ->
-                durationUs = pcm.durationUs
-
+                if (buckets.isEmpty()) {
+                    durationMs = pcm.durationUs / US_PER_MS
+                    val bucketCount = AudioWaveformProcessor.calculateEngineBucketCount(durationMs)
+                    buckets = FloatArray(bucketCount)
+                }
+                
                 AudioWaveformProcessor.updateBuckets(
                     info = AudioWaveformProcessor.WaveformBufferInfo(
                         buffer = pcm.buffer,
@@ -39,7 +42,8 @@ class AudioWaveformExtractorImpl @Inject constructor(
                     buckets = buckets
                 )
 
-                val progressIntervalUs = if (durationUs > 0) durationUs / 10 else 1_000_000L
+                val durationUs = pcm.durationUs
+                val progressIntervalUs = if (durationUs > 0) durationUs / 10 else progressUpdateIntervalUs
                 if (onProgress != null && pcm.timeUs - lastProgressUpdateUs > progressIntervalUs) {
                     lastProgressUpdateUs = pcm.timeUs
                     val currentMax = buckets.maxOrNull() ?: 0f
@@ -47,15 +51,22 @@ class AudioWaveformExtractorImpl @Inject constructor(
                 }
             }
 
-            if (durationUs == 0L) return@withContext null
+            if (buckets.isEmpty()) return@withContext null
 
             val maxAmplitude = buckets.maxOrNull() ?: 0f
+            // Store raw amplitudes BEFORE fillEdgeBuckets to preserve true silence at edges
+            val rawForDetection = buckets.clone()
             AudioWaveformProcessor.fillEdgeBuckets(buckets)
-            WaveformResult(buckets, maxAmplitude, durationUs)
+            WaveformResult(rawForDetection, maxAmplitude, durationMs * US_PER_MS)
 
         } catch (e: Exception) {
             e.printStackTrace()
             null
         }
+    }
+
+    private companion object {
+        private const val US_PER_MS = 1000L
+        private const val progressUpdateIntervalUs = 1_000_000L
     }
 }

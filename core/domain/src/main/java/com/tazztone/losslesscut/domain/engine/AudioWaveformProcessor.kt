@@ -10,6 +10,12 @@ public object AudioWaveformProcessor {
     private const val BITS_PER_BYTE = 8
     private const val BYTE_MASK = 0xFF
     private const val US_PER_SEC = 1_000_000.0
+    
+    /**
+     * Fixed engine resolution: 100 buckets per second (10ms precision).
+     */
+    public const val ENGINE_RESOLUTION_HZ: Int = 100
+    
     private const val TARGET_BUCKETS_PER_SEC = 10
     private const val MIN_BUCKET_COUNT = 500
     private const val MAX_BUCKET_COUNT = 5000
@@ -107,12 +113,44 @@ public object AudioWaveformProcessor {
     }
 
     /**
-     * Calculates an appropriate bucket count based on duration.
+     * Calculates the engine bucket count for a given duration.
+     * Always 100 buckets per second (10ms resolution).
+     */
+    public fun calculateEngineBucketCount(durationMs: Long): Int {
+        return ((durationMs / MS_PER_SEC) * ENGINE_RESOLUTION_HZ).toInt().coerceAtLeast(1)
+    }
+
+    /**
+     * Calculates an appropriate bucket count for UI display.
      * Target: 10 buckets per second, min 500, max 5000.
      */
-    public fun calculateAdaptiveBucketCount(durationMs: Long): Int {
+    public fun calculateUiBucketCount(durationMs: Long): Int {
         val calculated = (durationMs / MS_PER_SEC * TARGET_BUCKETS_PER_SEC).toInt()
         return calculated.coerceIn(MIN_BUCKET_COUNT, MAX_BUCKET_COUNT)
+    }
+
+    /**
+     * Downsamples a high-resolution waveform to a target bucket count for UI display.
+     * Uses max-pooling to preserve peaks.
+     */
+    public fun downsample(source: FloatArray, targetCount: Int): FloatArray {
+        require(targetCount > 0) { "targetCount must be positive, was $targetCount" }
+        if (targetCount >= source.size) return source.clone()
+
+        val target = FloatArray(targetCount)
+        val sourceSize = source.size
+        
+        for (i in 0 until targetCount) {
+            val start = (i.toDouble() / targetCount * sourceSize).toInt()
+            val end = (((i + 1).toDouble() / targetCount * sourceSize).toInt()).coerceAtMost(sourceSize)
+            
+            var max = 0f
+            for (j in start until end) {
+                if (source[j] > max) max = source[j]
+            }
+            target[i] = max
+        }
+        return target
     }
 
     /**

@@ -18,87 +18,118 @@ public class SilenceDetectionUseCase @Inject constructor(
 ) {
     public suspend fun findSilence(
         waveformResult: WaveformResult,
-        config: DetectionUtils.SilenceDetectionConfig
+        config: DetectionUtils.SilenceDetectionConfig,
+        minSegmentMs: Long
     ): List<LongRange> = withContext(ioDispatcher) {
-        DetectionUtils.findSilence(
+        val totalDurationMs = waveformResult.durationUs / US_PER_MS
+        
+        // 1. Find RAW silence (unpadded)
+        val rawRanges = DetectionUtils.findSilence(
             waveform = waveformResult.rawAmplitudes,
-            totalDurationMs = waveformResult.durationUs / 1000,
+            totalDurationMs = totalDurationMs,
             config = config
+        )
+        
+        // 2. Merge close silences based on RAW gaps (before padding shrinks them)
+        val mergedRanges = if (minSegmentMs > 0) {
+            DetectionUtils.mergeCloseSilences(rawRanges, minSegmentMs)
+        } else {
+            rawRanges
+        }
+        
+        // 3. Apply padding cosmeticly AFTER structural merging
+        DetectionUtils.applyPaddingAndFilter(
+            ranges = mergedRanges,
+            paddingStartMs = config.paddingStartMs,
+            paddingEndMs = config.paddingEndMs,
+            totalDurationMs = totalDurationMs
         )
     }
 
     public fun applySilenceDetection(
         clip: MediaClip,
         silenceRanges: List<LongRange>,
-        minSegmentDurationMs: Long
+        @Suppress("UNUSED_PARAMETER") minSegmentDurationMs: Long
     ): MediaClip {
-        val newSegments = buildSegmentsFromSilence(
+        val segments = buildSegmentsFromSilence(
             clipEnd = clip.durationMs,
-            silenceRanges = silenceRanges.sortedBy { it.first },
-            minSegmentDurationMs = minSegmentDurationMs
+            silenceRanges = silenceRanges
         )
-        return clip.copy(segments = newSegments)
+        
+        val finalSegments = if (segments.none { it.action == SegmentAction.KEEP }) {
+            listOf(TrimSegment(UUID.randomUUID(), 0L, clip.durationMs, SegmentAction.KEEP))
+        } else {
+            segments
+        }
+        
+        return clip.copy(segments = finalSegments)
     }
 
     private fun buildSegmentsFromSilence(
         clipEnd: Long,
-        silenceRanges: List<LongRange>,
-        minSegmentDurationMs: Long
+        silenceRanges: List<LongRange>
     ): List<TrimSegment> {
         val rawSegments = mutableListOf<TrimSegment>()
         var cursor = 0L
 
-        // Phase 1: Create alternating KEEP/DISCARD segments covering the whole clip
+        // Boundary clamping threshold (10ms resolution)
+        val boundaryThresholdMs = BOUNDARY_THRESHOLD_MS
+
         for (silence in silenceRanges) {
             val silStart = silence.first.coerceIn(0L, clipEnd)
             val silEnd = silence.last.coerceIn(0L, clipEnd)
+            
             if (silEnd <= cursor) continue
 
-            if (silStart > cursor) {
-                rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, silStart, SegmentAction.KEEP))
+            // Fix boundary tiny gaps: if silence starts almost at 0, pull it to 0
+            val effectiveStart = if (silStart < boundaryThresholdMs) 0L else silStart
+            val effectiveEnd = if (clipEnd - silEnd < boundaryThresholdMs) clipEnd else silEnd
+
+            if (effectiveStart > cursor) {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, effectiveStart, SegmentAction.KEEP))
             }
-            if (silEnd > silStart) {
-                rawSegments.add(TrimSegment(UUID.randomUUID(), silStart, silEnd, SegmentAction.DISCARD))
+            if (effectiveEnd > effectiveStart) {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), effectiveStart, effectiveEnd, SegmentAction.DISCARD))
             }
-            cursor = silEnd
+            cursor = effectiveEnd
         }
+
         if (cursor < clipEnd) {
-            rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.KEEP))
+            if (clipEnd - cursor < boundaryThresholdMs) {
+                // Too small gap at the end? Merge into DISCARD if previous was DISCARD, or just skip
+                if (rawSegments.isNotEmpty() && rawSegments.last().action == SegmentAction.DISCARD) {
+                    val last = rawSegments.removeAt(rawSegments.size - 1)
+                    rawSegments.add(last.copy(endMs = clipEnd))
+                } else {
+                    rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.KEEP))
+                }
+            } else {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.KEEP))
+            }
         }
 
-        if (rawSegments.isEmpty()) return emptyList()
-
-        return consolidateSegments(rawSegments, minSegmentDurationMs)
+        return mergeAdjacentSameAction(rawSegments)
     }
 
-    private fun consolidateSegments(
-        segments: List<TrimSegment>,
-        minSegmentDurationMs: Long
-    ): List<TrimSegment> {
+    private fun mergeAdjacentSameAction(segments: List<TrimSegment>): List<TrimSegment> {
         if (segments.isEmpty()) return emptyList()
-
-        val merged = ArrayList<TrimSegment>(segments.size)
-        merged.add(segments[0])
-
+        val result = mutableListOf<TrimSegment>()
+        var current = segments[0]
         for (i in 1 until segments.size) {
-            val cur = segments[i]
-            val last = merged.last()
-            val tooShort = (cur.endMs - cur.startMs) < minSegmentDurationMs
-
-            if (cur.action == last.action || tooShort) {
-                // Absorb cur into previous — previous action wins
-                merged[merged.lastIndex] = last.copy(endMs = cur.endMs)
+            val next = segments[i]
+            if (next.action == current.action) {
+                current = current.copy(endMs = next.endMs)
             } else {
-                merged.add(cur)
+                result.add(current)
+                current = next
             }
         }
+        result.add(current)
+        return result
+    }
 
-        // Leading segment too short → absorb into the second
-        if (merged.size > 1 && (merged[0].endMs - merged[0].startMs) < minSegmentDurationMs) {
-            merged[1] = merged[1].copy(startMs = 0L)
-            merged.removeAt(0)
-        }
-
-        return merged
+    private companion object {
+        private const val BOUNDARY_THRESHOLD_MS = 10L
+        private const val US_PER_MS = 1000L
     }
 }
