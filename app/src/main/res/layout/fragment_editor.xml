@@ -446,7 +446,7 @@
                 android:tooltipText="@string/play_pause" />
 
             <include
-                android:id="@+id/smartCutContainer"
+                android:id="@+id/smartCutOverlay"
                 layout="@layout/dialog_smart_cut"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

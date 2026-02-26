@@ -24,7 +24,8 @@ class SilenceDetectionOverlayController(
     private val context: Context,
     private val scope: CoroutineScope,
     private val binding: FragmentEditorBinding,
-    private val viewModel: VideoEditingViewModel
+    private val viewModel: VideoEditingViewModel,
+    private val onDismiss: () -> Unit
 ) {
     private var silencePreviewJob: Job? = null
     private var isPaddingLinked = true
@@ -51,7 +52,8 @@ class SilenceDetectionOverlayController(
     }
 
     internal fun showInsideSmartCut() {
-        val overlay = binding.smartCutContainer?.root ?: return
+        val overlay = binding.smartCutOverlay?.root ?: return
+
         
         initializeViews(overlay)
         setupListeners(overlay)
@@ -155,11 +157,11 @@ class SilenceDetectionOverlayController(
             updatePreview() 
         }
 
-        btnCancel.setOnClickListener { hide() }
+        btnCancel.setOnClickListener { onDismiss() }
         btnApply.setOnClickListener {
             val minKeep = sliderMinSegment?.value?.toLong() ?: 10L
             viewModel.applyDetection(SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES, minKeep)
-            hide()
+            onDismiss()
         }
         updateLinkIcon()
     }
@@ -221,8 +223,9 @@ class SilenceDetectionOverlayController(
 
     internal fun hideInsideSmartCut() {
         silencePreviewJob?.cancel()
-        // viewModel.clearSilencePreview() // Don't clear if switching tabs? 
-        // Actually, detectionPreviewRanges is shared, so we might want to clear it if switching
+        // Clear preview when hiding inside smart cut since detectionPreviewRanges is shared
+        viewModel.clearSilencePreview()
+
         binding.customVideoSeeker.noiseThresholdPreview = null
     }
 }

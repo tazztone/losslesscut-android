@@ -18,12 +18,13 @@ class SmartCutOverlayController(
     private val binding: FragmentEditorBinding,
     private val viewModel: VideoEditingViewModel
 ) {
-    private val overlayRoot: View? get() = binding.smartCutContainer?.root
+    private val overlayRoot: View? get() = binding.smartCutOverlay?.root
+
     private var tabLayout: TabLayout? = null
     private var viewFlipper: ViewFlipper? = null
     
     private val silenceController: SilenceDetectionOverlayController by lazy {
-        SilenceDetectionOverlayController(context, scope, binding, viewModel)
+        SilenceDetectionOverlayController(context, scope, binding, viewModel) { hide() }
     }
     
     private var visualController: VisualDetectionOverlayController? = null
@@ -31,6 +32,12 @@ class SmartCutOverlayController(
     fun show() {
         val root = overlayRoot ?: return
         root.visibility = View.VISIBLE
+        
+        // Hide standard editor controls to make room
+        binding.toolbar?.visibility = View.GONE
+        binding.editingControls?.visibility = View.GONE
+        binding.playlistContainer?.visibility = View.GONE
+        binding.btnPlayPause?.visibility = View.GONE
         
         if (tabLayout == null) {
             tabLayout = root.findViewById(R.id.tabLayout)
@@ -44,7 +51,7 @@ class SmartCutOverlayController(
         silenceController.showInsideSmartCut()
         
         binding.customVideoSeeker.segmentsVisible = false
-        binding.customVideoSeeker.playheadVisible = false
+        binding.customVideoSeeker.playheadVisible = true // Enable playhead for scrubbing verification
     }
 
     private fun setupTabs() {
@@ -64,7 +71,8 @@ class SmartCutOverlayController(
                             scope = scope,
                             viewModel = viewModel,
                             seeker = binding.customVideoSeeker,
-                            root = viewFlipper!!.getChildAt(1)
+                            root = viewFlipper!!.getChildAt(1),
+                            onDismiss = { hide() }
                         )
                     }
                     visualController?.activate()
@@ -87,6 +95,17 @@ class SmartCutOverlayController(
         overlayRoot?.visibility = View.GONE
         silenceController.hideInsideSmartCut()
         visualController?.deactivate()
+        
+        // Restore standard editor controls
+        binding.toolbar?.visibility = View.VISIBLE
+        binding.editingControls?.visibility = View.VISIBLE
+        binding.btnPlayPause?.visibility = View.VISIBLE
+        
+        // Only show playlist if it was visible (has multiple clips)
+        val state = viewModel.uiState.value
+        if (state is com.tazztone.losslesscut.viewmodel.VideoEditingUiState.Success && state.isPlaylistVisible) {
+            binding.playlistContainer?.visibility = View.VISIBLE
+        }
         
         binding.customVideoSeeker.segmentsVisible = true
         binding.customVideoSeeker.playheadVisible = true

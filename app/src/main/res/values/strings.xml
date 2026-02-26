@@ -162,5 +162,21 @@
     <string name="black_frames">Black Frames</string>
     <string name="freeze_frame">Freeze Frame</string>
     <string name="blur_quality">Blur Quality</string>
+    
+    <!-- Tooltips -->
+    <string name="tooltip_strategy_scene">Detects visual cuts between shots</string>
+    <string name="tooltip_strategy_black">Finds dark/black frames</string>
+    <string name="tooltip_strategy_freeze">Identifies static/frozen segments</string>
+    <string name="tooltip_strategy_blur">Detects out-of-focus segments</string>
+    <string name="tooltip_sample_interval">Analysis precision: lower is slower but more accurate</string>
+    <string name="tooltip_sensitivity">Detection threshold: adjust to include more/fewer segments</string>
+    <string name="tooltip_min_segment">Minimum duration of segments to keep</string>
+    <string name="tooltip_noise_threshold">Volume level below which audio is considered silent</string>
+    <string name="tooltip_min_segment_audio">Minimum duration for audio segments to be kept</string>
+    <string name="tooltip_min_silence_duration">Minimum duration of silence to detect as a cut point</string>
+    <string name="tooltip_padding_prefix">Buffer time added before the audio starts</string>
+    <string name="tooltip_padding_postfix">Buffer time added after the audio ends</string>
+    <string name="content_desc_link_padding">Link Padding Sliders</string>
+
     <string name="error_visual_on_audio">Visual detection not available for audio files</string>
 </resources>

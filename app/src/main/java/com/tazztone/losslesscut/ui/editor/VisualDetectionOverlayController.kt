@@ -25,7 +25,8 @@ class VisualDetectionOverlayController(
     private val scope: CoroutineScope,
     private val viewModel: VideoEditingViewModel,
     private val seeker: com.tazztone.losslesscut.customviews.CustomVideoSeeker,
-    private val root: View
+    private val root: View,
+    private val onDismiss: () -> Unit
 ) {
     private var sliderSensitivity: Slider = root.findViewById(R.id.sliderSensitivity)
     private var sliderMinSegment: Slider = root.findViewById(R.id.sliderMinSegment)
@@ -43,12 +44,14 @@ class VisualDetectionOverlayController(
     private var tvDetectedStatus: TextView = root.findViewById(R.id.tvDetectedStatus)
     
     private var btnDetectAction: MaterialButton = root.findViewById(R.id.btnDetectAction)
+    private var btnCancelVisual: MaterialButton = root.findViewById(R.id.btnCancelVisual)
     private var btnApplyVisual: MaterialButton = root.findViewById(R.id.btnApplyVisual)
 
     private var currentStrategy = VisualStrategy.SCENE_CHANGE
     private var stateJob: Job? = null
     private var progressJob: Job? = null
     private var filterJob: Job? = null
+    private var lastAnalyzedInterval = 0f
 
     init {
         setupListeners()
@@ -57,7 +60,7 @@ class VisualDetectionOverlayController(
     fun activate() {
         observeState()
         updateStrategyUI()
-        tvDetectedStatus.text = context.getString(R.string.no_silence_detected) // Reuse "No silence" as "No segments"
+        tvDetectedStatus.text = context.getString(R.string.no_silence_detected)
     }
 
     fun deactivate() {
@@ -78,6 +81,7 @@ class VisualDetectionOverlayController(
                     else -> VisualStrategy.SCENE_CHANGE
                 }
                 updateStrategyUI()
+                btnDetectAction.isEnabled = true // Re-enable if strategy changed
             }
         }
 
@@ -91,7 +95,10 @@ class VisualDetectionOverlayController(
         }
         sliderInterval.addOnChangeListener { _, value, _ ->
             updateValueText(tvIntervalValue, value / 1000f, "s")
-            // No triggerFiltering for interval as it needs re-analysis
+            // Re-enable detect button if interval changes from last analysis
+            if (value != lastAnalyzedInterval) {
+                btnDetectAction.isEnabled = true
+            }
         }
 
         btnDetectAction.setOnClickListener {
@@ -103,6 +110,10 @@ class VisualDetectionOverlayController(
             }
         }
 
+        btnCancelVisual.setOnClickListener {
+            onDismiss()
+        }
+
         btnApplyVisual.setOnClickListener {
             val mode = if (currentStrategy == VisualStrategy.SCENE_CHANGE) {
                 SilenceDetectionUseCase.DetectionMode.SPLIT_AT_BOUNDARIES
@@ -110,11 +121,13 @@ class VisualDetectionOverlayController(
                 SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
             }
             viewModel.applyDetection(mode)
+            onDismiss()
         }
     }
 
     private fun startDetection() {
         seeker.visualStrategy = currentStrategy
+        lastAnalyzedInterval = sliderInterval.value
         val config = getVisualConfig()
         viewModel.previewVisualSegments(config)
     }
@@ -160,7 +173,8 @@ class VisualDetectionOverlayController(
     private fun applyConfig(config: StrategyConfig) {
         sliderSensitivity.valueFrom = config.min
         sliderSensitivity.valueTo = config.max
-        sliderSensitivity.value = config.default
+        sliderSensitivity.stepSize = config.step
+        sliderSensitivity.value = config.default.coerceIn(config.min, config.max)
     }
 
     private fun getStrategyUnit(): String = when (currentStrategy) {
@@ -208,6 +222,7 @@ class VisualDetectionOverlayController(
                 if (isAnalyzing) {
                     layoutProgress.visibility = View.VISIBLE
                     btnDetectAction.text = context.getString(R.string.cancel)
+                    btnDetectAction.isEnabled = true
                     val (current, total) = progress!!
                     if (total > 0) {
                         progressIndicator.isIndeterminate = false
@@ -220,17 +235,24 @@ class VisualDetectionOverlayController(
                 } else {
                     layoutProgress.visibility = View.GONE
                     btnDetectAction.text = context.getString(R.string.detect)
+                    
+                    // If we just finished successful analysis, disable detect button
+                    val hasCached = viewModel.hasCachedAnalysis()
+
+                    if (hasCached && sliderInterval.value == lastAnalyzedInterval) {
+                        btnDetectAction.isEnabled = false
+                    }
                 }
             }
         }
     }
-    private data class StrategyConfig(val min: Float, val max: Float, val default: Float)
+    private data class StrategyConfig(val min: Float, val max: Float, val default: Float, val step: Float)
 
     companion object {
         private const val FILTER_DEBOUNCE_DELAY_MS = 100L
-        private val SCENE_CHANGE_CONFIG = StrategyConfig(3f, 30f, 12f)
-        private val BLACK_FRAMES_CONFIG = StrategyConfig(5f, 50f, 20f)
-        private val FREEZE_FRAME_CONFIG = StrategyConfig(1f, 15f, 3f)
-        private val BLUR_QUALITY_CONFIG = StrategyConfig(50f, 5000f, 500f)
+        private val SCENE_CHANGE_CONFIG = StrategyConfig(3f, 30f, 12f, 1f)
+        private val BLACK_FRAMES_CONFIG = StrategyConfig(5f, 50f, 20f, 1f)
+        private val FREEZE_FRAME_CONFIG = StrategyConfig(1f, 15f, 3f, 0.5f)
+        private val BLUR_QUALITY_CONFIG = StrategyConfig(50f, 5000f, 500f, 10f)
     }
 }

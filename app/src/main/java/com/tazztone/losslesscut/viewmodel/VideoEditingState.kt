@@ -25,7 +25,10 @@ public sealed class VideoEditingUiState {
         val availableTracks: List<MediaTrack> = emptyList(),
         val playbackSpeed: Float = 1.0f,
         val isPitchCorrectionEnabled: Boolean = false
-    ) : VideoEditingUiState()
+    ) : VideoEditingUiState() {
+        public val isPlaylistVisible: Boolean get() = clips.size > 1
+    }
+
     public data class Error(val error: UiText) : VideoEditingUiState()
 }
 

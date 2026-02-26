@@ -510,11 +510,20 @@ public class VideoEditingViewModel @Inject constructor(
                 filterVisualSegments(config)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: IllegalArgumentException) {
+                Log.e("VideoEditingViewModel", "Invalid parameters for visual analysis: ${e.message}", e)
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
+                _detectionPreviewRanges.value = emptyList()
+            } catch (e: IllegalStateException) {
+                Log.e("VideoEditingViewModel", "Visual analysis state error: ${e.message}", e)
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
+                _detectionPreviewRanges.value = emptyList()
             } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                Log.e("VideoEditingViewModel", "Visual analysis failed: ${e.message}", e)
+                Log.e("VideoEditingViewModel", "Unexpected error in visual analysis: ${e.message}", e)
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
                 _detectionPreviewRanges.value = emptyList()
             } finally {
+
                 _visualDetectionProgress.value = null
                 stateMutex.withLock { updateStateInternal() }
             }
@@ -542,6 +551,12 @@ public class VideoEditingViewModel @Inject constructor(
         _visualDetectionProgress.value = null
         viewModelScope.launch { updateStateInternal() }
     }
+
+    public fun hasCachedAnalysis(): Boolean {
+        return _cachedAnalysis.value != null
+    }
+
+
 
     public fun clearSilencePreview() {
         waveformController.clearSilencePreview(viewModelScope) {

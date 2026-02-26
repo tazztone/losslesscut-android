@@ -1,272 +1,279 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/silenceDetectionOverlay"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="12dp"
-    android:background="#FF000000"
-    android:clickable="true"
-    android:focusable="true"
-    android:clipChildren="false"
-    android:clipToPadding="false">
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Silence Detection"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="@android:color/white"
-        android:layout_marginBottom="8dp"/>
-
-    <GridLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:columnCount="2"
-        android:alignmentMode="alignBounds"
-        android:clipChildren="false"
-        android:clipToPadding="false">
-
-        <!-- Threshold -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Noise\nThreshold"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderThreshold"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="0.001"
-                android:valueTo="0.1"
-                android:value="0.02"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvThresholdValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="2.0%"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-
-        <!-- Min Segment -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Min Segment\nDuration"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderMinSegment"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="100"
-                android:valueTo="5000"
-                android:stepSize="100"
-                android:value="100"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvMinSegmentValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="0.1s"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-
-        <!-- Silence Duration -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Min Silence\nDuration"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderDuration"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="200"
-                android:valueTo="5000"
-                android:stepSize="100"
-                android:value="200"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvDurationValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="0.2s"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-
-        <!-- Padding Prefix -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Prefix\nPadding"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderPaddingPrefix"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="0"
-                android:valueTo="2000"
-                android:stepSize="50"
-                android:value="0"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvPaddingPrefixValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="0.0s"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-
-        <!-- Link Button Row -->
-        <View android:layout_width="0dp" android:layout_height="0dp" />
-        <ImageButton
-            android:id="@+id/btnLinkPadding"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="-8dp"
-            android:layout_marginBottom="-8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_link_24"
-            app:tint="@android:color/white"
-            android:contentDescription="Link Padding Sliders"/>
-
-        <!-- Padding Postfix -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Postfix\nPadding"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_gravity="center_vertical"
-            android:lineSpacingExtra="-2dp"/>
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-            <com.google.android.material.slider.Slider
-                android:id="@+id/sliderPaddingPostfix"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
-                android:valueFrom="0"
-                android:valueTo="2000"
-                android:stepSize="50"
-                android:value="0"
-                app:haloRadius="0dp"
-                app:thumbRadius="6dp"
-                app:trackHeight="2dp"/>
-            <TextView
-                android:id="@+id/tvPaddingPostfixValue"
-                android:layout_width="45dp"
-                android:layout_height="wrap_content"
-                android:gravity="end"
-                android:text="0.0s"
-                android:textSize="12sp"
-                android:textColor="@android:color/white"/>
-        </LinearLayout>
-    </GridLayout>
+    android:layout_height="wrap_content">
 
     <LinearLayout
+        android:id="@+id/silenceDetectionOverlay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginTop="4dp">
-        
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:background="#FF000000"
+        android:clickable="true"
+        android:focusable="true">
+
         <TextView
-            android:id="@+id/tvEstimatedCut"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="No silence detected"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:textStyle="bold"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnCancel"
-            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Cancel"
-            android:textColor="@android:color/white"
-            android:textSize="12sp"
-            android:minHeight="36dp"/>
+            android:text="SILENCE DETECTION"
+            android:textSize="10sp"
+            android:textColor="?attr/colorAccent"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnApply"
-            android:layout_width="wrap_content"
+        <GridLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Apply"
-            android:textSize="12sp"
-            android:minHeight="36dp"/>
+            android:columnCount="2"
+            android:alignmentMode="alignBounds"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <!-- Threshold -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Noise\nThreshold"
+                android:textSize="11sp"
+                android:textColor="#CCCCCC"
+                android:layout_gravity="center_vertical"
+                android:lineSpacingExtra="-2dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderThreshold"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:valueFrom="0.001"
+                    android:valueTo="0.1"
+                    android:value="0.02"
+                    app:haloRadius="0dp"
+                    app:thumbRadius="6dp"
+                    app:trackHeight="2dp"
+                    android:tooltipText="@string/tooltip_noise_threshold"/>
+                <TextView
+                    android:id="@+id/tvThresholdValue"
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="2.0%"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+
+            <!-- Min Segment -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Min Segment\nDuration"
+                android:textSize="11sp"
+                android:textColor="#CCCCCC"
+                android:layout_gravity="center_vertical"
+                android:lineSpacingExtra="-2dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderMinSegment"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:valueFrom="100"
+                    android:valueTo="5000"
+                    android:stepSize="100"
+                    android:value="100"
+                    app:haloRadius="0dp"
+                    app:thumbRadius="6dp"
+                    app:trackHeight="2dp"
+                    android:tooltipText="@string/tooltip_min_segment_audio"/>
+                <TextView
+                    android:id="@+id/tvMinSegmentValue"
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="0.1s"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+
+            <!-- Silence Duration -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Min Silence\nDuration"
+                android:textSize="11sp"
+                android:textColor="#CCCCCC"
+                android:layout_gravity="center_vertical"
+                android:lineSpacingExtra="-2dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderDuration"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:valueFrom="200"
+                    android:valueTo="5000"
+                    android:stepSize="100"
+                    android:value="200"
+                    app:haloRadius="0dp"
+                    app:thumbRadius="6dp"
+                    app:trackHeight="2dp"
+                    android:tooltipText="@string/tooltip_min_silence_duration"/>
+                <TextView
+                    android:id="@+id/tvDurationValue"
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="0.2s"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+
+            <!-- Padding Prefix -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Prefix\nPadding"
+                android:textSize="11sp"
+                android:textColor="#CCCCCC"
+                android:layout_gravity="center_vertical"
+                android:lineSpacingExtra="-2dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderPaddingPrefix"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:valueFrom="0"
+                    android:valueTo="2000"
+                    android:stepSize="50"
+                    android:value="0"
+                    app:haloRadius="0dp"
+                    app:thumbRadius="6dp"
+                    app:trackHeight="2dp"
+                    android:tooltipText="@string/tooltip_padding_prefix"/>
+                <TextView
+                    android:id="@+id/tvPaddingPrefixValue"
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="0.0s"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+
+            <!-- Link Button Row -->
+            <View android:layout_width="0dp" android:layout_height="0dp" />
+            <ImageButton
+                android:id="@+id/btnLinkPadding"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="-8dp"
+                android:layout_marginBottom="-8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_link_24"
+                app:tint="@android:color/white"
+                android:contentDescription="@string/content_desc_link_padding"/>
+
+            <!-- Padding Postfix -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Postfix\nPadding"
+                android:textSize="11sp"
+                android:textColor="#CCCCCC"
+                android:layout_gravity="center_vertical"
+                android:lineSpacingExtra="-2dp"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/sliderPaddingPostfix"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:valueFrom="0"
+                    android:valueTo="2000"
+                    android:stepSize="50"
+                    android:value="0"
+                    app:haloRadius="0dp"
+                    app:thumbRadius="6dp"
+                    app:trackHeight="2dp"
+                    android:tooltipText="@string/tooltip_padding_postfix"/>
+                <TextView
+                    android:id="@+id/tvPaddingPostfixValue"
+                    android:layout_width="45dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:text="0.0s"
+                    android:textSize="12sp"
+                    android:textColor="@android:color/white"/>
+            </LinearLayout>
+        </GridLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="12dp">
+            
+            <TextView
+                android:id="@+id/tvEstimatedCut"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="No silence detected"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:textStyle="bold"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnCancel"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cancel"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:minHeight="36dp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApply"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Apply"
+                android:textSize="12sp"
+                android:minHeight="36dp"/>
+        </LinearLayout>
+
     </LinearLayout>
-
-</LinearLayout>
+</ScrollView>
