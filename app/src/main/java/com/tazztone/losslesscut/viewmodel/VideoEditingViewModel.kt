@@ -16,8 +16,11 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.usecase.ClipManagementUseCase
 import com.tazztone.losslesscut.domain.usecase.ExportUseCase
 import com.tazztone.losslesscut.domain.usecase.ExtractSnapshotUseCase
+import com.tazztone.losslesscut.domain.model.FrameAnalysis
 import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
+import com.tazztone.losslesscut.domain.model.VisualStrategy
+import com.tazztone.losslesscut.domain.usecase.VisualSegmentFilter
 import com.tazztone.losslesscut.domain.usecase.SessionUseCase
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -46,6 +49,9 @@ public class VideoEditingViewModel @Inject constructor(
         private const val PROGRESS_START = 0
         private const val PROGRESS_MAX = 100
     }
+
+    private val _cachedAnalysis = MutableStateFlow<List<FrameAnalysis>?>(null)
+    private var cachedAnalysisIntervalMs: Long = -1L
 
     private val _uiEvents = Channel<VideoEditingEvent>(Channel.BUFFERED)
     public val uiEvents: Flow<VideoEditingEvent> = _uiEvents.receiveAsFlow()
@@ -421,6 +427,8 @@ public class VideoEditingViewModel @Inject constructor(
         currentPlaybackSpeed = 1.0f
         isPitchCorrectionEnabled = false
         waveformController.clearInternal()
+        _cachedAnalysis.value = null
+        cachedAnalysisIntervalMs = -1L
     }
 
     private fun updateStateInternal() {
@@ -476,30 +484,55 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     public fun previewVisualSegments(config: VisualDetectionConfig) {
+        val cached = _cachedAnalysis.value
+        if (cached != null && cachedAnalysisIntervalMs == config.sampleIntervalMs) {
+            // Fast path: use cache
+            filterVisualSegments(config)
+            return
+        }
+
+        // Slow path: re-analyze
         visualDetectionJob?.cancel()
         visualDetectionJob = viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             lastMinSegmentMs = config.minSegmentDurationMs
 
-            _visualDetectionProgress.value = PROGRESS_START to PROGRESS_MAX // Initial start
+            _visualDetectionProgress.value = PROGRESS_START to PROGRESS_MAX
 
             try {
-                val ranges = useCases.visualSegmentDetector.detect(clip.uri, config) { processed, total ->
+                val analyses = useCases.visualSegmentDetector.analyze(clip.uri, config.sampleIntervalMs) { processed, total ->
                     _visualDetectionProgress.value = processed to total
                 }
-                _detectionPreviewRanges.value = ranges
-                _rawSilencePreviewRanges.value = null 
+                _cachedAnalysis.value = analyses
+                cachedAnalysisIntervalMs = config.sampleIntervalMs
+                
+                // Now filter the analyzed frames
+                filterVisualSegments(config)
             } catch (e: CancellationException) {
-                // Normal cancellation
                 throw e
             } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                Log.e("VideoEditingViewModel", "Visual detection failed: ${e.message}", e)
+                Log.e("VideoEditingViewModel", "Visual analysis failed: ${e.message}", e)
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
                 _detectionPreviewRanges.value = emptyList()
             } finally {
                 _visualDetectionProgress.value = null
                 stateMutex.withLock { updateStateInternal() }
             }
+        }
+    }
+
+    public fun filterVisualSegments(config: VisualDetectionConfig) {
+        val analysis = _cachedAnalysis.value ?: return
+        viewModelScope.launch {
+            val ranges = VisualSegmentFilter.filter(
+                frames = analysis,
+                strategy = config.strategy,
+                threshold = config.sensitivityThreshold,
+                minSegmentMs = config.minSegmentDurationMs
+            )
+            _detectionPreviewRanges.value = ranges
+            _rawSilencePreviewRanges.value = null
+            stateMutex.withLock { updateStateInternal() }
         }
     }
 

@@ -6,8 +6,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.os.Build
 import android.util.Log
-import com.tazztone.losslesscut.domain.model.TimeRangeMs
-import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
+import com.tazztone.losslesscut.domain.model.FrameAnalysis
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
@@ -28,28 +27,25 @@ class VisualSegmentDetectorImpl @Inject constructor(
     private class DetectionContext(
         val extractor: MediaExtractor,
         val codec: MediaCodec,
-        val config: VisualDetectionConfig,
-        val detectedRanges: MutableList<TimeRangeMs> = mutableListOf()
+        val sampleIntervalMs: Long,
+        val analyses: MutableList<FrameAnalysis> = mutableListOf()
     ) {
         var previousHash: Long? = null
         var previousSmallY: ByteArray? = null
-        var currentHash: Long? = null
-        var currentSmallY: ByteArray? = null
-        var rangeStartUs: Long = -1L
 
         var lastProcessedUs: Long = -1L
-        val sampleIntervalUs: Long = config.sampleIntervalMs * US_PER_MS
+        val sampleIntervalUs: Long = sampleIntervalMs * US_PER_MS
         val info: MediaCodec.BufferInfo = MediaCodec.BufferInfo()
 
         var sawInputEOS = false
         var sawOutputEOS = false
     }
 
-    override suspend fun detect(
+    override suspend fun analyze(
         uri: String,
-        config: VisualDetectionConfig,
+        sampleIntervalMs: Long,
         onProgress: (Int, Int) -> Unit
-    ): List<TimeRangeMs> = withContext(Dispatchers.Default) {
+    ): List<FrameAnalysis> = withContext(Dispatchers.Default) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         var context: DetectionContext? = null
@@ -68,7 +64,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             codec.configure(format, null, null, 0 /* flags */)
             codec.start()
 
-            context = DetectionContext(extractor, codec, config)
+            context = DetectionContext(extractor, codec, sampleIntervalMs)
             val estimatedTotal = (durationUs / context.sampleIntervalUs).toInt()
             
             detectLoop(context, estimatedTotal, onProgress)
@@ -83,7 +79,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             cleanup(codec, extractor)
         }
 
-        return@withContext filterRanges(context?.detectedRanges ?: emptyList(), config.minSegmentDurationMs)
+        return@withContext context?.analyses ?: emptyList()
     }
 
     private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {
@@ -132,10 +128,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
                 }
             }
         }
-
-        if (ctx.rangeStartUs != -1L) {
-            ctx.detectedRanges.add((ctx.rangeStartUs / US_PER_MS)..(ctx.lastProcessedUs / US_PER_MS))
-        }
     }
 
     private fun processOutputBufferResult(ctx: DetectionContext, index: Int): Boolean {
@@ -180,48 +172,34 @@ class VisualSegmentDetectorImpl @Inject constructor(
         val outputFormat = ctx.codec.getOutputFormat(index)
 
         if (outputBuffer != null) {
-            ctx.currentHash = null
-            ctx.currentSmallY = null
+            val meanLuma = calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
+            val blurVariance = calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
+            val currentHash = calculatePHash(outputBuffer, outputFormat, ctx.info)
+            val currentSmallY = downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
+            
+            val sceneDistance = if (ctx.previousHash != null) {
+                java.lang.Long.bitCount(currentHash xor ctx.previousHash!!)
+            } else null
+            
+            val freezeDiff = if (ctx.previousSmallY != null) {
+                calculateSAD(currentSmallY, ctx.previousSmallY!!)
+            } else null
+            
+            ctx.analyses.add(FrameAnalysis(
+                timeMs = ctx.info.presentationTimeUs / US_PER_MS,
+                meanLuma = meanLuma,
+                blurVariance = blurVariance,
+                sceneDistance = sceneDistance,
+                freezeDiff = freezeDiff
+            ))
 
-            if (ctx.config.strategy == VisualStrategy.SCENE_CHANGE) {
-                ctx.currentHash = calculatePHash(outputBuffer, outputFormat, ctx.info)
-            } else if (ctx.config.strategy == VisualStrategy.FREEZE_FRAME) {
-                ctx.currentSmallY = downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
-            }
-
-            val isMatch = processFrame(outputBuffer, outputFormat, ctx.info, ctx.config, ctx)
-
-            if (ctx.currentHash != null) ctx.previousHash = ctx.currentHash
-            if (ctx.currentSmallY != null) ctx.previousSmallY = ctx.currentSmallY
-
-            if (isMatch) {
-                if (ctx.rangeStartUs == -1L) ctx.rangeStartUs = ctx.info.presentationTimeUs
-            } else {
-                if (ctx.rangeStartUs != -1L) {
-                    ctx.detectedRanges.add((ctx.rangeStartUs / US_PER_MS)..(ctx.info.presentationTimeUs / US_PER_MS))
-                    ctx.rangeStartUs = -1L
-                }
-            }
-        }
-    }
-
-    private fun processFrame(
-        buffer: ByteBuffer,
-        format: MediaFormat,
-        info: MediaCodec.BufferInfo,
-        config: VisualDetectionConfig,
-        ctx: DetectionContext
-    ): Boolean {
-        return when (config.strategy) {
-            VisualStrategy.BLACK_FRAMES -> isBlackFrame(buffer, format, info, config.sensitivityThreshold)
-            VisualStrategy.BLUR_QUALITY -> isBlurry(buffer, format, info, config.sensitivityThreshold)
-            VisualStrategy.SCENE_CHANGE -> isSceneChange(config.sensitivityThreshold, ctx.currentHash, ctx.previousHash)
-            VisualStrategy.FREEZE_FRAME -> isFreezeFrame(config.sensitivityThreshold, ctx.currentSmallY, ctx.previousSmallY)
+            ctx.previousHash = currentHash
+            ctx.previousSmallY = currentSmallY
         }
     }
 
     @Suppress("MagicNumber")
-    private fun isBlackFrame(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, threshold: Float): Boolean {
+    private fun calculateMeanLuma(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
         val stride = if (format.containsKey(MediaFormat.KEY_STRIDE)) format.getInteger(MediaFormat.KEY_STRIDE) else width
@@ -240,11 +218,10 @@ class VisualSegmentDetectorImpl @Inject constructor(
             }
         }
 
-        val mean = if (count > MIN_COUNT) sum.toDouble() / count else MAX_LUMA
-        return mean < threshold
+        return if (count > MIN_COUNT) sum.toDouble() / count else MAX_LUMA
     }
 
-    private fun isBlurry(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, threshold: Float): Boolean {
+    private fun calculateBlurVariance(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val targetW = 256
         val downscaled = downscaleY(buffer, format, info, targetW, -1)
         val w = targetW
@@ -269,37 +246,20 @@ class VisualSegmentDetectorImpl @Inject constructor(
             }
         }
 
-        if (count == 0) return false
+        if (count == 0) return 0.0
         val mean = sumVar / count
-        val variance = (sumSqVar / count) - (mean * mean)
-
-        return variance < threshold
+        return (sumSqVar / count) - (mean * mean)
     }
 
-    private fun isSceneChange(
-        threshold: Float,
-        currentHash: Long?,
-        previousHash: Long?
-    ): Boolean {
-        if (currentHash == null || previousHash == null) return false
-        val distance = java.lang.Long.bitCount(currentHash xor previousHash)
-        return distance > threshold
-    }
-
-    private fun isFreezeFrame(
-         threshold: Float,
-         currentSmallY: ByteArray?,
-         previousSmallY: ByteArray?
-    ): Boolean {
-        if (currentSmallY == null || previousSmallY == null) return false
+    private fun calculateSAD(current: ByteArray, previous: ByteArray): Double {
+        val size = current.size.coerceAtMost(previous.size)
+        if (size == 0) return 0.0
 
         var sad = 0L
-        for (i in currentSmallY.indices) {
-            sad += abs((currentSmallY[i].toInt() and PIXEL_MASK) - (previousSmallY[i].toInt() and PIXEL_MASK))
+        for (i in 0 until size) {
+            sad += abs((current[i].toInt() and PIXEL_MASK) - (previous[i].toInt() and PIXEL_MASK))
         }
-        val meanDiff = sad.toDouble() / currentSmallY.size
-
-        return meanDiff < threshold
+        return sad.toDouble() / size
     }
 
     private fun downscaleY(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, targetW: Int, targetH: Int): ByteArray {
@@ -376,9 +336,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         return hash
     }
 
-    private fun filterRanges(ranges: List<TimeRangeMs>, minSegmentMs: Long): List<TimeRangeMs> {
-        return ranges.filter { (it.last - it.first) >= minSegmentMs }
-    }
 
     companion object {
         private const val TAG = "VisualSegmentDetector"
@@ -395,7 +352,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val STEP_Y = 10
         private const val LAPLACIAN_CENTER_WEIGHT = 4
         private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
-        private const val NO_FLAGS = 0
         private const val MIN_COUNT = 0
     }
 }

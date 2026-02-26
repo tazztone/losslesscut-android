@@ -16,6 +16,7 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -47,6 +48,7 @@ class VisualDetectionOverlayController(
     private var currentStrategy = VisualStrategy.SCENE_CHANGE
     private var stateJob: Job? = null
     private var progressJob: Job? = null
+    private var filterJob: Job? = null
 
     init {
         setupListeners()
@@ -81,12 +83,15 @@ class VisualDetectionOverlayController(
 
         sliderSensitivity.addOnChangeListener { _, value, _ ->
             updateValueText(tvSensitivityValue, value, getStrategyUnit())
+            triggerFiltering()
         }
         sliderMinSegment.addOnChangeListener { _, value, _ ->
             updateValueText(tvMinSegmentValue, value / 1000f, "s")
+            triggerFiltering()
         }
         sliderInterval.addOnChangeListener { _, value, _ ->
             updateValueText(tvIntervalValue, value / 1000f, "s")
+            // No triggerFiltering for interval as it needs re-analysis
         }
 
         btnDetectAction.setOnClickListener {
@@ -110,14 +115,24 @@ class VisualDetectionOverlayController(
 
     private fun startDetection() {
         seeker.visualStrategy = currentStrategy
-        val config = VisualDetectionConfig(
-            strategy = currentStrategy,
-            sensitivityThreshold = sliderSensitivity.value,
-            minSegmentDurationMs = sliderMinSegment.value.toLong(),
-            sampleIntervalMs = sliderInterval.value.toLong()
-        )
+        val config = getVisualConfig()
         viewModel.previewVisualSegments(config)
     }
+
+    private fun triggerFiltering() {
+        filterJob?.cancel()
+        filterJob = scope.launch {
+            delay(FILTER_DEBOUNCE_DELAY_MS)
+            viewModel.filterVisualSegments(getVisualConfig())
+        }
+    }
+
+    private fun getVisualConfig() = VisualDetectionConfig(
+        strategy = currentStrategy,
+        sensitivityThreshold = sliderSensitivity.value,
+        minSegmentDurationMs = sliderMinSegment.value.toLong(),
+        sampleIntervalMs = sliderInterval.value.toLong()
+    )
 
     private fun updateStrategyUI() {
         when (currentStrategy) {
@@ -139,6 +154,7 @@ class VisualDetectionOverlayController(
             }
         }
         updateValueText(tvSensitivityValue, sliderSensitivity.value, getStrategyUnit())
+        triggerFiltering()
     }
 
     private fun applyConfig(config: StrategyConfig) {
@@ -183,10 +199,16 @@ class VisualDetectionOverlayController(
         progressJob?.cancel()
         progressJob = scope.launch {
             viewModel.visualDetectionProgress.collect { progress ->
-                if (progress != null) {
+                val isAnalyzing = progress != null
+                sliderSensitivity.isEnabled = !isAnalyzing
+                sliderMinSegment.isEnabled = !isAnalyzing
+                sliderInterval.isEnabled = !isAnalyzing
+                toggleStrategy.isEnabled = !isAnalyzing
+
+                if (isAnalyzing) {
                     layoutProgress.visibility = View.VISIBLE
                     btnDetectAction.text = context.getString(R.string.cancel)
-                    val (current, total) = progress
+                    val (current, total) = progress!!
                     if (total > 0) {
                         progressIndicator.isIndeterminate = false
                         progressIndicator.progress = (current * 100 / total).coerceIn(0, 100)
@@ -205,6 +227,7 @@ class VisualDetectionOverlayController(
     private data class StrategyConfig(val min: Float, val max: Float, val default: Float)
 
     companion object {
+        private const val FILTER_DEBOUNCE_DELAY_MS = 100L
         private val SCENE_CHANGE_CONFIG = StrategyConfig(3f, 30f, 12f)
         private val BLACK_FRAMES_CONFIG = StrategyConfig(5f, 50f, 20f)
         private val FREEZE_FRAME_CONFIG = StrategyConfig(1f, 15f, 3f)

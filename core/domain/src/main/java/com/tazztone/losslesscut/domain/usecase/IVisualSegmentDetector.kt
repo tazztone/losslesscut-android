@@ -1,12 +1,11 @@
 package com.tazztone.losslesscut.domain.usecase
 
-import com.tazztone.losslesscut.domain.model.TimeRangeMs
-import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
+import com.tazztone.losslesscut.domain.model.FrameAnalysis
 
 public interface IVisualSegmentDetector {
-    public suspend fun detect(
+    public suspend fun analyze(
         uri: String, 
-        config: VisualDetectionConfig,
+        sampleIntervalMs: Long,
         onProgress: (processed: Int, total: Int) -> Unit = { _, _ -> }
-    ): List<TimeRangeMs>
+    ): List<FrameAnalysis>
 }
