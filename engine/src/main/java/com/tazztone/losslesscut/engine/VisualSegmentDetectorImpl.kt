@@ -65,7 +65,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
             codec = MediaCodec.createDecoderByType(mime)
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
-            codec.configure(format, null, null, NO_FLAGS)
+            codec.configure(format, null, null, 0 /* flags */)
             codec.start()
 
             context = DetectionContext(extractor, codec, config)
