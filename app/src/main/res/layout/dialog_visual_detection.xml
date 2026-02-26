@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <!-- Strategy Selection -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/strategy"
+        android:textSize="11sp"
+        android:textColor="#CCCCCC"
+        android:layout_marginBottom="4dp"/>
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggleStrategy"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:singleSelection="true"
+        app:selectionRequired="true"
+        android:layout_marginBottom="12dp">
+        
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSceneChange"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Scene"
+            android:textSize="10sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"/>
+            
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBlackFrames"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Black"
+            android:textSize="10sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"/>
+            
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFreezeFrame"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Freeze"
+            android:textSize="10sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"/>
+            
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBlurQuality"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:text="Blur"
+            android:textSize="10sp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="0dp"/>
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="2"
+        android:alignmentMode="alignBounds">
+
+        <!-- Sensitivity Threshold -->
+        <TextView
+            android:id="@+id/tvSensitivityLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sensitivity"
+            android:textSize="11sp"
+            android:textColor="#CCCCCC"
+            android:layout_gravity="center_vertical"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderSensitivity"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:valueFrom="3"
+                android:valueTo="30"
+                android:value="12"
+                app:haloRadius="0dp"
+                app:thumbRadius="6dp"
+                app:trackHeight="2dp"/>
+            <TextView
+                android:id="@+id/tvSensitivityValue"
+                android:layout_width="55dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="12 bits"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <!-- Min Segment Duration -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/min_segment"
+            android:textSize="11sp"
+            android:textColor="#CCCCCC"
+            android:layout_gravity="center_vertical"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMinSegment"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:valueFrom="100"
+                android:valueTo="5000"
+                android:stepSize="100"
+                android:value="500"
+                app:haloRadius="0dp"
+                app:thumbRadius="6dp"
+                app:trackHeight="2dp"/>
+            <TextView
+                android:id="@+id/tvMinSegmentValue"
+                android:layout_width="55dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.5s"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+
+        <!-- Sample Interval -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/sample_interval"
+            android:textSize="11sp"
+            android:textColor="#CCCCCC"
+            android:layout_gravity="center_vertical"/>
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderInterval"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:valueFrom="100"
+                android:valueTo="2000"
+                android:stepSize="100"
+                android:value="500"
+                app:haloRadius="0dp"
+                app:thumbRadius="6dp"
+                app:trackHeight="2dp"/>
+            <TextView
+                android:id="@+id/tvIntervalValue"
+                android:layout_width="55dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.5s"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+    </GridLayout>
+
+    <!-- Progress and Status -->
+    <LinearLayout
+        android:id="@+id/layoutProgress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        android:visibility="gone">
+        
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/progressIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progress="0"
+            app:indicatorColor="?attr/colorAccent"
+            app:trackColor="#33FFFFFF"/>
+            
+        <TextView
+            android:id="@+id/tvProgressText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Analyzing..."
+            android:textSize="11sp"
+            android:textColor="#CCCCCC"
+            android:layout_marginTop="2dp"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:id="@+id/tvDetectedStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Ready to detect"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            android:textStyle="bold"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDetectAction"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/detect"
+            android:textColor="?attr/colorAccent"
+            android:textSize="12sp"
+            android:minHeight="36dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnApplyVisual"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/apply"
+            android:textSize="12sp"
+            android:minHeight="36dp"
+            android:enabled="false"/>
+    </LinearLayout>
+
+</LinearLayout>

@@ -187,7 +187,7 @@ public class VideoEditingEdgeCaseTest {
 
         viewModel.previewSilenceSegments(0.05f, 100, 0, 100, 100)
         advanceUntilIdle()
-        viewModel.applySilenceDetection()
+        viewModel.applyDetection()
         advanceUntilIdle()
         
         val state = requireSuccess(viewModel.uiState.value)

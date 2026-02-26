@@ -212,7 +212,7 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/containerSilenceCut"
+            android:id="@+id/containerSmartCut"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -221,18 +221,18 @@
             android:clickable="true"
             android:focusable="true">
             <ImageButton
-                android:id="@+id/btnSilenceCut"
+                android:id="@+id/btnSmartCut"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_silence_cut_24"
+                android:src="@drawable/ic_smart_cut_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/silence_cut"
-                android:tooltipText="@string/auto_detect_silence"
+                android:contentDescription="@string/smart_cut"
+                android:tooltipText="@string/smart_cut"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/silence_cut"
+                android:text="@string/smart_cut"
                 android:textSize="10sp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
         </LinearLayout>
@@ -446,8 +446,8 @@
                 android:tooltipText="@string/play_pause" />
 
             <include
-                android:id="@+id/silenceDetectionContainer"
-                layout="@layout/dialog_silence_detection"
+                android:id="@+id/smartCutContainer"
+                layout="@layout/dialog_smart_cut"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="bottom"

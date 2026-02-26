@@ -12,6 +12,7 @@ import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.nio.ByteBuffer
 import javax.inject.Inject
@@ -44,7 +45,11 @@ class VisualSegmentDetectorImpl @Inject constructor(
         var sawOutputEOS = false
     }
 
-    override suspend fun detect(uri: String, config: VisualDetectionConfig): List<TimeRangeMs> = withContext(Dispatchers.Default) {
+    override suspend fun detect(
+        uri: String,
+        config: VisualDetectionConfig,
+        onProgress: (Int, Int) -> Unit
+    ): List<TimeRangeMs> = withContext(Dispatchers.Default) {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         var context: DetectionContext? = null
@@ -55,6 +60,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             if (trackIndex == -1) return@withContext emptyList()
 
             val format = extractor.getTrackFormat(trackIndex)
+            val durationUs = format.getLong(MediaFormat.KEY_DURATION)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext emptyList()
 
             codec = MediaCodec.createDecoderByType(mime)
@@ -63,10 +69,16 @@ class VisualSegmentDetectorImpl @Inject constructor(
             codec.start()
 
             context = DetectionContext(extractor, codec, config)
-            detectLoop(context)
+            val estimatedTotal = (durationUs / context.sampleIntervalUs).toInt()
+            
+            detectLoop(context, estimatedTotal, onProgress)
 
+        } catch (e: MediaCodec.CodecException) {
+            Log.e(TAG, "MediaCodec error during visual detection", e)
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "Illegal state during visual detection", e)
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            Log.e(TAG, "Error during visual detection", e)
+            Log.e(TAG, "Unexpected error during visual detection", e)
         } finally {
             cleanup(codec, extractor)
         }
@@ -75,9 +87,21 @@ class VisualSegmentDetectorImpl @Inject constructor(
     }
 
     private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {
-        try { codec?.stop() } catch (_: Exception) {}
-        try { codec?.release() } catch (_: Exception) {}
-        try { extractor.release() } catch (_: Exception) {}
+        try { 
+            codec?.stop() 
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Illegal state when stopping codec during cleanup", e)
+        }
+        try { 
+            codec?.release() 
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Illegal state when releasing codec during cleanup", e)
+        }
+        try { 
+            extractor.release() 
+        } catch (e: IllegalStateException) {
+            Log.w(TAG, "Illegal state when releasing extractor during cleanup", e)
+        }
     }
 
     private fun selectVideoTrack(extractor: MediaExtractor): Int {
@@ -92,15 +116,20 @@ class VisualSegmentDetectorImpl @Inject constructor(
         return -1
     }
 
-    private fun detectLoop(ctx: DetectionContext) {
+    private suspend fun detectLoop(ctx: DetectionContext, estimatedTotal: Int, onProgress: (Int, Int) -> Unit) {
+        var processedCount = 0
         while (!ctx.sawOutputEOS) {
+            withContext(Dispatchers.Default) { ensureActive() }
+            
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
             val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)
             if (outputBufferIndex >= 0) {
-                processOutputBufferResult(ctx, outputBufferIndex)
-            } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-                // Ignore
+                val wasProcessed = processOutputBufferResult(ctx, outputBufferIndex)
+                if (wasProcessed) {
+                    processedCount++
+                    onProgress(processedCount, estimatedTotal)
+                }
             }
         }
 
@@ -109,7 +138,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
         }
     }
 
-    private fun processOutputBufferResult(ctx: DetectionContext, index: Int) {
+    private fun processOutputBufferResult(ctx: DetectionContext, index: Int): Boolean {
+        var didProcess = false
         if (ctx.info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
             ctx.sawOutputEOS = true
         }
@@ -119,9 +149,11 @@ class VisualSegmentDetectorImpl @Inject constructor(
             if (shouldProcess(ctx.lastProcessedUs, currentUs, ctx.sampleIntervalUs)) {
                 processOutputBuffer(ctx, index)
                 ctx.lastProcessedUs = currentUs
+                didProcess = true
             }
         }
         ctx.codec.releaseOutputBuffer(index, false)
+        return didProcess
     }
 
     private fun feedInput(ctx: DetectionContext): Boolean {

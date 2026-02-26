@@ -143,6 +143,24 @@
     <string name="default_export_path">Default (Movies/LosslessCut)</string>
     <string name="change">Change</string>
     <string name="reset">Reset</string>
+    <string name="smart_cut">Smart Cut</string>
+    <string name="silence">Silence</string>
+    <string name="visual">Visual</string>
+    <string name="detect">Detect</string>
+    <string name="strategy">Strategy</string>
     <string name="analyzing_video">Analyzing video content…</string>
+    <string name="analyzing_progress">Analyzing: %1$d / %2$d frames</string>
     <string name="error_visual_detection_failed">Visual analysis failed</string>
+    <string name="sensitivity">Sensitivity</string>
+    <string name="luma_threshold">Luma Threshold</string>
+    <string name="diff_threshold">Diff Threshold</string>
+    <string name="blur_threshold">Blur Threshold</string>
+    <string name="min_segment">Min Segment</string>
+    <string name="sample_interval">Interval</string>
+    <string name="visual_detected_preview">%1$d segments detected (%2$s total)</string>
+    <string name="scene_change">Scene Change</string>
+    <string name="black_frames">Black Frames</string>
+    <string name="freeze_frame">Freeze Frame</string>
+    <string name="blur_quality">Blur Quality</string>
+    <string name="error_visual_on_audio">Visual detection not available for audio files</string>
 </resources>

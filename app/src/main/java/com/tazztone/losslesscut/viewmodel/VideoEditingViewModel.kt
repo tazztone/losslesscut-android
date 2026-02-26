@@ -42,6 +42,11 @@ public class VideoEditingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     public val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
 
+    private companion object {
+        private const val PROGRESS_START = 0
+        private const val PROGRESS_MAX = 100
+    }
+
     private val _uiEvents = Channel<VideoEditingEvent>(Channel.BUFFERED)
     public val uiEvents: Flow<VideoEditingEvent> = _uiEvents.receiveAsFlow()
 
@@ -55,8 +60,11 @@ public class VideoEditingViewModel @Inject constructor(
     private val _waveformData = MutableStateFlow<FloatArray?>(null)
     public val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
 
-    private val _silencePreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
-    public val silencePreviewRanges: StateFlow<List<LongRange>> = _silencePreviewRanges.asStateFlow()
+    private val _detectionPreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
+    public val detectionPreviewRanges: StateFlow<List<LongRange>> = _detectionPreviewRanges.asStateFlow()
+
+    private val _visualDetectionProgress = MutableStateFlow<Pair<Int, Int>?>(null)
+    public val visualDetectionProgress: StateFlow<Pair<Int, Int>?> = _visualDetectionProgress.asStateFlow()
 
     private val _rawSilencePreviewRanges = MutableStateFlow<SilenceDetectionUseCase.DetectionResult?>(null)
     public val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> = 
@@ -98,6 +106,7 @@ public class VideoEditingViewModel @Inject constructor(
     
     private val keyframeCache = ConcurrentHashMap<String, List<Long>>()
     private var lastMinSegmentMs: Long = ClipController.MIN_SEGMENT_DURATION_MS
+    private var visualDetectionJob: Job? = null
     
     init {
         // Collect reactive state from controllers
@@ -117,7 +126,7 @@ public class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch {
             waveformController.silencePreviewRanges
                 .collect { ranges ->
-                    _silencePreviewRanges.value = ranges
+                    _detectionPreviewRanges.value = ranges
                     updateStateInternal()
                 }
         }
@@ -403,8 +412,11 @@ public class VideoEditingViewModel @Inject constructor(
         historyManager.clear()
         _isDirty.value = false
         _waveformData.value = null
-        _silencePreviewRanges.value = emptyList()
+        _detectionPreviewRanges.value = emptyList()
         _rawSilencePreviewRanges.value = null
+        _visualDetectionProgress.value = null
+        visualDetectionJob?.cancel()
+        visualDetectionJob = null
         _sessionExists.value = false
         currentPlaybackSpeed = 1.0f
         isPitchCorrectionEnabled = false
@@ -431,7 +443,7 @@ public class VideoEditingViewModel @Inject constructor(
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
             isSnapshotInProgress = exportController.isSnapshotInProgress.value,
-            silencePreviewRanges = _silencePreviewRanges.value,
+            detectionPreviewRanges = _detectionPreviewRanges.value,
             availableTracks = clip.availableTracks,
             playbackSpeed = currentPlaybackSpeed,
             isPitchCorrectionEnabled = isPitchCorrectionEnabled
@@ -464,25 +476,38 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     public fun previewVisualSegments(config: VisualDetectionConfig) {
-        viewModelScope.launch(ioDispatcher) {
+        visualDetectionJob?.cancel()
+        visualDetectionJob = viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             lastMinSegmentMs = config.minSegmentDurationMs
 
-            _uiState.value = VideoEditingUiState.Loading(
-                message = UiText.StringResource(R.string.analyzing_video)
-            )
+            _visualDetectionProgress.value = PROGRESS_START to PROGRESS_MAX // Initial start
 
             try {
-                val ranges = useCases.visualSegmentDetector.detect(clip.uri, config)
-                _silencePreviewRanges.value = ranges
-                _rawSilencePreviewRanges.value = null // Visual detection doesn't have intermediate stages yet
-            } catch (_: Exception) {
+                val ranges = useCases.visualSegmentDetector.detect(clip.uri, config) { processed, total ->
+                    _visualDetectionProgress.value = processed to total
+                }
+                _detectionPreviewRanges.value = ranges
+                _rawSilencePreviewRanges.value = null 
+            } catch (e: CancellationException) {
+                // Normal cancellation
+                throw e
+            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+                Log.e("VideoEditingViewModel", "Visual detection failed: ${e.message}", e)
                 _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_visual_detection_failed)))
-                _silencePreviewRanges.value = emptyList()
+                _detectionPreviewRanges.value = emptyList()
             } finally {
+                _visualDetectionProgress.value = null
                 stateMutex.withLock { updateStateInternal() }
             }
         }
+    }
+
+    public fun cancelVisualDetection() {
+        visualDetectionJob?.cancel()
+        visualDetectionJob = null
+        _visualDetectionProgress.value = null
+        viewModelScope.launch { updateStateInternal() }
     }
 
     public fun clearSilencePreview() {
@@ -491,24 +516,27 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun applySilenceDetection() {
+    public fun applyDetection(
+        mode: SilenceDetectionUseCase.DetectionMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES,
+        minKeepSegmentDurationMs: Long = 10L
+    ) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val ranges = _silencePreviewRanges.value
+                val ranges = _detectionPreviewRanges.value
                 if (ranges.isEmpty()) return@withLock
                 
                 historyManager.save(currentClips)
                 val clip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
                 
-                val updatedClip = useCases.silenceDetectionUseCase.applySilenceDetection(
-                    clip, ranges, lastMinSegmentMs
+                val updatedClip = useCases.silenceDetectionUseCase.applyDetectionRanges(
+                    clip, ranges, minKeepSegmentDurationMs, mode
                 )
                 
                 currentClips = currentClips.toMutableList().apply {
                     this[selectedClipIndex] = updatedClip
                 }
                 
-                _silencePreviewRanges.value = emptyList()
+                _detectionPreviewRanges.value = emptyList()
                 _rawSilencePreviewRanges.value = null
                 _isDirty.value = true
                 updateStateInternal()

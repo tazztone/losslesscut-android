@@ -17,6 +17,7 @@ import android.animation.ValueAnimator
 import android.view.animation.AccelerateDecelerateInterpolator
 import java.util.UUID
 import androidx.core.view.ViewCompat
+import com.tazztone.losslesscut.domain.model.VisualStrategy
 
 open class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
@@ -77,11 +78,17 @@ open class CustomVideoSeeker @JvmOverloads constructor(
             }
         }
 
-    private var internalSilencePreviewRanges = listOf<LongRange>()
-    var silencePreviewRanges: List<LongRange>
-        get() = internalSilencePreviewRanges
+    private var internalDetectionPreviewRanges = listOf<LongRange>()
+    var visualStrategy: VisualStrategy? = null
         set(value) {
-            internalSilencePreviewRanges = value
+            field = value
+            invalidate()
+        }
+    
+    var detectionPreviewRanges: List<LongRange>
+        get() = internalDetectionPreviewRanges
+        set(value) {
+            internalDetectionPreviewRanges = value
             invalidate()
         }
 

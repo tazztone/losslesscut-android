@@ -172,12 +172,12 @@ public class VideoEditingConcurrencyTest {
         viewModel.previewSilenceSegments(0.5f, 10, 0, 10, 100)
         advanceUntilIdle()
         
-        assertTrue(viewModel.silencePreviewRanges.value.isNotEmpty())
+        assertTrue(viewModel.detectionPreviewRanges.value.isNotEmpty())
         
         // Switch to clip 1
         viewModel.selectClip(1)
         advanceUntilIdle()
         
-        assertTrue(viewModel.silencePreviewRanges.value.isEmpty())
+        assertTrue(viewModel.detectionPreviewRanges.value.isEmpty())
     }
 }

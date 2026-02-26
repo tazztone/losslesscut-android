@@ -8,6 +8,7 @@ import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.domain.model.TimeUtils
+import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.google.android.material.slider.Slider
@@ -46,8 +47,11 @@ class SilenceDetectionOverlayController(
     }
 
     fun show() {
-        val overlay = binding.silenceDetectionContainer?.root ?: return
-        overlay.visibility = View.VISIBLE
+        showInsideSmartCut()
+    }
+
+    internal fun showInsideSmartCut() {
+        val overlay = binding.smartCutContainer?.root ?: return
         
         initializeViews(overlay)
         setupListeners(overlay)
@@ -153,7 +157,8 @@ class SilenceDetectionOverlayController(
 
         btnCancel.setOnClickListener { hide() }
         btnApply.setOnClickListener {
-            viewModel.applySilenceDetection()
+            val minKeep = sliderMinSegment?.value?.toLong() ?: 10L
+            viewModel.applyDetection(SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES, minKeep)
             hide()
         }
         updateLinkIcon()
@@ -194,7 +199,7 @@ class SilenceDetectionOverlayController(
 
     private fun handleUiStateUpdate(state: VideoEditingUiState, tvEst: TextView, btnApply: View) {
         if (state is VideoEditingUiState.Success) {
-            val ranges = state.silencePreviewRanges
+            val ranges = state.detectionPreviewRanges
             if (ranges.isNotEmpty()) {
                 val totalSilenceMs = ranges.sumOf { it.last - it.first }
                 tvEst.text = context.getString(
@@ -211,11 +216,13 @@ class SilenceDetectionOverlayController(
     }
 
     fun hide() {
+        hideInsideSmartCut()
+    }
+
+    internal fun hideInsideSmartCut() {
         silencePreviewJob?.cancel()
-        viewModel.clearSilencePreview()
+        // viewModel.clearSilencePreview() // Don't clear if switching tabs? 
+        // Actually, detectionPreviewRanges is shared, so we might want to clear it if switching
         binding.customVideoSeeker.noiseThresholdPreview = null
-        binding.customVideoSeeker.segmentsVisible = true
-        binding.customVideoSeeker.playheadVisible = true
-        binding.silenceDetectionContainer?.root?.visibility = View.GONE
     }
 }

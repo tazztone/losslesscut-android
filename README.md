@@ -22,7 +22,9 @@
 - 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
 - ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
 - 🔄 **Non-Destructive Workflow**: Full **Undo/Redo** stack for all segment operations.
-- 🔇 **Smart Silence Detection**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations, live savings previews, and intuitive threshold adjustments.
+- 🤖 **Smart Cut (v2.0)**: Unified, tabbed interface combining **Silence Cut** and **Visual Detection**.
+    - **Silence**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations and live savings previews.
+    - **Visual**: AI-powered segment detection for **Scene Changes**, **Black Frames**, **Freeze Frames**, and **Blur Quality**.
 - ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
 - ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
@@ -87,8 +89,7 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 
 ## 🗺️ Roadmap
 
-- [ ] ~~**Smart Cut (v2.0)**~~ (Shelved: Native lossless cutting is sufficiently fast)
-- [ ] **AI Tools**: Integration of on-device ML for automatic scene change detection.
+- [x] **Smart Cut (v2.0)**: Integrated AI-powered visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
 - [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [ ] **Architectural Enforcement**: Implement Konsist testing to safeguard module boundaries in the CI pipeline.
@@ -139,6 +140,9 @@ The project is organized into a modular feature/layer-based structure:
     - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations. **Auto-pauses** playback whenever a dialog or overlay (Settings, Silence Cut, Export) is opened.
 
 #### 3a. User Interaction Layer
+- **Smart Cut Tabbed Overlay**: Unified controller (`SmartCutOverlayController`) managing:
+    - `SilenceDetectionOverlayController`:  audio-based detection.
+    - `VisualDetectionOverlayController`: New video-based detection engine in `:engine`.
 - **Keyboard Shortcuts**: Managed by `ShortcutHandler`.
     - `SPACE`: Play/Pause.
     - `I` / `O`: Set In/Out markers.
@@ -156,7 +160,9 @@ The project is organized into a modular feature/layer-based structure:
     - **Architecture**: No dependency on `android.content.Context`. All context-dependent operations (I/O) are delegated to the Repository.
     - **Events**: Uses a `VideoEditingEvent` sealed class via `Channel` for reliable one-time UI actions (e.g., `ShowToast`, `ExportComplete`).
     - **Undo/Redo Stack**: In-memory history of `List<MediaClip>` snapshots with synchronized `canRedo` flow logic.
-    - **Silence Detection**: Orchestrates `DetectionUtils.findSilence` using extracted `waveformData`.
+    - **Detection Engine**:
+    - **Silence**: Orchestrates `DetectionUtils.findSilence` using extracted `waveformData`.
+    - **Visual**: Leverages `VisualSegmentDetectorImpl` in `:engine` for high-performance frame analysis (PHash, SAD, Laplacian variance). Optimized with seek-based sampling and realtime progress callbacks.
 
 #### Utilities
 - **StorageUtils**: Handles Scoped Storage. Centralizes URI creation, dynamically selecting `Movies/LosslessCut` or `Music/LosslessCut` based on media type.

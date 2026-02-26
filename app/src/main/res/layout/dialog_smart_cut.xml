@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/smartCutOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:background="#FF000000"
+    android:clickable="true"
+    android:focusable="true"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:visibility="gone">
+
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@android:color/transparent"
+        app:tabIndicatorColor="?attr/colorAccent"
+        app:tabSelectedTextColor="?attr/colorAccent"
+        app:tabTextColor="#88FFFFFF"
+        app:tabTextAppearance="@style/TextAppearance.Material3.LabelLarge"
+        app:tabRippleColor="#22FFFFFF"
+        app:tabMode="fixed">
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/silence" />
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/visual" />
+    </com.google.android.material.tabs.TabLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#33FFFFFF"
+        android:layout_marginBottom="8dp"/>
+
+    <ViewFlipper
+        android:id="@+id/viewFlipper"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:measureAllChildren="false">
+
+        <!-- Tab 0: Silence Detection -->
+        <include layout="@layout/dialog_silence_detection" />
+
+        <!-- Tab 1: Visual Detection -->
+        <include layout="@layout/dialog_visual_detection" />
+
+    </ViewFlipper>
+
+</LinearLayout>
