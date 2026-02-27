@@ -19,7 +19,6 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-@Suppress("MagicNumber")
 class VisualSegmentDetectorImpl @Inject constructor(
     private val dataSource: MediaDataSource
 ) : IVisualSegmentDetector {
@@ -175,7 +174,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
             val meanLuma = calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
             val blurVariance = calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
             val currentHash = calculatePHash(outputBuffer, outputFormat, ctx.info)
-            val currentSmallY = downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
+            val resultSmall = downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
+            val currentSmallY = resultSmall.data
             
             val sceneDistance = if (ctx.previousHash != null) {
                 java.lang.Long.bitCount(currentHash xor ctx.previousHash!!)
@@ -218,14 +218,16 @@ class VisualSegmentDetectorImpl @Inject constructor(
             }
         }
 
-        return if (count > MIN_COUNT) sum.toDouble() / count else MAX_LUMA
+        return if (count > 0) sum.toDouble() / count else MAX_LUMA
     }
 
+    @Suppress("MagicNumber")
     private fun calculateBlurVariance(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val targetW = 256
-        val downscaled = downscaleY(buffer, format, info, targetW, -1)
-        val w = targetW
-        val h = downscaled.size / w
+        val result = downscaleY(buffer, format, info, targetW, -1)
+        val downscaled = result.data
+        val w = result.width
+        val h = result.height
 
         var sumVar = 0.0
         var sumSqVar = 0.0
@@ -262,7 +264,9 @@ class VisualSegmentDetectorImpl @Inject constructor(
         return sad.toDouble() / size
     }
 
-    private fun downscaleY(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, targetW: Int, targetH: Int): ByteArray {
+    private data class DownscaleResult(val data: ByteArray, val width: Int, val height: Int)
+
+    private fun downscaleY(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo, targetW: Int, targetH: Int): DownscaleResult {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
         val stride = if (format.containsKey(MediaFormat.KEY_STRIDE)) format.getInteger(MediaFormat.KEY_STRIDE) else width
@@ -286,11 +290,11 @@ class VisualSegmentDetectorImpl @Inject constructor(
                 }
             }
         }
-        return out
+        return DownscaleResult(out, targetW, finalH)
     }
 
     private fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
-        val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
+        val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
 
         val vals = DoubleArray(DOWNSCALE_SIZE * DOWNSCALE_SIZE)
         for (i in small.indices) vals[i] = (small[i].toInt() and PIXEL_MASK).toDouble()
@@ -358,6 +362,5 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val LAPLACIAN_CENTER_WEIGHT = 4
         
         private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
-        private const val MIN_COUNT = 0
     }
 }

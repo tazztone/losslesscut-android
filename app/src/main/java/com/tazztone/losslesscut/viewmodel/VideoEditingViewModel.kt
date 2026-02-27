@@ -45,10 +45,6 @@ public class VideoEditingViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
     public val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
 
-    private companion object {
-        private const val PROGRESS_START = 0
-        private const val PROGRESS_MAX = 100
-    }
 
     private val _cachedAnalysis = MutableStateFlow<List<FrameAnalysis>?>(null)
     private var cachedAnalysisIntervalMs: Long = -1L
@@ -497,7 +493,7 @@ public class VideoEditingViewModel @Inject constructor(
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             lastMinSegmentMs = config.minSegmentDurationMs
 
-            _visualDetectionProgress.value = PROGRESS_START to PROGRESS_MAX
+            _visualDetectionProgress.value = null
 
             try {
                 val analyses = useCases.visualSegmentDetector.analyze(clip.uri, config.sampleIntervalMs) { processed, total ->
