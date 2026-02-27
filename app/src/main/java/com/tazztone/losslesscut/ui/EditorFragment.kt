@@ -435,8 +435,24 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private fun updatePlaybackIcons() {
         val isPlaying = playerManager.isPlaying
         val iconRes = if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24
+        
         binding.playerSection.btnPlayPause.setImageResource(iconRes)
         binding.playerSection.btnPlayPauseControls.setImageResource(iconRes)
+
+        // Animate central play/pause button visibility
+        if (isPlaying) {
+            binding.playerSection.btnPlayPause.animate()
+                .alpha(0f)
+                .setDuration(200)
+                .withEndAction { binding.playerSection.btnPlayPause.visibility = View.GONE }
+                .start()
+        } else {
+            binding.playerSection.btnPlayPause.visibility = View.VISIBLE
+            binding.playerSection.btnPlayPause.animate()
+                .alpha(1f)
+                .setDuration(200)
+                .start()
+        }
     }
 
     private fun updatePlaybackSpeedUI(speed: Float) {

@@ -21,7 +21,11 @@
         android:text="00:00:00 / 00:00:00"
         android:textColor="@android:color/white"
         android:textSize="14sp"
-        android:background="#AA000000"
+        android:background="@android:color/transparent"
+        android:shadowColor="#000000"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:shadowRadius="3"
         android:gravity="start" />
 
     <LinearLayout
