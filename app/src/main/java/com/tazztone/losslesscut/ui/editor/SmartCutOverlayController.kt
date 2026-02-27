@@ -165,7 +165,7 @@ class SmartCutOverlayController(
             false
         ).apply {
             setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = false
+            isOutsideTouchable = true
             elevation = 16f
         }
         currentTooltipPopup = popup
@@ -173,7 +173,12 @@ class SmartCutOverlayController(
         val loc = IntArray(2)
         anchor.getLocationOnScreen(loc)
         val popupX = loc[0] - tv.measuredWidth / 2 + anchor.width / 2
-        val popupY = loc[1] - tv.measuredHeight - 16
+        var popupY = loc[1] - tv.measuredHeight - 16
+        
+        // Fix #4: Out-of-bounds clipping. If too close to top, show below anchor.
+        if (popupY < 0) {
+            popupY = loc[1] + anchor.height + 16
+        }
 
         popup.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY)
     }
