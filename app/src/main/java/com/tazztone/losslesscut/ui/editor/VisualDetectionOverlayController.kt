@@ -37,7 +37,11 @@ class VisualDetectionOverlayController(
     private var tvMinSegmentValue: TextView = root.findViewById(R.id.tvMinSegmentValue)
     private var tvIntervalValue: TextView = root.findViewById(R.id.tvIntervalValue)
     
-    private var toggleStrategy: MaterialButtonToggleGroup = root.findViewById(R.id.toggleStrategy)
+    private val btnSceneChange: View = root.findViewById(R.id.btnSceneChange)
+    private val btnBlackFrames: View = root.findViewById(R.id.btnBlackFrames)
+    private val btnFreezeFrame: View = root.findViewById(R.id.btnFreezeFrame)
+    private val btnBlurQuality: View = root.findViewById(R.id.btnBlurQuality)
+
     private var layoutProgress: View = root.findViewById(R.id.layoutProgress)
     private var progressIndicator: LinearProgressIndicator = root.findViewById(R.id.progressIndicator)
     private var tvProgressText: TextView = root.findViewById(R.id.tvProgressText)
@@ -55,6 +59,7 @@ class VisualDetectionOverlayController(
 
     init {
         setupListeners()
+        updateSelectionUI()
     }
 
     fun activate() {
@@ -71,19 +76,26 @@ class VisualDetectionOverlayController(
     }
 
     private fun setupListeners() {
-        toggleStrategy.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                currentStrategy = when (checkedId) {
-                    R.id.btnSceneChange -> VisualStrategy.SCENE_CHANGE
-                    R.id.btnBlackFrames -> VisualStrategy.BLACK_FRAMES
-                    R.id.btnFreezeFrame -> VisualStrategy.FREEZE_FRAME
-                    R.id.btnBlurQuality -> VisualStrategy.BLUR_QUALITY
-                    else -> VisualStrategy.SCENE_CHANGE
-                }
+        val onStrategyClick = View.OnClickListener { v ->
+            val newStrategy = when (v.id) {
+                R.id.btnSceneChange -> VisualStrategy.SCENE_CHANGE
+                R.id.btnBlackFrames -> VisualStrategy.BLACK_FRAMES
+                R.id.btnFreezeFrame -> VisualStrategy.FREEZE_FRAME
+                R.id.btnBlurQuality -> VisualStrategy.BLUR_QUALITY
+                else -> currentStrategy
+            }
+            if (newStrategy != currentStrategy) {
+                currentStrategy = newStrategy
+                updateSelectionUI()
                 updateStrategyUI()
-                btnDetectAction.isEnabled = true // Re-enable if strategy changed
+                btnDetectAction.isEnabled = true
             }
         }
+
+        btnSceneChange.setOnClickListener(onStrategyClick)
+        btnBlackFrames.setOnClickListener(onStrategyClick)
+        btnFreezeFrame.setOnClickListener(onStrategyClick)
+        btnBlurQuality.setOnClickListener(onStrategyClick)
 
         sliderSensitivity.addOnChangeListener { _, value, _ ->
             updateValueText(tvSensitivityValue, value, getStrategyUnit())
@@ -217,7 +229,11 @@ class VisualDetectionOverlayController(
                 sliderSensitivity.isEnabled = !isAnalyzing
                 sliderMinSegment.isEnabled = !isAnalyzing
                 sliderInterval.isEnabled = !isAnalyzing
-                toggleStrategy.isEnabled = !isAnalyzing
+                
+                btnSceneChange.isEnabled = !isAnalyzing
+                btnBlackFrames.isEnabled = !isAnalyzing
+                btnFreezeFrame.isEnabled = !isAnalyzing
+                btnBlurQuality.isEnabled = !isAnalyzing
 
                 if (isAnalyzing) {
                     layoutProgress.visibility = View.VISIBLE
@@ -246,6 +262,13 @@ class VisualDetectionOverlayController(
             }
         }
     }
+    private fun updateSelectionUI() {
+        btnSceneChange.isSelected = currentStrategy == VisualStrategy.SCENE_CHANGE
+        btnBlackFrames.isSelected = currentStrategy == VisualStrategy.BLACK_FRAMES
+        btnFreezeFrame.isSelected = currentStrategy == VisualStrategy.FREEZE_FRAME
+        btnBlurQuality.isSelected = currentStrategy == VisualStrategy.BLUR_QUALITY
+    }
+
     private data class StrategyConfig(val min: Float, val max: Float, val default: Float, val step: Float)
 
     companion object {

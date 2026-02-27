@@ -8,7 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp"
+        android:padding="8dp"
         android:background="#FF000000"
         android:clickable="true"
         android:focusable="true">
@@ -20,7 +20,7 @@
             android:textSize="10sp"
             android:textColor="?attr/colorAccent"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="4dp"/>
 
         <GridLayout
             android:layout_width="match_parent"
@@ -31,17 +31,30 @@
             android:clipToPadding="false">
 
             <!-- Threshold -->
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Noise\nThreshold"
-                android:textSize="11sp"
-                android:textColor="#CCCCCC"
-                android:layout_gravity="center_vertical"
-                android:lineSpacingExtra="-2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Noise"
+                    android:textSize="11sp"
+                    android:textColor="#CCCCCC"/>
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_noise_threshold"
+                    android:tag="@string/tooltip_noise_threshold"
+                    android:contentDescription="Noise Threshold"/>
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
                 <com.google.android.material.slider.Slider
@@ -49,8 +62,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:valueFrom="0.001"
                     android:valueTo="0.1"
                     android:value="0.02"
@@ -69,17 +82,30 @@
             </LinearLayout>
 
             <!-- Min Segment -->
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Min Segment\nDuration"
-                android:textSize="11sp"
-                android:textColor="#CCCCCC"
-                android:layout_gravity="center_vertical"
-                android:lineSpacingExtra="-2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Segment"
+                    android:textSize="11sp"
+                    android:textColor="#CCCCCC"/>
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_min_segment_audio"
+                    android:tag="@string/tooltip_min_segment_audio"
+                    android:contentDescription="Min Segment Duration"/>
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
                 <com.google.android.material.slider.Slider
@@ -87,8 +113,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:valueFrom="100"
                     android:valueTo="5000"
                     android:stepSize="100"
@@ -108,17 +134,30 @@
             </LinearLayout>
 
             <!-- Silence Duration -->
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Min Silence\nDuration"
-                android:textSize="11sp"
-                android:textColor="#CCCCCC"
-                android:layout_gravity="center_vertical"
-                android:lineSpacingExtra="-2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Silence"
+                    android:textSize="11sp"
+                    android:textColor="#CCCCCC"/>
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_min_silence_duration"
+                    android:tag="@string/tooltip_min_silence_duration"
+                    android:contentDescription="Min Silence Duration"/>
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
                 <com.google.android.material.slider.Slider
@@ -126,8 +165,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:valueFrom="200"
                     android:valueTo="5000"
                     android:stepSize="100"
@@ -147,17 +186,30 @@
             </LinearLayout>
 
             <!-- Padding Prefix -->
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Prefix\nPadding"
-                android:textSize="11sp"
-                android:textColor="#CCCCCC"
-                android:layout_gravity="center_vertical"
-                android:lineSpacingExtra="-2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Prefix"
+                    android:textSize="11sp"
+                    android:textColor="#CCCCCC"/>
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_padding_prefix"
+                    android:tag="@string/tooltip_padding_prefix"
+                    android:contentDescription="Prefix Padding"/>
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
                 <com.google.android.material.slider.Slider
@@ -165,8 +217,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:valueFrom="0"
                     android:valueTo="2000"
                     android:stepSize="50"
@@ -189,28 +241,41 @@
             <View android:layout_width="0dp" android:layout_height="0dp" />
             <ImageButton
                 android:id="@+id/btnLinkPadding"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginTop="-8dp"
-                android:layout_marginBottom="-8dp"
+                android:layout_marginTop="-4dp"
+                android:layout_marginBottom="-4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_link_24"
                 app:tint="@android:color/white"
                 android:contentDescription="@string/content_desc_link_padding"/>
 
             <!-- Padding Postfix -->
-            <TextView
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Postfix\nPadding"
-                android:textSize="11sp"
-                android:textColor="#CCCCCC"
-                android:layout_gravity="center_vertical"
-                android:lineSpacingExtra="-2dp"/>
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Postfix"
+                    android:textSize="11sp"
+                    android:textColor="#CCCCCC"/>
+                <ImageButton
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_padding_postfix"
+                    android:tag="@string/tooltip_padding_postfix"
+                    android:contentDescription="Postfix Padding"/>
+            </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="32dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
                 <com.google.android.material.slider.Slider
@@ -218,8 +283,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
                     android:valueFrom="0"
                     android:valueTo="2000"
                     android:stepSize="50"
@@ -244,7 +309,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="12dp">
+            android:layout_marginTop="4dp">
             
             <TextView
                 android:id="@+id/tvEstimatedCut"
@@ -272,7 +337,8 @@
                 android:layout_height="wrap_content"
                 android:text="Apply"
                 android:textSize="12sp"
-                android:minHeight="36dp"/>
+                android:minHeight="36dp"
+                android:tooltipText="@string/tooltip_apply_smart_cut"/>
         </LinearLayout>
 
     </LinearLayout>

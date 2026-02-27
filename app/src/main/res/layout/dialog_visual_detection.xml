@@ -8,17 +8,17 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="8dp">
 
         <!-- SECTION: ANALYSIS -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ANALYSIS (ONE-TIME)"
+            android:text="ANALYSIS"
             android:textSize="10sp"
             android:textColor="?attr/colorAccent"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="4dp"/>
 
         <TextView
             android:layout_width="wrap_content"
@@ -28,87 +28,173 @@
             android:textColor="#CCCCCC"
             android:layout_marginBottom="4dp"/>
 
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/toggleStrategy"
+        <LinearLayout
+            android:id="@+id/layoutStrategySelector"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:singleSelection="true"
-            app:selectionRequired="true"
-            android:layout_marginBottom="12dp">
-            
-            <com.google.android.material.button.MaterialButton
+            android:layout_height="36dp"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <!-- Scene Change -->
+            <LinearLayout
                 android:id="@+id/btnSceneChange"
-                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Scene"
-                android:textSize="10sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                android:tooltipText="@string/tooltip_strategy_scene"/>
-                
-            <com.google.android.material.button.MaterialButton
+                android:background="@drawable/strategy_button_bg"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Scene"
+                    android:textSize="10sp"
+                    android:textColor="#FFFFFF"
+                    android:duplicateParentState="true"/>
+                <ImageButton
+                    android:id="@+id/infoScene"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_strategy_scene"
+                    android:tag="@string/tooltip_strategy_scene"
+                    android:contentDescription="Scene Info"/>
+            </LinearLayout>
+
+            <View android:layout_width="4dp" android:layout_height="match_parent"/>
+
+            <!-- Black Frames -->
+            <LinearLayout
                 android:id="@+id/btnBlackFrames"
-                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Black"
-                android:textSize="10sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                android:tooltipText="@string/tooltip_strategy_black"/>
-                
-            <com.google.android.material.button.MaterialButton
+                android:background="@drawable/strategy_button_bg"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Black"
+                    android:textSize="10sp"
+                    android:textColor="#FFFFFF"
+                    android:duplicateParentState="true"/>
+                <ImageButton
+                    android:id="@+id/infoBlack"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_strategy_black"
+                    android:tag="@string/tooltip_strategy_black"
+                    android:contentDescription="Black Info"/>
+            </LinearLayout>
+
+            <View android:layout_width="4dp" android:layout_height="match_parent"/>
+
+            <!-- Freeze Frame -->
+            <LinearLayout
                 android:id="@+id/btnFreezeFrame"
-                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Freeze"
-                android:textSize="10sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                android:tooltipText="@string/tooltip_strategy_freeze"/>
-                
-            <com.google.android.material.button.MaterialButton
+                android:background="@drawable/strategy_button_bg"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Freeze"
+                    android:textSize="10sp"
+                    android:textColor="#FFFFFF"
+                    android:duplicateParentState="true"/>
+                <ImageButton
+                    android:id="@+id/infoFreeze"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_strategy_freeze"
+                    android:tag="@string/tooltip_strategy_freeze"
+                    android:contentDescription="Freeze Info"/>
+            </LinearLayout>
+
+            <View android:layout_width="4dp" android:layout_height="match_parent"/>
+
+            <!-- Blur Quality -->
+            <LinearLayout
                 android:id="@+id/btnBlurQuality"
-                style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:text="Blur"
-                android:textSize="10sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:padding="0dp"
-                android:tooltipText="@string/tooltip_strategy_blur"/>
-        </com.google.android.material.button.MaterialButtonToggleGroup>
+                android:background="@drawable/strategy_button_bg"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Blur"
+                    android:textSize="10sp"
+                    android:textColor="#FFFFFF"
+                    android:duplicateParentState="true"/>
+                <ImageButton
+                    android:id="@+id/infoBlur"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
+                    android:src="@drawable/ic_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:tint="#88FFFFFF"
+                    android:tooltipText="@string/tooltip_strategy_blur"
+                    android:tag="@string/tooltip_strategy_blur"
+                    android:contentDescription="Blur Info"/>
+            </LinearLayout>
+        </LinearLayout>
 
         <!-- Sample Interval (Analysis stage) -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="4dp">
             <TextView
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/sample_interval"
+                android:text="Interval"
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
+            <ImageButton
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_info_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:tooltipText="@string/tooltip_sample_interval"
+                android:tag="@string/tooltip_sample_interval"
+                android:contentDescription="Sample Interval"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderInterval"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
                 android:valueFrom="100"
                 android:valueTo="2000"
                 android:stepSize="100"
@@ -135,7 +221,8 @@
             android:text="@string/detect"
             android:textSize="12sp"
             android:minHeight="40dp"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="8dp"
+            android:tooltipText="@string/tooltip_detect"/>
 
         <!-- Progress and Status -->
         <LinearLayout
@@ -165,40 +252,49 @@
         <com.google.android.material.divider.MaterialDivider
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="12dp"
             app:dividerColor="#33FFFFFF"/>
 
         <!-- SECTION: FILTER -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="FILTER (LIVE)"
+            android:text="FILTER"
             android:textSize="10sp"
             android:textColor="?attr/colorAccent"
             android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
+            android:layout_marginBottom="4dp"/>
 
         <!-- Sensitivity Threshold -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="4dp">
             <TextView
                 android:id="@+id/tvSensitivityLabel"
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/sensitivity"
+                android:text="Sens."
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
+            <ImageButton
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_info_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:tooltipText="@string/tooltip_sensitivity"
+                android:tag="@string/tooltip_sensitivity"
+                android:contentDescription="Sensitivity"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderSensitivity"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
                 android:valueFrom="3"
                 android:valueTo="30"
                 android:value="12"
@@ -220,23 +316,32 @@
         <!-- Min Segment Duration -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="32dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
+            android:layout_marginBottom="8dp">
             <TextView
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/min_segment"
+                android:text="Seg."
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
+            <ImageButton
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_info_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:tooltipText="@string/tooltip_min_segment"
+                android:tag="@string/tooltip_min_segment"
+                android:contentDescription="Min Segment"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderMinSegment"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
                 android:valueFrom="100"
                 android:valueTo="5000"
                 android:stepSize="100"
@@ -289,7 +394,8 @@
                 android:text="@string/apply"
                 android:textSize="12sp"
                 android:minHeight="36dp"
-                android:enabled="false"/>
+                android:enabled="false"
+                android:tooltipText="@string/tooltip_apply_smart_cut"/>
         </LinearLayout>
 
     </LinearLayout>

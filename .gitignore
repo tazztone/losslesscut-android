@@ -42,3 +42,4 @@ detekt_output.txt
 .gitignore
 app_compile_output.txt
 compile_output.txt
+build_output*.txt
