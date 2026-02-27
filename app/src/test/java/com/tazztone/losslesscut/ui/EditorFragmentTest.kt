@@ -1,6 +1,8 @@
 package com.tazztone.losslesscut.ui
 
-import androidx.lifecycle.Lifecycle
+import android.view.View
+import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.launchFragmentInHiltContainer
 import dagger.hilt.android.testing.BindValue
@@ -27,15 +29,31 @@ class EditorFragmentTest {
     @JvmField
     val viewModel: VideoEditingViewModel = mockk(relaxed = true)
 
+    @BindValue
+    @JvmField
+    val playerManager: com.tazztone.losslesscut.ui.PlayerManager = mockk(relaxed = true)
+
     @Before
     fun init() {
         hiltRule.inject()
     }
 
+    private fun getBinding(fragment: EditorFragment): FragmentEditorBinding {
+        val field = EditorFragment::class.java.getDeclaredField("_binding")
+        field.isAccessible = true
+        return field.get(fragment) as FragmentEditorBinding
+    }
+
     @Test
     fun `fragment should initialize without crash`() {
         launchFragmentInHiltContainer<EditorFragment> {
-            // If it reaches here without crash, the basic initialization is verified.
+            val fragment = this as EditorFragment
+            val binding = getBinding(fragment)
+            // Verify critical components exist
+            assert(binding.navBar.root != null)
+            assert(binding.editingControls.root != null)
+            assert(binding.playerSection.root != null)
+            assert(binding.seekerContainer.root != null)
         }
     }
 
@@ -43,6 +61,15 @@ class EditorFragmentTest {
     @Config(qualifiers = "land")
     fun `fragment should initialize without crash in landscape`() {
         launchFragmentInHiltContainer<EditorFragment> {
+            val fragment = this as EditorFragment
+            val binding = getBinding(fragment)
+            // Verify sidebars exist in landscape
+            assert(view?.findViewById<View>(R.id.navSidebar) != null)
+            assert(view?.findViewById<View>(R.id.editingControlsSidebar) != null)
+            
+            // Verify critical views resolve
+            assert(binding.navBar.btnExport != null)
+            assert(binding.editingControls.btnRotate != null)
         }
     }
 }

@@ -66,40 +66,44 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Player Container (Fills middle) -->
+        <!-- Center Area: Player + Overlays (Dynamic sharing) -->
         <LinearLayout
-            android:id="@+id/playerContainer"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:orientation="horizontal"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/seekerContainer"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent">
-
-            <include 
-                android:id="@+id/playerSection"
-                layout="@layout/editor_player"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1" />
-
-            <include 
-                android:id="@+id/playlistArea"
-                layout="@layout/editor_playlist" />
-        </LinearLayout>
-
-        <!-- Overlays -->
-        <include
-            android:id="@+id/smartCutOverlay"
-            layout="@layout/dialog_smart_cut"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            android:visibility="gone" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/seekerContainer">
+
+            <!-- Overlays (e.g. Smart Cut) -->
+            <include
+                android:id="@+id/smartCutOverlay"
+                layout="@layout/dialog_smart_cut"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <!-- Player Container (Fills remaining space) -->
+            <LinearLayout
+                android:id="@+id/playerContainer"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:orientation="horizontal">
+
+                <include 
+                    android:id="@+id/playerSection"
+                    layout="@layout/editor_player"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1" />
+
+                <include 
+                    android:id="@+id/playlistArea"
+                    layout="@layout/editor_playlist" />
+            </LinearLayout>
+        </LinearLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 

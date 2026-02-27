@@ -52,8 +52,8 @@
         android:layout_weight="1"
         android:src="@drawable/ic_redo_24"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Redo"
-        android:tooltipText="Redo"
+        android:contentDescription="@string/redo"
+        android:tooltipText="@string/redo"
         app:tint="?attr/colorOnSurface"/>
 
     <ImageButton

@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.ui.editor
 
 import android.content.Context
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
@@ -43,9 +44,14 @@ class SmartCutOverlayController(
         val root = overlayRoot ?: return
         root.visibility = View.VISIBLE
 
-        // Hide standard editor controls to make room
-        binding.navBar.root.visibility = View.GONE
-        binding.editingControls.root.visibility = View.GONE
+        val isLandscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        
+        // Hide standard editor controls to make room (Portrait only)
+        if (!isLandscape) {
+            binding.navBar.root.visibility = View.GONE
+            binding.editingControls.root.visibility = View.GONE
+        }
+        
         binding.playlistArea.root.visibility = View.GONE
         binding.playerSection.btnPlayPause.visibility = View.GONE
 
@@ -119,8 +125,11 @@ class SmartCutOverlayController(
         visualController?.deactivate()
 
         // Restore standard editor controls
-        binding.navBar.root.visibility = View.VISIBLE
-        binding.editingControls.root.visibility = View.VISIBLE
+        val isLandscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (!isLandscape) {
+            binding.navBar.root.visibility = View.VISIBLE
+            binding.editingControls.root.visibility = View.VISIBLE
+        }
         binding.playerSection.btnPlayPause.visibility = View.VISIBLE
 
         val state = viewModel.uiState.value

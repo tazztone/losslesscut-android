@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/editingControls"
@@ -5,7 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:padding="12dp"
+    android:padding="4dp"
     android:animateLayoutChanges="true">
 
     <LinearLayout
@@ -60,7 +61,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Rotate"
+            android:text="@string/rotate"
             android:textSize="10sp"
             android:textColor="?attr/colorOnSurfaceVariant"/>
     </LinearLayout>
@@ -112,7 +113,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Discard"
+            android:text="@string/exit_confirm_discard"
             android:textSize="10sp"
             android:textColor="?attr/colorOnSurfaceVariant"/>
     </LinearLayout>
@@ -138,7 +139,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Split"
+            android:text="@string/split"
             android:textSize="10sp"
             android:textColor="?attr/colorOnSurfaceVariant"/>
     </LinearLayout>
@@ -164,7 +165,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Out"
+            android:text="@string/short_out"
             android:textSize="10sp"
             android:textColor="?attr/colorOnSurfaceVariant"/>
     </LinearLayout>
@@ -190,7 +191,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="In"
+            android:text="@string/short_in"
             android:textSize="10sp"
             android:textColor="?attr/colorOnSurfaceVariant"/>
     </LinearLayout>

@@ -183,4 +183,7 @@
     <string name="content_desc_link_padding">Link Padding Sliders</string>
 
     <string name="error_visual_on_audio">Visual detection not available for audio files</string>
+    <string name="short_in">In</string>
+    <string name="short_out">Out</string>
+    <string name="redo">Redo</string>
 </resources>
