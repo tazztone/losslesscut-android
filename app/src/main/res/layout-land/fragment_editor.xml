@@ -67,43 +67,58 @@
             app:layout_constraintEnd_toEndOf="parent" />
 
         <!-- Center Area: Player + Overlays (Dynamic sharing) -->
-        <LinearLayout
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toTopOf="@id/seekerContainer">
 
-            <!-- Overlays (e.g. Smart Cut) - fixed width so it shares space with player -->
+            <!-- Guideline for 50/50 split -->
+            <androidx.constraintlayout.widget.Guideline
+                android:id="@+id/midGuideline"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintGuide_percent="0.5" />
+
+            <!-- Overlays (e.g. Smart Cut) - dynamic width, at least 50% (fills remaining) -->
             <include
                 android:id="@+id/smartCutOverlay"
                 layout="@layout/dialog_smart_cut"
-                android:layout_width="280dp"
-                android:layout_height="match_parent"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@+id/playerContainer"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
                 android:visibility="gone" />
 
-            <!-- Player Container (Fills remaining space) -->
+            <!-- Player Container (Max 50% width via Guideline, wraps content for portrait videos) -->
             <LinearLayout
                 android:id="@+id/playerContainer"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:orientation="horizontal">
+                android:layout_width="wrap_content"
+                android:layout_height="0dp"
+                android:orientation="horizontal"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintStart_toStartOf="@id/midGuideline"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="1.0"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent">
 
                 <include 
                     android:id="@+id/playerSection"
                     layout="@layout/editor_player"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1" />
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent" />
 
                 <include 
                     android:id="@+id/playlistArea"
                     layout="@layout/editor_playlist" />
             </LinearLayout>
-        </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
