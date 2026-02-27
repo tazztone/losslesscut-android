@@ -86,6 +86,7 @@ class VisualDetectionOverlayController(
             }
             if (newStrategy != currentStrategy) {
                 currentStrategy = newStrategy
+                seeker.visualStrategy = newStrategy
                 updateSelectionUI()
                 updateStrategyUI()
                 btnDetectAction.isEnabled = true

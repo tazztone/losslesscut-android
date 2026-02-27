@@ -38,7 +38,21 @@ public object VisualSegmentFilter {
             resultRanges.add(currentRangeStart..currentRangeEnd)
         }
 
-        return resultRanges.filter { (it.last - it.first) >= minSegmentMs }
+        // Fix: Visual Regression. Expand single-frame matches to have a duration
+        // so they are visible as mask rects in the seeker.
+        // We use minSegmentMs or a fixed 100ms if minSegmentMs is 0.
+        val displayPadding = if (minSegmentMs > 0) minSegmentMs else 100L
+        
+        return resultRanges.map { range ->
+            if (range.first == range.last && strategy != VisualStrategy.SCENE_CHANGE) {
+                // Expand slightly so it's a visible rect, but don't exceed video bounds (implicit)
+                val start = (range.first - displayPadding / 2).coerceAtLeast(0)
+                val end = range.last + displayPadding / 2
+                start..end
+            } else {
+                range
+            }
+        }.filter { (it.last - it.first) >= minSegmentMs }
     }
 
     private fun isMatch(frame: FrameAnalysis, strategy: VisualStrategy, threshold: Float): Boolean {
