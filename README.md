@@ -53,7 +53,7 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 
 ### Prerequisites
 - Android Studio Koala+
-- Android SDK 35 (Target) / 26 (Min)
+- Android SDK 36 (Target) / 26 (Min)
 
 ### Development
 ```bash
