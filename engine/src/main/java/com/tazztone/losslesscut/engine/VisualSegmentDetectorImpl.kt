@@ -342,15 +342,21 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TIMEOUT_US = 10000L
         private const val US_PER_MS = 1000L
         private const val DOWNSCALE_SIZE = 32
-        private const val DCT_SIZE = 8
+        private const val DCT_SIZE = 8 // Look for 8x8 low frequency patterns
         private const val PHASH_SIZE = 64
         private const val FIXED_POINT_SHIFT = 16
         private const val MAX_LUMA = 255.0
+        
+        // DCT scaling factor for 2D transformation
         private const val DCT_SCALE = 0.25
+        
         private const val PIXEL_MASK = 0xFF
         private const val STEP_X = 10
         private const val STEP_Y = 10
+        
+        // Neighborhood weight for laplacian blur detection
         private const val LAPLACIAN_CENTER_WEIGHT = 4
+        
         private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
         private const val MIN_COUNT = 0
     }

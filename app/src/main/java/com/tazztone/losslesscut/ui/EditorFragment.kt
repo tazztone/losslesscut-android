@@ -113,7 +113,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         
         smartCutController = com.tazztone.losslesscut.ui.editor.SmartCutOverlayController(
             requireContext(), viewLifecycleOwner.lifecycleScope, binding, viewModel
-        )
+        ).apply {
+            viewLifecycleOwner.lifecycle.addObserver(this)
+        }
 
         exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
             requireContext(),

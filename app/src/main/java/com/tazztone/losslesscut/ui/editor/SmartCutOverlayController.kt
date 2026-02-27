@@ -10,6 +10,8 @@ import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.ViewFlipper
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.tabs.TabLayout
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
@@ -24,7 +26,7 @@ class SmartCutOverlayController(
     private val scope: CoroutineScope,
     private val binding: FragmentEditorBinding,
     private val viewModel: VideoEditingViewModel
-) {
+) : DefaultLifecycleObserver {
     private val overlayRoot: View? get() = binding.smartCutOverlay?.root
 
     private var tabLayout: TabLayout? = null
@@ -132,6 +134,11 @@ class SmartCutOverlayController(
         viewModel.cancelVisualDetection()
     }
 
+    override fun onDestroy(owner: LifecycleOwner) {
+        currentTooltipPopup?.dismiss()
+        currentTooltipPopup = null
+    }
+
     fun isVisible(): Boolean = overlayRoot?.visibility == View.VISIBLE
 
     fun showTooltipPopup(anchor: View, text: String) {
@@ -151,13 +158,13 @@ class SmartCutOverlayController(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
 
-        val popup = android.widget.PopupWindow(
+        val popup = PopupWindow(
             tv,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            WRAP_CONTENT,
+            WRAP_CONTENT,
             false
         ).apply {
-            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             isOutsideTouchable = false
             elevation = 16f
         }
