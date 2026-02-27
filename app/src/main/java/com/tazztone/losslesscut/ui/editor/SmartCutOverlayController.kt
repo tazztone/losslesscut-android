@@ -48,7 +48,7 @@ class SmartCutOverlayController(
         
         // Hide standard editor controls to make room (Portrait only)
         if (!isLandscape) {
-            binding.navBar.root.visibility = View.GONE
+            binding.toolbar?.visibility = View.GONE
             binding.editingControls.root.visibility = View.GONE
         }
         
@@ -127,7 +127,7 @@ class SmartCutOverlayController(
         // Restore standard editor controls
         val isLandscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         if (!isLandscape) {
-            binding.navBar.root.visibility = View.VISIBLE
+            binding.toolbar?.visibility = View.VISIBLE
             binding.editingControls.root.visibility = View.VISIBLE
         }
         binding.playerSection.btnPlayPause.visibility = View.VISIBLE
