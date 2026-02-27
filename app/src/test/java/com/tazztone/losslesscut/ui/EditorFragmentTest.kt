@@ -38,4 +38,11 @@ class EditorFragmentTest {
             // If it reaches here without crash, the basic initialization is verified.
         }
     }
+
+    @Test
+    @Config(qualifiers = "land")
+    fun `fragment should initialize without crash in landscape`() {
+        launchFragmentInHiltContainer<EditorFragment> {
+        }
+    }
 }

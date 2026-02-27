@@ -93,13 +93,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
         progressTicker = com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker(
             scope = viewLifecycleOwner.lifecycleScope,
-            binding = binding.seekerContainer,
+            seeker = binding.seekerContainer.customVideoSeeker,
             playerManager = playerManager,
             onUpdate = { current, total -> updateDurationDisplay(current, total) }
         )
 
         seekerDelegate = com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate(
-            binding = binding.seekerContainer,
+            seeker = binding.seekerContainer.customVideoSeeker,
             viewModel = viewModel,
             playerManager = playerManager,
             onSeek = { pos -> updateDurationDisplay(pos, playerManager.duration) },
@@ -375,7 +375,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         binding.navBar.btnRedo.alpha = if (state.canRedo) 1.0f else 0.5f
 
                         val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
-                        binding.editingControls.btnDelete.setImageResource(if (selectedSeg?.action == SegmentAction.DISCARD) R.drawable.ic_restore_24 else R.drawable.ic_delete_24)
+                        val deleteIcon = if (selectedSeg?.action == SegmentAction.DISCARD) {
+                            R.drawable.ic_restore_24
+                        } else {
+                            R.drawable.ic_delete_24
+                        }
+                        binding.editingControls.btnDelete.setImageResource(deleteIcon)
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
@@ -389,7 +394,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiEvents.collect { event ->
                 when (event) {
-                    is VideoEditingEvent.ShowToast -> Toast.makeText(requireContext(), event.message.asString(requireContext()), Toast.LENGTH_LONG).show()
+                    is VideoEditingEvent.ShowToast -> {
+                        val msg = event.message.asString(requireContext())
+                        Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                    }
                     is VideoEditingEvent.ExportComplete -> { /* keep playing or show results */ }
                     is VideoEditingEvent.DismissHints -> binding.seekerContainer.customVideoSeeker.dismissHints()
                     else -> {}
@@ -419,7 +427,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (total <= 0) return
-        binding.playerSection.tvDuration.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
+        val currentStr = TimeUtils.formatDuration(current)
+        val totalStr = TimeUtils.formatDuration(total)
+        binding.playerSection.tvDuration.text = getString(R.string.duration_format, currentStr, totalStr)
     }
 
     private fun updatePlaybackIcons() {

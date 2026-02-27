@@ -44,7 +44,7 @@ class SmartCutOverlayController(
         root.visibility = View.VISIBLE
 
         // Hide standard editor controls to make room
-        binding.toolbar.visibility = View.GONE
+        binding.navBar.root.visibility = View.GONE
         binding.editingControls.root.visibility = View.GONE
         binding.playlistArea.root.visibility = View.GONE
         binding.playerSection.btnPlayPause.visibility = View.GONE
@@ -119,7 +119,7 @@ class SmartCutOverlayController(
         visualController?.deactivate()
 
         // Restore standard editor controls
-        binding.toolbar.visibility = View.VISIBLE
+        binding.navBar.root.visibility = View.VISIBLE
         binding.editingControls.root.visibility = View.VISIBLE
         binding.playerSection.btnPlayPause.visibility = View.VISIBLE
 

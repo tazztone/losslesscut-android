@@ -72,6 +72,10 @@ android {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    maxHeapSize = System.getProperty("test.maxHeapSize", "1024m")
+}
+
 dependencies {
     runtimeOnly(project(":engine"))
     implementation(project(":core:data"))
