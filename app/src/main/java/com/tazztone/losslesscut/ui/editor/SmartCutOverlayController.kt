@@ -29,6 +29,7 @@ class SmartCutOverlayController(
 
     private var tabLayout: TabLayout? = null
     private var viewFlipper: ViewFlipper? = null
+    private var currentTooltipPopup: PopupWindow? = null
 
     private val silenceController: SilenceDetectionOverlayController by lazy {
         SilenceDetectionOverlayController(context, scope, binding, viewModel) { hide() }
@@ -108,6 +109,9 @@ class SmartCutOverlayController(
     }
 
     fun hide() {
+        currentTooltipPopup?.dismiss()
+        currentTooltipPopup = null
+
         overlayRoot?.visibility = View.GONE
         silenceController.hideInsideSmartCut()
         visualController?.deactivate()
@@ -132,6 +136,7 @@ class SmartCutOverlayController(
 
     fun showTooltipPopup(anchor: View, text: String) {
         if (text.isBlank()) return
+        currentTooltipPopup?.dismiss()
 
         val tv = TextView(context).apply {
             setText(text)
@@ -146,11 +151,17 @@ class SmartCutOverlayController(
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
         )
 
-        val popup = PopupWindow(tv, WRAP_CONTENT, WRAP_CONTENT, true).apply {
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
+        val popup = android.widget.PopupWindow(
+            tv,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+            false
+        ).apply {
+            setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+            isOutsideTouchable = false
             elevation = 16f
         }
+        currentTooltipPopup = popup
 
         val loc = IntArray(2)
         anchor.getLocationOnScreen(loc)
