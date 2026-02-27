@@ -44,10 +44,10 @@ class SmartCutOverlayController(
         root.visibility = View.VISIBLE
 
         // Hide standard editor controls to make room
-        binding.toolbar?.visibility = View.GONE
-        binding.editingControls?.visibility = View.GONE
-        binding.playlistContainer?.visibility = View.GONE
-        binding.btnPlayPause?.visibility = View.GONE
+        binding.toolbar.visibility = View.GONE
+        binding.editingControls.root.visibility = View.GONE
+        binding.playlistArea.root.visibility = View.GONE
+        binding.playerSection.btnPlayPause.visibility = View.GONE
 
         if (tabLayout == null) {
             tabLayout = root.findViewById(R.id.tabLayout)
@@ -63,8 +63,8 @@ class SmartCutOverlayController(
         viewFlipper?.displayedChild = 0
         silenceController.showInsideSmartCut()
 
-        binding.customVideoSeeker.segmentsVisible = false
-        binding.customVideoSeeker.playheadVisible = true
+        binding.seekerContainer.customVideoSeeker.segmentsVisible = false
+        binding.seekerContainer.customVideoSeeker.playheadVisible = true
     }
 
     private fun setupTabs() {
@@ -84,7 +84,7 @@ class SmartCutOverlayController(
                             context = context,
                             scope = scope,
                             viewModel = viewModel,
-                            seeker = binding.customVideoSeeker,
+                            seeker = binding.seekerContainer.customVideoSeeker,
                             root = visualRoot,
                             onDismiss = { hide() }
                         )
@@ -119,17 +119,17 @@ class SmartCutOverlayController(
         visualController?.deactivate()
 
         // Restore standard editor controls
-        binding.toolbar?.visibility = View.VISIBLE
-        binding.editingControls?.visibility = View.VISIBLE
-        binding.btnPlayPause?.visibility = View.VISIBLE
+        binding.toolbar.visibility = View.VISIBLE
+        binding.editingControls.root.visibility = View.VISIBLE
+        binding.playerSection.btnPlayPause.visibility = View.VISIBLE
 
         val state = viewModel.uiState.value
         if (state is com.tazztone.losslesscut.viewmodel.VideoEditingUiState.Success && state.isPlaylistVisible) {
-            binding.playlistContainer?.visibility = View.VISIBLE
+            binding.playlistArea.root.visibility = View.VISIBLE
         }
 
-        binding.customVideoSeeker.segmentsVisible = true
-        binding.customVideoSeeker.playheadVisible = true
+        binding.seekerContainer.customVideoSeeker.segmentsVisible = true
+        binding.seekerContainer.customVideoSeeker.playheadVisible = true
         viewModel.clearSilencePreview()
         viewModel.cancelVisualDetection()
     }

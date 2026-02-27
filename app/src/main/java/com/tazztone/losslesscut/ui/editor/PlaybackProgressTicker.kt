@@ -1,7 +1,7 @@
 package com.tazztone.losslesscut.ui.editor
 
 import androidx.media3.common.util.UnstableApi
-import com.tazztone.losslesscut.databinding.FragmentEditorBinding
+import com.tazztone.losslesscut.databinding.EditorTimelineBinding
 import com.tazztone.losslesscut.ui.PlayerManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 @UnstableApi
 class PlaybackProgressTicker(
     private val scope: CoroutineScope,
-    private val binding: FragmentEditorBinding,
+    private val binding: EditorTimelineBinding,
     private val playerManager: PlayerManager,
     private val onUpdate: (Long, Long) -> Unit
 ) {

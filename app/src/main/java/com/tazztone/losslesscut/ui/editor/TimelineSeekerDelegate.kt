@@ -1,7 +1,7 @@
 package com.tazztone.losslesscut.ui.editor
 
 import androidx.media3.common.util.UnstableApi
-import com.tazztone.losslesscut.databinding.FragmentEditorBinding
+import com.tazztone.losslesscut.databinding.EditorTimelineBinding
 import com.tazztone.losslesscut.ui.PlayerManager
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import java.util.UUID
@@ -11,7 +11,7 @@ import java.util.UUID
  */
 @UnstableApi
 class TimelineSeekerDelegate(
-    private val binding: FragmentEditorBinding,
+    private val binding: EditorTimelineBinding,
     private val viewModel: VideoEditingViewModel,
     private val playerManager: PlayerManager,
     private val onSeek: (Long) -> Unit,

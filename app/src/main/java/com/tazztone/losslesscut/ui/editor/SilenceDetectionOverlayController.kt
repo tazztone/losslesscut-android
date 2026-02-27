@@ -52,15 +52,15 @@ class SilenceDetectionOverlayController(
     }
 
     internal fun showInsideSmartCut() {
-        val overlay = binding.smartCutOverlay?.root ?: return
+        val overlay = binding.smartCutOverlay.root
 
         
         initializeViews(overlay)
         setupListeners(overlay)
         observeState(overlay)
         
-        binding.customVideoSeeker.segmentsVisible = false
-        binding.customVideoSeeker.playheadVisible = false
+        binding.seekerContainer.customVideoSeeker.segmentsVisible = false
+        binding.seekerContainer.customVideoSeeker.playheadVisible = false
         updatePreview()
     }
 
@@ -100,7 +100,7 @@ class SilenceDetectionOverlayController(
 
         sliderThreshold?.addOnChangeListener { _, value, _ ->
             val maxAmp = viewModel.waveformMaxAmplitude.value
-            binding.customVideoSeeker.noiseThresholdPreview = if (maxAmp > 0f) value / maxAmp else value
+            binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = if (maxAmp > 0f) value / maxAmp else value
             updatePreview()
         }
 
@@ -108,38 +108,38 @@ class SilenceDetectionOverlayController(
             override fun onStartTrackingTouch(slider: Slider) {
                 val maxAmp = viewModel.waveformMaxAmplitude.value
                 val scaledThreshold = if (maxAmp > 0f) slider.value / maxAmp else slider.value
-                binding.customVideoSeeker.noiseThresholdPreview = scaledThreshold
+                binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = scaledThreshold
             }
 
             override fun onStopTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.noiseThresholdPreview = null
+                binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = null
             }
         })
 
         sliderDuration?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SILENCE
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SILENCE
             }
             override fun onStopTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
             }
         })
 
         sliderMinSegment?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SEGMENT
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SEGMENT
             }
             override fun onStopTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
             }
         })
 
         val paddingTouchListener = object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.PADDING
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.PADDING
             }
             override fun onStopTrackingTouch(slider: Slider) {
-                binding.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
+                binding.seekerContainer.customVideoSeeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.NONE
             }
         }
         sliderPaddingPrefix?.addOnSliderTouchListener(paddingTouchListener)
@@ -194,7 +194,7 @@ class SilenceDetectionOverlayController(
         }
         scope.launch {
             viewModel.rawSilencePreviewRanges.collect { result ->
-                binding.customVideoSeeker.rawSilenceResult = result
+                binding.seekerContainer.customVideoSeeker.rawSilenceResult = result
             }
         }
     }
@@ -226,6 +226,6 @@ class SilenceDetectionOverlayController(
         // Clear preview when hiding inside smart cut since detectionPreviewRanges is shared
         viewModel.clearSilencePreview()
 
-        binding.customVideoSeeker.noiseThresholdPreview = null
+        binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = null
     }
 }

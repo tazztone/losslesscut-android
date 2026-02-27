@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/navBar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="@integer/editor_bar_orientation"
+    android:gravity="center">
+
+    <ImageButton
+        android:id="@+id/btnHome"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_home_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/home"
+        android:tooltipText="@string/home"
+        app:tint="?attr/colorOnSurface"/>
+
+    <ImageButton
+        android:id="@+id/btnAddClips"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_add_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/add_video"
+        android:tooltipText="@string/add_video"
+        app:tint="?attr/colorOnSurface"/>
+
+    <ImageButton
+        android:id="@+id/btnUndo"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_undo_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/undo"
+        android:tooltipText="@string/undo"
+        app:tint="?attr/colorOnSurface"/>
+
+    <ImageButton
+        android:id="@+id/btnRedo"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_redo_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="Redo"
+        android:tooltipText="Redo"
+        app:tint="?attr/colorOnSurface"/>
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <ImageButton
+        android:id="@+id/btnSettings"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_settings_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/settings"
+        android:tooltipText="@string/settings"
+        app:tint="?attr/colorOnSurface"/>
+
+    <ImageButton
+        android:id="@+id/btnSnapshot"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_camera_24"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/snapshot"
+        android:tooltipText="@string/snapshot"
+        app:tint="?attr/colorOnSurface"/>
+
+    <ImageButton
+        android:id="@+id/btnExport"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/ic_export_24"
+        android:background="@drawable/rounded_button"
+        android:contentDescription="@string/export"
+        android:tooltipText="@string/export"
+        app:tint="?attr/colorOnPrimary"/>
+
+</LinearLayout>

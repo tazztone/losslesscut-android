@@ -55,7 +55,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         addClipsDelegate.onClipsReceived(uris)
     }
 
-    override fun getPlayerView() = binding.playerView
+    override fun getPlayerView() = binding.playerSection.playerView
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -63,13 +63,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         
         playerManager = PlayerManager(
             context = requireContext(),
-            playerView = binding.playerView,
+            playerView = binding.playerSection.playerView,
             viewModel = viewModel,
             onStateChanged = { state ->
                 if (state == Player.STATE_READY) {
                     seekerDelegate.setVideoDuration(playerManager.duration)
                     updateDurationDisplay(playerManager.currentPosition, playerManager.duration)
-                    binding.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
+                    binding.seekerContainer.customVideoSeeker.setSeekPosition(playerManager.currentPosition)
                 }
                 updatePlaybackIcons()
             },
@@ -93,13 +93,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
         progressTicker = com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker(
             scope = viewLifecycleOwner.lifecycleScope,
-            binding = binding,
+            binding = binding.seekerContainer,
             playerManager = playerManager,
             onUpdate = { current, total -> updateDurationDisplay(current, total) }
         )
 
         seekerDelegate = com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate(
-            binding = binding,
+            binding = binding.seekerContainer,
             viewModel = viewModel,
             playerManager = playerManager,
             onSeek = { pos -> updateDurationDisplay(pos, playerManager.duration) },
@@ -139,11 +139,11 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         )
 
         rotationManager = RotationManager(
-            badgeRotate = binding.badgeRotate,
-            btnRotate = binding.btnRotate,
-            tvRotateEmoji = binding.tvRotateEmoji,
-            btnRotateContainer = binding.btnRotateContainer,
-            playerView = binding.playerView
+            badgeRotate = binding.editingControls.badgeRotate,
+            btnRotate = binding.editingControls.btnRotate,
+            tvRotateEmoji = binding.editingControls.tvRotateEmoji,
+            btnRotateContainer = binding.editingControls.btnRotateContainer,
+            playerView = binding.playerSection.playerView
         )
 
         shortcutHandler = ShortcutHandler(
@@ -175,7 +175,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
         savedInstanceState?.let {
             isLosslessMode = it.getBoolean("lossless_mode", true)
-            binding.customVideoSeeker.isLosslessMode = isLosslessMode
+            binding.seekerContainer.customVideoSeeker.isLosslessMode = isLosslessMode
         }
     }
 
@@ -206,8 +206,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             override fun isLongPressDragEnabled(): Boolean = false
         })
 
-        binding.btnAddClips?.setOnClickListener { addClipsAction() }
-        TooltipCompat.setTooltipText(binding.btnAddClips!!, getString(R.string.add_video))
+        binding.navBar.btnAddClips.setOnClickListener { addClipsAction() }
+        TooltipCompat.setTooltipText(binding.navBar.btnAddClips, getString(R.string.add_video))
 
         clipAdapter = MediaClipAdapter(
             onClipSelected = { index -> 
@@ -238,25 +238,25 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             onStartDrag = { viewHolder -> itemTouchHelper.startDrag(viewHolder) },
             onAddClicked = { addClipsAction() }
         )
-        binding.rvClips?.adapter = clipAdapter
-        binding.rvClips?.let { itemTouchHelper.attachToRecyclerView(it) }
+        binding.playlistArea.rvClips.adapter = clipAdapter
+        binding.playlistArea.rvClips.let { itemTouchHelper.attachToRecyclerView(it) }
 
-        binding.btnPlayPause?.setOnClickListener { playerManager.togglePlayback() }
-        binding.btnPlayPauseControls?.setOnClickListener { playerManager.togglePlayback() }
-        binding.playerView.setOnClickListener { playerManager.togglePlayback() }
+        binding.playerSection.btnPlayPause.setOnClickListener { playerManager.togglePlayback() }
+        binding.playerSection.btnPlayPauseControls.setOnClickListener { playerManager.togglePlayback() }
+        binding.playerSection.playerView.setOnClickListener { playerManager.togglePlayback() }
 
-        binding.btnHome.setOnClickListener { activity?.onBackPressedDispatcher?.onBackPressed() }
-        binding.btnExport?.setOnClickListener { 
+        binding.navBar.btnHome.setOnClickListener { activity?.onBackPressedDispatcher?.onBackPressed() }
+        binding.navBar.btnExport.setOnClickListener { 
             val state = viewModel.uiState.value as? VideoEditingUiState.Success
             if (state != null) {
                 playerManager.pause()
                 exportOptionsController.show(state)
             }
         }
-        binding.btnUndo.setOnClickListener { viewModel.undo() }
-        binding.btnRedo?.setOnClickListener { viewModel.redo() }
+        binding.navBar.btnUndo.setOnClickListener { viewModel.undo() }
+        binding.navBar.btnRedo.setOnClickListener { viewModel.redo() }
         
-        binding.btnSettings?.setOnClickListener {
+        binding.navBar.btnSettings.setOnClickListener {
             playerManager.pause()
             val bottomSheet = SettingsBottomSheetDialogFragment()
             bottomSheet.setInitialState(isLosslessMode)
@@ -264,49 +264,49 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             bottomSheet.show(childFragmentManager, "SettingsBottomSheet")
         }
 
-        binding.btnSetIn?.setOnClickListener { setInPoint() }
-        binding.containerSetIn?.setOnClickListener { setInPoint() }
-        binding.btnSetOut?.setOnClickListener { setOutPoint() }
-        binding.containerSetOut?.setOnClickListener { setOutPoint() }
-        binding.btnSplit.setOnClickListener { splitCurrentSegment() }
-        binding.containerSplit?.setOnClickListener { splitCurrentSegment() }
+        binding.editingControls.btnSetIn.setOnClickListener { setInPoint() }
+        binding.editingControls.containerSetIn.setOnClickListener { setInPoint() }
+        binding.editingControls.btnSetOut.setOnClickListener { setOutPoint() }
+        binding.editingControls.containerSetOut.setOnClickListener { setOutPoint() }
+        binding.editingControls.btnSplit.setOnClickListener { splitCurrentSegment() }
+        binding.editingControls.containerSplit.setOnClickListener { splitCurrentSegment() }
         
-        binding.btnRotateContainer.setOnClickListener { rotationManager.rotate(90) }
-        binding.containerRotate?.setOnClickListener { rotationManager.rotate(90) }
+        binding.editingControls.btnRotateContainer.setOnClickListener { rotationManager.rotate(90) }
+        binding.editingControls.containerRotate.setOnClickListener { rotationManager.rotate(90) }
 
-        binding.btnPlaybackSpeed?.setOnClickListener { playerManager.cyclePlaybackSpeed() }
-        binding.btnPlaybackSpeed?.setOnLongClickListener {
+        binding.playerSection.btnPlaybackSpeed.setOnClickListener { playerManager.cyclePlaybackSpeed() }
+        binding.playerSection.btnPlaybackSpeed.setOnLongClickListener {
             val isEnabled = playerManager.togglePitchCorrection()
             val msgRes = if (isEnabled) R.string.pitch_correction_on else R.string.pitch_correction_off
             Toast.makeText(requireContext(), msgRes, Toast.LENGTH_SHORT).show()
             true
         }
-        binding.btnSnapshot.setOnClickListener { viewModel.extractSnapshot(playerManager.currentPosition) }
+        binding.navBar.btnSnapshot.setOnClickListener { viewModel.extractSnapshot(playerManager.currentPosition) }
 
-        binding.btnDelete.setOnClickListener {
+        binding.editingControls.btnDelete.setOnClickListener {
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.markSegmentDiscarded(it) }
             }
         }
-        binding.containerDelete?.setOnClickListener {
+        binding.editingControls.containerDelete.setOnClickListener {
             val state = viewModel.uiState.value
             if (state is VideoEditingUiState.Success) {
                 state.selectedSegmentId?.let { viewModel.markSegmentDiscarded(it) }
             }
         }
 
-        binding.btnSmartCut?.setOnClickListener {
+        binding.editingControls.btnSmartCut.setOnClickListener {
             playerManager.pause()
             smartCutController.show()
         }
-        binding.containerSmartCut?.setOnClickListener {
+        binding.editingControls.containerSmartCut.setOnClickListener {
             playerManager.pause()
             smartCutController.show()
         }
 
-        binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
-        binding.btnNudgeForward?.setOnClickListener { playerManager.seekToKeyframe(1) }
+        binding.playerSection.btnNudgeBack.setOnClickListener { playerManager.seekToKeyframe(-1) }
+        binding.playerSection.btnNudgeForward.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
     private fun setupCustomSeeker() {
@@ -339,26 +339,26 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         }
 
                         if (lastLoadedClipId != selectedClip.id) {
-                            binding.customVideoSeeker.resetView()
+                            binding.seekerContainer.customVideoSeeker.resetView()
                             lastLoadedClipId = selectedClip.id
                         }
                         
-                        binding.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
+                        binding.seekerContainer.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
                         if (state.clips.size > 1) {
-                            binding.playlistContainer?.visibility = View.VISIBLE
+                            binding.playlistArea.root.visibility = View.VISIBLE
                             clipAdapter.submitList(state.clips)
                             clipAdapter.updateSelection(selectedClip.id)
                         } else {
-                            binding.playlistContainer?.visibility = View.GONE
+                            binding.playlistArea.root.visibility = View.GONE
                         }
                         
                         if (state.isAudioOnly) {
-                            binding.playerView.visibility = View.GONE
-                            binding.audioPlaceholder?.visibility = View.VISIBLE
-                            binding.tvAudioFileName?.text = selectedClip.fileName
+                            binding.playerSection.playerView.visibility = View.GONE
+                            binding.playerSection.audioPlaceholder.visibility = View.VISIBLE
+                            binding.playerSection.tvAudioFileName.text = selectedClip.fileName
                         } else {
-                            binding.playerView.visibility = View.VISIBLE
-                            binding.audioPlaceholder?.visibility = View.GONE
+                            binding.playerSection.playerView.visibility = View.VISIBLE
+                            binding.playerSection.audioPlaceholder.visibility = View.GONE
                         }
 
                         if (playerManager.currentPlaybackSpeed != state.playbackSpeed || playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
@@ -366,16 +366,16 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         }
                         updatePlaybackSpeedUI(state.playbackSpeed)
 
-                        binding.customVideoSeeker.setKeyframes(state.keyframes)
-                        binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
-                        binding.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
-                        binding.btnUndo.isEnabled = state.canUndo
-                        binding.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
-                        binding.btnRedo?.isEnabled = state.canRedo
-                        binding.btnRedo?.alpha = if (state.canRedo) 1.0f else 0.5f
+                        binding.seekerContainer.customVideoSeeker.setKeyframes(state.keyframes)
+                        binding.seekerContainer.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
+                        binding.seekerContainer.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
+                        binding.navBar.btnUndo.isEnabled = state.canUndo
+                        binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
+                        binding.navBar.btnRedo.isEnabled = state.canRedo
+                        binding.navBar.btnRedo.alpha = if (state.canRedo) 1.0f else 0.5f
 
                         val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
-                        binding.btnDelete.setImageResource(if (selectedSeg?.action == SegmentAction.DISCARD) R.drawable.ic_restore_24 else R.drawable.ic_delete_24)
+                        binding.editingControls.btnDelete.setImageResource(if (selectedSeg?.action == SegmentAction.DISCARD) R.drawable.ic_restore_24 else R.drawable.ic_delete_24)
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
@@ -391,14 +391,14 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                 when (event) {
                     is VideoEditingEvent.ShowToast -> Toast.makeText(requireContext(), event.message.asString(requireContext()), Toast.LENGTH_LONG).show()
                     is VideoEditingEvent.ExportComplete -> { /* keep playing or show results */ }
-                    is VideoEditingEvent.DismissHints -> binding.customVideoSeeker.dismissHints()
+                    is VideoEditingEvent.DismissHints -> binding.seekerContainer.customVideoSeeker.dismissHints()
                     else -> {}
                 }
             }
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.waveformData.collect { waveform -> binding.customVideoSeeker.setWaveformData(waveform) }
+            viewModel.waveformData.collect { waveform -> binding.seekerContainer.customVideoSeeker.setWaveformData(waveform) }
         }
     }
 
@@ -419,19 +419,19 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun updateDurationDisplay(current: Long, total: Long) {
         if (total <= 0) return
-        binding.tvDuration?.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
+        binding.playerSection.tvDuration.text = getString(R.string.duration_format, TimeUtils.formatDuration(current), TimeUtils.formatDuration(total))
     }
 
     private fun updatePlaybackIcons() {
         val isPlaying = playerManager.isPlaying
         val iconRes = if (isPlaying) R.drawable.ic_pause_24 else R.drawable.ic_play_24
-        binding.btnPlayPause?.setImageResource(iconRes)
-        binding.btnPlayPauseControls?.setImageResource(iconRes)
+        binding.playerSection.btnPlayPause.setImageResource(iconRes)
+        binding.playerSection.btnPlayPauseControls.setImageResource(iconRes)
     }
 
     private fun updatePlaybackSpeedUI(speed: Float) {
         val formatted = if (speed % 1f == 0f) "${speed.toInt()}x" else String.format("%.2gx", speed)
-        binding.btnPlaybackSpeed?.text = formatted
+        binding.playerSection.btnPlaybackSpeed.text = formatted
     }
 
     private fun splitCurrentSegment() {
@@ -457,8 +457,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     override fun onLosslessModeToggled(isChecked: Boolean) {
         isLosslessMode = isChecked
-        binding.customVideoSeeker.isLosslessMode = isChecked
-        binding.customVideoSeeker.invalidate()
+        binding.seekerContainer.customVideoSeeker.isLosslessMode = isChecked
+        binding.seekerContainer.customVideoSeeker.invalidate()
     }
 
     override fun onDestroyView() {
