@@ -11,7 +11,7 @@
 - **Forbidden**: NO Compose in `customviews/**`. Do NOT rewrite the XML/ViewBinding timeline or seeker rendering.
 
 ## 3. Workflow & Tooling
-- **Commands**: `./gradlew :app:testDebugUnitTest detekt lint` — module-specific, never root. `maxIssues: 0`; fix by refactoring.
+- **Commands**: `./gradlew detekt lint testDebugUnitTest`. `maxIssues: 0`; fix by refactoring.
 - **File Edits**: Prefer `replace_file_content` over `multi_replace_file_content` for fast-moving files.
 - **First-Pass Patterns**:
   - *Complexity (DeepNesting)*: Detekt flags nested conditionals; satisfy with early returns and extracted boolean predicates before `if`.

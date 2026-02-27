@@ -235,7 +235,7 @@ class CustomVideoSeekerTest {
         seeker.setWaveformData(FloatArray(100) { it.toFloat() })
         
         // Set silence preview
-        seeker.silencePreviewRanges = listOf(1000L..2000L, 4000L..6000L)
+        seeker.detectionPreviewRanges = listOf(1000L..2000L, 4000L..6000L)
         seeker.activeSilenceVisualMode = CustomVideoSeeker.SilenceVisualMode.MIN_SILENCE
         seeker.noiseThresholdPreview = 0.5f
 

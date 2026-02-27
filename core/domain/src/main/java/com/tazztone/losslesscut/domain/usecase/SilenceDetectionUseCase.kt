@@ -23,6 +23,11 @@ public class SilenceDetectionUseCase @Inject constructor(
         val finalRanges: List<LongRange>
     )
 
+    public enum class DetectionMode {
+        DISCARD_RANGES,      // Detected ranges -> DISCARD, gaps -> KEEP (Silence, black, freeze)
+        SPLIT_AT_BOUNDARIES  // Split at range start points, all segments -> KEEP (Scene change)
+    }
+
     public suspend fun findSilence(
         waveformResult: WaveformResult,
         config: DetectionUtils.SilenceDetectionConfig,
@@ -67,15 +72,17 @@ public class SilenceDetectionUseCase @Inject constructor(
         )
     }
 
-    public fun applySilenceDetection(
+    public fun applyDetectionRanges(
         clip: MediaClip,
-        silenceRanges: List<LongRange>,
-        @Suppress("UNUSED_PARAMETER") minSegmentDurationMs: Long
+        ranges: List<LongRange>,
+        minKeepSegmentDurationMs: Long,
+        mode: DetectionMode = DetectionMode.DISCARD_RANGES
     ): MediaClip {
-        val segments = buildSegmentsFromSilence(
-            clipEnd = clip.durationMs,
-            silenceRanges = silenceRanges
-        )
+        val segments = if (mode == DetectionMode.SPLIT_AT_BOUNDARIES) {
+            buildSegmentsBySplitting(clip.durationMs, ranges)
+        } else {
+            buildSegmentsFromDiscardRanges(clip.durationMs, ranges, minKeepSegmentDurationMs)
+        }
         
         val finalSegments = if (segments.none { it.action == SegmentAction.KEEP }) {
             listOf(TrimSegment(UUID.randomUUID(), 0L, clip.durationMs, SegmentAction.KEEP))
@@ -86,25 +93,25 @@ public class SilenceDetectionUseCase @Inject constructor(
         return clip.copy(segments = finalSegments)
     }
 
-    private fun buildSegmentsFromSilence(
+    private fun buildSegmentsFromDiscardRanges(
         clipEnd: Long,
-        silenceRanges: List<LongRange>
+        ranges: List<LongRange>,
+        minKeepSegmentDurationMs: Long
     ): List<TrimSegment> {
         val rawSegments = mutableListOf<TrimSegment>()
         var cursor = 0L
 
         // Boundary clamping threshold (10ms resolution)
-        val boundaryThresholdMs = BOUNDARY_THRESHOLD_MS
 
-        for (silence in silenceRanges) {
-            val silStart = silence.first.coerceIn(0L, clipEnd)
-            val silEnd = silence.last.coerceIn(0L, clipEnd)
+        for (range in ranges) {
+            val silStart = range.first.coerceIn(0L, clipEnd)
+            val silEnd = range.last.coerceIn(0L, clipEnd)
             
             if (silEnd <= cursor) continue
 
             // Fix boundary tiny gaps: if silence starts almost at 0, pull it to 0
-            val effectiveStart = if (silStart < boundaryThresholdMs) 0L else silStart
-            val effectiveEnd = if (clipEnd - silEnd < boundaryThresholdMs) clipEnd else silEnd
+            val effectiveStart = if (silStart < BOUNDARY_THRESHOLD_MS) 0L else silStart
+            val effectiveEnd = if (clipEnd - silEnd < BOUNDARY_THRESHOLD_MS) clipEnd else silEnd
 
             if (effectiveStart > cursor) {
                 rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, effectiveStart, SegmentAction.KEEP))
@@ -116,7 +123,7 @@ public class SilenceDetectionUseCase @Inject constructor(
         }
 
         if (cursor < clipEnd) {
-            if (clipEnd - cursor < boundaryThresholdMs) {
+            if (clipEnd - cursor < minKeepSegmentDurationMs) {
                 // Too small gap at the end? Merge into DISCARD if previous was DISCARD, or just skip
                 if (rawSegments.isNotEmpty() && rawSegments.last().action == SegmentAction.DISCARD) {
                     val last = rawSegments.removeAt(rawSegments.size - 1)
@@ -130,6 +137,25 @@ public class SilenceDetectionUseCase @Inject constructor(
         }
 
         return mergeAdjacentSameAction(rawSegments)
+    }
+
+    private fun buildSegmentsBySplitting(
+        clipEnd: Long,
+        ranges: List<LongRange>
+    ): List<TrimSegment> {
+        val splitPoints = ranges.map { it.first }.filter { it in 1 until clipEnd }.sorted().distinct()
+        if (splitPoints.isEmpty()) {
+            return listOf(TrimSegment(UUID.randomUUID(), 0L, clipEnd, SegmentAction.KEEP))
+        }
+
+        val segments = mutableListOf<TrimSegment>()
+        var cursor = 0L
+        for (point in splitPoints) {
+            segments.add(TrimSegment(UUID.randomUUID(), cursor, point, SegmentAction.KEEP))
+            cursor = point
+        }
+        segments.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.KEEP))
+        return segments
     }
 
     private fun mergeAdjacentSameAction(segments: List<TrimSegment>): List<TrimSegment> {

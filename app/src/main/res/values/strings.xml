@@ -143,4 +143,44 @@
     <string name="default_export_path">Default (Movies/LosslessCut)</string>
     <string name="change">Change</string>
     <string name="reset">Reset</string>
+    <string name="smart_cut">Smart Cut</string>
+    <string name="silence">Silence</string>
+    <string name="visual">Visual</string>
+    <string name="detect">Detect</string>
+    <string name="strategy">Strategy</string>
+    <string name="analyzing_video">Analyzing video content…</string>
+    <string name="analyzing_progress">Analyzing: %1$d / %2$d frames</string>
+    <string name="error_visual_detection_failed">Visual analysis failed</string>
+    <string name="sensitivity">Sensitivity</string>
+    <string name="luma_threshold">Luma Threshold</string>
+    <string name="diff_threshold">Diff Threshold</string>
+    <string name="blur_threshold">Blur Threshold</string>
+    <string name="min_segment">Min Segment</string>
+    <string name="sample_interval">Interval</string>
+    <string name="visual_detected_preview">%1$d segments detected (%2$s total)</string>
+    <string name="scene_change">Scene Change</string>
+    <string name="black_frames">Black Frames</string>
+    <string name="freeze_frame">Freeze Frame</string>
+    <string name="blur_quality">Blur Quality</string>
+    
+    <!-- Tooltips -->
+    <string name="tooltip_strategy_scene">Detects hard cuts between camera shots.\n• Best for: Movies, multi-cam edits, scene transitions.\n• How it works: Compares frame-by-pixel changes.\n• Pro Tip: Use this to quickly split a long movie into its individual scenes.</string>
+    <string name="tooltip_strategy_black">Finds sequences of fully dark frames.\n• Best for: Removing &quot;fade to black&quot; transitions or empty gaps.\n• How it works: Scans for frames with zero or near-zero brightness.</string>
+    <string name="tooltip_strategy_freeze">Identifies segments where the video has frozen.\n• Best for: Screen recordings, buggy footage, or long static pauses.\n• How it works: Detects when multiple frames are identical.</string>
+    <string name="tooltip_strategy_blur">Detects heavily out-of-focus footage.\n• Best for: Vlogs or action cam shots where focus was lost.\n• Pro Tip: Heavily blurry shots can be jarring; use this to filter the &quot;bad takes&quot; automatically.</string>
+    <string name="tooltip_sample_interval">How &quot;closely&quot; the AI looks at your video.\n• 100ms - 200ms: Extreme precision. Best for professional editing but slower to analyze.\n• 500ms (Default): Good balance of speed and accuracy.\n• 1000ms+: Lightning fast, but might miss very quick cuts.</string>
+    <string name="tooltip_sensitivity">The &quot;strictness&quot; of detection.\n• Lower (0-30): Aggressive detection. Finds even subtle movements or lighting shifts.\n• Higher (70-100): Conservative. Only triggers on major, obvious changes.\n• Fix it: If you\'re missing cuts, lower the sensitivity.</string>
+    <string name="tooltip_min_segment">The shortest allowable video clip to KEEP.\n• 0.5s - 1.0s: Recommended to keep the video smooth and watchable.\n• Fix it: If your video feels &quot;choppy&quot; or &quot;flashy&quot;, increase this to filter out tiny, distracting fragments.</string>
+    <string name="tooltip_noise_threshold" formatted="false">Defines what volume level counts as &quot;Silence&quot;.\n• 1% - 2%: Use for quiet, studio-quality rooms.\n• 3% - 5%: Use if there is background hum, AC noise, or fan hiss.\n• Pro Tip: If breathing or background noise is preventing cuts, increase this value.</string>
+    <string name="tooltip_min_segment_audio">The shortest non-silent clip to KEEP.\n• 0.1s - 0.2s: Keeps short interjections like &quot;Yeah&quot; or &quot;Wow&quot;.\n• 0.5s+: Ignores brief artifacts like coughs, mic bumps, or sneezes.\n• Pro Tip: Sets the minimum length of any kept segment.</string>
+    <string name="tooltip_min_silence_duration">How long a pause must last before it is removed.\n• 0.2s: Tight pacing. Removes almost all gaps between words.\n• 0.5s: Natural pacing. Mimics a standard conversation flow.\n• 1.0s+: Only removes long, awkward pauses.</string>
+    <string name="tooltip_padding_prefix">Safety gap added BEFORE the audio starts.\n• 0.1s - 0.2s: Highly recommended. Gives the voice room to start naturally.\n• Fix it: If words feel &quot;chopped off&quot; at the start, increase this value.</string>
+    <string name="tooltip_padding_postfix">Safety gap added AFTER the audio ends.\n• 0.2s - 0.3s: Recommended. Gives the last word room to trail off naturally.\n• Fix it: If the video cuts too abruptly when someone finishes speaking, increase this value.</string>
+    <string name="tooltip_detect">Starts the analysis. You can review and adjust the detected regions on the timeline before finalizing.</string>
+    <string name="tooltip_apply_smart_cut">Finalizes the detection. All RED segments will be removed, and all GREEN segments will be merged on your main timeline.</string>
+    <string name="tooltip_silence_tab">Automatically detects and removes silent gaps. Perfect for cleaning up talking-head videos, podcasts, or lectures.</string>
+    <string name="tooltip_visual_tab">Uses AI to scan for scene changes, black frames, or frozen footage. Ideal for b-roll, multicam, or screen recordings.</string>
+    <string name="content_desc_link_padding">Link Padding Sliders</string>
+
+    <string name="error_visual_on_audio">Visual detection not available for audio files</string>
 </resources>

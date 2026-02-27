@@ -43,7 +43,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private lateinit var progressTicker: com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker
     private lateinit var seekerDelegate: com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate
     private lateinit var addClipsDelegate: com.tazztone.losslesscut.ui.editor.AddClipsDelegate
-    private lateinit var silenceController: com.tazztone.losslesscut.ui.editor.SilenceDetectionOverlayController
+    private lateinit var smartCutController: com.tazztone.losslesscut.ui.editor.SmartCutOverlayController
+    private lateinit var exportOptionsController: com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter
     private lateinit var backPressDelegate: com.tazztone.losslesscut.ui.editor.BackPressDelegate
     
     private var isDraggingTimeline = false
@@ -110,12 +111,22 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
         addClipsDelegate = com.tazztone.losslesscut.ui.editor.AddClipsDelegate(requireContext(), viewModel)
         
-        silenceController = com.tazztone.losslesscut.ui.editor.SilenceDetectionOverlayController(
-            context = requireContext(),
-            scope = viewLifecycleOwner.lifecycleScope,
-            binding = binding,
-            viewModel = viewModel
-        )
+        smartCutController = com.tazztone.losslesscut.ui.editor.SmartCutOverlayController(
+            requireContext(), viewLifecycleOwner.lifecycleScope, binding, viewModel
+        ).apply {
+            viewLifecycleOwner.lifecycle.addObserver(this)
+        }
+
+        exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
+            requireContext(),
+            layoutInflater
+        ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
+            val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
+            val settings = ExportSettings(
+                isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+            )
+            viewModel.exportSegments(settings)
+        }
 
         backPressDelegate = com.tazztone.losslesscut.ui.editor.BackPressDelegate(
             context = requireContext(),
@@ -239,17 +250,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             val state = viewModel.uiState.value as? VideoEditingUiState.Success
             if (state != null) {
                 playerManager.pause()
-                val presenter = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
-                    requireContext(),
-                    layoutInflater
-                ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
-                    val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-                    val settings = ExportSettings(
-                        isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
-                    )
-                    viewModel.exportSegments(settings)
-                }
-                presenter.show(state)
+                exportOptionsController.show(state)
             }
         }
         binding.btnUndo.setOnClickListener { viewModel.undo() }
@@ -295,13 +296,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             }
         }
 
-        binding.btnSilenceCut?.setOnClickListener { 
+        binding.btnSmartCut?.setOnClickListener {
             playerManager.pause()
-            silenceController.show()
+            smartCutController.show()
         }
-        binding.containerSilenceCut?.setOnClickListener { 
+        binding.containerSmartCut?.setOnClickListener {
             playerManager.pause()
-            silenceController.show()
+            smartCutController.show()
         }
 
         binding.btnNudgeBack?.setOnClickListener { playerManager.seekToKeyframe(-1) }
@@ -367,7 +368,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
                         binding.customVideoSeeker.setKeyframes(state.keyframes)
                         binding.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
-                        binding.customVideoSeeker.silencePreviewRanges = state.silencePreviewRanges
+                        binding.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
                         binding.btnUndo.isEnabled = state.canUndo
                         binding.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
                         binding.btnRedo?.isEnabled = state.canRedo
@@ -404,6 +405,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private fun setupBackPressed() {
         requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (smartCutController.isVisible()) {
+                    smartCutController.hide()
+                    return
+                }
                 if (!backPressDelegate.handleBackPress()) {
                     isEnabled = false
                     activity?.onBackPressedDispatcher?.onBackPressed()

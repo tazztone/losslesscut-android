@@ -37,7 +37,7 @@ public class SilenceDetectionUseCaseTest {
         // Silence between 400 and 600
         val silenceRanges = listOf(400L..600L)
         
-        val updatedClip = useCase.applySilenceDetection(clip, silenceRanges, 100L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
         // Should result in 3 segments: 
         // 0-400 (KEEP), 400-600 (DISCARD), 600-1000 (KEEP)
@@ -59,7 +59,7 @@ public class SilenceDetectionUseCaseTest {
     public fun testApplySilenceDetection_AllSilent(): Unit {
         val clip = createClip(1000)
         val silenceRanges = listOf(0L..1000L)
-        val updatedClip = useCase.applySilenceDetection(clip, silenceRanges, 100L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
         // Safety net: should NOT be empty, should return a full KEEP segment
         assertEquals(1, updatedClip.segments.size)
@@ -74,7 +74,7 @@ public class SilenceDetectionUseCaseTest {
         // Silence starts at 5ms (should clamp to 0)
         // Silence ends at 995ms (should clamp to 1000)
         val silenceRanges = listOf(5L..995L)
-        val updatedClip = useCase.applySilenceDetection(clip, silenceRanges, 100L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
         // Results in 1 KEEP segment if both clamp to 0..1000 DISCARD and safety net kicks in
         assertEquals(1, updatedClip.segments.size)
@@ -86,7 +86,7 @@ public class SilenceDetectionUseCaseTest {
         val clip = createClip(1000)
         // Silence ends at 992ms, leaving 8ms KEEP at the end (threshold 10ms)
         val silenceRanges = listOf(100L..992L)
-        val updatedClip = useCase.applySilenceDetection(clip, silenceRanges, 100L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
         // 0..100 KEEP, 100..1000 DISCARD (992 clamped to 1000)
         assertEquals(2, updatedClip.segments.size)

@@ -95,17 +95,24 @@
             android:layout_marginEnd="8dp"/>
     </androidx.appcompat.widget.Toolbar>
 
-    <!-- Bottom Editing Tools -->
+    <!-- Bottom Action Area (Container for editing tools and Smart Cut) -->
     <LinearLayout
-        android:id="@+id/editingControls"
+        android:id="@+id/bottomActionContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:background="?attr/colorSurface"
-        android:gravity="center"
-        android:layout_alignParentBottom="true"
-        android:padding="12dp"
-        android:animateLayoutChanges="true">
+        android:orientation="vertical"
+        android:layout_above="@+id/seekerContainer">
+
+        <!-- Bottom Editing Tools -->
+        <LinearLayout
+            android:id="@+id/editingControls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="?attr/colorSurface"
+            android:gravity="center"
+            android:padding="12dp"
+            android:animateLayoutChanges="true">
 
         <LinearLayout
             android:id="@+id/containerSetIn"
@@ -212,7 +219,7 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/containerSilenceCut"
+            android:id="@+id/containerSmartCut"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -221,18 +228,18 @@
             android:clickable="true"
             android:focusable="true">
             <ImageButton
-                android:id="@+id/btnSilenceCut"
+                android:id="@+id/btnSmartCut"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:src="@drawable/ic_silence_cut_24"
+                android:src="@drawable/ic_smart_cut_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/silence_cut"
-                android:tooltipText="@string/auto_detect_silence"
+                android:contentDescription="@string/smart_cut"
+                android:tooltipText="@string/smart_cut"
                 app:tint="?attr/colorOnSurface"/>
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/silence_cut"
+                android:text="@string/smart_cut"
                 android:textSize="10sp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
         </LinearLayout>
@@ -292,8 +299,16 @@
                 android:text="Rotate"
                 android:textSize="10sp"
                 android:textColor="?attr/colorOnSurfaceVariant"/>
-        </LinearLayout>
-    </LinearLayout>
+        </LinearLayout> <!-- ends containerRotate -->
+    </LinearLayout> <!-- ends editingControls -->
+
+    <include
+        android:id="@+id/smartCutOverlay"
+        layout="@layout/dialog_smart_cut"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+</LinearLayout> <!-- ends bottomActionContainer -->
 
     <!-- Timeline Area -->
     <LinearLayout
@@ -302,7 +317,7 @@
         android:layout_height="120dp"
         android:background="?attr/colorSurface"
         android:orientation="vertical"
-        android:layout_above="@+id/editingControls"
+        android:layout_alignParentBottom="true"
         android:paddingTop="8dp"
         android:paddingBottom="8dp">
 
@@ -327,7 +342,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@+id/toolbar"
-        android:layout_above="@+id/seekerContainer"
+        android:layout_above="@+id/bottomActionContainer"
         android:orientation="horizontal">
 
         <FrameLayout
@@ -445,13 +460,6 @@
                 android:contentDescription="@string/play_pause"
                 android:tooltipText="@string/play_pause" />
 
-            <include
-                android:id="@+id/silenceDetectionContainer"
-                layout="@layout/dialog_silence_detection"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom"
-                android:visibility="gone" />
         </FrameLayout>
 
         <!-- Playlist Area (Visible when multiple clips) -->
@@ -473,8 +481,8 @@
                 app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
                 tools:listitem="@layout/item_media_clip"/>
 
-        </LinearLayout>
-    </LinearLayout>
+        </LinearLayout> <!-- ends playlistContainer -->
+    </LinearLayout> <!-- ends playerContainer -->
 
     <include
         layout="@layout/loading_screen"

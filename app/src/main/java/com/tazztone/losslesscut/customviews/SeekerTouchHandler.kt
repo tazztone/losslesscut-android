@@ -324,14 +324,19 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
     }
 
     private fun applySnap(touchTimeMs: Long): Long {
-        if (!seeker.isLosslessMode || seeker.keyframes.isEmpty()) return touchTimeMs
+        if (!seeker.isLosslessMode) return touchTimeMs
         
-        val snapTimeMs = seeker.keyframes.minByOrNull { kotlin.math.abs(it - touchTimeMs) }
+        val candidates = mutableListOf<Long>()
+        if (seeker.keyframes.isNotEmpty()) {
+            candidates.addAll(seeker.keyframes)
+        }
+        candidates.add(0L)
+        candidates.add(seeker.videoDurationMs)
+        
+        val snapTimeMs = candidates.minByOrNull { kotlin.math.abs(it - touchTimeMs) }
         if (snapTimeMs == null) return touchTimeMs
 
         // If in Lossless mode, we ALWAYS snap regardless of distance.
-        // If not, we could have used a threshold, but the requirement is
-        // "ALWAYS snap to keyframe when snap to keyframes is on".
         val shouldSnap = true 
         
         return if (shouldSnap) {

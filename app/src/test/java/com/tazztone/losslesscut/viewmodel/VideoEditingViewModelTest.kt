@@ -47,6 +47,7 @@ public class VideoEditingViewModelTest {
         val mockSnapUseCase = mockk<ExtractSnapshotUseCase>()
         val mockSilenceUseCase = mockk<SilenceDetectionUseCase>()
         val mockSessionUseCase = mockk<SessionUseCase>()
+        val mockVisualDetector = mockk<IVisualSegmentDetector>(relaxed = true)
 
         val mockClips = listOf(
             MediaClip(
@@ -77,7 +78,8 @@ public class VideoEditingViewModelTest {
             mockExportUseCase,
             mockSnapUseCase,
             mockSilenceUseCase,
-            mockSessionUseCase
+            mockSessionUseCase,
+            mockVisualDetector
         )
         
         val viewModel = VideoEditingViewModel(

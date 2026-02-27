@@ -20,6 +20,10 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         private const val THRESHOLD_MASK_COLOR = 0x6600FFFF.toInt()
         private const val DROPPED_SILENCE_COLOR = 0x88FF0000.toInt()
         private const val BRIDGED_NOISE_COLOR = 0x88FFFF00.toInt()
+        private const val VISUAL_SCENE_CHANGE_COLOR = Color.WHITE
+        private const val VISUAL_BLACK_FRAMES_COLOR = 0xCC000000.toInt()
+        private const val VISUAL_FREEZE_FRAME_COLOR = 0xBB3F51B5.toInt() // Indigo
+        private const val VISUAL_BLUR_QUALITY_COLOR = 0xBB9C27B0.toInt() // Purple
         private const val PLAYHEAD_STROKE_WIDTH = 5f
         private const val KEYFRAME_STROKE_WIDTH = 2f
         private const val SELECTED_BORDER_WIDTH = 8f
@@ -159,6 +163,11 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
     val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
+    }
+
+    private val splitMarkerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = VISUAL_SCENE_CHANGE_COLOR
+        strokeWidth = 3f
     }
 
     private val keepColors = arrayOf(
@@ -312,7 +321,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
     fun drawSilencePreviews(canvas: Canvas) {
         val result = seeker.rawSilenceResult
         if (result == null) {
-            drawSimpleSilencePreviews(canvas, seeker.silencePreviewRanges)
+            drawSimpleSilencePreviews(canvas, seeker.detectionPreviewRanges)
             return
         }
         when (seeker.activeSilenceVisualMode) {
@@ -322,10 +331,26 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
     }
 
     internal fun drawSimpleSilencePreviews(canvas: Canvas, ranges: List<LongRange>) {
+        val strategy = seeker.visualStrategy
+        val useSplitMarkers = strategy == com.tazztone.losslesscut.domain.model.VisualStrategy.SCENE_CHANGE
+        
+        val paintColor = when (strategy) {
+            com.tazztone.losslesscut.domain.model.VisualStrategy.BLACK_FRAMES -> VISUAL_BLACK_FRAMES_COLOR
+            com.tazztone.losslesscut.domain.model.VisualStrategy.FREEZE_FRAME -> VISUAL_FREEZE_FRAME_COLOR
+            com.tazztone.losslesscut.domain.model.VisualStrategy.BLUR_QUALITY -> VISUAL_BLUR_QUALITY_COLOR
+            else -> SILENCE_PREVIEW_COLOR
+        }
+        silencePreviewPaint.color = paintColor
+
         ranges.forEach { range ->
             val startX = seeker.timeToX(range.first)
             val endX = seeker.timeToX(range.last)
-            canvas.drawRect(startX, 0f, endX, seeker.height.toFloat(), silencePreviewPaint)
+            if (useSplitMarkers) {
+                // Draw vertical split line
+                canvas.drawLine(startX, 0f, startX, seeker.height.toFloat(), splitMarkerPaint)
+            } else {
+                canvas.drawRect(startX, 0f, endX, seeker.height.toFloat(), silencePreviewPaint)
+            }
         }
     }
 
