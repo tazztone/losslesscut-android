@@ -24,7 +24,7 @@
 - 🔄 **Non-Destructive Workflow**: Full **Undo/Redo** stack for all segment operations.
 - 🤖 **Smart Cut (v2.0)**: Unified, tabbed interface combining **Silence Cut** and **Visual Detection**.
     - **Silence**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations and live savings previews.
-    - **Visual**: AI-powered segment detection for **Scene Changes**, **Black Frames**, **Freeze Frames**, and **Blur Quality**.
+    - **Visual**: Algorithm-driven segment detection for **Scene Changes**, **Black Frames**, **Freeze Frames**, and **Blur Quality**.
 - ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
 - ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
@@ -89,7 +89,7 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 
 ## 🗺️ Roadmap
 
-- [x] **Smart Cut (v2.0)**: Integrated AI-powered visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
+- [x] **Smart Cut (v2.0)**: Integrated advanced algorithm-driven visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
 - [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [ ] **Architectural Enforcement**: Implement Konsist testing to safeguard module boundaries in the CI pipeline.
@@ -135,6 +135,7 @@ The project is organized into a modular feature/layer-based structure:
     - **Accessibility**: Implements `ExploreByTouchHelper` to expose virtual nodes for playhead and segment handles. Supports standard accessibility actions.
     - **UX Polish**: Implements auto-dismissing hint animations (e.g., "pinch to zoom") that disappear upon the first interaction.
     - **Visuals**: Draws segment colors, keyframe ticks, and zoom levels directly on the canvas for performance.
+    - **Waveform Caching**: Uses `LruCache` to store pre-rendered 2048px bitmap tiles, replacing per-frame draw lines to dramatically improve scrubbing performance.
 - **Layout System**: Uses orientation-specific layouts (`layout` vs `layout-land`) to maintain ergonomics. 
     - **Playlist Sidebar**: Synced with ExoPlayer via robust **Clip ID-based targeting**. Blue border follows the Clip UUID, making it position-invariant.
     - **Overlays**: Semi-transparent overlays for player controls ensure unified UX across both orientations. **Auto-pauses** playback whenever a dialog or overlay (Settings, Silence Cut, Export) is opened.
@@ -161,8 +162,8 @@ The project is organized into a modular feature/layer-based structure:
     - **Events**: Uses a `VideoEditingEvent` sealed class via `Channel` for reliable one-time UI actions (e.g., `ShowToast`, `ExportComplete`).
     - **Undo/Redo Stack**: In-memory history of `List<MediaClip>` snapshots with synchronized `canRedo` flow logic.
     - **Detection Engine**:
-    - **Silence**: Orchestrates `DetectionUtils.findSilence` using extracted `waveformData`.
-    - **Visual**: Leverages `VisualSegmentDetectorImpl` in `:engine` for high-performance frame analysis (PHash, SAD, Laplacian variance). Optimized with seek-based sampling and realtime progress callbacks.
+        - **Silence**: Orchestrates `DetectionUtils.findSilence` using absolute `rawAmplitudes` from extracted `waveformData` to prevent false amplification of quiet clips.
+        - **Visual**: Leverages `VisualSegmentDetectorImpl` in `:engine` for high-performance frame analysis using pure Kotlin algorithms (pHash, SAD, Laplacian variance) without native external libraries. Optimized with sequential frame processing via `MediaExtractor.advance()` rather than seek-based sampling, and features realtime progress callbacks.
 
 #### Utilities
 - **StorageUtils**: Handles Scoped Storage. Centralizes URI creation, dynamically selecting `Movies/LosslessCut` or `Music/LosslessCut` based on media type.
