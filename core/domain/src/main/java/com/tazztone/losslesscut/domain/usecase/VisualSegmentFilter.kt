@@ -5,6 +5,7 @@ import com.tazztone.losslesscut.domain.model.TimeRangeMs
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 
 public object VisualSegmentFilter {
+    private const val MIN_VISIBLE_STAMP_DURATION_MS = 100L
     
     public fun filter(
         frames: List<FrameAnalysis>,
@@ -40,8 +41,8 @@ public object VisualSegmentFilter {
 
         // Fix: Visual Regression. Expand single-frame matches to have a duration
         // so they are visible as mask rects in the seeker.
-        // We use minSegmentMs or a fixed 100ms if minSegmentMs is 0.
-        val displayPadding = if (minSegmentMs > 0) minSegmentMs else 100L
+        // We use minSegmentMs or a fixed fallback if minSegmentMs is 0.
+        val displayPadding = if (minSegmentMs > 0) minSegmentMs else MIN_VISIBLE_STAMP_DURATION_MS
         
         return resultRanges.map { range ->
             if (range.first == range.last && strategy != VisualStrategy.SCENE_CHANGE) {
