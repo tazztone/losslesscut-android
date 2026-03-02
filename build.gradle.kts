@@ -31,3 +31,20 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         sarif.required.set(false)
     }
 }
+
+dependencies {
+    kover(project(":app"))
+    kover(project(":engine"))
+    kover(project(":core:data"))
+    kover(project(":core:domain"))
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                androidGeneratedClasses()
+            }
+        }
+    }
+}

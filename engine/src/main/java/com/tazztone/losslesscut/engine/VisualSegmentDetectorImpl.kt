@@ -44,7 +44,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         uri: String,
         sampleIntervalMs: Long,
         onProgress: (Int, Int) -> Unit
-    ): List<FrameAnalysis> = withContext(Dispatchers.Default) {
+    ): List<FrameAnalysis> {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         var context: DetectionContext? = null
@@ -52,11 +52,14 @@ class VisualSegmentDetectorImpl @Inject constructor(
         try {
             dataSource.setExtractorSource(extractor, uri)
             val trackIndex = selectVideoTrack(extractor)
-            if (trackIndex == -1) return@withContext emptyList()
+            if (trackIndex == -1) {
+                println("No video track found")
+                return emptyList()
+            }
 
             val format = extractor.getTrackFormat(trackIndex)
             val durationUs = format.getLong(MediaFormat.KEY_DURATION)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext emptyList()
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return emptyList()
 
             codec = MediaCodec.createDecoderByType(mime)
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
@@ -69,16 +72,19 @@ class VisualSegmentDetectorImpl @Inject constructor(
             detectLoop(context, estimatedTotal, onProgress)
 
         } catch (e: MediaCodec.CodecException) {
+            Log.e(TAG, "CodecException: ${e.message}")
             Log.e(TAG, "MediaCodec error during visual detection", e)
         } catch (e: IllegalStateException) {
+            Log.e(TAG, "IllegalStateException: ${e.message}")
             Log.e(TAG, "Illegal state during visual detection", e)
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            Log.e(TAG, "Exception: ${e.message}")
             Log.e(TAG, "Unexpected error during visual detection", e)
         } finally {
             cleanup(codec, extractor)
         }
 
-        return@withContext context?.analyses ?: emptyList()
+        return context?.analyses ?: emptyList()
     }
 
     private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {
@@ -114,7 +120,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
     private suspend fun detectLoop(ctx: DetectionContext, estimatedTotal: Int, onProgress: (Int, Int) -> Unit) {
         var processedCount = 0
         while (!ctx.sawOutputEOS) {
-            withContext(Dispatchers.Default) { ensureActive() }
             
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
@@ -171,6 +176,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         val outputFormat = ctx.codec.getOutputFormat(index)
 
         if (outputBuffer != null) {
+            Log.d(TAG, "Algorithm processing started")
             val meanLuma = VisualAlgorithms.calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
             val blurVariance = VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
             val currentHash = VisualAlgorithms.calculatePHash(outputBuffer, outputFormat, ctx.info)

@@ -9,6 +9,7 @@ import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 public class SilenceDetectionUseCaseTest {
@@ -132,39 +133,72 @@ public class SilenceDetectionUseCaseTest {
     }
 
     @Test
-    public fun testFindSilence_minSilenceDoesNotCreateBridges(): Unit = kotlinx.coroutines.runBlocking {
-        // [Silence 400ms] [Noise 200ms] [Silence 400ms]
-        // Buckets of 10ms
-        val waveform = FloatArray(100) { i ->
-            if (i in 40..59) 1.0f else 0.0f
-        }
-        val waveformResult = WaveformResult(waveform, 1.0f, 1000_000L)
+    public fun testApplySilenceDetection_MinKeepDurationAtEnd(): Unit {
+        val clip = createClip(1000)
+        // Silence ends at 985ms, leaving 15ms KEEP at the end.
+        // If minKeepSegmentDurationMs is 20ms, it should be merged into DISCARD.
+        val silenceRanges = listOf(100L..985L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 20L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
-        // config with minSilenceMs = 500ms.
-        // PREVIOUS PIPELINE (Broken):
-        // 1. Raw discovery sees 400ms silence. 400 < 500, so it drops it.
-        // 2. Result: Empty silence list -> Full 0..1000 KEEP segment.
-        // This "created a keeper out of thin air" and bridged the 200ms noise into a 1000ms block.
+        assertEquals(2, updatedClip.segments.size)
+        assertEquals(SegmentAction.DISCARD, updatedClip.segments[1].action)
+        assertEquals(1000L, updatedClip.segments[1].endMs)
+    }
+
+    @Test
+    public fun testApplySilenceDetection_SplitMode(): Unit {
+        val clip = createClip(1000)
+        // Ranges at 300..400 and 700..800
+        // Split points at 300 and 700.
+        // Segments: 0-300, 300-700, 700-1000 (all KEEP)
+        val silenceRanges = listOf(300L..400L, 700L..800L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.SPLIT_AT_BOUNDARIES)
         
-        // NEW PIPELINE (Fixed):
-        // 1. Raw discovery finds [0..400] and [600..1000].
-        // 2. mergeCloseSilences(minSegment=300) sees gap=200ms. Merges into [0..1000].
-        // 3. filterShortSilences(minSilence=500) sees 1000ms > 500ms. Range stays.
-        // Result: [0..1000] DISCARD.
+        assertEquals(3, updatedClip.segments.size)
+        assertEquals(0L, updatedClip.segments[0].startMs)
+        assertEquals(300L, updatedClip.segments[0].endMs)
+        assertEquals(300L, updatedClip.segments[1].startMs)
+        assertEquals(700L, updatedClip.segments[1].endMs)
+        assertEquals(700L, updatedClip.segments[2].startMs)
+        assertEquals(1000L, updatedClip.segments[2].endMs)
+        assertTrue(updatedClip.segments.all { it.action == SegmentAction.KEEP })
+    }
+
+    @Test
+    public fun testApplySilenceDetection_AdjacentRanges(): Unit {
+        val clip = createClip(1000)
+        // Adjacent ranges: 100-200 and 200-300
+        val silenceRanges = listOf(100L..200L, 200L..300L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 10L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
         
-        val config = DetectionUtils.SilenceDetectionConfig(
-            threshold = 0.5f,
-            minSilenceMs = 500L,
-            paddingStartMs = 0,
-            paddingEndMs = 0
-        )
+        // Should merge into 0-100 (KEEP), 100-300 (DISCARD), 300-1000 (KEEP)
+        assertEquals(3, updatedClip.segments.size)
+        assertEquals(SegmentAction.DISCARD, updatedClip.segments[1].action)
+        assertEquals(100L, updatedClip.segments[1].startMs)
+        assertEquals(300L, updatedClip.segments[1].endMs)
+    }
+
+    @Test
+    public fun testFindSilence_EmptyInput(): Unit = kotlinx.coroutines.runBlocking {
+        val config = DetectionUtils.SilenceDetectionConfig(0.5f, 100L, 0, 0)
         
-        val silenceRanges = useCase.findSilence(waveformResult, config, 300L).finalRanges
+        val res1 = useCase.findSilence(WaveformResult(floatArrayOf(), 0f, 0L), config, 100L)
+        assertTrue(res1.finalRanges.isEmpty())
         
-        // Should be one single range covering everything, because the noise was absorbed
-        // and the resulting silence block was long enough to survive the 500ms filter.
-        assertEquals(1, silenceRanges.size)
-        assertEquals(0L..1000L, silenceRanges[0])
+        val res2 = useCase.findSilence(WaveformResult(floatArrayOf(0f), 0f, -1L), config, 100L)
+        assertTrue(res2.finalRanges.isEmpty())
+    }
+
+    @Test
+    public fun testFindSilence_LongWaveformYields(): Unit = kotlinx.coroutines.runBlocking {
+        // Test yielding logic with a long waveform
+        val waveform = FloatArray(2000) { 0f }
+        val waveformResult = WaveformResult(waveform, 1.0f, 2000_000L)
+        val config = DetectionUtils.SilenceDetectionConfig(0.5f, 100L, 0, 0)
+        
+        val result = useCase.findSilence(waveformResult, config, 100L)
+        assertEquals(1, result.finalRanges.size)
+        assertEquals(0L..2000L, result.finalRanges[0])
     }
 
     private fun createClip(durationMs: Long) = MediaClip(

@@ -120,9 +120,32 @@ internal class ExportUseCaseTest {
     }
     
     @Test
-    internal fun `execute fails when no KEEP segments found`() = runTest {
+    internal fun `execute mergeSegments with multiple clips`() = runTest {
+        val clip1 = createDummyClip(uri = "uri1", segments = listOf(TrimSegment(startMs = 0, endMs = 500)))
+        val clip2 = createDummyClip(uri = "uri2", segments = listOf(TrimSegment(startMs = 0, endMs = 500)))
+        val params = ExportUseCase.Params(
+            clips = listOf(clip1, clip2),
+            selectedClipIndex = 0,
+            isLossless = true,
+            keepAudio = true,
+            keepVideo = true,
+            rotationOverride = null,
+            mergeSegments = true
+        )
+
+        coEvery { repository.createMediaOutputUri(any(), any()) } returns "output_uri"
+        coEvery { repository.executeLosslessMerge(any(), any(), any(), any(), any(), any()) } returns Result.success("path")
+
+        val results = useCase.execute(params).toList()
+
+        assertTrue(results.last() is ExportUseCase.Result.Success)
+    }
+
+    @Test
+    internal fun `execute cutSegments handles partial failures`() = runTest {
         val clip = createDummyClip(segments = listOf(
-            TrimSegment(startMs = 0, endMs = 1000, action = SegmentAction.DISCARD)
+            TrimSegment(startMs = 0, endMs = 500, action = SegmentAction.KEEP),
+            TrimSegment(startMs = 500, endMs = 1000, action = SegmentAction.KEEP)
         ))
         val params = ExportUseCase.Params(
             clips = listOf(clip),
@@ -134,9 +157,37 @@ internal class ExportUseCaseTest {
             mergeSegments = false
         )
 
+        coEvery { repository.createMediaOutputUri(any(), any()) } returns "output_uri"
+        // First succeeds, second fails
+        coEvery { repository.executeLosslessCut(any(), any(), 0, 500, any(), any(), any(), any()) } returns Result.success("path1")
+        coEvery { repository.executeLosslessCut(any(), any(), 500, 1000, any(), any(), any(), any()) } returns Result.failure(Exception("Cut failed"))
+
         val results = useCase.execute(params).toList()
 
         assertTrue(results.last() is ExportUseCase.Result.Failure)
-        assertEquals("No tracks found to cut", (results.last() as ExportUseCase.Result.Failure).error)
+        val failure = results.last() as ExportUseCase.Result.Failure
+        // Check for specific segment failure as defined in ExportUseCase.kt
+        assertTrue("Error should mention Segment 2 failure", failure.error.contains("Segment 2 failed"))
+    }
+
+    @Test
+    internal fun `execute cutSegments fails if output URI cannot be created`() = runTest {
+        val clip = createDummyClip(segments = listOf(TrimSegment(startMs = 0, endMs = 500)))
+        val params = ExportUseCase.Params(
+            clips = listOf(clip),
+            selectedClipIndex = 0,
+            isLossless = true,
+            keepAudio = true,
+            keepVideo = true,
+            rotationOverride = null,
+            mergeSegments = false
+        )
+
+        coEvery { repository.createMediaOutputUri(any(), any()) } returns null
+
+        val results = useCase.execute(params).toList()
+
+        assertTrue(results.any { it is ExportUseCase.Result.Failure })
+        assertTrue((results.last() as ExportUseCase.Result.Failure).error.contains("Failed to create output file"))
     }
 }

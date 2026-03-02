@@ -24,4 +24,8 @@ public data class WaveformResult(
         result = 31 * result + durationUs.hashCode()
         return result
     }
+
+    override fun toString(): String {
+        return "WaveformResult(rawAmplitudesSize=${rawAmplitudes.size}, maxAmplitude=$maxAmplitude, durationUs=$durationUs)"
+    }
 }

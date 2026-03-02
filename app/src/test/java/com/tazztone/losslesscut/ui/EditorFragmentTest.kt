@@ -72,4 +72,42 @@ class EditorFragmentTest {
             assert(binding.editingControls.btnRotate != null)
         }
     }
+
+    @Test
+    fun `clicking split button should call viewModel splitSegmentAt`() {
+        launchFragmentInHiltContainer<EditorFragment> {
+            val binding = getBinding(this as EditorFragment)
+            binding.editingControls.btnSplit.performClick()
+            io.mockk.verify { viewModel.splitSegmentAt(any()) }
+        }
+    }
+
+    @Test
+    fun `clicking delete button should call viewModel markSegmentDiscarded`() {
+        val segmentId = java.util.UUID.randomUUID()
+        val segments = listOf(com.tazztone.losslesscut.domain.model.TrimSegment(id = segmentId, startMs = 0, endMs = 1000))
+        val state = com.tazztone.losslesscut.viewmodel.VideoEditingUiState.Success(
+            clips = emptyList(),
+            keyframes = emptyList(),
+            segments = segments,
+            selectedSegmentId = segmentId
+        )
+        io.mockk.every { viewModel.uiState } returns kotlinx.coroutines.flow.MutableStateFlow(state)
+
+        launchFragmentInHiltContainer<EditorFragment> {
+            val binding = getBinding(this as EditorFragment)
+            binding.editingControls.btnDelete.performClick()
+            io.mockk.verify { viewModel.markSegmentDiscarded(segmentId) }
+        }
+    }
+
+    @Test
+    fun `selecting segment in seeker should call viewModel selectSegment`() {
+        launchFragmentInHiltContainer<EditorFragment> {
+            val binding = getBinding(this as EditorFragment)
+            val id = java.util.UUID.randomUUID()
+            binding.seekerContainer.customVideoSeeker.onSegmentSelected?.invoke(id)
+            io.mockk.verify { viewModel.selectSegment(id) }
+        }
+    }
 }
