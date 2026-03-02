@@ -31,6 +31,7 @@ ksp = "2.3.5"
 documentfile = "1.0.1"
 gson = "2.10.1"
 detekt = "1.23.8"
+kover = "0.9.1"
 javaxInject = "1"
 konsist = "0.17.3"
 
@@ -89,3 +90,4 @@ google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
