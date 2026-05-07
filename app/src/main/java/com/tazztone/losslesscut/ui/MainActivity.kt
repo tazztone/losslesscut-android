@@ -148,6 +148,7 @@ class MainActivity : BaseActivity() {
     private fun navigateToEditingScreen(mediaUris: List<Uri>) {
         Log.d("Navigation", "Navigating to editing screen with URIs: $mediaUris, mode: $pendingLaunchMode")
         val intent = Intent(this, VideoEditingActivity::class.java).apply {
+            setPackage(packageName)
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
             putExtra(VideoEditingActivity.EXTRA_LAUNCH_MODE, pendingLaunchMode)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
