@@ -26,14 +26,15 @@ internal object VisualAlgorithms {
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
         val stride = if (format.containsKey(MediaFormat.KEY_STRIDE)) format.getInteger(MediaFormat.KEY_STRIDE) else width
 
+        val limit = buffer.limit()
         var sum = 0L
         var count = 0
         for (y in 0 until height step STEP_Y) {
             val rowStart = info.offset + y * stride
-            if (rowStart >= buffer.limit()) break
+            if (rowStart >= limit) break
             for (x in 0 until width step STEP_X) {
                 val idx = rowStart + x
-                if (idx < buffer.limit()) {
+                if (idx < limit) {
                     sum += buffer.get(idx).toInt() and PIXEL_MASK
                     count++
                 }
@@ -151,13 +152,14 @@ internal object VisualAlgorithms {
         val xRatio = (width shl FIXED_POINT_SHIFT) / targetW
         val yRatio = (height shl FIXED_POINT_SHIFT) / finalH
 
+        val limit = buffer.limit()
         for (y in 0 until finalH) {
             val srcY = (y * yRatio) shr FIXED_POINT_SHIFT
             val rowOffset = info.offset + srcY * stride
             for (x in 0 until targetW) {
                 val srcX = (x * xRatio) shr FIXED_POINT_SHIFT
                 val offset = rowOffset + srcX
-                if (offset < buffer.limit()) {
+                if (offset < limit) {
                     out[y * targetW + x] = buffer.get(offset)
                 }
             }
