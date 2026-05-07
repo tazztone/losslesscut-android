@@ -93,106 +93,38 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Lossless Mode Toggle
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.lossless_mode_snap),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Switch(
-                checked = initialLosslessState,
-                onCheckedChange = onLosslessModeToggled
-            )
-        }
-
-        Text(
-            text = stringResource(R.string.lossless_mode_desc),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
+        LosslessModeSetting(
+            isLossless = initialLosslessState,
+            onToggled = onLosslessModeToggled
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Snapshot Format
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.save_snapshots_as_jpeg),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-            Switch(
-                checked = isJpeg,
-                onCheckedChange = { checked ->
-                    coroutineScope.launch {
-                        preferences.setSnapshotFormat(if (checked) "JPEG" else "PNG")
-                    }
+        SnapshotFormatSetting(
+            isJpeg = isJpeg,
+            jpgQuality = jpgQuality,
+            onFormatChanged = { checked ->
+                coroutineScope.launch {
+                    preferences.setSnapshotFormat(if (checked) "JPEG" else "PNG")
                 }
-            )
-        }
-
-        if (isJpeg) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = stringResource(R.string.jpg_quality),
-                        modifier = Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 16.sp
-                    )
-                    Text(
-                        text = "$jpgQuality",
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontSize = 16.sp
-                    )
+            },
+            onQualityChanged = { value ->
+                coroutineScope.launch {
+                    preferences.setJpgQuality(value)
                 }
-                Slider(
-                    value = jpgQuality.toFloat(),
-                    onValueChange = { value ->
-                        coroutineScope.launch {
-                            preferences.setJpgQuality(value.toInt())
-                        }
-                    },
-                    valueRange = 1f..100f
-                )
             }
-        }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Undo Limit
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(R.string.undo_limit),
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = "$undoLimit",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
-                )
+        UndoLimitSetting(
+            undoLimit = undoLimit,
+            onUndoLimitChanged = { value ->
+                coroutineScope.launch {
+                    preferences.setUndoLimit(value)
+                }
             }
-            Slider(
-                value = undoLimit.toFloat(),
-                onValueChange = { value ->
-                    coroutineScope.launch {
-                        preferences.setUndoLimit(value.toInt().coerceAtLeast(1))
-                    }
-                },
-                valueRange = 1f..100f
-            )
-        }
+        )
 
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 16.dp),
@@ -200,70 +132,194 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
         )
 
-        // Accent Color Picker
-        Text(
-            text = stringResource(R.string.theme_accent_color),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp
+        AccentColorSetting(
+            currentAccentColor = currentAccentColor,
+            onAccentColorChanged = onAccentColorChanged
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            listOf(
-                "cyan" to CyanAccent,
-                "purple" to PurpleAccent,
-                "green" to GreenAccent,
-                "yellow" to YellowAccent,
-                "red" to RedAccent,
-                "orange" to OrangeAccent
-            ).forEach { (name, color) ->
-                ColorCircle(
-                    color = color,
-                    isSelected = currentAccentColor == name,
-                    onClick = { onAccentColorChanged(name) }
-                )
-            }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Export Folder
+        ExportFolderSetting(
+            customOutputUri = customOutputUri,
+            onChangePath = onChangePath,
+            onResetPath = onResetPath
+        )
+    }
+}
+
+@Composable
+fun LosslessModeSetting(
+    isLossless: Boolean,
+    onToggled: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Text(
-            text = stringResource(R.string.export_folder),
+            text = stringResource(R.string.lossless_mode_snap),
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Switch(
+            checked = isLossless,
+            onCheckedChange = onToggled
+        )
+    }
+
+    Text(
+        text = stringResource(R.string.lossless_mode_desc),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 14.sp
+    )
+}
+
+@Composable
+fun SnapshotFormatSetting(
+    isJpeg: Boolean,
+    jpgQuality: Int,
+    onFormatChanged: (Boolean) -> Unit,
+    onQualityChanged: (Int) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.save_snapshots_as_jpeg),
+            modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 16.sp
         )
+        Switch(
+            checked = isJpeg,
+            onCheckedChange = onFormatChanged
+        )
+    }
 
+    if (isJpeg) {
         Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = customOutputUri?.let { android.net.Uri.parse(it).path } ?: stringResource(R.string.default_export_path),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
-                maxLines = 1
-            )
-            TextButton(onClick = onChangePath) {
-                Text(stringResource(R.string.change))
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = stringResource(R.string.jpg_quality),
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = "$jpgQuality",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
+                )
             }
-            if (customOutputUri != null) {
-                IconButton(onClick = onResetPath) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_restore_24),
-                        contentDescription = stringResource(R.string.reset),
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+            Slider(
+                value = jpgQuality.toFloat(),
+                onValueChange = { value -> onQualityChanged(value.toInt()) },
+                valueRange = 1f..100f
+            )
+        }
+    }
+}
+
+@Composable
+fun UndoLimitSetting(
+    undoLimit: Int,
+    onUndoLimitChanged: (Int) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.undo_limit),
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "$undoLimit",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+        }
+        Slider(
+            value = undoLimit.toFloat(),
+            onValueChange = { value -> onUndoLimitChanged(value.toInt().coerceAtLeast(1)) },
+            valueRange = 1f..100f
+        )
+    }
+}
+
+@Composable
+fun AccentColorSetting(
+    currentAccentColor: String,
+    onAccentColorChanged: (String) -> Unit
+) {
+    Text(
+        text = stringResource(R.string.theme_accent_color),
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = 16.sp
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        listOf(
+            "cyan" to CyanAccent,
+            "purple" to PurpleAccent,
+            "green" to GreenAccent,
+            "yellow" to YellowAccent,
+            "red" to RedAccent,
+            "orange" to OrangeAccent
+        ).forEach { (name, color) ->
+            ColorCircle(
+                color = color,
+                isSelected = currentAccentColor == name,
+                onClick = { onAccentColorChanged(name) }
+            )
+        }
+    }
+}
+
+@Composable
+fun ExportFolderSetting(
+    customOutputUri: String?,
+    onChangePath: () -> Unit,
+    onResetPath: () -> Unit
+) {
+    Text(
+        text = stringResource(R.string.export_folder),
+        color = MaterialTheme.colorScheme.onSurface,
+        fontSize = 16.sp
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = customOutputUri?.let { android.net.Uri.parse(it).path } ?: stringResource(R.string.default_export_path),
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp,
+            maxLines = 1
+        )
+        TextButton(onClick = onChangePath) {
+            Text(stringResource(R.string.change))
+        }
+        if (customOutputUri != null) {
+            IconButton(onClick = onResetPath) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_restore_24),
+                    contentDescription = stringResource(R.string.reset),
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
