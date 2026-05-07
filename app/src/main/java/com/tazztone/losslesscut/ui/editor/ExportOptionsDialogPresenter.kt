@@ -107,14 +107,16 @@ class ExportOptionsDialogPresenter(
         val trackList = if (selectedTracks.isNotEmpty()) selectedTracks.toList() else null
         
         // Derive keepVideo/keepAudio for file extension logic in ExportUseCase
-        val keepVideo = if (trackList != null) {
-            trackList.any { id -> state.availableTracks.find { it.id == id }?.isVideo == true }
+        val availableTracksById = if (trackList != null) state.availableTracks.associateBy { it.id } else null
+
+        val keepVideo = if (trackList != null && availableTracksById != null) {
+            trackList.any { id -> availableTracksById[id]?.isVideo == true }
         } else {
             true // default to true if no track info (safety)
         }
         
-        val keepAudio = if (trackList != null) {
-            trackList.any { id -> state.availableTracks.find { it.id == id }?.isAudio == true }
+        val keepAudio = if (trackList != null && availableTracksById != null) {
+            trackList.any { id -> availableTracksById[id]?.isAudio == true }
         } else {
             state.hasAudioTrack // default to existing
         }
