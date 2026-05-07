@@ -28,12 +28,13 @@ internal object VisualAlgorithms {
 
         var sum = 0L
         var count = 0
+        val limit = buffer.limit()
         for (y in 0 until height step STEP_Y) {
             val rowStart = info.offset + y * stride
-            if (rowStart >= buffer.limit()) break
+            if (rowStart >= limit) break
             for (x in 0 until width step STEP_X) {
                 val idx = rowStart + x
-                if (idx < buffer.limit()) {
+                if (idx < limit) {
                     sum += buffer.get(idx).toInt() and PIXEL_MASK
                     count++
                 }
