@@ -6,8 +6,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="external" path="."/>
+        <exclude domain="sharedpref" path="."/>
     </cloud-backup>
     <device-transfer>
         <exclude domain="external" path="."/>
+        <exclude domain="sharedpref" path="."/>
     </device-transfer>
 </data-extraction-rules>
