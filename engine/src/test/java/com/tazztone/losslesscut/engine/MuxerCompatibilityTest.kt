@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.engine
 
 import android.media.MediaFormat
 import android.media.MediaMuxer
+import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertNotNull
 import org.junit.Before
@@ -44,7 +45,7 @@ internal class MuxerCompatibilityTest {
             assertNotNull(trackIndex)
         } catch (e: Exception) {
             // If this fails, we've reproduced the issue where extra keys cause addTrack to throw
-            println("Caught expected exception: ${e.message}")
+            Log.d(TAG, "Caught expected exception: ${e.message}")
             throw e
         } finally {
             muxer.release()
@@ -64,9 +65,13 @@ internal class MuxerCompatibilityTest {
             val trackIndex = muxer.addTrack(audioFormat)
             assertNotNull(trackIndex)
         } catch (e: Exception) {
-            println("WEBM Opus failed: ${e.message}")
+            Log.d(TAG, "WEBM Opus failed: ${e.message}")
         } finally {
             muxer.release()
         }
+    }
+
+    companion object {
+        private const val TAG = "MuxerCompatibilityTest"
     }
 }

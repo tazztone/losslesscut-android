@@ -53,7 +53,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             dataSource.setExtractorSource(extractor, uri)
             val trackIndex = selectVideoTrack(extractor)
             if (trackIndex == -1) {
-                println("No video track found")
+                Log.e(TAG, "No video track found")
                 return emptyList()
             }
 
