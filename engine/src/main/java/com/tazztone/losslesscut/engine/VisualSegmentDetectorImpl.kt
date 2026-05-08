@@ -72,13 +72,10 @@ class VisualSegmentDetectorImpl @Inject constructor(
             detectLoop(context, estimatedTotal, onProgress)
 
         } catch (e: MediaCodec.CodecException) {
-            Log.e(TAG, "CodecException: ${e.message}")
             Log.e(TAG, "MediaCodec error during visual detection", e)
         } catch (e: IllegalStateException) {
-            Log.e(TAG, "IllegalStateException: ${e.message}")
             Log.e(TAG, "Illegal state during visual detection", e)
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            Log.e(TAG, "Exception: ${e.message}")
             Log.e(TAG, "Unexpected error during visual detection", e)
         } finally {
             cleanup(codec, extractor)
