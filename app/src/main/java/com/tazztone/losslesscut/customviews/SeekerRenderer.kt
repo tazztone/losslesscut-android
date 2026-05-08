@@ -192,7 +192,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         bridgedNoisePaint.color = Color.argb(0x88, r, g, b)
     }
 
-    private val waveformCache = WaveformCache()
+    internal val waveformCache = WaveformCache()
 
     fun drawWaveform(canvas: Canvas) {
         seeker.waveformData?.let {
@@ -212,7 +212,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         }
     }
 
-    private inner class WaveformCache {
+    internal inner class WaveformCache {
         // Keep ~50MB of bitmaps (2048 * 200 * 4 ~= 1.6MB per tile -> 30 tiles)
         private val cache = android.util.LruCache<Int, android.graphics.Bitmap>(30)
 
