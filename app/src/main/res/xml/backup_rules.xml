@@ -7,4 +7,5 @@
 -->
 <full-backup-content>
     <exclude domain="external" path="."/>
+    <exclude domain="sharedpref" path="."/>
 </full-backup-content>
