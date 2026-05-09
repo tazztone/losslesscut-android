@@ -270,8 +270,6 @@ class VisualDetectionOverlayController(
         btnBlurQuality.isSelected = currentStrategy == VisualStrategy.BLUR_QUALITY
     }
 
-    private data class StrategyConfig(val min: Float, val max: Float, val default: Float, val step: Float)
-
     companion object {
         private const val FILTER_DEBOUNCE_DELAY_MS = 100L
         private val SCENE_CHANGE_CONFIG = StrategyConfig(3f, 30f, 12f, 1f)

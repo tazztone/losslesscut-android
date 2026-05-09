@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
+import androidx.appcompat.widget.TooltipCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.core.app.ApplicationProvider
 import com.tazztone.losslesscut.R
@@ -44,6 +45,28 @@ class MediaClipAdapterTest {
             rotation = 0,
             isAudioOnly = false
         )
+    }
+
+    @Test
+    fun testAddViewHolderBinding() {
+        var addClicked = false
+        val adapter = MediaClipAdapter(
+            onClipSelected = {},
+            onClipsReordered = { _, _ -> },
+            onClipLongPressed = {},
+            onStartDrag = {},
+            onAddClicked = { addClicked = true }
+        )
+        adapter.submitList(emptyList())
+
+        val parent = FrameLayout(context)
+        val viewHolder = adapter.onCreateViewHolder(parent, 1) // VIEW_TYPE_ADD = 1
+        adapter.onBindViewHolder(viewHolder, 0)
+
+        // Cannot easily read TooltipCompat text directly without reflection or shadow in older UI toolkits,
+        // but we can verify the click listener which was set during bind()
+        viewHolder.itemView.performClick()
+        assertTrue("onAddClicked should be called", addClicked)
     }
 
     @Test
@@ -176,5 +199,26 @@ class MediaClipAdapterTest {
         assertFalse(adapter.isDragging)
         assertEquals(0, reorderedFrom)
         assertEquals(2, reorderedTo)
+    }
+
+    @Test
+    fun testGetItemViewType() {
+        val adapter = MediaClipAdapter(
+            onClipSelected = {},
+            onClipsReordered = { _, _ -> },
+            onClipLongPressed = {},
+            onStartDrag = {},
+            onAddClicked = {}
+        )
+
+        // With empty list, position 0 should be VIEW_TYPE_ADD (1)
+        adapter.submitList(emptyList())
+        assertEquals(1, adapter.getItemViewType(0))
+
+        // With 1 item, position 0 should be VIEW_TYPE_CLIP (0), position 1 should be VIEW_TYPE_ADD (1)
+        val clip = createDummyClip("dummy.mp4")
+        adapter.submitList(listOf(clip))
+        assertEquals(0, adapter.getItemViewType(0))
+        assertEquals(1, adapter.getItemViewType(1))
     }
 }
