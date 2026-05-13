@@ -56,7 +56,7 @@ class ExportOptionsDialogPresenter(
         val tvTracksHeader = dialogView.findViewById<TextView>(R.id.tvTracksHeader)
         val tracksContainer = dialogView.findViewById<LinearLayout>(R.id.tracksContainer)
         
-        // Sort: Video first, then Audio, then others
+        // Ordered tracks: Video, Audio, then others
         val availableTracks = state.availableTracks.sortedWith(compareBy({ !it.isVideo }, { !it.isAudio }, { it.id }))
         val selectedTracks = mutableSetOf<Int>()
         
@@ -106,19 +106,19 @@ class ExportOptionsDialogPresenter(
 
         val trackList = if (selectedTracks.isNotEmpty()) selectedTracks.toList() else null
         
-        // Derive keepVideo/keepAudio for file extension logic in ExportUseCase
+        // Determine which track types to keep for file extension logic
         val availableTracksById = if (trackList != null) state.availableTracks.associateBy { it.id } else null
 
         val keepVideo = if (trackList != null && availableTracksById != null) {
             trackList.any { id -> availableTracksById[id]?.isVideo == true }
         } else {
-            true // default to true if no track info (safety)
+            true // Fallback when track info is missing (safety)
         }
         
         val keepAudio = if (trackList != null && availableTracksById != null) {
             trackList.any { id -> availableTracksById[id]?.isAudio == true }
         } else {
-            state.hasAudioTrack // default to existing
+            state.hasAudioTrack // Fallback to current audio state
         }
 
         val mergeSegments = cbMerge.isChecked
