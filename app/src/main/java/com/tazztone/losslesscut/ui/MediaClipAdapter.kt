@@ -12,7 +12,6 @@ import com.tazztone.losslesscut.databinding.ItemMediaClipBinding
 import com.tazztone.losslesscut.domain.model.MediaClip
 import kotlinx.coroutines.*
 import java.util.Collections
-import java.util.UUID
 
 class MediaClipAdapter(
     private val onClipSelected: (Int) -> Unit,
@@ -28,7 +27,7 @@ class MediaClipAdapter(
     }
 
     private var clips: MutableList<MediaClip> = mutableListOf()
-    private var selectedClipId: UUID? = null
+    private var selectedClipIndex: Int = -1
     var isDragging = false
         private set
     private var dragStartIndex: Int = -1
@@ -59,17 +58,17 @@ class MediaClipAdapter(
         isDragging = true
     }
 
-    fun updateSelection(newSelectedId: UUID?) {
-        if (selectedClipId == newSelectedId) return
+    fun updateSelection(newSelectedIndex: Int) {
+        if (selectedClipIndex == newSelectedIndex) return
         
-        val oldId = selectedClipId
-        selectedClipId = newSelectedId
+        val oldIndex = selectedClipIndex
+        selectedClipIndex = newSelectedIndex
         
-        // Find indices to notify
-        clips.forEachIndexed { index, clip ->
-            if (clip.id == oldId || clip.id == newSelectedId) {
-                notifyItemChanged(index)
-            }
+        if (oldIndex != -1 && oldIndex < itemCount) {
+            notifyItemChanged(oldIndex)
+        }
+        if (newSelectedIndex != -1 && newSelectedIndex < itemCount) {
+            notifyItemChanged(newSelectedIndex)
         }
     }
 
@@ -91,7 +90,7 @@ class MediaClipAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (holder is ClipViewHolder) {
             val clip = clips[position]
-            holder.bind(clip, clip.id == selectedClipId, position + 1)
+            holder.bind(clip, position == selectedClipIndex, position + 1)
         } else if (holder is AddViewHolder) {
             holder.bind()
         }
@@ -111,6 +110,14 @@ class MediaClipAdapter(
         val item = clips.removeAt(from)
         clips.add(to, item)
         
+        if (selectedClipIndex == from) {
+            selectedClipIndex = to
+        } else if (from < selectedClipIndex && to >= selectedClipIndex) {
+            selectedClipIndex--
+        } else if (from > selectedClipIndex && to <= selectedClipIndex) {
+            selectedClipIndex++
+        }
+
         notifyItemMoved(from, to)
     }
 

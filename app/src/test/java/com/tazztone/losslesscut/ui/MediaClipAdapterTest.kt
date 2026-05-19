@@ -109,7 +109,7 @@ class MediaClipAdapterTest {
         assertEquals(View.INVISIBLE, vSelection.visibility)
 
         // Update selection and re-bind (simulated)
-        adapter.updateSelection(clip.id)
+        adapter.updateSelection(0)
         adapter.onBindViewHolder(viewHolder, 0)
         assertEquals(View.VISIBLE, vSelection.visibility)
     }

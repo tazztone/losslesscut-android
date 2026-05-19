@@ -75,9 +75,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             },
             onMediaTransition = { index ->
                 if (::clipAdapter.isInitialized) {
-                    val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
-                    val clipId = currentState?.clips?.getOrNull(index)?.id
-                    clipAdapter.updateSelection(clipId)
+                    clipAdapter.updateSelection(index)
                 }
             },
             onIsPlayingChanged = { isPlaying ->
@@ -347,7 +345,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         if (state.clips.size > 1) {
                             binding.playlistArea.root.visibility = View.VISIBLE
                             clipAdapter.submitList(state.clips)
-                            clipAdapter.updateSelection(selectedClip.id)
+                            clipAdapter.updateSelection(state.selectedClipIndex)
                         } else {
                             binding.playlistArea.root.visibility = View.GONE
                         }
