@@ -106,9 +106,10 @@ class MainActivity : BaseActivity() {
                 @Suppress("DEPRECATION")
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM)
             }
-            uris?.let {
-                Log.d("IncomingIntent", "Received multiple URIs: $it")
-                navigateToEditingScreen(it)
+            val validUris = uris?.filter { isValidUri(it) }
+            if (!validUris.isNullOrEmpty()) {
+                Log.d("IncomingIntent", "Received multiple URIs: $validUris")
+                navigateToEditingScreen(validUris)
             }
         } else if ((Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) && type != null) {
             val uri = if (Intent.ACTION_SEND == action) {
@@ -122,11 +123,28 @@ class MainActivity : BaseActivity() {
                 intent.data
             }
 
-            uri?.let {
-                Log.d("IncomingIntent", "Received URI: $it")
-                navigateToEditingScreen(listOf(it))
+            if (isValidUri(uri)) {
+                Log.d("IncomingIntent", "Received URI: $uri")
+                navigateToEditingScreen(listOf(uri!!))
             }
         }
+    }
+
+    private fun isValidUri(uri: Uri?): Boolean {
+        if (uri == null) return false
+        val scheme = uri.scheme
+        if (scheme != "content" && scheme != "file") {
+            Log.w("Security", "Blocked URI with invalid scheme: $scheme")
+            return false
+        }
+        if (scheme == "file") {
+            val path = uri.path
+            if (path != null && (path.contains("..") || path.contains("/../"))) {
+                Log.w("Security", "Blocked URI with path traversal attempt: $path")
+                return false
+            }
+        }
+        return true
     }
 
     private fun showAboutDialog() {
