@@ -110,6 +110,54 @@ class VisualSegmentDetectorImplTest {
     }
 
     @Test
+    fun `analyze handles MediaCodec CodecException during loop`() = runBlocking {
+        val format = mockk<MediaFormat>(relaxed = true)
+
+        every { anyConstructed<MediaExtractor>().trackCount } returns 1
+        every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns format
+        every { format.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+        every { format.getLong(MediaFormat.KEY_DURATION) } returns 1000000L
+        every { anyConstructed<MediaExtractor>().selectTrack(0) } returns Unit
+
+        val mockCodec = mockk<MediaCodec>(relaxed = true)
+        every { MediaCodec.createDecoderByType(any()) } returns mockCodec
+
+        // Throw CodecException during loop
+        every { mockCodec.dequeueInputBuffer(any()) } throws mockk<MediaCodec.CodecException>(relaxed = true)
+
+        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+
+        assertTrue(result.isEmpty())
+        verify { mockCodec.stop() }
+        verify { mockCodec.release() }
+        verify { anyConstructed<MediaExtractor>().release() }
+    }
+
+    @Test
+    fun `analyze handles generic Exception during loop`() = runBlocking {
+        val format = mockk<MediaFormat>(relaxed = true)
+
+        every { anyConstructed<MediaExtractor>().trackCount } returns 1
+        every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns format
+        every { format.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+        every { format.getLong(MediaFormat.KEY_DURATION) } returns 1000000L
+        every { anyConstructed<MediaExtractor>().selectTrack(0) } returns Unit
+
+        val mockCodec = mockk<MediaCodec>(relaxed = true)
+        every { MediaCodec.createDecoderByType(any()) } returns mockCodec
+
+        // Throw generic exception during loop
+        every { mockCodec.dequeueInputBuffer(any()) } throws RuntimeException("Unexpected error")
+
+        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+
+        assertTrue(result.isEmpty())
+        verify { mockCodec.stop() }
+        verify { mockCodec.release() }
+        verify { anyConstructed<MediaExtractor>().release() }
+    }
+
+    @Test
     fun `analyze returns empty list when no video track is found`() = runBlocking {
         val format = mockk<MediaFormat>()
         
