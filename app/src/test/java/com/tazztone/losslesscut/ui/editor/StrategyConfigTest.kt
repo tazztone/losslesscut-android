@@ -16,6 +16,33 @@ class StrategyConfigTest {
     }
 
     @Test
+    fun `valid configuration with min equal to max initializes correctly`() {
+        val config = StrategyConfig(min = 5f, max = 5f, default = 5f, step = 1f)
+        assertEquals(5f, config.min)
+        assertEquals(5f, config.max)
+        assertEquals(5f, config.default)
+        assertEquals(1f, config.step)
+    }
+
+    @Test
+    fun `valid configuration with default equal to min initializes correctly`() {
+        val config = StrategyConfig(min = 1f, max = 10f, default = 1f, step = 1f)
+        assertEquals(1f, config.min)
+        assertEquals(10f, config.max)
+        assertEquals(1f, config.default)
+        assertEquals(1f, config.step)
+    }
+
+    @Test
+    fun `valid configuration with default equal to max initializes correctly`() {
+        val config = StrategyConfig(min = 1f, max = 10f, default = 10f, step = 1f)
+        assertEquals(1f, config.min)
+        assertEquals(10f, config.max)
+        assertEquals(10f, config.default)
+        assertEquals(1f, config.step)
+    }
+
+    @Test
     fun `min greater than max throws IllegalArgumentException`() {
         val exception = assertThrows(IllegalArgumentException::class.java) {
             StrategyConfig(min = 10f, max = 5f, default = 7f, step = 1f)
