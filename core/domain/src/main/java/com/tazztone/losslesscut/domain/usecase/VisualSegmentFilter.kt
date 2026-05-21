@@ -45,7 +45,7 @@ public object VisualSegmentFilter {
         val displayPadding = if (minSegmentMs > 0) minSegmentMs else MIN_VISIBLE_STAMP_DURATION_MS
         
         return resultRanges.map { range ->
-            if (range.first == range.last && strategy != VisualStrategy.SCENE_CHANGE) {
+            if (range.first == range.last) {
                 // Expand slightly so it's a visible rect, but don't exceed video bounds (implicit)
                 val start = (range.first - displayPadding / 2).coerceAtLeast(0)
                 val end = range.last + displayPadding / 2

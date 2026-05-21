@@ -64,8 +64,8 @@ public class VisualSegmentFilterTest {
         )
         
         assertEquals(2, result.size)
-        assertEquals(500L..500L, result[0])
-        assertEquals(1500L..1500L, result[1])
+        assertEquals(450L..550L, result[0])
+        assertEquals(1450L..1550L, result[1])
     }
 
     @Test
@@ -166,7 +166,7 @@ public class VisualSegmentFilterTest {
             minSegmentMs = 0
         )
         assertEquals(1, sceneResult.size)
-        assertEquals(500L..500L, sceneResult[0])
+        assertEquals(450L..550L, sceneResult[0])
 
         val freezeResult = VisualSegmentFilter.filter(
             frames = frames,
@@ -203,6 +203,6 @@ public class VisualSegmentFilterTest {
             minSegmentMs = 0
         )
         assertEquals(1, sceneResult.size)
-        assertEquals(500L..500L, sceneResult[0])
+        assertEquals(450L..550L, sceneResult[0])
     }
 }
