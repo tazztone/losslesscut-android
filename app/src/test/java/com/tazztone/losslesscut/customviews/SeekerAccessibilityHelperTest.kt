@@ -8,7 +8,6 @@ import androidx.customview.widget.ExploreByTouchHelper
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.domain.model.TrimSegment
-import com.tazztone.losslesscut.viewmodel.ClipController
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
