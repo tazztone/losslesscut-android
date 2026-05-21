@@ -133,27 +133,37 @@ class MainActivity : BaseActivity() {
     private fun isValidUri(uri: Uri?): Boolean {
         if (uri == null) return false
         val scheme = uri.scheme
-        if (scheme != "content" && scheme != "file") {
-            Log.w("Security", "Blocked URI with invalid scheme: $scheme")
-            return false
+
+        if (scheme == "content") {
+            return true
         }
+
         if (scheme == "file") {
-            val path = uri.path
-            if (path != null) {
-                try {
-                    val file = java.io.File(path)
-                    val normalizedPath = java.net.URI(file.toURI().toString()).normalize().path
-                    if (normalizedPath != file.absolutePath) {
-                        Log.w("Security", "Blocked URI with path traversal attempt: $path")
-                        return false
-                    }
-                } catch (e: Exception) {
-                    Log.w("Security", "Blocked URI due to path resolution error: $path", e)
-                    return false
-                }
-            }
+            return isSafeFileUri(uri.path)
         }
-        return true
+
+        Log.w("Security", "Blocked URI with invalid scheme: $scheme")
+        return false
+    }
+
+    private fun isSafeFileUri(path: String?): Boolean {
+        if (path == null) return true
+        return try {
+            val file = java.io.File(path)
+            val normalizedPath = java.net.URI(file.toURI().toString()).normalize().path
+            if (normalizedPath != file.absolutePath) {
+                Log.w("Security", "Blocked URI with path traversal attempt: $path")
+                false
+            } else {
+                true
+            }
+        } catch (e: java.net.URISyntaxException) {
+            Log.w("Security", "Blocked URI due to path resolution error: $path", e)
+            false
+        } catch (e: IllegalArgumentException) {
+            Log.w("Security", "Blocked URI due to invalid path argument: $path", e)
+            false
+        }
     }
 
     private fun showAboutDialog() {
