@@ -31,6 +31,12 @@ class AppPreferences @Inject constructor(
         val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
     }
 
+    private val sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
+
+    fun getAccentColorSync(): String {
+        return sharedPrefs.getString("accent_color", "cyan") ?: "cyan"
+    }
+
     val accentColorFlow: Flow<String> = context.dataStore.data
         .catch { exception ->
             if (exception is IOException) {
@@ -113,6 +119,7 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun setAccentColor(colorName: String) {
+        sharedPrefs.edit().putString("accent_color", colorName).apply()
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ACCENT_COLOR] = colorName
         }
