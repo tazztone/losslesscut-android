@@ -139,9 +139,18 @@ class MainActivity : BaseActivity() {
         }
         if (scheme == "file") {
             val path = uri.path
-            if (path != null && (path.contains("..") || path.contains("/../"))) {
-                Log.w("Security", "Blocked URI with path traversal attempt: $path")
-                return false
+            if (path != null) {
+                try {
+                    val file = java.io.File(path)
+                    val normalizedPath = java.net.URI(file.toURI().toString()).normalize().path
+                    if (normalizedPath != file.absolutePath) {
+                        Log.w("Security", "Blocked URI with path traversal attempt: $path")
+                        return false
+                    }
+                } catch (e: Exception) {
+                    Log.w("Security", "Blocked URI due to path resolution error: $path", e)
+                    return false
+                }
             }
         }
         return true
