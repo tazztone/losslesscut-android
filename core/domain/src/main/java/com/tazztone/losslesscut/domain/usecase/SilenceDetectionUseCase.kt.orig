@@ -34,14 +34,14 @@ public class SilenceDetectionUseCase @Inject constructor(
         minSegmentMs: Long
     ): DetectionResult = withContext(ioDispatcher) {
         val totalDurationMs = waveformResult.durationUs / US_PER_MS
-        
+
         // 1. Find RAW silence (threshold only, NO duration filtering yet)
         val rawRanges = DetectionUtils.findSilence(
             waveform = waveformResult.rawAmplitudes,
             totalDurationMs = totalDurationMs,
             threshold = config.threshold
         )
-        
+
         // 2. Merge close silences (Drop short noises/Keepers)
         val noiseMergedRanges = if (minSegmentMs > 0) {
             DetectionUtils.mergeCloseSilences(rawRanges, minSegmentMs)
@@ -55,7 +55,7 @@ public class SilenceDetectionUseCase @Inject constructor(
             minSilenceMs = config.minSilenceMs,
             totalDurationMs = totalDurationMs
         )
-        
+
         // 4. Apply padding cosmeticly AFTER structural merging
         val finalRanges = DetectionUtils.applyPaddingAndFilter(
             ranges = durationFilteredRanges,
@@ -83,13 +83,13 @@ public class SilenceDetectionUseCase @Inject constructor(
         } else {
             buildSegmentsFromDiscardRanges(clip.durationMs, ranges, minKeepSegmentDurationMs)
         }
-        
+
         val finalSegments = if (segments.none { it.action == SegmentAction.KEEP }) {
             listOf(TrimSegment(UUID.randomUUID(), 0L, clip.durationMs, SegmentAction.KEEP))
         } else {
             segments
         }
-        
+
         return clip.copy(segments = finalSegments)
     }
 
@@ -106,12 +106,12 @@ public class SilenceDetectionUseCase @Inject constructor(
         for (range in ranges) {
             val silStart = range.first.coerceIn(0L, clipEnd)
             val silEnd = range.last.coerceIn(0L, clipEnd)
-            
+
             if (silEnd <= cursor) continue
 
             // Fix boundary tiny gaps: if silence starts almost at 0, pull it to 0
-            val effectiveStart = clampBoundary(silStart, clipEnd)
-            val effectiveEnd = clampBoundary(silEnd, clipEnd)
+            val effectiveStart = if (silStart < BOUNDARY_THRESHOLD_MS) 0L else silStart
+            val effectiveEnd = if (clipEnd - silEnd < BOUNDARY_THRESHOLD_MS) clipEnd else silEnd
 
             if (effectiveStart > cursor) {
                 rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, effectiveStart, SegmentAction.KEEP))
@@ -173,12 +173,6 @@ public class SilenceDetectionUseCase @Inject constructor(
         }
         result.add(current)
         return result
-    }
-
-    private fun clampBoundary(value: Long, clipEnd: Long): Long = when {
-        value < BOUNDARY_THRESHOLD_MS -> 0L
-        clipEnd - value < BOUNDARY_THRESHOLD_MS -> clipEnd
-        else -> value
     }
 
     private companion object {
