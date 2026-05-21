@@ -1,22 +1,16 @@
 package com.tazztone.losslesscut.customviews
 
-import android.graphics.Rect
 import android.os.Bundle
-import android.view.accessibility.AccessibilityEvent
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.customview.widget.ExploreByTouchHelper
-import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.domain.model.TrimSegment
-import com.tazztone.losslesscut.viewmodel.ClipController
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import java.util.UUID
 
