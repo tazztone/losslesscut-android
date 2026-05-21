@@ -58,6 +58,7 @@ class ArchitectureTest {
             .withPackage("..domain.usecase..")
             .filter { it.isTopLevel }
             .filterNot { it.name == "VisualSegmentFilter" }
+            .filterNot { it.name.endsWith("Test") }
             .assertTrue { it.name.endsWith("UseCase") }
     }
 }

@@ -110,7 +110,7 @@ class VisualSegmentDetectorImplTest {
     }
 
     @Test
-    fun `analyze handles MediaCodec CodecException during loop`() = runBlocking {
+    fun `analyze handles exception during loop`() = runBlocking {
         val format = mockk<MediaFormat>(relaxed = true)
 
         every { anyConstructed<MediaExtractor>().trackCount } returns 1
@@ -122,14 +122,8 @@ class VisualSegmentDetectorImplTest {
         val mockCodec = mockk<MediaCodec>(relaxed = true)
         every { MediaCodec.createDecoderByType(any()) } returns mockCodec
 
-        // Throw CodecException during loop
-        val codecExceptionConstructor = MediaCodec.CodecException::class.java.getDeclaredConstructor(
-            Int::class.javaPrimitiveType,
-            Int::class.javaPrimitiveType,
-            String::class.java
-        ).apply { isAccessible = true }
-        val codecException = codecExceptionConstructor.newInstance(1, 1, "Codec error")
-        every { mockCodec.dequeueInputBuffer(any()) } throws codecException
+        // Throw IllegalStateException during loop to simulate codec failure
+        every { mockCodec.dequeueInputBuffer(any()) } throws IllegalStateException("Simulated Codec Error")
 
         val result = detector.analyze("test_uri", 1000) { _, _ -> }
 
