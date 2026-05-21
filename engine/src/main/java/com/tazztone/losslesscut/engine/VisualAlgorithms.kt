@@ -21,6 +21,12 @@ internal object VisualAlgorithms {
     private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
     private const val BLUR_TARGET_WIDTH = 256
 
+    private val COS_TABLE = Array(DOWNSCALE_SIZE) { i ->
+        DoubleArray(DCT_SIZE) { f ->
+            cos((2 * i + 1) * f * Math.PI / DCT_DENOMINATOR)
+        }
+    }
+
     fun calculateMeanLuma(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
@@ -101,7 +107,7 @@ internal object VisualAlgorithms {
             for (u in 0 until DCT_SIZE) {
                 var sum = 0.0
                 for (x in 0 until DOWNSCALE_SIZE) {
-                     sum += vals[y * DOWNSCALE_SIZE + x] * cos((2 * x + 1) * u * Math.PI / DCT_DENOMINATOR)
+                     sum += vals[y * DOWNSCALE_SIZE + x] * COS_TABLE[x][u]
                 }
                 rowTransformed[y][u] = DCT_SCALE * c[u] * sum
             }
@@ -112,7 +118,7 @@ internal object VisualAlgorithms {
             for (v in 0 until DCT_SIZE) {
                 var sum = 0.0
                 for (y in 0 until DOWNSCALE_SIZE) {
-                    sum += rowTransformed[y][u] * cos((2 * y + 1) * v * Math.PI / DCT_DENOMINATOR)
+                    sum += rowTransformed[y][u] * COS_TABLE[y][v]
                 }
                 finalDct[v * DCT_SIZE + u] = DCT_SCALE * c[v] * sum
             }
