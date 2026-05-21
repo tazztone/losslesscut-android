@@ -207,4 +207,32 @@ public class SilenceDetectionUseCaseTest {
         sampleRate = 0, channelCount = 0, fps = 0f, rotation = 0,
         isAudioOnly = false, segments = listOf(TrimSegment(startMs = 0, endMs = durationMs))
     )
+
+    @Test
+    public fun testApplySilenceDetection_BoundaryClampingStartNearEnd(): Unit {
+        val clip = createClip(1000)
+        // Silence starts at 995ms (should clamp to 1000)
+        // Silence ends at 1000ms
+        val silenceRanges = listOf(995L..1000L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
+
+        // Results in 1 KEEP segment because silence is clamped to 1000..1000, so no DISCARD segment
+        assertEquals(1, updatedClip.segments.size)
+        assertEquals(SegmentAction.KEEP, updatedClip.segments[0].action)
+        assertEquals(1000L, updatedClip.segments[0].endMs)
+    }
+
+    @Test
+    public fun testApplySilenceDetection_BoundaryClampingEndNearStart(): Unit {
+        val clip = createClip(1000)
+        // Silence starts at 0ms
+        // Silence ends at 5ms (should clamp to 0)
+        val silenceRanges = listOf(0L..5L)
+        val updatedClip = useCase.applyDetectionRanges(clip, silenceRanges, 100L, SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES)
+
+        // Results in 1 KEEP segment because silence is clamped to 0..0, so no DISCARD segment
+        assertEquals(1, updatedClip.segments.size)
+        assertEquals(SegmentAction.KEEP, updatedClip.segments[0].action)
+        assertEquals(1000L, updatedClip.segments[0].endMs)
+    }
 }
