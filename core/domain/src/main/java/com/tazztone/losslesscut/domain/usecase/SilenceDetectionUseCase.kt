@@ -143,7 +143,15 @@ public class SilenceDetectionUseCase @Inject constructor(
         clipEnd: Long,
         ranges: List<LongRange>
     ): List<TrimSegment> {
-        val splitPoints = ranges.map { it.first }.filter { it in 1 until clipEnd }.sorted().distinct()
+        val splitPointsSet = mutableSetOf<Long>()
+        for (range in ranges) {
+            val point = range.first
+            if (point in 1 until clipEnd) {
+                splitPointsSet.add(point)
+            }
+        }
+        val splitPoints = splitPointsSet.sorted()
+
         if (splitPoints.isEmpty()) {
             return listOf(TrimSegment(UUID.randomUUID(), 0L, clipEnd, SegmentAction.KEEP))
         }
