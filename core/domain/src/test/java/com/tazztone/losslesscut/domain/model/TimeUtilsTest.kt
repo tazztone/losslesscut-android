@@ -38,4 +38,13 @@ public class TimeUtilsTest {
         assertEquals("01h00m00s", TimeUtils.formatFilenameDuration(3600000))
         assertEquals("00s050ms", TimeUtils.formatFilenameDuration(50))
     }
+
+    @Test
+    public fun testFormatFilenameDuration_negative(): Unit {
+        assertEquals("-45s", TimeUtils.formatFilenameDuration(-45000))
+        assertEquals("-01m15s", TimeUtils.formatFilenameDuration(-75000))
+        assertEquals("-01h01m05s", TimeUtils.formatFilenameDuration(-3665000))
+        assertEquals("-01h00m00s", TimeUtils.formatFilenameDuration(-3600000))
+        assertEquals("-00s050ms", TimeUtils.formatFilenameDuration(-50))
+    }
 }

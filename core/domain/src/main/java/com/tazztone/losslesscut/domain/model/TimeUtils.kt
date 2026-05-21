@@ -25,13 +25,16 @@ public object TimeUtils {
      * Only includes non-zero larger units.
      */
     public fun formatFilenameDuration(milliseconds: Long): String {
-        val secondsTotal = milliseconds / 1000
-        val ms = milliseconds % 1000
+        val isNegative = milliseconds < 0
+        val absMillis = kotlin.math.abs(milliseconds)
+        val secondsTotal = absMillis / 1000
+        val ms = absMillis % 1000
         val hrs = secondsTotal / 3600
         val mins = (secondsTotal % 3600) / 60
         val secs = secondsTotal % 60
 
         return buildString {
+            if (isNegative) append("-")
             if (hrs > 0) append(String.format(Locale.getDefault(), "%02dh", hrs))
             if (mins > 0 || hrs > 0) append(String.format(Locale.getDefault(), "%02dm", mins))
             append(String.format(Locale.getDefault(), "%02ds", secs))
