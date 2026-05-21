@@ -2,7 +2,6 @@ package com.tazztone.losslesscut.customviews
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Bitmap
 import android.graphics.Paint
 import androidx.test.core.app.ApplicationProvider
@@ -10,10 +9,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Before
