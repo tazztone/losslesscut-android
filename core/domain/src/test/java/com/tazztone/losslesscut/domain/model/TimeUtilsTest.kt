@@ -30,9 +30,23 @@ public class TimeUtilsTest {
         assertEquals("00:00.000", TimeUtils.formatDuration(0))
     }
 
-    @Test
     public fun formatDuration_maxValue(): Unit {
         assertEquals("2562047788015:12:55.807", TimeUtils.formatDuration(Long.MAX_VALUE))
+    }
+
+    @Test
+    public fun formatDuration_negativeUnderOneSecond(): Unit {
+        assertEquals("00:00.-500", TimeUtils.formatDuration(-500))
+    }
+
+    @Test
+    public fun formatDuration_negativeOverOneSecond(): Unit {
+        assertEquals("00:-1.-500", TimeUtils.formatDuration(-1500))
+    }
+
+    @Test
+    public fun formatDuration_negativeOverOneHour(): Unit {
+        assertEquals("-1:-5.000", TimeUtils.formatDuration(-3665000))
     }
 
     @Test
