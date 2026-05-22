@@ -8,6 +8,36 @@ import kotlinx.coroutines.test.runTest
 public class DetectionUtilsTest {
 
     @Test
+    public fun testFindSilence_emptyWaveform(): Unit = runTest {
+        val waveform = floatArrayOf()
+        val duration = 1000L
+
+        val ranges = DetectionUtils.findSilence(waveform, duration, 0.2f)
+
+        assertTrue(ranges.isEmpty())
+    }
+
+    @Test
+    public fun testFindSilence_invalidDuration(): Unit = runTest {
+        val waveform = floatArrayOf(0.1f, 0.0f, 0.0f, 0.5f)
+        val duration = 0L
+
+        val ranges = DetectionUtils.findSilence(waveform, duration, 0.2f)
+
+        assertTrue(ranges.isEmpty())
+    }
+
+    @Test
+    public fun testFindSilence_negativeDuration(): Unit = runTest {
+        val waveform = floatArrayOf(0.1f, 0.0f, 0.0f, 0.5f)
+        val duration = -100L
+
+        val ranges = DetectionUtils.findSilence(waveform, duration, 0.2f)
+
+        assertTrue(ranges.isEmpty())
+    }
+
+    @Test
     public fun testFindSilence_basic(): Unit = runTest {
         val waveform = floatArrayOf(0.1f, 0.0f, 0.0f, 0.5f)
         val duration = 1000L
