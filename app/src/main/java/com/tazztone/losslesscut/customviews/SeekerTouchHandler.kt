@@ -209,12 +209,14 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
         touchTimeMs: Long,
         hitThresholdMs: Long
     ): Pair<CustomVideoSeeker.TouchTarget, UUID?> {
-        val keepSegments = seeker.segments.filter { it.action != SegmentAction.DISCARD }
         var bestDist = hitThresholdMs + 1
         var bestHandle = CustomVideoSeeker.TouchTarget.NONE
         var bestId: UUID? = null
 
-        for (seg in keepSegments) {
+        for (i in seeker.segments.indices) {
+            val seg = seeker.segments[i]
+            if (seg.action == SegmentAction.DISCARD) continue
+
             val leftDist = kotlin.math.abs(seg.startMs - touchTimeMs)
             val isLeftCandidate = leftDist <= hitThresholdMs
             val isBetterLeft = leftDist < bestDist || (leftDist == bestDist && touchTimeMs > seg.startMs)
