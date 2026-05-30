@@ -45,26 +45,32 @@ internal class SeekerAccessibilityHelper(private val seeker: CustomVideoSeeker) 
     }
 
     private fun findNearbyHandle(touchTimeMs: Long, thresholdMs: Long): Int {
-        val keepSegments = seeker.segments.filter { it.action == SegmentAction.KEEP }
-        return keepSegments.withIndex().firstNotNullOfOrNull { (index, segment) ->
-            when {
-                kotlin.math.abs(segment.startMs - touchTimeMs) < thresholdMs -> 
-                    VIRTUAL_ID_HANDLE_START + (index * 2)
-                kotlin.math.abs(segment.endMs - touchTimeMs) < thresholdMs -> 
-                    VIRTUAL_ID_HANDLE_START + (index * 2) + 1
-                else -> null
+        var keepIndex = 0
+        for (segment in seeker.segments) {
+            if (segment.action == SegmentAction.KEEP) {
+                if (kotlin.math.abs(segment.startMs - touchTimeMs) < thresholdMs) {
+                    return VIRTUAL_ID_HANDLE_START + (keepIndex * 2)
+                }
+                if (kotlin.math.abs(segment.endMs - touchTimeMs) < thresholdMs) {
+                    return VIRTUAL_ID_HANDLE_START + (keepIndex * 2) + 1
+                }
+                keepIndex++
             }
-        } ?: INVALID_ID
+        }
+        return INVALID_ID
     }
 
     override fun getVisibleVirtualViews(virtualViewIds: MutableList<Int>) {
         if (!seeker.playheadVisible) return
         virtualViewIds.add(VIRTUAL_ID_PLAYHEAD)
         if (seeker.segmentsVisible) {
-            val keepSegments = seeker.segments.filter { it.action == SegmentAction.KEEP }
-            for (i in keepSegments.indices) {
-                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2))
-                virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (i * 2) + 1)
+            var keepIndex = 0
+            for (segment in seeker.segments) {
+                if (segment.action == SegmentAction.KEEP) {
+                    virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (keepIndex * 2))
+                    virtualViewIds.add(VIRTUAL_ID_HANDLE_START + (keepIndex * 2) + 1)
+                    keepIndex++
+                }
             }
         }
     }
@@ -85,10 +91,19 @@ internal class SeekerAccessibilityHelper(private val seeker: CustomVideoSeeker) 
         } else {
             val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
             val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
-            val keepSegments = seeker.segments.filter { it.action == SegmentAction.KEEP }
-            if (index < keepSegments.size) {
-                val segment = keepSegments[index]
-                val timeMs = if (isStart) segment.startMs else segment.endMs
+            var currentKeepIndex = 0
+            var targetSegment: com.tazztone.losslesscut.domain.model.TrimSegment? = null
+            for (segment in seeker.segments) {
+                if (segment.action == SegmentAction.KEEP) {
+                    if (currentKeepIndex == index) {
+                        targetSegment = segment
+                        break
+                    }
+                    currentKeepIndex++
+                }
+            }
+            if (targetSegment != null) {
+                val timeMs = if (isStart) targetSegment.startMs else targetSegment.endMs
                 val type = seeker.context.getString(
                     if (isStart) R.string.accessibility_handle_type_start else R.string.accessibility_handle_type_end
                 )
@@ -137,19 +152,28 @@ internal class SeekerAccessibilityHelper(private val seeker: CustomVideoSeeker) 
     private fun performHandleScroll(virtualViewId: Int, direction: Int): Boolean {
         val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
         val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
-        val keepSegments = seeker.segments.filter { it.action == SegmentAction.KEEP }
-        if (index >= keepSegments.size) return false
+        var currentKeepIndex = 0
+        var targetSegment: com.tazztone.losslesscut.domain.model.TrimSegment? = null
+        for (segment in seeker.segments) {
+            if (segment.action == SegmentAction.KEEP) {
+                if (currentKeepIndex == index) {
+                    targetSegment = segment
+                    break
+                }
+                currentKeepIndex++
+            }
+        }
+        if (targetSegment == null) return false
         
-        val segment = keepSegments[index]
         if (isStart) {
-            val newStart = (segment.startMs + direction * STEP_MS)
-                .coerceIn(0, segment.endMs - ClipController.MIN_SEGMENT_DURATION_MS)
-            seeker.onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
+            val newStart = (targetSegment.startMs + direction * STEP_MS)
+                .coerceIn(0, targetSegment.endMs - ClipController.MIN_SEGMENT_DURATION_MS)
+            seeker.onSegmentBoundsChanged?.invoke(targetSegment.id, newStart, targetSegment.endMs, newStart)
             seeker.onSegmentBoundsDragEnd?.invoke()
         } else {
-            val newEnd = (segment.endMs + direction * STEP_MS)
-                .coerceIn(segment.startMs + ClipController.MIN_SEGMENT_DURATION_MS, seeker.videoDurationMs)
-            seeker.onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
+            val newEnd = (targetSegment.endMs + direction * STEP_MS)
+                .coerceIn(targetSegment.startMs + ClipController.MIN_SEGMENT_DURATION_MS, seeker.videoDurationMs)
+            seeker.onSegmentBoundsChanged?.invoke(targetSegment.id, targetSegment.startMs, newEnd, newEnd)
             seeker.onSegmentBoundsDragEnd?.invoke()
         }
         seeker.invalidate()
