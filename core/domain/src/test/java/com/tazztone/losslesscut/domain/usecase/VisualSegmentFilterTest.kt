@@ -205,4 +205,24 @@ public class VisualSegmentFilterTest {
         assertEquals(1, sceneResult.size)
         assertEquals(450L..550L, sceneResult[0])
     }
+
+    @Test
+    public fun `filter_singleFrameNearStart_maintainsDuration`() {
+        val frames = listOf(
+            FrameAnalysis(0, 100.0, 1000.0, 15, null) // Single frame at time 0
+        )
+
+        val minSegmentMs = 101L
+
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.SCENE_CHANGE,
+            threshold = 10f,
+            minSegmentMs = minSegmentMs
+        )
+
+        assertEquals(1, result.size)
+        // Expected duration is exactly 101: start should be 0, end should be 101
+        assertEquals(0L..101L, result[0])
+    }
 }
