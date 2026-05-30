@@ -95,9 +95,6 @@ internal object VisualAlgorithms {
     fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
         val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
 
-        val vals = DoubleArray(DOWNSCALE_SIZE * DOWNSCALE_SIZE)
-        for (i in small.indices) vals[i] = (small[i].toInt() and PIXEL_MASK).toDouble()
-
         val rowTransformed = Array(DOWNSCALE_SIZE) { DoubleArray(DCT_SIZE) }
         val c = DoubleArray(DOWNSCALE_SIZE)
         c[0] = 1.0 / sqrt(2.0)
@@ -107,7 +104,8 @@ internal object VisualAlgorithms {
             for (u in 0 until DCT_SIZE) {
                 var sum = 0.0
                 for (x in 0 until DOWNSCALE_SIZE) {
-                     sum += vals[y * DOWNSCALE_SIZE + x] * DCT_COSINE_TABLE[x][u]
+                     val pixelVal = (small[y * DOWNSCALE_SIZE + x].toInt() and PIXEL_MASK).toDouble()
+                     sum += pixelVal * DCT_COSINE_TABLE[x][u]
                 }
                 rowTransformed[y][u] = DCT_SCALE * c[u] * sum
             }
