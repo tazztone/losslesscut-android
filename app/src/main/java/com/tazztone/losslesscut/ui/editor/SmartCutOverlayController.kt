@@ -187,22 +187,21 @@ class SmartCutOverlayController(
         val displayMetrics = context.resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
+        val padding = 16
 
         // Fix #4: Out-of-bounds clipping. If too close to top, show below anchor.
-        if (popupY < 0) {
+        if (popupY < padding) {
             popupY = loc[1] + anchor.height + 16
         }
 
-        if (popupY + tv.measuredHeight > screenHeight - 16) {
-            popupY = screenHeight - tv.measuredHeight - 16
+        if (popupY + tv.measuredHeight > screenHeight - padding) {
+            popupY = screenHeight - tv.measuredHeight - padding
         }
 
-        if (popupX < 16) {
-            popupX = 16
-        }
-
-        if (popupX + tv.measuredWidth > screenWidth - 16) {
-            popupX = screenWidth - tv.measuredWidth - 16
+        if (popupX < padding) {
+            popupX = padding
+        } else if (popupX + tv.measuredWidth > screenWidth - padding) {
+            popupX = screenWidth - tv.measuredWidth - padding
         }
 
         popup.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY)
