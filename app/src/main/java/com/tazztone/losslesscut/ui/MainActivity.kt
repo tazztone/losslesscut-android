@@ -1,11 +1,6 @@
 package com.tazztone.losslesscut.ui
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
+
 import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
 import android.Manifest
 import android.content.Intent
