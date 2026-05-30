@@ -77,56 +77,64 @@ internal class SeekerAccessibilityHelper(private val seeker: CustomVideoSeeker) 
 
     override fun onPopulateNodeForVirtualView(virtualViewId: Int, node: AccessibilityNodeInfoCompat) {
         if (virtualViewId == VIRTUAL_ID_PLAYHEAD) {
-            node.contentDescription = seeker.context.getString(
-                R.string.accessibility_playhead_pos_format,
-                seeker.formatTimeShort(seeker.seekPositionMs)
+            populatePlayheadNode(node)
+        } else {
+            populateHandleNode(virtualViewId, node)
+        }
+    }
+
+    private fun populatePlayheadNode(node: AccessibilityNodeInfoCompat) {
+        node.contentDescription = seeker.context.getString(
+            R.string.accessibility_playhead_pos_format,
+            seeker.formatTimeShort(seeker.seekPositionMs)
+        )
+        val x = seeker.timeToX(seeker.seekPositionMs) - seeker.scrollOffsetX
+        val rect = Rect((x - PLAYHEAD_HIT_WIDTH).toInt(), 0, (x + PLAYHEAD_HIT_WIDTH).toInt(), seeker.height)
+        @Suppress("DEPRECATION")
+        node.setBoundsInParent(rect)
+        node.isFocusable = true
+        node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
+        node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD)
+    }
+
+    private fun populateHandleNode(virtualViewId: Int, node: AccessibilityNodeInfoCompat) {
+        val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
+        val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
+        var currentKeepIndex = 0
+        var targetSegment: com.tazztone.losslesscut.domain.model.TrimSegment? = null
+        for (segment in seeker.segments) {
+            if (segment.action == SegmentAction.KEEP) {
+                if (currentKeepIndex == index) {
+                    targetSegment = segment
+                    break
+                }
+                currentKeepIndex++
+            }
+        }
+        if (targetSegment != null) {
+            val timeMs = if (isStart) targetSegment.startMs else targetSegment.endMs
+            val type = seeker.context.getString(
+                if (isStart) R.string.accessibility_handle_type_start else R.string.accessibility_handle_type_end
             )
-            val x = seeker.timeToX(seeker.seekPositionMs) - seeker.scrollOffsetX
-            val rect = Rect((x - PLAYHEAD_HIT_WIDTH).toInt(), 0, (x + PLAYHEAD_HIT_WIDTH).toInt(), seeker.height)
+            node.contentDescription = seeker.context.getString(
+                R.string.accessibility_segment_handle_format,
+                index + 1,
+                type,
+                seeker.formatTimeShort(timeMs)
+            )
+
+            val x = seeker.timeToX(timeMs) - seeker.scrollOffsetX
+            val rect = Rect(
+                (x - HANDLE_HIT_WIDTH).toInt(),
+                seeker.height - HANDLE_Y_HIT_OFFSET,
+                (x + HANDLE_HIT_WIDTH).toInt(),
+                seeker.height
+            )
             @Suppress("DEPRECATION")
             node.setBoundsInParent(rect)
             node.isFocusable = true
             node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
             node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD)
-        } else {
-            val index = (virtualViewId - VIRTUAL_ID_HANDLE_START) / 2
-            val isStart = (virtualViewId - VIRTUAL_ID_HANDLE_START) % 2 == 0
-            var currentKeepIndex = 0
-            var targetSegment: com.tazztone.losslesscut.domain.model.TrimSegment? = null
-            for (segment in seeker.segments) {
-                if (segment.action == SegmentAction.KEEP) {
-                    if (currentKeepIndex == index) {
-                        targetSegment = segment
-                        break
-                    }
-                    currentKeepIndex++
-                }
-            }
-            if (targetSegment != null) {
-                val timeMs = if (isStart) targetSegment.startMs else targetSegment.endMs
-                val type = seeker.context.getString(
-                    if (isStart) R.string.accessibility_handle_type_start else R.string.accessibility_handle_type_end
-                )
-                node.contentDescription = seeker.context.getString(
-                    R.string.accessibility_segment_handle_format,
-                    index + 1,
-                    type,
-                    seeker.formatTimeShort(timeMs)
-                )
-                
-                val x = seeker.timeToX(timeMs) - seeker.scrollOffsetX
-                val rect = Rect(
-                    (x - HANDLE_HIT_WIDTH).toInt(), 
-                    seeker.height - HANDLE_Y_HIT_OFFSET, 
-                    (x + HANDLE_HIT_WIDTH).toInt(), 
-                    seeker.height
-                )
-                @Suppress("DEPRECATION")
-                node.setBoundsInParent(rect)
-                node.isFocusable = true
-                node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_FORWARD)
-                node.addAction(AccessibilityNodeInfoCompat.ACTION_SCROLL_BACKWARD)
-            }
         }
     }
 
