@@ -35,28 +35,22 @@ class StorageUtils @Inject constructor(
 
 
     suspend fun createMediaOutputUri(fileName: String, isAudioOnly: Boolean, suffix: String? = null): Uri? {
+        val baseName = fileName.substringBeforeLast(".")
+        val extension = fileName.substringAfterLast(".", "mp4")
+        val finalFileName = if (suffix != null) "${baseName}${suffix}.${extension}" else fileName
+        val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
+
         val customUriString = preferences.customOutputUriFlow.first()
         if (customUriString != null) {
             val customUri = Uri.parse(customUriString)
             val parentDoc = DocumentFile.fromTreeUri(context, customUri)
             if (parentDoc != null && parentDoc.exists()) {
-                val baseName = fileName.substringBeforeLast(".")
-                val extension = fileName.substringAfterLast(".", "mp4")
-                val finalFileName = if (suffix != null) "${baseName}${suffix}.${extension}" else fileName
-                val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
-                
                 val newFile = parentDoc.createFile(mimeType, finalFileName)
                 return newFile?.uri
             }
         }
 
         val resolver = context.contentResolver
-        
-        val baseName = fileName.substringBeforeLast(".")
-        val extension = fileName.substringAfterLast(".", "mp4")
-        val finalFileName = if (suffix != null) "${baseName}${suffix}.${extension}" else fileName
-
-        val mimeType = if (isAudioOnly) "audio/mp4" else "video/mp4"
         val collection = if (isAudioOnly) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
