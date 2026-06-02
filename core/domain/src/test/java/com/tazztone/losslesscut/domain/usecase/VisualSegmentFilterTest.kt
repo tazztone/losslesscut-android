@@ -181,8 +181,8 @@ public class VisualSegmentFilterTest {
     @Test
     public fun `filter respects strict threshold boundaries`() {
         val frames = listOf(
-            FrameAnalysis(0, 20.0, 1000.0, 10, null),   // At boundary for both
-            FrameAnalysis(500, 19.9, 1000.0, 11, null)  // Match both
+            FrameAnalysis(0, 20.0, 50.0, 10, 2.0),   // At boundary for all
+            FrameAnalysis(500, 19.9, 49.9, 11, 1.9)  // Match all
         )
 
         // BLACK_FRAMES: luma < 20
@@ -204,6 +204,112 @@ public class VisualSegmentFilterTest {
         )
         assertEquals(1, sceneResult.size)
         assertEquals(450L..550L, sceneResult[0])
+
+        // BLUR_QUALITY: blurVariance < 50
+        val blurResult = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.BLUR_QUALITY,
+            threshold = 50f,
+            minSegmentMs = 0
+        )
+        assertEquals(1, blurResult.size)
+        assertEquals(450L..550L, blurResult[0])
+
+        // FREEZE_FRAME: freezeDiff < 2.0
+        val freezeResult = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.FREEZE_FRAME,
+            threshold = 2f,
+            minSegmentMs = 0
+        )
+        assertEquals(1, freezeResult.size)
+        assertEquals(450L..550L, freezeResult[0])
+    }
+
+    @Test
+    public fun `filter coerces start time to zero when expanding single frame match near start`() {
+        val frames = listOf(
+            FrameAnalysis(20, 10.0, 1000.0, null, null) // Match near start
+        )
+
+        // minSegmentMs = 0, meaning padding defaults to 100
+        // half-padding = 50
+        // start = 20 - 50 = -30 -> coerced to 0
+        // end = 20 + 50 = 70
+        // Because minSegmentMs = 0, duration 70 >= 0 is true and it's kept.
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = 0
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(0L..70L, result[0])
+    }
+
+    @Test
+    public fun `filter removes multi-frame segment if duration is less than minSegmentMs`() {
+        val frames = listOf(
+            FrameAnalysis(0, 10.0, 1000.0, null, null), // Match
+            FrameAnalysis(50, 10.0, 1000.0, null, null) // Match
+        )
+
+        // Duration = 50 - 0 = 50
+        // minSegmentMs = 100
+        // 50 < 100 -> removed
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = 100
+        )
+
+        assertEquals(0, result.size)
+    }
+
+    @Test
+    public fun `filter keeps multi-frame segment if duration is at least minSegmentMs`() {
+        val frames = listOf(
+            FrameAnalysis(0, 10.0, 1000.0, null, null), // Match
+            FrameAnalysis(150, 10.0, 1000.0, null, null) // Match
+        )
+
+        // Duration = 150 - 0 = 150
+        // minSegmentMs = 100
+        // 150 >= 100 -> kept
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = 100
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(0L..150L, result[0])
+    }
+
+    @Test
+    public fun `filter handles negative minSegmentMs`() {
+        val frames = listOf(
+            FrameAnalysis(500, 10.0, 1000.0, null, null) // Single frame match
+        )
+
+        // minSegmentMs = -10 (which is <= 0)
+        // Fallback MIN_VISIBLE_STAMP_DURATION_MS = 100 is used for padding
+        // start = 500 - 50 = 450
+        // end = 500 + 50 = 550
+        // duration = 100
+        // filter check: duration (100) >= minSegmentMs (-10) -> true
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = -10
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(450L..550L, result[0])
     }
 
     @Test
