@@ -4,20 +4,22 @@ import com.tazztone.losslesscut.domain.engine.AudioDecoder
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
 import com.tazztone.losslesscut.domain.model.WaveformResult
-import kotlinx.coroutines.Dispatchers
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AudioWaveformExtractorImpl @Inject constructor(
-    private val audioDecoder: AudioDecoder
+    private val audioDecoder: AudioDecoder,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : AudioWaveformExtractor {
 
     override suspend fun extract(
         uri: String, 
         onProgress: ((WaveformResult) -> Unit)?
-    ): WaveformResult? = withContext(Dispatchers.IO) {
+    ): WaveformResult? = withContext(ioDispatcher) {
         var buckets = FloatArray(0)
         var durationMs = 0L
         var lastProgressUpdateUs = 0L

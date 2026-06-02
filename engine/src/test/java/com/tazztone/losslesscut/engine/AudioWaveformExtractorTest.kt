@@ -4,6 +4,7 @@ import com.tazztone.losslesscut.domain.engine.AudioDecoder
 import com.tazztone.losslesscut.domain.model.WaveformResult
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -13,7 +14,7 @@ import org.junit.Test
 class AudioWaveformExtractorTest {
 
     private val decoder = mockk<AudioDecoder>()
-    private val extractor = AudioWaveformExtractorImpl(decoder)
+    private val extractor = AudioWaveformExtractorImpl(decoder, Dispatchers.IO)
 
     @Test
     fun extract_processesPcmDataCorrectly() = runBlocking {
