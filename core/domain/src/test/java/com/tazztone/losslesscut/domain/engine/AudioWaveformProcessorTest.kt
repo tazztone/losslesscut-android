@@ -105,4 +105,60 @@ public class AudioWaveformProcessorTest {
         val source = floatArrayOf(0.1f, 0.2f)
         AudioWaveformProcessor.downsample(source, 0)
     }
+
+    @Test
+    public fun testDownsample_targetCountGreaterThanSourceSize(): Unit {
+        val source = floatArrayOf(0.1f, 0.2f, 0.3f)
+        val target = AudioWaveformProcessor.downsample(source, 5)
+        assertEquals(3, target.size)
+        assertEquals(0.1f, target[0], 0.001f)
+        assertEquals(0.2f, target[1], 0.001f)
+        assertEquals(0.3f, target[2], 0.001f)
+    }
+
+    @Test
+    public fun testDownsample_targetCountEqualsSourceSize(): Unit {
+        val source = floatArrayOf(0.1f, 0.2f, 0.3f)
+        val target = AudioWaveformProcessor.downsample(source, 3)
+        assertEquals(3, target.size)
+        assertEquals(0.1f, target[0], 0.001f)
+        assertEquals(0.2f, target[1], 0.001f)
+        assertEquals(0.3f, target[2], 0.001f)
+    }
+
+    @Test
+    public fun testDownsample_evenDivision(): Unit {
+        val source = floatArrayOf(0.1f, 0.5f, 0.2f, 0.8f, 0.3f, 0.4f)
+        val target = AudioWaveformProcessor.downsample(source, 3)
+        assertEquals(3, target.size)
+        // Group 1: max(0.1, 0.5) = 0.5
+        assertEquals(0.5f, target[0], 0.001f)
+        // Group 2: max(0.2, 0.8) = 0.8
+        assertEquals(0.8f, target[1], 0.001f)
+        // Group 3: max(0.3, 0.4) = 0.4
+        assertEquals(0.4f, target[2], 0.001f)
+    }
+
+    @Test
+    public fun testDownsample_unevenDivision(): Unit {
+        val source = floatArrayOf(0.1f, 0.5f, 0.9f, 0.3f, 0.2f)
+        val target = AudioWaveformProcessor.downsample(source, 3)
+        assertEquals(3, target.size)
+        // size: 5, target: 3
+        // target 0: start=0, end=1 (source[0] = 0.1)
+        // target 1: start=1, end=3 (source[1], source[2] = 0.5, 0.9) -> max 0.9
+        // target 2: start=3, end=5 (source[3], source[4] = 0.3, 0.2) -> max 0.3
+        assertEquals(0.1f, target[0], 0.001f)
+        assertEquals(0.9f, target[1], 0.001f)
+        assertEquals(0.3f, target[2], 0.001f)
+    }
+
+    @Test
+    public fun testDownsample_allZeros(): Unit {
+        val source = floatArrayOf(0f, 0f, 0f, 0f)
+        val target = AudioWaveformProcessor.downsample(source, 2)
+        assertEquals(2, target.size)
+        assertEquals(0f, target[0], 0.001f)
+        assertEquals(0f, target[1], 0.001f)
+    }
 }

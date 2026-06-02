@@ -113,13 +113,15 @@ public class SilenceDetectionUseCase @Inject constructor(
             val effectiveStart = clampBoundary(silStart, clipEnd)
             val effectiveEnd = clampBoundary(silEnd, clipEnd)
 
+            val startForDiscard = maxOf(cursor, effectiveStart)
+
             if (effectiveStart > cursor) {
                 rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, effectiveStart, SegmentAction.KEEP))
             }
-            if (effectiveEnd > effectiveStart) {
-                rawSegments.add(TrimSegment(UUID.randomUUID(), effectiveStart, effectiveEnd, SegmentAction.DISCARD))
+            if (effectiveEnd > startForDiscard) {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), startForDiscard, effectiveEnd, SegmentAction.DISCARD))
             }
-            cursor = effectiveEnd
+            cursor = maxOf(cursor, effectiveEnd)
         }
 
         if (cursor < clipEnd) {

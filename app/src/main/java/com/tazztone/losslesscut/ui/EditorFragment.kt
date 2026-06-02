@@ -322,63 +322,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         binding.loadingScreen.tvLoadingStatus.text = state.message?.asString(requireContext())
                     }
                     is VideoEditingUiState.Success -> {
-                        binding.loadingScreen.root.visibility = View.GONE
-                        val selectedClip = state.clips[state.selectedClipIndex]
-                        
-                        val newStateUris = state.clips.map { Uri.parse(it.uri) }
-                        val currentUris = playerManager.player?.mediaItemCount?.let { count ->
-                            (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
-                        } ?: emptyList<Uri?>()
-
-                        if (currentUris != newStateUris) {
-                            playerManager.setMediaItems(newStateUris.filterNotNull(), state.selectedClipIndex)
-                        } else if (playerManager.currentMediaItemIndex != state.selectedClipIndex) {
-                            playerManager.seekTo(state.selectedClipIndex, 0L)
-                        }
-
-                        if (lastLoadedClipId != selectedClip.id) {
-                            binding.seekerContainer.customVideoSeeker.resetView()
-                            lastLoadedClipId = selectedClip.id
-                        }
-                        
-                        binding.seekerContainer.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
-                        if (state.clips.size > 1) {
-                            binding.playlistArea.root.visibility = View.VISIBLE
-                            clipAdapter.submitList(state.clips)
-                            clipAdapter.updateSelection(state.selectedClipIndex)
-                        } else {
-                            binding.playlistArea.root.visibility = View.GONE
-                        }
-                        
-                        if (state.isAudioOnly) {
-                            binding.playerSection.playerView.visibility = View.GONE
-                            binding.playerSection.audioPlaceholder.visibility = View.VISIBLE
-                            binding.playerSection.tvAudioFileName.text = selectedClip.fileName
-                        } else {
-                            binding.playerSection.playerView.visibility = View.VISIBLE
-                            binding.playerSection.audioPlaceholder.visibility = View.GONE
-                        }
-
-                        if (playerManager.currentPlaybackSpeed != state.playbackSpeed || playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
-                            playerManager.updatePlaybackSpeed(state.playbackSpeed, state.isPitchCorrectionEnabled)
-                        }
-                        updatePlaybackSpeedUI(state.playbackSpeed)
-
-                        binding.seekerContainer.customVideoSeeker.setKeyframes(state.keyframes)
-                        binding.seekerContainer.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
-                        binding.seekerContainer.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
-                        binding.navBar.btnUndo.isEnabled = state.canUndo
-                        binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
-                        binding.navBar.btnRedo.isEnabled = state.canRedo
-                        binding.navBar.btnRedo.alpha = if (state.canRedo) 1.0f else 0.5f
-
-                        val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
-                        val deleteIcon = if (selectedSeg?.action == SegmentAction.DISCARD) {
-                            R.drawable.ic_restore_24
-                        } else {
-                            R.drawable.ic_delete_24
-                        }
-                        binding.editingControls.btnDelete.setImageResource(deleteIcon)
+                        handleSuccessState(state)
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
@@ -406,6 +350,67 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.waveformData.collect { waveform -> binding.seekerContainer.customVideoSeeker.setWaveformData(waveform) }
         }
+    }
+
+
+    private fun handleSuccessState(state: VideoEditingUiState.Success) {
+        binding.loadingScreen.root.visibility = View.GONE
+        val selectedClip = state.clips[state.selectedClipIndex]
+
+        val newStateUris = state.clips.map { Uri.parse(it.uri) }
+        val currentUris = playerManager.player?.mediaItemCount?.let { count ->
+            (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
+        } ?: emptyList<Uri?>()
+
+        if (currentUris != newStateUris) {
+            playerManager.setMediaItems(newStateUris.filterNotNull(), state.selectedClipIndex)
+        } else if (playerManager.currentMediaItemIndex != state.selectedClipIndex) {
+            playerManager.seekTo(state.selectedClipIndex, 0L)
+        }
+
+        if (lastLoadedClipId != selectedClip.id) {
+            binding.seekerContainer.customVideoSeeker.resetView()
+            lastLoadedClipId = selectedClip.id
+        }
+
+        binding.seekerContainer.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
+        if (state.clips.size > 1) {
+            binding.playlistArea.root.visibility = View.VISIBLE
+            clipAdapter.submitList(state.clips)
+            clipAdapter.updateSelection(state.selectedClipIndex)
+        } else {
+            binding.playlistArea.root.visibility = View.GONE
+        }
+
+        if (state.isAudioOnly) {
+            binding.playerSection.playerView.visibility = View.GONE
+            binding.playerSection.audioPlaceholder.visibility = View.VISIBLE
+            binding.playerSection.tvAudioFileName.text = selectedClip.fileName
+        } else {
+            binding.playerSection.playerView.visibility = View.VISIBLE
+            binding.playerSection.audioPlaceholder.visibility = View.GONE
+        }
+
+        if (playerManager.currentPlaybackSpeed != state.playbackSpeed || playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
+            playerManager.updatePlaybackSpeed(state.playbackSpeed, state.isPitchCorrectionEnabled)
+        }
+        updatePlaybackSpeedUI(state.playbackSpeed)
+
+        binding.seekerContainer.customVideoSeeker.setKeyframes(state.keyframes)
+        binding.seekerContainer.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
+        binding.seekerContainer.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
+        binding.navBar.btnUndo.isEnabled = state.canUndo
+        binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
+        binding.navBar.btnRedo.isEnabled = state.canRedo
+        binding.navBar.btnRedo.alpha = if (state.canRedo) 1.0f else 0.5f
+
+        val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
+        val deleteIcon = if (selectedSeg?.action == SegmentAction.DISCARD) {
+            R.drawable.ic_restore_24
+        } else {
+            R.drawable.ic_delete_24
+        }
+        binding.editingControls.btnDelete.setImageResource(deleteIcon)
     }
 
     private fun setupBackPressed() {

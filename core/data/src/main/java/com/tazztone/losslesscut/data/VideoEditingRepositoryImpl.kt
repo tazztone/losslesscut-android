@@ -174,7 +174,10 @@ class VideoEditingRepositoryImpl @Inject constructor(
                     out.writeLong(result.durationUs)
                     out.writeFloat(result.maxAmplitude)
                     out.writeInt(result.rawAmplitudes.size)
-                    result.rawAmplitudes.forEach { out.writeFloat(it) }
+                    val byteBuffer = java.nio.ByteBuffer.allocate(result.rawAmplitudes.size * Float.SIZE_BYTES)
+                        .order(java.nio.ByteOrder.BIG_ENDIAN)
+                    byteBuffer.asFloatBuffer().put(result.rawAmplitudes)
+                    out.write(byteBuffer.array())
                 }
             } catch (e: Exception) {
                 Log.e("VideoEditingRepositoryImpl", "Failed to save waveform to cache", e)
@@ -192,10 +195,13 @@ class VideoEditingRepositoryImpl @Inject constructor(
                     val durationUs = input.readLong()
                     val maxAmplitude = input.readFloat()
                     val size = input.readInt()
+                    val bytes = ByteArray(size * Float.SIZE_BYTES)
+                    input.readFully(bytes)
                     val amplitudes = FloatArray(size)
-                    for (i in 0 until size) {
-                        amplitudes[i] = input.readFloat()
-                    }
+                    java.nio.ByteBuffer.wrap(bytes)
+                        .order(java.nio.ByteOrder.BIG_ENDIAN)
+                        .asFloatBuffer()
+                        .get(amplitudes)
                     WaveformResult(amplitudes, maxAmplitude, durationUs)
                 } else {
                     null // Version mismatch, ignore old cache

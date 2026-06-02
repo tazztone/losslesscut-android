@@ -102,33 +102,9 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
             val contentX = lastTouchX + seeker.scrollOffsetX
             var touchTimeMs = seeker.xToTime(contentX)
             
-            if (seeker.isLosslessMode && seeker.keyframes.isNotEmpty()) {
-                val snapTimeMs = seeker.keyframes.minByOrNull { kotlin.math.abs(it - touchTimeMs) }
-                val snapThresholdWidth = seeker.durationToWidth(kotlin.math.abs((snapTimeMs ?: 0) - touchTimeMs))
-                if (snapTimeMs != null && snapThresholdWidth < SNAP_THRESHOLD_DP) {
-                    touchTimeMs = snapTimeMs
-                    if (lastSnappedKeyframe != snapTimeMs) {
-                        seeker.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                        lastSnappedKeyframe = snapTimeMs
-                    }
-                } else {
-                    lastSnappedKeyframe = null
-                }
-            }
+            touchTimeMs = calculateNewTouchTime(touchTimeMs)
 
-            if (seeker.currentTouchTarget == CustomVideoSeeker.TouchTarget.HANDLE_LEFT) {
-                val newStart = touchTimeMs.coerceAtMost(
-                    segment.endMs - ClipController.MIN_SEGMENT_DURATION_MS
-                )
-                seeker.onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
-                seeker.seekPositionMs = newStart
-            } else {
-                val newEnd = touchTimeMs.coerceAtLeast(
-                    segment.startMs + ClipController.MIN_SEGMENT_DURATION_MS
-                )
-                seeker.onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
-                seeker.seekPositionMs = newEnd
-            }
+            updateSegmentBounds(segment, touchTimeMs)
             seeker.invalidate()
             
             val canPostNextAutoPan = 
@@ -209,12 +185,14 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
         touchTimeMs: Long,
         hitThresholdMs: Long
     ): Pair<CustomVideoSeeker.TouchTarget, UUID?> {
-        val keepSegments = seeker.segments.filter { it.action != SegmentAction.DISCARD }
         var bestDist = hitThresholdMs + 1
         var bestHandle = CustomVideoSeeker.TouchTarget.NONE
         var bestId: UUID? = null
 
-        for (seg in keepSegments) {
+        for (i in seeker.segments.indices) {
+            val seg = seeker.segments[i]
+            if (seg.action == SegmentAction.DISCARD) continue
+
             val leftDist = kotlin.math.abs(seg.startMs - touchTimeMs)
             val isLeftCandidate = leftDist <= hitThresholdMs
             val isBetterLeft = leftDist < bestDist || (leftDist == bestDist && touchTimeMs > seg.startMs)
@@ -365,5 +343,39 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
         }
         seeker.currentTouchTarget = CustomVideoSeeker.TouchTarget.NONE
         activeSegmentId = null
+    }
+
+    private fun calculateNewTouchTime(touchTimeMs: Long): Long {
+        var newTouchTimeMs = touchTimeMs
+        if (seeker.isLosslessMode && seeker.keyframes.isNotEmpty()) {
+            val snapTimeMs = seeker.keyframes.minByOrNull { kotlin.math.abs(it - newTouchTimeMs) }
+            val snapThresholdWidth = seeker.durationToWidth(kotlin.math.abs((snapTimeMs ?: 0) - newTouchTimeMs))
+            if (snapTimeMs != null && snapThresholdWidth < SNAP_THRESHOLD_DP) {
+                newTouchTimeMs = snapTimeMs
+                if (lastSnappedKeyframe != snapTimeMs) {
+                    seeker.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    lastSnappedKeyframe = snapTimeMs
+                }
+            } else {
+                lastSnappedKeyframe = null
+            }
+        }
+        return newTouchTimeMs
+    }
+
+    private fun updateSegmentBounds(segment: TrimSegment, touchTimeMs: Long) {
+        if (seeker.currentTouchTarget == CustomVideoSeeker.TouchTarget.HANDLE_LEFT) {
+            val newStart = touchTimeMs.coerceAtMost(
+                segment.endMs - ClipController.MIN_SEGMENT_DURATION_MS
+            )
+            seeker.onSegmentBoundsChanged?.invoke(segment.id, newStart, segment.endMs, newStart)
+            seeker.seekPositionMs = newStart
+        } else {
+            val newEnd = touchTimeMs.coerceAtLeast(
+                segment.startMs + ClipController.MIN_SEGMENT_DURATION_MS
+            )
+            seeker.onSegmentBoundsChanged?.invoke(segment.id, segment.startMs, newEnd, newEnd)
+            seeker.seekPositionMs = newEnd
+        }
     }
 }
