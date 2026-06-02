@@ -150,14 +150,14 @@ class MainActivity : BaseActivity() {
         if (path == null) return true
         return try {
             val file = java.io.File(path)
-            val normalizedPath = java.net.URI(file.toURI().toString()).normalize().path
-            if (normalizedPath != file.absolutePath) {
+            val canonicalPath = file.canonicalPath
+            if (canonicalPath != file.absolutePath) {
                 Log.w("Security", "Blocked URI with path traversal attempt: $path")
                 false
             } else {
                 true
             }
-        } catch (e: java.net.URISyntaxException) {
+        } catch (e: java.io.IOException) {
             Log.w("Security", "Blocked URI due to path resolution error: $path", e)
             false
         } catch (e: IllegalArgumentException) {
