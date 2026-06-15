@@ -10,7 +10,7 @@ java {
 }
 
 kotlin {
-    jvmToolchain(17)
+
     compilerOptions {
         freeCompilerArgs.add("-Xexplicit-api=strict")
     }
