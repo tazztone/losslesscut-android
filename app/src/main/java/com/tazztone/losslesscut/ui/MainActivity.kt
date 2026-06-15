@@ -149,6 +149,9 @@ class MainActivity : BaseActivity() {
             if (canonicalPath != file.absolutePath) {
                 Log.w("Security", "Blocked URI with path traversal attempt: $path")
                 false
+            } else if (canonicalPath.startsWith(applicationInfo.dataDir)) {
+                Log.w("Security", "Blocked URI pointing to app private data: $path")
+                false
             } else {
                 true
             }
