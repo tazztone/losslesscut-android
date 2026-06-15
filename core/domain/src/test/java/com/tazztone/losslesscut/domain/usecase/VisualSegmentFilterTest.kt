@@ -235,8 +235,8 @@ public class VisualSegmentFilterTest {
         // minSegmentMs = 0, meaning padding defaults to 100
         // half-padding = 50
         // start = 20 - 50 = -30 -> coerced to 0
-        // end = 20 + 50 = 70
-        // Because minSegmentMs = 0, duration 70 >= 0 is true and it's kept.
+        // end = start + displayPadding = 0 + 100 = 100
+        // Because minSegmentMs = 0, duration 100 >= 0 is true and it's kept.
         val result = VisualSegmentFilter.filter(
             frames = frames,
             strategy = VisualStrategy.BLACK_FRAMES,
@@ -245,7 +245,7 @@ public class VisualSegmentFilterTest {
         )
 
         assertEquals(1, result.size)
-        assertEquals(0L..70L, result[0])
+        assertEquals(0L..100L, result[0])
     }
 
     @Test
