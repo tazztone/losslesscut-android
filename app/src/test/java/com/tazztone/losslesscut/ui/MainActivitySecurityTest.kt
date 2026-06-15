@@ -59,6 +59,18 @@ class MainActivitySecurityTest {
         assertFalse(invokeIsValidUri(null))
     }
 
+    @Test
+    fun testIsValidUri_FileScheme_NullPath_ReturnsFalse() {
+        val uri = Uri.parse("file://")
+        assertFalse(invokeIsValidUri(uri))
+    }
+
+    @Test
+    fun testIsValidUri_FileScheme_EmptyPath_ReturnsFalse() {
+        val uri = Uri.parse("file:")
+        assertFalse(invokeIsValidUri(uri))
+    }
+
     private fun invokeIsValidUri(uri: Uri?): Boolean {
         val method = MainActivity::class.java.getDeclaredMethod("isValidUri", Uri::class.java)
         method.isAccessible = true

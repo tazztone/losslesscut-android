@@ -142,7 +142,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun isSafeFileUri(path: String?): Boolean {
-        if (path == null) return true
+        if (path.isNullOrEmpty()) return false
         return try {
             val file = java.io.File(path)
             val canonicalPath = file.canonicalPath
