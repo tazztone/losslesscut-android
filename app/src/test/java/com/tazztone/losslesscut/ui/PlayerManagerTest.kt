@@ -241,4 +241,65 @@ class PlayerManagerTest {
         playerManager.seekTo(1, 2500L)
         verify { exoPlayer.seekTo(1, 2500L) }
     }
+
+    @Test
+    fun `cyclePlaybackSpeed should correctly cycle through playback speeds`() {
+        var callbackSpeed = 0f
+        var callbackPitch = true
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel,
+            onPlaybackParametersChanged = { speed, pitch ->
+                callbackSpeed = speed
+                callbackPitch = pitch
+            }
+        )
+
+        assert(playerManager.currentPlaybackSpeed == 1.0f)
+
+        // The list is [0.25f, 0.5f, 1.0f, 2.0f, 4.0f]
+        // Starting at 1.0f (index 2) -> next is 2.0f (index 3)
+        playerManager.cyclePlaybackSpeed()
+        assert(playerManager.currentPlaybackSpeed == 2.0f)
+        assert(callbackSpeed == 2.0f)
+        assert(callbackPitch == false)
+
+        playerManager.cyclePlaybackSpeed()
+        assert(playerManager.currentPlaybackSpeed == 4.0f)
+        assert(callbackSpeed == 4.0f)
+
+        playerManager.cyclePlaybackSpeed()
+        assert(playerManager.currentPlaybackSpeed == 0.25f)
+        assert(callbackSpeed == 0.25f)
+
+        playerManager.cyclePlaybackSpeed()
+        assert(playerManager.currentPlaybackSpeed == 0.5f)
+        assert(callbackSpeed == 0.5f)
+
+        playerManager.cyclePlaybackSpeed()
+        assert(playerManager.currentPlaybackSpeed == 1.0f)
+        assert(callbackSpeed == 1.0f)
+    }
+
+    @Test
+    fun `cyclePlaybackSpeed should preserve pitch correction state`() {
+        var callbackSpeed = 0f
+        var callbackPitch = false
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel,
+            onPlaybackParametersChanged = { speed, pitch ->
+                callbackSpeed = speed
+                callbackPitch = pitch
+            }
+        )
+
+        // Set pitch correction to true
+        playerManager.togglePitchCorrection()
+
+        playerManager.cyclePlaybackSpeed()
+        assert(callbackPitch == true)
+    }
 }
