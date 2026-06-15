@@ -57,6 +57,28 @@ class RotationManagerTest {
     }
 
     @Test
+    fun `rotate large positive degrees wraps correctly`() {
+        manager.rotate(450)
+        assertEquals(90, manager.currentRotation)
+    }
+
+    @Test
+    fun `rotate large negative degrees wraps correctly`() {
+        manager.rotate(-450)
+        assertEquals(270, manager.currentRotation)
+    }
+
+    @Test
+    fun `rotate multiples of 360 degrees results in 0`() {
+        manager.rotate(360)
+        assertEquals(0, manager.currentRotation)
+        manager.rotate(-360)
+        assertEquals(0, manager.currentRotation)
+        manager.rotate(720)
+        assertEquals(0, manager.currentRotation)
+    }
+
+    @Test
     fun `updateRotationPreview shows btnRotate when rotation is 0`() {
         manager.setRotation(0, animate = false)
         verify { btnRotate.visibility = View.VISIBLE }
