@@ -240,8 +240,11 @@ class LosslessEngineImpl @Inject constructor(
         val ex = MediaExtractor()
         return try {
             dataSource.setExtractorSource(ex, firstClip.uri)
+            val preTrackInfo = readTracksForInitialPlan(ex)
+            Log.d("LosslessEngineDebug", "BEFORE INSPECT - vMime: ${preTrackInfo.vMime}")
             val plan = inspector.inspect(ex, mux, keepA, keepV, sel)
             val trackInfo = readTracksForInitialPlan(ex)
+            Log.d("LosslessEngineDebug", "AFTER INSPECT - vMime: ${trackInfo.vMime}, aMime: ${trackInfo.aMime}")
             LosslessEngineHelper.MergeInitialPlan(
                 plan, trackInfo.audioRate, trackInfo.videoFps, trackInfo.vMime, trackInfo.aMime
             )
@@ -251,11 +254,13 @@ class LosslessEngineImpl @Inject constructor(
     private fun readTracksForInitialPlan(ex: MediaExtractor): InitialTrackInfo {
         var audioRate = AUDIO_SAMPLE_RATE_44100; var videoFps = DEFAULT_FPS
         var vMime: String? = null; var aMime: String? = null
+        Log.d("LosslessEngineDebug", "readTracksForInitialPlan: trackCount=${ex.trackCount}")
         for (i in 0 until ex.trackCount) {
             val format = ex.getTrackFormat(i); val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith("video/")) { 
+            Log.d("LosslessEngineDebug", "readTracksForInitialPlan: track $i MIME is $mime")
+            if (mime.startsWith("video/") && vMime == null) {
                 vMime = mime; videoFps = getVideoFps(format) 
-            } else if (mime.startsWith("audio/")) { 
+            } else if (mime.startsWith("audio/") && aMime == null) {
                 aMime = mime
                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                     audioRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
@@ -291,27 +296,53 @@ class LosslessEngineImpl @Inject constructor(
         ex: MediaExtractor, params: LosslessEngineHelper.MergeParams
     ): LosslessEngineHelper.ClipTrackInfo {
         val tMap = mutableMapOf<Int, Int>(); val isVMap = mutableMapOf<Int, Boolean>(); var maxSize = 0
+        Log.d("LosslessEngineDebug", "mapTracksForMerge: trackCount=${ex.trackCount}")
+        var videoCount = 0
+        var audioCount = 0
         for (i in 0 until ex.trackCount) {
             val format = ex.getTrackFormat(i)
             if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
                 maxSize = maxOf(maxSize, format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE))
             }
             val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
+            Log.d("LosslessEngineDebug", "mapTracksForMerge: track $i MIME is $mime")
             val isV = mime.startsWith("video/"); val isA = mime.startsWith("audio/")
-            val isS = if (params.selectedTracks != null) {
-                params.selectedTracks.contains(i)
-            } else {
-                (isV && params.keepVideo) || (isA && params.keepAudio)
-            }
-            if (!isS) continue
-            val muxIdx = LosslessEngineHelper.findMuxerTrack(params.initialPlan, isV)
+            if (!isTrackSelectedForMerge(i, isV, isA, params)) continue
+            
+            val typeIdx = if (isV) videoCount++ else audioCount++
+            val muxIdx = findAndValidateTrack(isV, mime, typeIdx, params.initialPlan)
             if (muxIdx != null) {
-                tMap[i] = muxIdx; isVMap[i] = isV
-                val expMime = if (isV) params.initialPlan.expectedVideoMime else params.initialPlan.expectedAudioMime
-                mergeValidator.validateCodec("clip", mime, expMime, if (isV) "video" else "audio")
+                tMap[i] = muxIdx
+                isVMap[i] = isV
             }
         }
         return LosslessEngineHelper.ClipTrackInfo(tMap, isVMap, maxSize)
+    }
+
+    private fun isTrackSelectedForMerge(
+        index: Int,
+        isV: Boolean,
+        isA: Boolean,
+        params: LosslessEngineHelper.MergeParams
+    ): Boolean {
+        val selected = params.selectedTracks
+        if (selected != null) {
+            return selected.contains(index)
+        }
+        return (isV && params.keepVideo) || (isA && params.keepAudio)
+    }
+
+    private fun findAndValidateTrack(
+        isV: Boolean,
+        mime: String,
+        typeIdx: Int,
+        initialPlan: LosslessEngineHelper.MergeInitialPlan
+    ): Int? {
+        val muxIdx = LosslessEngineHelper.findMuxerTrack(initialPlan, isV, typeIdx) ?: return null
+        val expMime = if (isV) initialPlan.expectedVideoMime else initialPlan.expectedAudioMime
+        Log.d("LosslessEngineDebug", "mapTracksForMerge: validateCodec mime=$mime, expMime=$expMime")
+        mergeValidator.validateCodec("clip", mime, expMime, if (isV) "video" else "audio")
+        return muxIdx
     }
 
     private data class InitialTrackInfo(val audioRate: Int, val videoFps: Float, val vMime: String?, val aMime: String?)

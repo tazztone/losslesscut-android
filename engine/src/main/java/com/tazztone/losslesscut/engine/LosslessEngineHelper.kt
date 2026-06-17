@@ -59,10 +59,11 @@ internal object LosslessEngineHelper {
         return TrackData(videoMime, audioMime, sampleRate, channelCount, fps, tracks)
     }
 
-    fun findMuxerTrack(initialPlan: MergeInitialPlan, isVideo: Boolean): Int? {
-        return initialPlan.plan.trackMap.entries.find { 
+    fun findMuxerTrack(initialPlan: MergeInitialPlan, isVideo: Boolean, typeIndex: Int): Int? {
+        val matchingEntries = initialPlan.plan.trackMap.entries.filter { 
             initialPlan.plan.isVideoTrackMap[it.key] == isVideo 
-        }?.value
+        }.sortedBy { it.key }
+        return matchingEntries.getOrNull(typeIndex)?.value
     }
 
     suspend fun copyClipSegments(params: CopySegmentsParams): Long {
