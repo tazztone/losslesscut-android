@@ -209,4 +209,75 @@ class LosslessEngineRealDeviceTest {
             outputFile.delete()
         }
     }
+
+    @Test
+    fun testDolbyVisionHLGMergeWithSelectedTracksOnRealDevice() {
+        runBlocking {
+            val externalDir = context.externalCacheDir
+            assertTrue("External cache dir must exist", externalDir != null)
+            
+            val testFile = File(externalDir, "IMG_2441.MOV")
+            assertTrue("Test video file must exist in external cache: ${testFile.absolutePath}", testFile.exists() && testFile.length() > 0)
+            
+            val outputFile = File(externalDir, "IMG_2441_merge_tracks.mp4")
+            if (outputFile.exists()) {
+                outputFile.delete()
+            }
+            
+            val authority = "com.tazztone.losslesscut.provider"
+            val inputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, testFile)
+            val outputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, outputFile)
+            
+            val inputUriString = inputUri.toString()
+            val outputUriString = outputUri.toString()
+            
+            // Create segments for merging
+            val clips = listOf(
+                MediaClip(
+                    uri = inputUriString,
+                    fileName = "IMG_2441.MOV",
+                    durationMs = 10000,
+                    width = 3840,
+                    height = 2160,
+                    videoMime = "video/dolby-vision",
+                    audioMime = "audio/mp4a-latm",
+                    sampleRate = 48000,
+                    channelCount = 2,
+                    fps = 30f,
+                    rotation = 0,
+                    isAudioOnly = false,
+                    segments = listOf(TrimSegment(startMs = 0, endMs = 2000))
+                ),
+                MediaClip(
+                    uri = inputUriString,
+                    fileName = "IMG_2441.MOV",
+                    durationMs = 10000,
+                    width = 3840,
+                    height = 2160,
+                    videoMime = "video/dolby-vision",
+                    audioMime = "audio/mp4a-latm",
+                    sampleRate = 48000,
+                    channelCount = 2,
+                    fps = 30f,
+                    rotation = 0,
+                    isAudioOnly = false,
+                    segments = listOf(TrimSegment(startMs = 4000, endMs = 6000))
+                )
+            )
+            
+            println("Starting lossless merge with tracks 0..7 from $inputUriString to $outputUriString")
+            val result = engine.executeLosslessMerge(
+                outputUri = outputUriString,
+                clips = clips,
+                keepAudio = true,
+                keepVideo = true,
+                rotationOverride = null,
+                selectedTracks = listOf(0, 1, 2, 3, 4, 5, 6, 7)
+            )
+            
+            assertTrue("Lossless merge with selected tracks failed: ${result.exceptionOrNull()?.message}", result.isSuccess)
+            assertTrue("Output file must exist and have content", outputFile.exists() && outputFile.length() > 0)
+            outputFile.delete()
+        }
+    }
 }

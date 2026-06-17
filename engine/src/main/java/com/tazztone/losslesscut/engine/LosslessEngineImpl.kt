@@ -298,7 +298,7 @@ class LosslessEngineImpl @Inject constructor(
         val tMap = mutableMapOf<Int, Int>(); val isVMap = mutableMapOf<Int, Boolean>(); var maxSize = 0
         Log.d("LosslessEngineDebug", "mapTracksForMerge: trackCount=${ex.trackCount}")
         var videoCount = 0
-        var audioCount = 0
+        var nonVideoCount = 0
         for (i in 0 until ex.trackCount) {
             val format = ex.getTrackFormat(i)
             if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
@@ -309,8 +309,8 @@ class LosslessEngineImpl @Inject constructor(
             val isV = mime.startsWith("video/"); val isA = mime.startsWith("audio/")
             if (!isTrackSelectedForMerge(i, isV, isA, params)) continue
             
-            val typeIdx = if (isV) videoCount++ else audioCount++
-            val muxIdx = findAndValidateTrack(isV, mime, typeIdx, params.initialPlan)
+            val typeIdx = if (isV) videoCount++ else nonVideoCount++
+            val muxIdx = findAndValidateTrack(isV, isA, mime, typeIdx, params.initialPlan)
             if (muxIdx != null) {
                 tMap[i] = muxIdx
                 isVMap[i] = isV
@@ -334,14 +334,19 @@ class LosslessEngineImpl @Inject constructor(
 
     private fun findAndValidateTrack(
         isV: Boolean,
+        isA: Boolean,
         mime: String,
         typeIdx: Int,
         initialPlan: LosslessEngineHelper.MergeInitialPlan
     ): Int? {
         val muxIdx = LosslessEngineHelper.findMuxerTrack(initialPlan, isV, typeIdx) ?: return null
-        val expMime = if (isV) initialPlan.expectedVideoMime else initialPlan.expectedAudioMime
-        Log.d("LosslessEngineDebug", "mapTracksForMerge: validateCodec mime=$mime, expMime=$expMime")
-        mergeValidator.validateCodec("clip", mime, expMime, if (isV) "video" else "audio")
+        if (isV || isA) {
+            val expMime = if (isV) initialPlan.expectedVideoMime else initialPlan.expectedAudioMime
+            Log.d("LosslessEngineDebug", "mapTracksForMerge: validateCodec mime=$mime, expMime=$expMime")
+            mergeValidator.validateCodec("clip", mime, expMime, if (isV) "video" else "audio")
+        } else {
+            Log.d("LosslessEngineDebug", "mapTracksForMerge: skip validateCodec for metadata track mime=$mime")
+        }
         return muxIdx
     }
 
