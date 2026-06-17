@@ -36,6 +36,7 @@ class TrackInspector @Inject constructor() {
             
             if (isTrackSelected(i, mime, keepAudio, keepVideo, selectedTracks)) {
                 val isVideo = mime.startsWith("video/")
+                val isAudio = mime.startsWith("audio/")
                 if (isVideo) {
                     durationUs = getDuration(format)
                     isVideoTrackMap[i] = true
@@ -43,7 +44,7 @@ class TrackInspector @Inject constructor() {
                     isVideoTrackMap[i] = false
                 }
                 
-                trackMap[i] = muxerWriter.addTrack(cleanFormat(format, isVideo))
+                trackMap[i] = muxerWriter.addTrack(cleanFormat(format, isVideo, isAudio))
                 bufferSize = maxOf(bufferSize, getBufferSize(format))
             }
         }
@@ -90,19 +91,11 @@ class TrackInspector @Inject constructor() {
     /**
      * Strips non-essential keys from the MediaFormat that can cause MediaMuxer to reject the track.
      */
-    private fun cleanFormat(original: MediaFormat, isVideo: Boolean): MediaFormat {
-        val clean = if (isVideo) {
-            MediaFormat.createVideoFormat(
-                original.getString(MediaFormat.KEY_MIME)!!,
-                original.getInteger(MediaFormat.KEY_WIDTH),
-                original.getInteger(MediaFormat.KEY_HEIGHT)
-            )
-        } else {
-            MediaFormat.createAudioFormat(
-                original.getString(MediaFormat.KEY_MIME)!!,
-                original.getInteger(MediaFormat.KEY_SAMPLE_RATE),
-                original.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
-            )
+    private fun cleanFormat(original: MediaFormat, isVideo: Boolean, isAudio: Boolean): MediaFormat {
+        val clean = when {
+            isVideo -> cleanVideoFormat(original)
+            isAudio -> cleanAudioFormat(original)
+            else -> cleanGenericFormat(original)
         }
 
         // Essential common keys
@@ -111,16 +104,7 @@ class TrackInspector @Inject constructor() {
         copyKey(original, clean, MediaFormat.KEY_LANGUAGE, KeyType.STRING)
 
         if (isVideo) {
-            copyKey(original, clean, MediaFormat.KEY_FRAME_RATE, KeyType.INT)
-            copyKey(original, clean, MediaFormat.KEY_I_FRAME_INTERVAL, KeyType.INT)
-            copyKey(original, clean, "rotation-degrees", KeyType.INT)
-            copyKey(original, clean, "color-standard", KeyType.INT)
-            copyKey(original, clean, "color-transfer", KeyType.INT)
-            copyKey(original, clean, "color-range", KeyType.INT)
-            copyKey(original, clean, "profile", KeyType.INT)
-            copyKey(original, clean, "level", KeyType.INT)
-            copyKey(original, clean, "hdr-static-info", KeyType.BYTE_BUFFER)
-            copyKey(original, clean, "hdr10-plus-info", KeyType.BYTE_BUFFER)
+            copyVideoMetadataKeys(original, clean)
         }
 
         // Codec-specific data (CSD) is critical for lossless reproduction
@@ -132,6 +116,52 @@ class TrackInspector @Inject constructor() {
         }
 
         return clean
+    }
+
+    private fun cleanVideoFormat(original: MediaFormat): MediaFormat {
+        val mime = original.getString(MediaFormat.KEY_MIME)!!
+        val width = getFormatInt(original, MediaFormat.KEY_WIDTH)
+        val height = getFormatInt(original, MediaFormat.KEY_HEIGHT)
+        return MediaFormat.createVideoFormat(mime, width, height)
+    }
+
+    private fun cleanAudioFormat(original: MediaFormat): MediaFormat {
+        val mime = original.getString(MediaFormat.KEY_MIME)!!
+        val sampleRate = getFormatInt(original, MediaFormat.KEY_SAMPLE_RATE)
+        val channelCount = getFormatInt(original, MediaFormat.KEY_CHANNEL_COUNT)
+        return MediaFormat.createAudioFormat(mime, sampleRate, channelCount)
+    }
+
+    private fun cleanGenericFormat(original: MediaFormat): MediaFormat {
+        return MediaFormat().apply {
+            val mime = original.getString(MediaFormat.KEY_MIME)
+            if (mime != null) {
+                setString(MediaFormat.KEY_MIME, mime)
+            }
+        }
+    }
+
+    private fun getFormatInt(format: MediaFormat, key: String): Int {
+        return try {
+            format.getInteger(key)
+        } catch (_: ClassCastException) {
+            0
+        } catch (_: NullPointerException) {
+            0
+        } ?: 0
+    }
+
+    private fun copyVideoMetadataKeys(original: MediaFormat, clean: MediaFormat) {
+        copyKey(original, clean, MediaFormat.KEY_FRAME_RATE, KeyType.INT)
+        copyKey(original, clean, MediaFormat.KEY_I_FRAME_INTERVAL, KeyType.INT)
+        copyKey(original, clean, "rotation-degrees", KeyType.INT)
+        copyKey(original, clean, "color-standard", KeyType.INT)
+        copyKey(original, clean, "color-transfer", KeyType.INT)
+        copyKey(original, clean, "color-range", KeyType.INT)
+        copyKey(original, clean, "profile", KeyType.INT)
+        copyKey(original, clean, "level", KeyType.INT)
+        copyKey(original, clean, "hdr-static-info", KeyType.BYTE_BUFFER)
+        copyKey(original, clean, "hdr10-plus-info", KeyType.BYTE_BUFFER)
     }
 
     private enum class KeyType { INT, LONG, STRING, BYTE_BUFFER }
