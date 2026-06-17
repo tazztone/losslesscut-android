@@ -138,17 +138,70 @@ class TrackInspector @Inject constructor() {
 
     private fun copyKey(from: MediaFormat, to: MediaFormat, key: String, type: KeyType) {
         if (!from.containsKey(key)) return
+        when (type) {
+            KeyType.INT -> copyIntKey(from, to, key)
+            KeyType.LONG -> copyLongKey(from, to, key)
+            KeyType.STRING -> copyStringKey(from, to, key)
+            KeyType.BYTE_BUFFER -> copyByteBufferKey(from, to, key)
+        }
+    }
+
+    private fun copyIntKey(from: MediaFormat, to: MediaFormat, key: String) {
         try {
-            when (type) {
-                KeyType.INT -> to.setInteger(key, from.getInteger(key))
-                KeyType.LONG -> to.setLong(key, from.getLong(key))
-                KeyType.STRING -> to.setString(key, from.getString(key))
-                KeyType.BYTE_BUFFER -> to.setByteBuffer(key, from.getByteBuffer(key)!!)
+            val value = from.getInteger(key)
+            if (value != null) {
+                to.setInteger(key, value)
             }
-        } catch (e: IllegalArgumentException) {
-            Log.w(TAG, "Failed to copy key $key due to type mismatch", e)
-        } catch (e: ClassCastException) {
-            Log.w(TAG, "Failed to copy key $key due to type mismatch", e)
+        } catch (_: ClassCastException) {
+            if (key == MediaFormat.KEY_FRAME_RATE) {
+                try {
+                    val floatValue = from.getFloat(key)
+                    to.setFloat(key, floatValue)
+                } catch (_: ClassCastException) {
+                    Log.w(TAG, "Failed to copy frame rate as float")
+                } catch (_: NullPointerException) {
+                    Log.w(TAG, "Failed to copy frame rate as float")
+                }
+            }
+        } catch (_: NullPointerException) {
+            Log.w(TAG, "Null value for integer key $key")
+        }
+    }
+
+    private fun copyLongKey(from: MediaFormat, to: MediaFormat, key: String) {
+        try {
+            val value = from.getLong(key)
+            to.setLong(key, value)
+        } catch (_: ClassCastException) {
+            Log.w(TAG, "Type mismatch for long key $key")
+        } catch (_: NullPointerException) {
+            Log.w(TAG, "Null value for long key $key")
+        }
+    }
+
+    private fun copyStringKey(from: MediaFormat, to: MediaFormat, key: String) {
+        try {
+            val value = from.getString(key)
+            if (value != null) {
+                to.setString(key, value)
+            }
+        } catch (_: ClassCastException) {
+            Log.w(TAG, "Type mismatch for string key $key")
+        } catch (_: NullPointerException) {
+            Log.w(TAG, "Null value for string key $key")
+        }
+    }
+
+    private fun copyByteBufferKey(from: MediaFormat, to: MediaFormat, key: String) {
+        try {
+            val value = from.getByteBuffer(key)
+            if (value != null) {
+                to.setByteBuffer(key, value)
+            }
+        } catch (_: ClassCastException) {
+            Log.w(TAG, "Type mismatch for bytebuffer key $key")
+        } catch (_: NullPointerException) {
+            Log.w(TAG, "Null value for bytebuffer key $key")
         }
     }
 
