@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.ui
 
 import android.content.Context
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import io.mockk.*
