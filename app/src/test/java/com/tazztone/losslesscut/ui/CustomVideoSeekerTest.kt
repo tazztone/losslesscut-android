@@ -269,4 +269,60 @@ class CustomVideoSeekerTest {
             rectInvalidateCount = 0
         }
     }
+
+    @Test
+    fun `xToTime should return correct time for basic coordinates`() {
+        // width = 1000, padding = 50, zoom = 1.0, duration = 10000
+        // availableWidth = 1000 - 100 = 900
+        // xToTime(50f) -> (50 - 50) / 900 * 10000 = 0L
+        assertEquals(0L, seeker.xToTime(50f))
+
+        // xToTime(500f) -> (500 - 50) / 900 * 10000 = 450 / 900 * 10000 = 5000L
+        assertEquals(5000L, seeker.xToTime(500f))
+
+        // xToTime(950f) -> (950 - 50) / 900 * 10000 = 900 / 900 * 10000 = 10000L
+        assertEquals(10000L, seeker.xToTime(950f))
+    }
+
+    @Test
+    fun `xToTime should coerce negative or out-of-bounds inputs`() {
+        // Less than padding should coerce to 0L
+        assertEquals(0L, seeker.xToTime(0f))
+        assertEquals(0L, seeker.xToTime(-100f))
+
+        // Greater than width - padding should coerce to videoDurationMs
+        assertEquals(10000L, seeker.xToTime(1000f))
+        assertEquals(10000L, seeker.xToTime(2000f))
+    }
+
+    @Test
+    fun `xToTime should handle zoom factor correctly`() {
+        seeker.zoomFactor = 2f
+        // width = 1000, padding = 50, zoom = 2.0, duration = 10000
+        // availableWidth = 2000 - 100 = 1900
+
+        // x = 50 (start) -> 0L
+        assertEquals(0L, seeker.xToTime(50f))
+
+        // x = 1000 (middle of zoomed logical width) -> (1000 - 50) / 1900 * 10000 = 950 / 1900 * 10000 = 5000L
+        assertEquals(5000L, seeker.xToTime(1000f))
+
+        // x = 1950 (end of zoomed logical width) -> (1950 - 50) / 1900 * 10000 = 1900 / 1900 * 10000 = 10000L
+        assertEquals(10000L, seeker.xToTime(1950f))
+    }
+
+    @Test
+    fun `xToTime should return 0 when width is 0 or availableWidth is zero or negative`() {
+        // width = 0
+        seeker.layout(0, 0, 0, 100)
+        assertEquals(0L, seeker.xToTime(50f))
+
+        // width too small (availableWidth <= 0)
+        // availableWidth = width * zoom - 2 * padding = width * 1 - 100
+        seeker.layout(0, 0, 100, 100)
+        assertEquals(0L, seeker.xToTime(50f))
+
+        seeker.layout(0, 0, 50, 100)
+        assertEquals(0L, seeker.xToTime(50f))
+    }
 }
