@@ -15,7 +15,7 @@ class MergeValidator @Inject constructor() {
     }
 
     private fun areMimeTypesCompatible(mime1: String?, mime2: String?): Boolean {
-        if (mime1 == mime2) return true
+        if (mime1.equals(mime2, ignoreCase = true)) return true
         if (mime1 == null || mime2 == null) return false
         val m1 = mime1.lowercase()
         val m2 = mime2.lowercase()

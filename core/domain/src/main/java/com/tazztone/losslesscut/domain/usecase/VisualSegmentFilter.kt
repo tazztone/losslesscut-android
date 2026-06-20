@@ -48,7 +48,7 @@ public object VisualSegmentFilter {
             if (range.first == range.last) {
                 // Expand slightly so it's a visible rect, but don't exceed video bounds (implicit)
                 val start = (range.first - displayPadding / 2).coerceAtLeast(0)
-                val end = start + displayPadding
+                val end = (range.first + displayPadding / 2).coerceAtLeast(start + displayPadding)
                 start..end
             } else {
                 range
