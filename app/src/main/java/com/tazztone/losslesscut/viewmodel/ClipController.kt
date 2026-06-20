@@ -33,6 +33,9 @@ class ClipController(
     }
 
     fun reorderClips(clips: List<MediaClip>, from: Int, to: Int): List<MediaClip> {
+        if (from !in clips.indices || to !in 0..clips.size || from == to) {
+            return clips
+        }
         return clipManagementUseCase.reorderClips(clips, from, to)
     }
 

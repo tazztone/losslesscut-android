@@ -143,6 +143,49 @@ class ClipControllerTest {
     }
 
     @Test
+    fun reorderClips_fromIndexOutOfBounds_returnsOriginalList() {
+        // Arrange
+        val clips = listOf(createMockClip(emptyList()), createMockClip(emptyList()))
+
+        // Act
+        val resultNegative = clipController.reorderClips(clips, -1, 1)
+        val resultTooLarge = clipController.reorderClips(clips, 2, 1)
+
+        // Assert
+        assertEquals(clips, resultNegative)
+        assertEquals(clips, resultTooLarge)
+        verify(exactly = 0) { mockClipManagementUseCase.reorderClips(any(), any(), any()) }
+    }
+
+    @Test
+    fun reorderClips_toIndexOutOfBounds_returnsOriginalList() {
+        // Arrange
+        val clips = listOf(createMockClip(emptyList()), createMockClip(emptyList()))
+
+        // Act
+        val resultNegative = clipController.reorderClips(clips, 0, -1)
+        val resultTooLarge = clipController.reorderClips(clips, 0, 3)
+
+        // Assert
+        assertEquals(clips, resultNegative)
+        assertEquals(clips, resultTooLarge)
+        verify(exactly = 0) { mockClipManagementUseCase.reorderClips(any(), any(), any()) }
+    }
+
+    @Test
+    fun reorderClips_sameIndex_returnsOriginalList() {
+        // Arrange
+        val clips = listOf(createMockClip(emptyList()), createMockClip(emptyList()))
+
+        // Act
+        val result = clipController.reorderClips(clips, 1, 1)
+
+        // Assert
+        assertEquals(clips, result)
+        verify(exactly = 0) { mockClipManagementUseCase.reorderClips(any(), any(), any()) }
+    }
+
+    @Test
     fun updateSegmentBounds_validDuration_delegatesToUseCase() {
         // Arrange
         val segmentId = UUID.randomUUID()
