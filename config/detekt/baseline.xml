@@ -15,7 +15,6 @@
     <ID>CyclomaticComplexMethod:LosslessEngineImpl.kt$LosslessEngineImpl$override suspend fun getMediaMetadata(uriString: String): Result&lt;MediaMetadata&gt;</ID>
     <ID>CyclomaticComplexMethod:ShortcutHandler.kt$ShortcutHandler$fun handleKeyEvent(event: KeyEvent): Boolean</ID>
     <ID>EmptyCatchBlock:AudioWaveformExtractor.kt$AudioWaveformExtractorImpl${}</ID>
-    <ID>EmptyFunctionBlock:EditorFragment.kt$EditorFragment.&lt;no name provided&gt;${}</ID>
     <ID>EmptyFunctionBlock:SettingsBottomSheetDialogFragment.kt$SettingsBottomSheetDialogFragment.&lt;no name provided&gt;${}</ID>
     <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1f%%", threshold * 100)</ID>
     <ID>ImplicitDefaultLocale:EditorFragment.kt$EditorFragment$String.format("%.1fs", duration / 1000f)</ID>
