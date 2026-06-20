@@ -152,20 +152,20 @@ class SeekerRendererTest {
 
     @Test
     fun `test updateWaveformColor`() {
-        val testColor = android.graphics.Color.rgb(100, 150, 200)
+        val testColor = 0xFF6496C8.toInt() // rgb(100, 150, 200)
         renderer.updateWaveformColor(testColor)
 
-        val expectedColor = android.graphics.Color.argb(85, 100, 150, 200)
+        val expectedColor = 0x556496C8.toInt() // argb(85, 100, 150, 200)
         org.junit.Assert.assertEquals(expectedColor, renderer.waveformPaint.color)
     }
 
     @Test
     fun `test updateAccentColor`() {
-        val testColor = android.graphics.Color.rgb(100, 150, 200)
+        val testColor = 0xFF6496C8.toInt() // rgb(100, 150, 200)
         renderer.updateAccentColor(testColor)
 
-        val expectedThresholdColor = android.graphics.Color.argb(0x66, 100, 150, 200)
-        val expectedDroppedSilenceColor = android.graphics.Color.argb(0x88, 100, 150, 200)
+        val expectedThresholdColor = 0x666496C8.toInt() // argb(102, 100, 150, 200)
+        val expectedDroppedSilenceColor = 0x886496C8.toInt() // argb(136, 100, 150, 200)
 
         org.junit.Assert.assertEquals(expectedThresholdColor, renderer.thresholdMaskPaint.color)
         org.junit.Assert.assertEquals(expectedDroppedSilenceColor, renderer.droppedSilencePaint.color)
