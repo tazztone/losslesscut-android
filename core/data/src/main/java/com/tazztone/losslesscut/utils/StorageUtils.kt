@@ -12,6 +12,9 @@ import android.media.MediaFormat
 import androidx.documentfile.provider.DocumentFile
 import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import com.tazztone.losslesscut.domain.di.IoDispatcher
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -19,10 +22,11 @@ import javax.inject.Singleton
 @Singleton
 class StorageUtils @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
 
-    fun getFileName(uri: Uri): String {
+    suspend fun getFileName(uri: Uri): String = withContext(ioDispatcher) {
         var name = "video.mp4"
         context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
             ?.use { cursor ->
@@ -30,7 +34,7 @@ class StorageUtils @Inject constructor(
                     name = cursor.getString(0) ?: "video.mp4"
                 }
             }
-        return name
+        name
     }
 
 

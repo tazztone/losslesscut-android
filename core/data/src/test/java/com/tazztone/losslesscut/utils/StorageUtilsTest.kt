@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.utils
 import com.tazztone.losslesscut.data.AppPreferences
 import io.mockk.*
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -33,11 +34,12 @@ class StorageUtilsTest {
         preferences = mockk(relaxed = true)
         every { preferences.customOutputUriFlow } returns flowOf(null)
 
-        storageUtils = StorageUtils(context, preferences)
+        val testDispatcher = kotlinx.coroutines.test.UnconfinedTestDispatcher()
+        storageUtils = StorageUtils(context, preferences, testDispatcher)
     }
 
     @Test
-    fun testGetFileName_returnsCorrectName() {
+    fun testGetFileName_returnsCorrectName() = runTest {
         val uri = Uri.parse("content://media/external/video/media/1")
         val cursor = MatrixCursor(arrayOf(OpenableColumns.DISPLAY_NAME))
         cursor.addRow(arrayOf("video.mp4"))
@@ -52,7 +54,7 @@ class StorageUtilsTest {
     }
 
     @Test
-    fun testGetFileName_returnsDefaultIfCursorEmpty() {
+    fun testGetFileName_returnsDefaultIfCursorEmpty() = runTest {
         val uri = Uri.parse("content://invalid/uri")
 
         // Mock query returning null
