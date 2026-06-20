@@ -65,6 +65,36 @@ class ClipControllerTest {
     }
 
     @Test
+    fun splitSegment_isTiny_returnsNull_startEdge() {
+        // Arrange
+        val segment = TrimSegment(startMs = 0, endMs = 1000)
+        val clip = createMockClip(listOf(segment))
+        val positionMs = ClipController.MIN_SEGMENT_DURATION_MS - 1 // 99
+
+        // Act
+        val result = clipController.splitSegment(clip, positionMs)
+
+        // Assert
+        assertNull(result)
+        verify(exactly = 0) { mockClipManagementUseCase.splitSegment(any(), any(), any()) }
+    }
+
+    @Test
+    fun splitSegment_isTiny_returnsNull_endEdge() {
+        // Arrange
+        val segment = TrimSegment(startMs = 0, endMs = 1000)
+        val clip = createMockClip(listOf(segment))
+        val positionMs = 1000 - (ClipController.MIN_SEGMENT_DURATION_MS - 1) // 901
+
+        // Act
+        val result = clipController.splitSegment(clip, positionMs)
+
+        // Assert
+        assertNull(result)
+        verify(exactly = 0) { mockClipManagementUseCase.splitSegment(any(), any(), any()) }
+    }
+
+    @Test
     fun splitSegment_tooCloseToStart_returnsNull() {
         // Arrange
         val segment = TrimSegment(startMs = 0, endMs = 1000)
