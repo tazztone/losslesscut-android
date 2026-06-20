@@ -16,6 +16,7 @@ import androidx.lifecycle.LifecycleOwner
 import com.google.android.material.tabs.TabLayout
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
+import androidx.appcompat.widget.TooltipCompat
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.util.addOnTabSelectedListener
 import kotlinx.coroutines.CoroutineScope
@@ -108,9 +109,22 @@ class SmartCutOverlayController(
             }
         }
 
-        // Apply informative tooltips to tab headers
-        tabLayout?.getTabAt(0)?.contentDescription = context.getString(R.string.tooltip_silence_tab)
-        tabLayout?.getTabAt(1)?.contentDescription = context.getString(R.string.tooltip_visual_tab)
+        // Apply custom long-press listeners to bypass TabLayout's default tooltips
+        for (i in 0 until (tabLayout?.tabCount ?: 0)) {
+            val tab = tabLayout?.getTabAt(i)
+            val tooltipText = if (i == 0) {
+                context.getString(R.string.tooltip_silence_tab)
+            } else {
+                context.getString(R.string.tooltip_visual_tab)
+            }
+            tab?.contentDescription = tooltipText
+            tab?.view?.let { tabView ->
+                TooltipCompat.setTooltipText(tabView, tooltipText)
+                tabView.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    TooltipCompat.setTooltipText(tabView, tooltipText)
+                }
+            }
+        }
     }
 
     fun hide() {
