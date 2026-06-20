@@ -209,4 +209,36 @@ class PlayerManagerTest {
         assert(paramsSlot.captured.speed == 1.5f) { "Player playback parameters speed should be 1.5" }
         assert(paramsSlot.captured.pitch == 1.5f) { "Player playback parameters pitch should be 1.5 when pitch correction is false" }
     }
+
+    @Test
+    fun `seekTo with positionMs delegates to player`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, exoPlayer)
+
+        playerManager.seekTo(1500L)
+        verify { exoPlayer.seekTo(1500L) }
+    }
+
+    @Test
+    fun `seekTo with index and positionMs delegates to player`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, exoPlayer)
+
+        playerManager.seekTo(1, 2500L)
+        verify { exoPlayer.seekTo(1, 2500L) }
+    }
 }
