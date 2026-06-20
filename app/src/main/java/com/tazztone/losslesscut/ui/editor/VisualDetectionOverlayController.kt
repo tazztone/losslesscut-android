@@ -65,7 +65,7 @@ class VisualDetectionOverlayController(
     fun activate() {
         observeState()
         updateStrategyUI()
-        tvDetectedStatus.text = context.getString(R.string.no_silence_detected)
+        tvDetectedStatus.text = context.getString(R.string.no_visual_detected)
     }
 
     fun deactivate() {
@@ -216,7 +216,7 @@ class VisualDetectionOverlayController(
                         )
                         btnApplyVisual.isEnabled = true
                     } else {
-                        tvDetectedStatus.text = context.getString(R.string.no_silence_detected)
+                        tvDetectedStatus.text = context.getString(R.string.no_visual_detected)
                         btnApplyVisual.isEnabled = false
                     }
                 }

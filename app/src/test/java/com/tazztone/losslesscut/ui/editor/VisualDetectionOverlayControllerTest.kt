@@ -82,7 +82,7 @@ class VisualDetectionOverlayControllerTest {
         controller.activate()
 
         val tvDetectedStatus = root.findViewById<TextView>(R.id.tvDetectedStatus)
-        assertEquals(context.getString(R.string.no_silence_detected), tvDetectedStatus.text.toString())
+        assertEquals(context.getString(R.string.no_visual_detected), tvDetectedStatus.text.toString())
     }
 
     @Test
@@ -231,7 +231,7 @@ class VisualDetectionOverlayControllerTest {
         ShadowLooper.idleMainLooper()
 
         assertFalse(btnApplyVisual.isEnabled)
-        assertEquals(context.getString(R.string.no_silence_detected), tvDetectedStatus.text.toString())
+        assertEquals(context.getString(R.string.no_visual_detected), tvDetectedStatus.text.toString())
     }
 
     @Test
