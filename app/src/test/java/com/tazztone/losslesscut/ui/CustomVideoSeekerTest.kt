@@ -230,6 +230,54 @@ class CustomVideoSeekerTest {
     }
 
     @Test
+    fun `durationToWidth should return zero when videoDurationMs is zero`() {
+        // Create a new seeker since setVideoDuration(0) ignores the input
+        val zeroDurationSeeker = CustomVideoSeeker(RuntimeEnvironment.getApplication())
+        zeroDurationSeeker.layout(0, 0, 1000, 100)
+        assertEquals(0f, zeroDurationSeeker.durationToWidth(5000L))
+    }
+
+    @Test
+    fun `durationToWidth should return zero when width is zero`() {
+        val zeroWidthSeeker = CustomVideoSeeker(RuntimeEnvironment.getApplication())
+        zeroWidthSeeker.setVideoDuration(videoDuration)
+        zeroWidthSeeker.layout(0, 0, 0, 100)
+        assertEquals(0f, zeroWidthSeeker.durationToWidth(5000L))
+    }
+
+    @Test
+    fun `durationToWidth should correctly calculate width for valid duration`() {
+        // Default setup: width = 1000, padding = 50, videoDuration = 10000
+        // availableWidth = 1000 - 100 = 900
+        // duration 5000 -> (5000 / 10000) * 900 = 450f
+        assertEquals(450f, seeker.durationToWidth(5000L))
+
+        // duration 2500 -> (2500 / 10000) * 900 = 225f
+        assertEquals(225f, seeker.durationToWidth(2500L))
+    }
+
+    @Test
+    fun `durationToWidth should correctly account for zoomFactor`() {
+        seeker.zoomFactor = 2f
+        // width = 1000, padding = 50, videoDuration = 10000
+        // logicalWidth = 1000 * 2 = 2000
+        // availableWidth = 2000 - 100 = 1900
+        // duration 5000 -> (5000 / 10000) * 1900 = 950f
+        assertEquals(950f, seeker.durationToWidth(5000L))
+
+        seeker.zoomFactor = 0.5f
+        // logicalWidth = 1000 * 0.5 = 500
+        // availableWidth = 500 - 100 = 400
+        // duration 5000 -> (5000 / 10000) * 400 = 200f
+        assertEquals(200f, seeker.durationToWidth(5000L))
+    }
+
+    @Test
+    fun `durationToWidth should return zero for zero duration input`() {
+        assertEquals(0f, seeker.durationToWidth(0L))
+    }
+
+    @Test
     fun `data loading should not crash layout or draw passes`() {
         // Set waveform
         seeker.setWaveformData(FloatArray(100) { it.toFloat() })
