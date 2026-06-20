@@ -46,6 +46,13 @@ class MainActivitySecurityTest {
     }
 
     @Test
+    fun testIsValidUri_FileScheme_AbsoluteAppDir_ReturnsFalse() {
+        val appDataDir = activity.applicationInfo.dataDir
+        val uri = Uri.parse("file://$appDataDir/shared_prefs/prefs.xml")
+        assertFalse(invokeIsValidUri(uri))
+    }
+
+    @Test
     fun testIsValidUri_InvalidScheme_ReturnsFalse() {
         val uri = Uri.parse("http://example.com/video.mp4")
         assertFalse(invokeIsValidUri(uri))
