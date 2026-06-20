@@ -70,4 +70,77 @@ class PlayerManagerTest {
 
         assert(stateReceived == Player.STATE_READY)
     }
+
+    @Test
+    fun `togglePlayback when player is null should not crash`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        // No crash means success
+        playerManager.togglePlayback()
+    }
+
+    @Test
+    fun `togglePlayback when state is ended should seek to 0 and play`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val mockPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        every { mockPlayer.playbackState } returns Player.STATE_ENDED
+
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, mockPlayer)
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.seekTo(0L) }
+        verify { mockPlayer.play() }
+    }
+
+    @Test
+    fun `togglePlayback when isPlaying is true should pause`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val mockPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        every { mockPlayer.playbackState } returns Player.STATE_READY
+        every { mockPlayer.isPlaying } returns true
+
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, mockPlayer)
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.pause() }
+        verify(exactly = 0) { mockPlayer.play() }
+    }
+
+    @Test
+    fun `togglePlayback when isPlaying is false should play`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val mockPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        every { mockPlayer.playbackState } returns Player.STATE_READY
+        every { mockPlayer.isPlaying } returns false
+
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, mockPlayer)
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.play() }
+        verify(exactly = 0) { mockPlayer.pause() }
+    }
 }
