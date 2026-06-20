@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.ui
 
 import android.content.Context
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import io.mockk.*
@@ -69,5 +70,69 @@ class PlayerManagerTest {
         listener.onPlaybackStateChanged(Player.STATE_READY)
 
         assert(stateReceived == Player.STATE_READY)
+    }
+
+    @Test
+    fun `togglePlayback when player is null should do nothing`() {
+        val playerManager = PlayerManager(context, playerView, viewModel)
+        // No player injected
+        playerManager.togglePlayback()
+        // No crash means success
+    }
+
+    @Test
+    fun `togglePlayback when state is ENDED should seek to 0 and play`() {
+        val playerManager = PlayerManager(context, playerView, viewModel)
+        val mockPlayer = mockk<ExoPlayer>(relaxed = true)
+
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, mockPlayer)
+        }
+
+        every { mockPlayer.playbackState } returns Player.STATE_ENDED
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.seekTo(0) }
+        verify { mockPlayer.play() }
+    }
+
+    @Test
+    fun `togglePlayback when state is not ENDED and isPlaying is true should pause`() {
+        val playerManager = PlayerManager(context, playerView, viewModel)
+        val mockPlayer = mockk<ExoPlayer>(relaxed = true)
+
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, mockPlayer)
+        }
+
+        every { mockPlayer.playbackState } returns Player.STATE_READY
+        every { mockPlayer.isPlaying } returns true
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.pause() }
+        verify(exactly = 0) { mockPlayer.play() }
+    }
+
+    @Test
+    fun `togglePlayback when state is not ENDED and isPlaying is false should play`() {
+        val playerManager = PlayerManager(context, playerView, viewModel)
+        val mockPlayer = mockk<ExoPlayer>(relaxed = true)
+
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, mockPlayer)
+        }
+
+        every { mockPlayer.playbackState } returns Player.STATE_READY
+        every { mockPlayer.isPlaying } returns false
+
+        playerManager.togglePlayback()
+
+        verify { mockPlayer.play() }
+        verify(exactly = 0) { mockPlayer.pause() }
     }
 }
