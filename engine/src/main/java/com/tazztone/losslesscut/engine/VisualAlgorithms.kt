@@ -47,7 +47,8 @@ internal object VisualAlgorithms {
             }
         }
 
-        return if (count > 0) sum.toDouble() / count else MAX_LUMA
+        if (count == 0) return MAX_LUMA
+        return sum.toDouble() / count
     }
 
     fun calculateBlurVariance(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
