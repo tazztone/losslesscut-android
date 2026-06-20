@@ -127,6 +127,22 @@ class ClipControllerTest {
     }
 
     @Test
+    fun markSegmentDiscarded_useCaseReturnsNull_returnsNull() {
+        // Arrange
+        val segmentId = UUID.randomUUID()
+        val clip = createMockClip(emptyList())
+
+        every { mockClipManagementUseCase.markSegmentDiscarded(clip, segmentId) } returns null
+
+        // Act
+        val result = clipController.markSegmentDiscarded(clip, segmentId)
+
+        // Assert
+        assertNull(result)
+        verify { mockClipManagementUseCase.markSegmentDiscarded(clip, segmentId) }
+    }
+
+    @Test
     fun reorderClips_delegatesToUseCase() {
         // Arrange
         val clips = listOf(createMockClip(emptyList()), createMockClip(emptyList()))
