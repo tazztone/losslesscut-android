@@ -247,6 +247,83 @@ class CustomVideoSeekerTest {
         // (Invalidations are mocked correctly by TestCustomVideoSeeker in other tests)
     }
 
+    @Test
+    fun `timeToX should calculate correct x coordinate based on time`() {
+        seeker.setVideoDuration(10000L)
+        seeker.layout(0, 0, 1000, 100)
+        seeker.zoomFactor = 1f
+        // Using reflection to set width since width is controlled by layout
+        // timelinePadding is 50f by default.
+        // availableWidth = 1000 - 100 = 900
+
+        // At 0ms, it should be at timelinePadding
+        assertEquals(50f, seeker.timeToX(0L))
+
+        // At 1000ms (10%), it should be 50 + 90 = 140
+        assertEquals(140f, seeker.timeToX(1000L))
+
+        // At 5000ms (50%), it should be 50 + 450 = 500
+        assertEquals(500f, seeker.timeToX(5000L))
+
+        // At 10000ms (100%), it should be 50 + 900 = 950
+        assertEquals(950f, seeker.timeToX(10000L))
+    }
+
+    @Test
+    fun `timeToX should handle zoomed in state correctly`() {
+        seeker.setVideoDuration(10000L)
+        seeker.layout(0, 0, 1000, 100)
+        seeker.zoomFactor = 2f
+
+        // logicalWidth = 2000
+        // availableWidth = 2000 - 100 = 1900
+
+        // At 0ms, it should be at timelinePadding
+        assertEquals(50f, seeker.timeToX(0L))
+
+        // At 5000ms (50%), it should be 50 + 950 = 1000
+        assertEquals(1000f, seeker.timeToX(5000L))
+
+        // At 10000ms (100%), it should be 50 + 1900 = 1950
+        assertEquals(1950f, seeker.timeToX(10000L))
+    }
+
+    @Test
+    fun `timeToX should handle zero duration or zero width`() {
+        // Reset zoom factor to 1 just in case, though it's 1 by default
+        seeker.zoomFactor = 1f
+
+        // setVideoDuration ignores 0L, so we use reflection to force the internal field to 0L
+        val durationField = CustomVideoSeeker::class.java.getDeclaredField("videoDurationMs")
+        durationField.isAccessible = true
+        durationField.setLong(seeker, 0L)
+
+        seeker.layout(0, 0, 1000, 100)
+        // Ensure that width is set properly for this view, width = right - left
+        val rightFieldLocal = android.view.View::class.java.getDeclaredField("mRight")
+        rightFieldLocal.isAccessible = true
+        rightFieldLocal.setInt(seeker, 1000)
+        val leftFieldLocal = android.view.View::class.java.getDeclaredField("mLeft")
+        leftFieldLocal.isAccessible = true
+        leftFieldLocal.setInt(seeker, 0)
+
+        // When videoDurationMs is 0, the timeToX returns timelinePadding
+        assertEquals(50f, seeker.timeToX(5000L))
+
+        seeker.setVideoDuration(10000L)
+        seeker.layout(0, 0, 0, 100)
+        // Reset width to 0 through a reflection hack since Robolectric might not fully layout a view to 0 width easily
+        val rightField = android.view.View::class.java.getDeclaredField("mRight")
+        rightField.isAccessible = true
+        rightField.setInt(seeker, 0)
+        val leftField = android.view.View::class.java.getDeclaredField("mLeft")
+        leftField.isAccessible = true
+        leftField.setInt(seeker, 0)
+
+        // Should return timelinePadding (50f)
+        assertEquals(50f, seeker.timeToX(5000L))
+    }
+
     /**
      * Test subclass to track invalidation calls for architectural verification.
      */
