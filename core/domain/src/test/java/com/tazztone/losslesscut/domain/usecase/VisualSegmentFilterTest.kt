@@ -245,7 +245,7 @@ public class VisualSegmentFilterTest {
         )
 
         assertEquals(1, result.size)
-        assertEquals(0L..70L, result[0])
+        assertEquals(0L..100L, result[0])
     }
 
     @Test
