@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.ui
 
 import android.content.Context
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import io.mockk.*
@@ -69,5 +70,41 @@ class PlayerManagerTest {
         listener.onPlaybackStateChanged(Player.STATE_READY)
 
         assert(stateReceived == Player.STATE_READY)
+    }
+
+    @Test
+    fun `seekTo with positionMs should call ExoPlayer seekTo`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, exoPlayer)
+
+        playerManager.seekTo(1500L)
+
+        verify(exactly = 1) { exoPlayer.seekTo(1500L) }
+    }
+
+    @Test
+    fun `seekTo with index and positionMs should call ExoPlayer seekTo`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        val playerField = PlayerManager::class.java.getDeclaredField("player")
+        playerField.isAccessible = true
+        playerField.set(playerManager, exoPlayer)
+
+        playerManager.seekTo(2, 2500L)
+
+        verify(exactly = 1) { exoPlayer.seekTo(2, 2500L) }
     }
 }
