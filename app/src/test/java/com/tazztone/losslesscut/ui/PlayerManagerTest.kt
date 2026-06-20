@@ -143,4 +143,70 @@ class PlayerManagerTest {
         verify { mockPlayer.play() }
         verify(exactly = 0) { mockPlayer.pause() }
     }
+
+    @Test
+    fun `updatePlaybackSpeed should update properties, player parameters, and invoke callback`() {
+        var callbackSpeed = -1f
+        var callbackPitchCorrection = false
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel,
+            onPlaybackParametersChanged = { speed, pitchCorrection ->
+                callbackSpeed = speed
+                callbackPitchCorrection = pitchCorrection
+            }
+        )
+
+        val mockPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, mockPlayer)
+        }
+
+        playerManager.updatePlaybackSpeed(2.0f, true)
+
+        assert(playerManager.currentPlaybackSpeed == 2.0f) { "Speed should be updated" }
+        assert(playerManager.isPitchCorrectionEnabled) { "Pitch correction should be enabled" }
+        assert(callbackSpeed == 2.0f) { "Callback speed should be 2.0" }
+        assert(callbackPitchCorrection) { "Callback pitch correction should be true" }
+
+        val paramsSlot = slot<androidx.media3.common.PlaybackParameters>()
+        verify { mockPlayer.playbackParameters = capture(paramsSlot) }
+        assert(paramsSlot.captured.speed == 2.0f) { "Player playback parameters speed should be 2.0" }
+        assert(paramsSlot.captured.pitch == 1.0f) { "Player playback parameters pitch should be 1.0 when pitch correction is true" }
+    }
+
+    @Test
+    fun `updatePlaybackSpeed without pitch correction should set pitch equal to speed`() {
+        var callbackSpeed = -1f
+        var callbackPitchCorrection = true
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel,
+            onPlaybackParametersChanged = { speed, pitchCorrection ->
+                callbackSpeed = speed
+                callbackPitchCorrection = pitchCorrection
+            }
+        )
+
+        val mockPlayer = mockk<androidx.media3.exoplayer.ExoPlayer>(relaxed = true)
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, mockPlayer)
+        }
+
+        playerManager.updatePlaybackSpeed(1.5f, false)
+
+        assert(playerManager.currentPlaybackSpeed == 1.5f) { "Speed should be updated" }
+        assert(!playerManager.isPitchCorrectionEnabled) { "Pitch correction should be disabled" }
+        assert(callbackSpeed == 1.5f) { "Callback speed should be 1.5" }
+        assert(!callbackPitchCorrection) { "Callback pitch correction should be false" }
+
+        val paramsSlot = slot<androidx.media3.common.PlaybackParameters>()
+        verify { mockPlayer.playbackParameters = capture(paramsSlot) }
+        assert(paramsSlot.captured.speed == 1.5f) { "Player playback parameters speed should be 1.5" }
+        assert(paramsSlot.captured.pitch == 1.5f) { "Player playback parameters pitch should be 1.5 when pitch correction is false" }
+    }
 }
