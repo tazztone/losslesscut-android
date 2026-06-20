@@ -139,16 +139,18 @@ public object AudioWaveformProcessor {
 
         val target = FloatArray(targetCount)
         val sourceSize = source.size
+        val factor = sourceSize.toDouble() / targetCount
         
+        var start = 0
         for (i in 0 until targetCount) {
-            val start = (i.toDouble() / targetCount * sourceSize).toInt()
-            val end = (((i + 1).toDouble() / targetCount * sourceSize).toInt()).coerceAtMost(sourceSize)
+            val end = ((i + 1) * factor).toInt().coerceAtMost(sourceSize)
             
             var max = 0f
             for (j in start until end) {
                 if (source[j] > max) max = source[j]
             }
             target[i] = max
+            start = end
         }
         return target
     }
