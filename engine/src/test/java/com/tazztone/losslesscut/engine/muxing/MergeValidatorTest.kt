@@ -31,4 +31,14 @@ class MergeValidatorTest {
     fun `validateCodec succeeds when expected is null`() {
         validator.validateCodec("uri", "video/hevc", null, "video")
     }
+
+    @Test
+    fun `validateCodec succeeds when mimes match with different casing`() {
+        validator.validateCodec("uri", "VIDEO/AVC", "video/avc", "video")
+    }
+
+    @Test(expected = IOException::class)
+    fun `validateCodec throws when current is null but expected is not null`() {
+        validator.validateCodec("uri", null, "video/hevc", "video")
+    }
 }
