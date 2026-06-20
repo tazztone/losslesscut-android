@@ -97,7 +97,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
         storageUtils.finalizeAudio(Uri.parse(uri))
     }
 
-    override fun getFileName(uriString: String): String {
+    override suspend fun getFileName(uriString: String): String {
         return storageUtils.getFileName(Uri.parse(uriString))
     }
 

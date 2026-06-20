@@ -15,7 +15,7 @@ public interface IVideoEditingRepository {
     public fun finalizeImage(uri: String)
     public fun finalizeVideo(uri: String)
     public fun finalizeAudio(uri: String)
-    public fun getFileName(uriString: String): String
+    public suspend fun getFileName(uriString: String): String
     public suspend fun executeLosslessCut(
         inputUri: String,
         outputUri: String,
