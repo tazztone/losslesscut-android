@@ -17,6 +17,7 @@ import com.google.android.material.tabs.TabLayout
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.util.addOnTabSelectedListener
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -74,34 +75,30 @@ class SmartCutOverlayController(
     }
 
     private fun setupTabs() {
-        tabLayout?.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                val index = tab?.position ?: 0
-                viewFlipper?.displayedChild = index
+        tabLayout?.addOnTabSelectedListener { tab ->
+            val index = tab?.position ?: 0
+            viewFlipper?.displayedChild = index
 
-                if (index == 0) {
-                    visualController?.deactivate()
-                    silenceController.showInsideSmartCut()
-                } else {
-                    silenceController.hideInsideSmartCut()
-                    if (visualController == null) {
-                        val visualRoot = viewFlipper!!.getChildAt(1)
-                        visualController = VisualDetectionOverlayController(
-                            context = context,
-                            scope = scope,
-                            viewModel = viewModel,
-                            seeker = binding.seekerContainer.customVideoSeeker,
-                            root = visualRoot,
-                            onDismiss = { hide() }
-                        )
-                        visualRoot.setupTooltipClicksForImageButtons(this@SmartCutOverlayController)
-                    }
-                    visualController?.activate()
+            if (index == 0) {
+                visualController?.deactivate()
+                silenceController.showInsideSmartCut()
+            } else {
+                silenceController.hideInsideSmartCut()
+                if (visualController == null) {
+                    val visualRoot = viewFlipper!!.getChildAt(1)
+                    visualController = VisualDetectionOverlayController(
+                        context = context,
+                        scope = scope,
+                        viewModel = viewModel,
+                        seeker = binding.seekerContainer.customVideoSeeker,
+                        root = visualRoot,
+                        onDismiss = { hide() }
+                    )
+                    visualRoot.setupTooltipClicksForImageButtons(this@SmartCutOverlayController)
                 }
+                visualController?.activate()
             }
-            override fun onTabUnselected(tab: TabLayout.Tab?) {}
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
-        })
+        }
 
         // Disable visual tab for audio-only
         viewModel.uiState.value.let { state ->
