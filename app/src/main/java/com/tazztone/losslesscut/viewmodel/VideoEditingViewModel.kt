@@ -24,6 +24,7 @@ import com.tazztone.losslesscut.domain.usecase.VisualSegmentFilter
 import com.tazztone.losslesscut.domain.usecase.SessionUseCase
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import com.tazztone.losslesscut.domain.usecase.SegmentDetectorUseCase
+import com.tazztone.losslesscut.domain.usecase.GenerateSegmentFileUseCase
 import com.tazztone.losslesscut.domain.usecase.VisualDetectionListener
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.*
@@ -619,6 +620,43 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    public fun generateSegmentFile(outputDir: java.io.File) {
+        if (!isExporting.compareAndSet(false, true)) return
+
+        viewModelScope.launch(ioDispatcher) {
+            try {
+                val clips = stateMutex.withLock {
+                    _uiState.value = VideoEditingUiState.Loading()
+                    currentClips
+                }
+
+                val result = useCases.generateSegmentFileUseCase.execute(clips, outputDir)
+
+                result.fold(
+                    onSuccess = { file ->
+                        _uiEvents.send(
+                            VideoEditingEvent.ShowToast(
+                                UiText.DynamicString(".llc saved: ${file.name}")
+                            )
+                        )
+                        _uiEvents.send(VideoEditingEvent.ExportComplete(true, 1))
+                    },
+                    onFailure = { error ->
+                        _uiEvents.send(
+                            VideoEditingEvent.ShowToast(
+                                UiText.DynamicString("Failed: ${error.message}")
+                            )
+                        )
+                        _uiEvents.send(VideoEditingEvent.ExportComplete(false))
+                    }
+                )
+                stateMutex.withLock { updateStateInternal() }
+            } finally {
+                isExporting.set(false)
+            }
+        }
+    }
+
     public override fun onCleared() {
         super.onCleared()
         waveformController.cancelJobs()
@@ -709,7 +747,8 @@ public data class VideoEditingUseCases @Inject constructor(
     public val silenceDetectionUseCase: SilenceDetectionUseCase,
     public val sessionUseCase: SessionUseCase,
     public val visualSegmentDetector: IVisualSegmentDetector,
-    public val segmentDetector: SegmentDetectorUseCase
+    public val segmentDetector: SegmentDetectorUseCase,
+    public val generateSegmentFileUseCase: GenerateSegmentFileUseCase
 )
 
 public data class ExportSettings(

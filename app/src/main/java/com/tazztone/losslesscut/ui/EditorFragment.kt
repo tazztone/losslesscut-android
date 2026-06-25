@@ -27,6 +27,7 @@ import com.tazztone.losslesscut.viewmodel.ExportSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
+import java.io.File
 import java.util.UUID
 
 @UnstableApi
@@ -118,12 +119,17 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
             requireContext(),
             layoutInflater
-        ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
-            val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-            val settings = ExportSettings(
-                isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
-            )
-            viewModel.exportSegments(settings)
+        ) { exportType, keepAudio, keepVideo, mergeSegments, selectedTracks ->
+            if (exportType == "llc") {
+                val outputDir = File(requireContext().filesDir, "llc_segments")
+                viewModel.generateSegmentFile(outputDir)
+            } else {
+                val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
+                val settings = ExportSettings(
+                    isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+                )
+                viewModel.exportSegments(settings)
+            }
         }
 
         backPressDelegate = com.tazztone.losslesscut.ui.editor.BackPressDelegate(
