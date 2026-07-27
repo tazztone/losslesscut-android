@@ -10,6 +10,8 @@ import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import kotlinx.serialization.encodeToString
@@ -144,15 +146,20 @@ class VideoEditingRepositoryImpl @Inject constructor(
             val jsonText = sessionFile.readText()
             val restoredClips: List<MediaClip> = json.decodeFromString(jsonText)
             
-            restoredClips.filter { clip ->
-                try {
-                    val clipUri = Uri.parse(clip.uri)
-                    context.contentResolver.query(clipUri, null, null, null, null)?.use { 
-                        it.moveToFirst() 
-                    } ?: false
-                } catch (e: Exception) {
-                    false
-                }
+            kotlinx.coroutines.coroutineScope {
+                restoredClips.map { clip ->
+                    async {
+                        val isValid = try {
+                            val clipUri = Uri.parse(clip.uri)
+                            context.contentResolver.query(clipUri, null, null, null, null)?.use {
+                                it.moveToFirst()
+                            } ?: false
+                        } catch (e: Exception) {
+                            false
+                        }
+                        if (isValid) clip else null
+                    }
+                }.awaitAll().filterNotNull()
             }
         } catch (e: Exception) {
             Log.e("VideoEditingRepositoryImpl", "Failed to restore session", e)
