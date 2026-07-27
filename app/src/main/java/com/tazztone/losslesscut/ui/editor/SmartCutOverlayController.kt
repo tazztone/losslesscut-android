@@ -200,7 +200,7 @@ class SmartCutOverlayController(
         val screenHeight = displayMetrics.heightPixels
         val padding = 16
 
-        // Fix #4: Out-of-bounds clipping. If too close to top, show below anchor.
+        // Prevent out-of-bounds clipping. If too close to top, show below anchor.
         if (popupY < padding) {
             popupY = loc[1] + anchor.height + 16
         }
