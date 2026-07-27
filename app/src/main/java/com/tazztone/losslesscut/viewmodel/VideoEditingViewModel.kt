@@ -422,29 +422,18 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     private fun updateStateInternal() {
-        val clip = currentClips.getOrNull(selectedClipIndex)
-        if (clip == null) {
-            if (_uiState.value is VideoEditingUiState.Success) {
-                _uiState.value = VideoEditingUiState.Initial
-            }
-            return
-        }
-        _uiState.value = VideoEditingUiState.Success(
-            clips = currentClips,
+        _uiState.value = VideoEditingStateMapper.mapToState(
+            currentClips = currentClips,
             selectedClipIndex = selectedClipIndex,
-            keyframes = currentKeyframes,
-            segments = clip.segments,
+            currentKeyframes = currentKeyframes,
             selectedSegmentId = selectedSegmentId,
             canUndo = historyManager.canUndo,
             canRedo = historyManager.canRedo,
-            videoFps = clip.fps,
-            isAudioOnly = clip.isAudioOnly,
-            hasAudioTrack = clip.audioMime != null,
             isSnapshotInProgress = exportController.isSnapshotInProgress.value,
             detectionPreviewRanges = _detectionPreviewRanges.value,
-            availableTracks = clip.availableTracks,
             playbackSpeed = currentPlaybackSpeed,
-            isPitchCorrectionEnabled = isPitchCorrectionEnabled
+            isPitchCorrectionEnabled = isPitchCorrectionEnabled,
+            currentState = _uiState.value
         )
     }
 
