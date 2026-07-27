@@ -5,16 +5,28 @@ import com.tazztone.losslesscut.domain.model.WaveformResult
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
+import android.util.Log
+import io.mockk.every
+import io.mockk.mockkStatic
+import io.mockk.verify
+import io.mockk.unmockkAll
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AudioWaveformExtractorTest {
 
     private val decoder = mockk<AudioDecoder>()
     private val extractor = AudioWaveformExtractorImpl(decoder, Dispatchers.IO)
+
+    @After
+    fun tearDown() {
+        unmockkAll()
+    }
 
     @Test
     fun extract_processesPcmDataCorrectly() = runBlocking {
@@ -36,6 +48,21 @@ class AudioWaveformExtractorTest {
         assertNotNull(result)
         assertEquals(1000000L, result?.durationUs)
         assertTrue(result!!.rawAmplitudes.isNotEmpty())
+    }
+
+    @Test
+    fun extract_handlesExceptionCorrectly() = runBlocking {
+        val uri = "content://mock/audio.wav"
+        val exception = RuntimeException("Test exception")
+        coEvery { decoder.decode(uri) } throws exception
+
+        mockkStatic(Log::class)
+        every { Log.e(any(), any(), any()) } returns 0
+
+        val result = extractor.extract(uri, onProgress = null)
+
+        assertNull(result)
+        verify { Log.e("AudioWaveformExtractor", "Error extracting waveform", exception) }
     }
 
     private fun assertTrue(value: Boolean) = org.junit.Assert.assertTrue(value)
