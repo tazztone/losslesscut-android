@@ -78,6 +78,14 @@ class MainActivitySecurityTest {
         assertFalse(invokeIsValidUri(uri))
     }
 
+    @Test
+    fun testIsValidUri_FileScheme_SimilarAppDir_ReturnsTrue() {
+        val appDataDir = activity.applicationInfo.dataDir
+        val similarDataDir = "${appDataDir}2"
+        val uri = Uri.parse("file://$similarDataDir/shared_prefs/prefs.xml")
+        assertTrue(invokeIsValidUri(uri))
+    }
+
     private fun invokeIsValidUri(uri: Uri?): Boolean {
         val method = MainActivity::class.java.getDeclaredMethod("isValidUri", Uri::class.java)
         method.isAccessible = true
