@@ -109,7 +109,7 @@ public class SilenceDetectionUseCase @Inject constructor(
             
             if (silEnd <= cursor) continue
 
-            // Fix boundary tiny gaps: if silence starts almost at 0, pull it to 0
+            // Prevent boundary tiny gaps: if silence starts almost at 0, pull it to 0
             val effectiveStart = clampBoundary(silStart, clipEnd)
             val effectiveEnd = clampBoundary(silEnd, clipEnd)
 
