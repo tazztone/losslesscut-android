@@ -83,18 +83,22 @@ public object AudioWaveformProcessor {
         val bucketCount = buckets.size
         val bytesPerSample = 2 * info.channelCount
 
+        val usPerSample = US_PER_SEC / info.sampleRate.toDouble()
+        val bucketRatio = (bucketCount - 1).toDouble() / info.totalDurationUs.toDouble()
+        val timeOffsetBucket = info.startTimeUs.toDouble() * bucketRatio
+        val samplesToBucket = usPerSample * bucketRatio
+        val invMaxShort = 1.0f / Short.MAX_VALUE
+
         for (j in 0 until info.size - 1 step step) {
             val sampleIdxInFullBuffer = j / bytesPerSample
-            val sampleTimeUs = info.startTimeUs + 
-                (sampleIdxInFullBuffer.toDouble() / info.sampleRate * US_PER_SEC).toLong()
             
-            val bucketIdx = ((sampleTimeUs.toDouble() / info.totalDurationUs) * (bucketCount - 1))
+            val bucketIdx = (timeOffsetBucket + sampleIdxInFullBuffer * samplesToBucket)
                 .toInt().coerceIn(0, bucketCount - 1)
 
             val low = info.buffer[j].toInt() and BYTE_MASK
             val high = info.buffer[j + 1].toInt() shl BITS_PER_BYTE
             val sample = (high or low).toShort().toInt()
-            val normalizedAbsVal = sample.absoluteValue.toFloat() / Short.MAX_VALUE
+            val normalizedAbsVal = if (sample < 0) -sample * invMaxShort else sample * invMaxShort
 
             if (normalizedAbsVal > buckets[bucketIdx]) {
                 buckets[bucketIdx] = normalizedAbsVal
