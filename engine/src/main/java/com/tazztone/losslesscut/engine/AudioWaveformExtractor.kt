@@ -1,5 +1,6 @@
 package com.tazztone.losslesscut.engine
 
+import android.util.Log
 import com.tazztone.losslesscut.domain.engine.AudioDecoder
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.AudioWaveformProcessor
@@ -62,12 +63,13 @@ class AudioWaveformExtractorImpl @Inject constructor(
             WaveformResult(rawForDetection, maxAmplitude, durationMs * US_PER_MS)
 
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Error extracting waveform", e)
             null
         }
     }
 
     private companion object {
+        private const val TAG = "AudioWaveformExtractor"
         private const val US_PER_MS = 1000L
         private const val progressUpdateIntervalUs = 1_000_000L
     }
