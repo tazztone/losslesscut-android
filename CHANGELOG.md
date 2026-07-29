@@ -6,6 +6,7 @@
 * **Analysis Reuse**: Persisted waveform and visual-analysis results across sessions with clip/settings-aware cache keys.
 * **Cache Governance**: Added configurable maximum cache size, retention age, usage reporting, and a confirmation-protected clear action.
 * **Audit Hardening**: Preserved coroutine cancellation, restricted imported media to SAF content URIs, and removed obsolete broad external-storage permissions.
+* **Test Relocation & Verification**: Relocated `LosslessEngineRealDeviceTest` into `:engine/src/androidTest` with module-local Hilt entry point and FileProvider setup, resolving Kotlin FIR compiler crashes during Android Lint analysis.
 
 ### Late February 2026: Architectural Purification & Domain Isolation
 * **Domain Purity**: Converted `:core:domain` into a **pure JVM library**, stripping all Android SDK and Hilt dependencies. Established a clean business logic layer that is agnostic of the platform.

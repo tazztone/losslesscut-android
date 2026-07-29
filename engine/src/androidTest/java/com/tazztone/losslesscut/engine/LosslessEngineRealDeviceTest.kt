@@ -8,7 +8,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.engine.MediaMetadata
-import com.tazztone.losslesscut.di.TestEngineEntryPoint
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.TrimSegment
 import dagger.hilt.EntryPoints
@@ -93,8 +92,8 @@ class LosslessEngineRealDeviceTest {
                 outputFile.delete()
             }
             
-            // Generate content URIs using target app FileProvider (fully registered in :app manifest)
-            val authority = "com.tazztone.losslesscut.provider"
+            // Generate content URIs using test FileProvider registered in engine androidTest manifest
+            val authority = "com.tazztone.losslesscut.engine.test.provider"
             val inputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, testFile)
             val outputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, outputFile)
             
@@ -153,7 +152,7 @@ class LosslessEngineRealDeviceTest {
                 outputFile.delete()
             }
             
-            val authority = "com.tazztone.losslesscut.provider"
+            val authority = "com.tazztone.losslesscut.engine.test.provider"
             val inputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, testFile)
             val outputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, outputFile)
             
@@ -224,7 +223,7 @@ class LosslessEngineRealDeviceTest {
                 outputFile.delete()
             }
             
-            val authority = "com.tazztone.losslesscut.provider"
+            val authority = "com.tazztone.losslesscut.engine.test.provider"
             val inputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, testFile)
             val outputUri = androidx.core.content.FileProvider.getUriForFile(context, authority, outputFile)
             

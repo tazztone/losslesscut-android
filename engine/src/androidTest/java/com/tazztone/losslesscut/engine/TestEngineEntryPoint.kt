@@ -1,4 +1,4 @@
-package com.tazztone.losslesscut.di
+package com.tazztone.losslesscut.engine
 
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import dagger.hilt.EntryPoint
