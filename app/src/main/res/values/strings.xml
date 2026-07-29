@@ -200,8 +200,6 @@
     <string name="redo">Redo</string>
 
     <string name="reset_segments">Reset segments</string>
-    <string name="split_here">Split here</string>
-    <string name="segment_actions">Segment actions</string>
     <string name="reset_segments_confirm_title">Reset segments?</string>
     <string name="reset_segments_confirm_message">Are you sure you want to reset all cuts and restore a single segment for this clip?</string>
     <string name="category_cache">Analysis Cache</string>

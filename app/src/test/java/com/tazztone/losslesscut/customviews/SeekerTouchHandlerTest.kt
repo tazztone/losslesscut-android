@@ -264,10 +264,14 @@ class SeekerTouchHandlerTest {
         var longPressCalled = false
         var capturedSegmentId: UUID? = null
         var capturedTimeMs = -1L
-        seeker.onSegmentLongPress = { segment, timeMs ->
+        var capturedX = -1f
+        var capturedY = -1f
+        seeker.onSegmentLongPress = { event ->
             longPressCalled = true
-            capturedSegmentId = segment.id
-            capturedTimeMs = timeMs
+            capturedSegmentId = event.segment.id
+            capturedTimeMs = event.timeMs
+            capturedX = event.x
+            capturedY = event.y
         }
 
         // Long press at x(3000) = 50 + (3000/10000)*900 = 320
@@ -276,6 +280,27 @@ class SeekerTouchHandlerTest {
         assertTrue(longPressCalled)
         assertEquals(segmentId, capturedSegmentId)
         assertEquals(3000L, capturedTimeMs)
+        assertEquals(320f, capturedX)
+        assertEquals(50f, capturedY)
+        assertEquals(segmentId, seeker.selectedSegmentId)
+    }
+
+    @Test
+    fun `longPressOnPlayheadOverKeptSegment firesCallback`() {
+        val segmentId = UUID.randomUUID()
+        seeker.setSegments(listOf(
+            TrimSegment(segmentId, 2000L, 5000L, SegmentAction.KEEP)
+        ), null)
+        seeker.currentTouchTarget = CustomVideoSeeker.TouchTarget.PLAYHEAD
+
+        var longPressCalled = false
+        seeker.onSegmentLongPress = { event ->
+            longPressCalled = event.segment.id == segmentId && event.timeMs == 3000L
+        }
+
+        touchHandler.onLongPress(320f, 20f)
+
+        assertTrue(longPressCalled)
         assertEquals(segmentId, seeker.selectedSegmentId)
     }
 
@@ -287,7 +312,7 @@ class SeekerTouchHandlerTest {
         ), null)
 
         var longPressCalled = false
-        seeker.onSegmentLongPress = { _, _ ->
+        seeker.onSegmentLongPress = {
             longPressCalled = true
         }
 

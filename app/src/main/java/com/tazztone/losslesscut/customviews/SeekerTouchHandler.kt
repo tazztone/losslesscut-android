@@ -87,8 +87,11 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
         }
     })
 
-    internal fun onLongPress(x: Float, @Suppress("UNUSED_PARAMETER") y: Float) {
-        if (scaleGestureDetector.isInProgress || seeker.currentTouchTarget != CustomVideoSeeker.TouchTarget.NONE) {
+    internal fun onLongPress(x: Float, y: Float) {
+        if (scaleGestureDetector.isInProgress ||
+            seeker.currentTouchTarget == CustomVideoSeeker.TouchTarget.HANDLE_LEFT ||
+            seeker.currentTouchTarget == CustomVideoSeeker.TouchTarget.HANDLE_RIGHT
+        ) {
             return
         }
         val contentX = x + seeker.scrollOffsetX
@@ -101,7 +104,9 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
                 seeker.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 seeker.selectedSegmentId = segment.id
                 seeker.onSegmentSelected?.invoke(segment.id)
-                seeker.onSegmentLongPress?.invoke(segment, timeMs)
+                seeker.onSegmentLongPress?.invoke(
+                    SegmentLongPressEvent(segment = segment, timeMs = timeMs, x = x, y = y)
+                )
                 seeker.invalidate()
             }
         }

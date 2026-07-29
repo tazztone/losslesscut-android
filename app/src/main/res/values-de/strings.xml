@@ -195,8 +195,6 @@
     <string name="error_visual_on_audio">Visuelle Erkennung ist für Audiodateien nicht verfügbar</string>
 
     <string name="reset_segments">Segmente zurücksetzen</string>
-    <string name="split_here">Hier teilen</string>
-    <string name="segment_actions">Segmentaktionen</string>
     <string name="reset_segments_confirm_title">Segmente zurücksetzen?</string>
     <string name="reset_segments_confirm_message">Möchtest du wirklich alle Schnitte zurücksetzen und ein einzelnes Segment für diesen Clip wiederherstellen?</string>
     <string name="category_cache">Analyse-Cache</string>

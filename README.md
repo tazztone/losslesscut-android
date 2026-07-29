@@ -13,7 +13,7 @@
 
 - 🚀 **Zero Quality Loss**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer`—no transcoding involved.
 - 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
-- 👆 **Segment Actions**: Long-press a kept segment to discard it or split it at the pressed position; the selected segment is clearly highlighted for reliable editing.
+- 👆 **Segment Actions**: Long-press a kept segment to reveal anchored delete and split icons at the press location; this also works when the playhead is over the segment.
 - ♻️ **Clip Reset**: Restore the current clip's timeline to one full KEEP segment with an explicit confirmation step.
 - 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
 - 🧲 **Keyframe Snapping**: Mandatory, strict keyframe snapping in lossless mode ensures frame-perfect cuts. Features haptic feedback and visual snapping.
@@ -57,7 +57,7 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 
 ### Timeline editing
 
-Tap a kept segment to select it. Long-press inside the segment to open its context actions, then choose **Discard** or **Split here**. Use **Reset segments** to replace all edits for the current clip with one full-length KEEP segment; the app asks for confirmation before changing the timeline. All segment changes remain undoable.
+Tap a kept segment to select it. Long-press inside the segment to reveal anchored **Delete** and **Split** icons. The icons remain available until an action is chosen or you tap outside them, and they are positioned at the press location even when the playhead is there. Use **Reset segments** to replace all edits for the current clip with one full-length KEEP segment; the app asks for confirmation before changing the timeline. All segment changes remain undoable.
 
 Visual analysis and waveform extraction are cached in the app's private storage and keyed to the clip's media identity and analysis settings. The cache uses least-recently-used eviction and an age limit, so it does not grow without bound. Configure both limits or clear the cache from Settings.
 

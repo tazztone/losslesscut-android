@@ -18,6 +18,13 @@ import java.util.UUID
 import androidx.core.view.ViewCompat
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 
+data class SegmentLongPressEvent(
+    val segment: TrimSegment,
+    val timeMs: Long,
+    val x: Float,
+    val y: Float
+)
+
 open class CustomVideoSeeker @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
@@ -31,7 +38,7 @@ open class CustomVideoSeeker @JvmOverloads constructor(
     var onSeekStart: (() -> Unit)? = null
     var onSeekEnd: (() -> Unit)? = null
     var onSegmentSelected: ((UUID?) -> Unit)? = null
-    var onSegmentLongPress: ((TrimSegment, Long) -> Unit)? = null
+    var onSegmentLongPress: ((SegmentLongPressEvent) -> Unit)? = null
     var onSegmentBoundsChanged: ((UUID, Long, Long, Long) -> Unit)? = null
     var onSegmentBoundsDragEnd: (() -> Unit)? = null
 

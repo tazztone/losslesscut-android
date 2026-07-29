@@ -17,6 +17,7 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.ExportSettings
+import com.tazztone.losslesscut.ui.editor.SegmentActionPopup
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
@@ -38,6 +39,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private lateinit var smartCutController: com.tazztone.losslesscut.ui.editor.SmartCutOverlayController
     private lateinit var exportOptionsController: com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter
     private lateinit var backPressDelegate: com.tazztone.losslesscut.ui.editor.BackPressDelegate
+    private lateinit var segmentActionPopup: SegmentActionPopup
     
     private var isDraggingTimeline = false
     private var isLosslessMode = true
@@ -52,6 +54,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentEditorBinding.bind(view)
+        segmentActionPopup = SegmentActionPopup(requireContext())
         
         playerManager = PlayerManager(
             context = requireContext(),
@@ -270,20 +273,14 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun setupCustomSeeker() {
         seekerDelegate.setup()
-        binding.seekerContainer.customVideoSeeker.onSegmentLongPress = { segment, longPressTimeMs ->
-            val options = arrayOf(
-                getString(R.string.discard_segment),
-                getString(R.string.split_here)
+        binding.seekerContainer.customVideoSeeker.onSegmentLongPress = { event ->
+            segmentActionPopup.show(
+                anchorView = binding.seekerContainer.customVideoSeeker,
+                x = event.x,
+                y = event.y,
+                onDelete = { viewModel.markSegmentDiscarded(event.segment.id) },
+                onSplit = { viewModel.splitSegmentAt(event.timeMs) }
             )
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.segment_actions)
-                .setItems(options) { _, which ->
-                    when (which) {
-                        0 -> viewModel.markSegmentDiscarded(segment.id)
-                        1 -> viewModel.splitSegmentAt(longPressTimeMs)
-                    }
-                }
-                .show()
         }
     }
 
@@ -465,6 +462,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     override fun onDestroyView() {
+        if (::segmentActionPopup.isInitialized) {
+            segmentActionPopup.dismiss()
+        }
         super.onDestroyView()
         _binding = null
     }
