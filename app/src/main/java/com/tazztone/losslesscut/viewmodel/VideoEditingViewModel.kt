@@ -37,7 +37,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 
 @HiltViewModel
-public class VideoEditingViewModel @Inject constructor(
+class VideoEditingViewModel @Inject constructor(
     private val repository: IVideoEditingRepository,
     private val preferences: AppPreferences,
     private val useCases: VideoEditingUseCases,
@@ -45,35 +45,35 @@ public class VideoEditingViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<VideoEditingUiState>(VideoEditingUiState.Initial)
-    public val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
+    val uiState: StateFlow<VideoEditingUiState> = _uiState.asStateFlow()
 
 
     private val _uiEvents = Channel<VideoEditingEvent>(Channel.BUFFERED)
-    public val uiEvents: Flow<VideoEditingEvent> = _uiEvents.receiveAsFlow()
+    val uiEvents: Flow<VideoEditingEvent> = _uiEvents.receiveAsFlow()
 
     private val _isDirty = MutableStateFlow(false)
-    public val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
+    val isDirty: StateFlow<Boolean> = _isDirty.asStateFlow()
 
-    public fun clearDirty() {
+    fun clearDirty() {
         _isDirty.value = false
     }
 
     private val _waveformData = MutableStateFlow<FloatArray?>(null)
-    public val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
+    val waveformData: StateFlow<FloatArray?> = _waveformData.asStateFlow()
 
     private val _detectionPreviewRanges = MutableStateFlow<List<LongRange>>(emptyList())
-    public val detectionPreviewRanges: StateFlow<List<LongRange>> = _detectionPreviewRanges.asStateFlow()
+    val detectionPreviewRanges: StateFlow<List<LongRange>> = _detectionPreviewRanges.asStateFlow()
 
     private val _visualDetectionProgress = MutableStateFlow<Pair<Int, Int>?>(null)
-    public val visualDetectionProgress: StateFlow<Pair<Int, Int>?> = _visualDetectionProgress.asStateFlow()
+    val visualDetectionProgress: StateFlow<Pair<Int, Int>?> = _visualDetectionProgress.asStateFlow()
 
     private val _rawSilencePreviewRanges = MutableStateFlow<SilenceDetectionUseCase.DetectionResult?>(null)
-    public val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> = 
+    val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> =
         _rawSilencePreviewRanges.asStateFlow()
 
     private var hintsDismissed = false
 
-    public fun onUserInteraction() {
+    fun onUserInteraction() {
         if (hintsDismissed) return
         hintsDismissed = true
         viewModelScope.launch {
@@ -82,12 +82,12 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     private val _sessionExists = MutableStateFlow(false)
-    public val sessionExists: StateFlow<Boolean> = _sessionExists.asStateFlow()
+    val sessionExists: StateFlow<Boolean> = _sessionExists.asStateFlow()
 
     private var currentPlaybackSpeed = 1.0f
     private var isPitchCorrectionEnabled = false
 
-    public val editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
+    private val editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
         com.tazztone.losslesscut.domain.session.EditingSession(historyLimit = 30)
 
     private val currentClips get() = editingSession.currentSnapshot.clips
@@ -102,7 +102,7 @@ public class VideoEditingViewModel @Inject constructor(
     private val waveformController = WaveformController(
         repository, useCases.silenceDetectionUseCase, ioDispatcher
     )
-    public val waveformMaxAmplitude: StateFlow<Float> = waveformController.maxAmplitude
+    val waveformMaxAmplitude: StateFlow<Float> = waveformController.maxAmplitude
     private val stateMutex = Mutex()
     private val isExporting = AtomicBoolean(false)
     
@@ -139,7 +139,7 @@ public class VideoEditingViewModel @Inject constructor(
 
     // MIN_SEGMENT_DURATION_MS moved to ClipController
 
-    public fun setPlaybackParameters(speed: Float, pitchCorrection: Boolean) {
+    fun setPlaybackParameters(speed: Float, pitchCorrection: Boolean) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 currentPlaybackSpeed = speed
@@ -149,7 +149,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun initialize(uris: List<Uri>) {
+    fun initialize(uris: List<Uri>) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 resetInternal()
@@ -203,7 +203,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun selectClip(index: Int) {
+    fun selectClip(index: Int) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (index == selectedClipIndex || index !in currentClips.indices) return@withLock
@@ -213,7 +213,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun addClips(uris: List<Uri>) {
+    fun addClips(uris: List<Uri>) {
         viewModelScope.launch(ioDispatcher) {
             val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
             result.fold(
@@ -238,7 +238,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun removeClip(index: Int) {
+    fun removeClip(index: Int) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (currentClips.size <= 1) {
@@ -263,7 +263,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun reorderClips(from: Int, to: Int) {
+    fun reorderClips(from: Int, to: Int) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val success = editingSession.reorderClips(from, to)
@@ -275,7 +275,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun selectSegment(id: UUID?) {
+    fun selectSegment(id: UUID?) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 editingSession.selectSegment(id)
@@ -284,7 +284,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun splitSegmentAt(positionMs: Long) {
+    fun splitSegmentAt(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val success = editingSession.splitSegmentAt(positionMs)
@@ -298,7 +298,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun markSegmentDiscarded(id: UUID) {
+    fun markSegmentDiscarded(id: UUID) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val success = editingSession.toggleSegmentDiscard(id)
@@ -316,7 +316,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun updateSegmentBounds(
+    fun updateSegmentBounds(
         id: UUID,
         start: Long,
         end: Long,
@@ -330,7 +330,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun commitSegmentBounds() {
+    fun commitSegmentBounds() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 editingSession.finishSegmentBoundsEdit()
@@ -340,7 +340,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun undo() {
+    fun undo() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (editingSession.undo()) {
@@ -352,7 +352,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun redo() {
+    fun redo() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (editingSession.redo()) {
@@ -364,7 +364,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun reset() {
+    fun reset() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 resetInternal()
@@ -407,7 +407,7 @@ public class VideoEditingViewModel @Inject constructor(
         )
     }
 
-    public fun previewSilenceSegments(
+    fun previewSilenceSegments(
         threshold: Float,
         minSilenceMs: Long,
         paddingStartMs: Long,
@@ -433,11 +433,11 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun previewVisualSegments(config: VisualDetectionConfig) {
+    fun previewVisualSegments(config: VisualDetectionConfig) {
         detectVisualSegments(config, reportProgress = true)
     }
 
-    public fun filterVisualSegments(config: VisualDetectionConfig) {
+    fun filterVisualSegments(config: VisualDetectionConfig) {
         detectVisualSegments(config, reportProgress = false)
     }
 
@@ -503,19 +503,19 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun cancelVisualDetection() {
+    fun cancelVisualDetection() {
         useCases.segmentDetector.cancelVisual()
         _visualDetectionProgress.value = null
         viewModelScope.launch { updateStateInternal() }
     }
 
-    public fun hasCachedAnalysis(): Boolean {
+    fun hasCachedAnalysis(): Boolean {
         return useCases.segmentDetector.hasCachedAnalysis()
     }
 
 
 
-    public fun clearSilencePreview() {
+    fun clearSilencePreview() {
         waveformController.clearSilencePreview(viewModelScope) {
             viewModelScope.launch {
                 stateMutex.withLock { updateStateInternal() }
@@ -523,7 +523,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun applyDetection(
+    fun applyDetection(
         mode: SilenceDetectionUseCase.DetectionMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES,
         minKeepSegmentDurationMs: Long = 10L
     ) {
@@ -548,7 +548,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun exportSegments(settings: ExportSettings) {
+    fun exportSegments(settings: ExportSettings) {
         if (!isExporting.compareAndSet(false, true)) return
 
         viewModelScope.launch(ioDispatcher) {
@@ -592,12 +592,12 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public override fun onCleared() {
+    override fun onCleared() {
         super.onCleared()
         waveformController.cancelJobs()
     }
 
-    public fun extractSnapshot(positionMs: Long) {
+    fun extractSnapshot(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { 
                 currentClips.getOrNull(selectedClipIndex) 
@@ -624,14 +624,14 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun saveSession() {
+    fun saveSession() {
         viewModelScope.launch(ioDispatcher) {
             val clips = stateMutex.withLock { currentClips }
             sessionController.saveSession(clips)
         }
     }
 
-    public fun checkSessionExists(uri: Uri) {
+    fun checkSessionExists(uri: Uri) {
         viewModelScope.launch(ioDispatcher) {
             val exists = sessionController.checkSessionExists(uri.toString())
             stateMutex.withLock {
@@ -640,7 +640,7 @@ public class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    public fun restoreSession(uri: Uri) {
+    fun restoreSession(uri: Uri) {
         viewModelScope.launch(ioDispatcher) {
             try {
                 _uiState.value = VideoEditingUiState.Loading()
@@ -675,21 +675,21 @@ public class VideoEditingViewModel @Inject constructor(
     }
 }
 
-public data class VideoEditingUseCases @Inject constructor(
-    public val clipManagementUseCase: ClipManagementUseCase,
-    public val exportUseCase: ExportUseCase,
-    public val snapshotUseCase: ExtractSnapshotUseCase,
-    public val silenceDetectionUseCase: SilenceDetectionUseCase,
-    public val sessionUseCase: SessionUseCase,
-    public val visualSegmentDetector: IVisualSegmentDetector,
-    public val segmentDetector: SegmentDetectorUseCase
+data class VideoEditingUseCases @Inject constructor(
+    val clipManagementUseCase: ClipManagementUseCase,
+    val exportUseCase: ExportUseCase,
+    val snapshotUseCase: ExtractSnapshotUseCase,
+    val silenceDetectionUseCase: SilenceDetectionUseCase,
+    val sessionUseCase: SessionUseCase,
+    val visualSegmentDetector: IVisualSegmentDetector,
+    val segmentDetector: SegmentDetectorUseCase
 )
 
-public data class ExportSettings(
-    public val isLossless: Boolean,
-    public val keepAudio: Boolean,
-    public val keepVideo: Boolean,
-    public val rotationOverride: Int?,
-    public val mergeSegments: Boolean,
-    public val selectedTracks: List<Int>? = null
+data class ExportSettings(
+    val isLossless: Boolean,
+    val keepAudio: Boolean,
+    val keepVideo: Boolean,
+    val rotationOverride: Int?,
+    val mergeSegments: Boolean,
+    val selectedTracks: List<Int>? = null
 )
