@@ -70,6 +70,11 @@ java scripts/dev-scripts/asset-generate-icons.java
 ./gradlew assembleDebug
 ```
 
+### Downloads
+
+Prebuilt APK and AAB artifacts are published with tagged releases on
+[GitHub Releases](https://github.com/tazztone/lossless-video-cut/releases/latest).
+
 ## 🤝 Contributing
 
 We follow **MVVM + Clean Architecture** with a strict separation between UI, Domain, and Data layers.
@@ -93,7 +98,6 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 ## 🗺️ Roadmap
 
 - [x] **Smart Cut (v2.0)**: Integrated advanced algorithm-driven visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
-- [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
 - [x] **Architectural Enforcement**: Implemented Konsist testing to safeguard module boundaries in the CI pipeline.
 - [x] **Domain Purification**: Extracted standard JVM domain module for maximum portability and testability.
