@@ -183,6 +183,12 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         strokeWidth = 3f
     }
 
+    val splitPreviewPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        strokeWidth = 4f
+        pathEffect = android.graphics.DashPathEffect(floatArrayOf(12f, 8f), 0f)
+    }
+
     private val keepColors = arrayOf(
         Color.parseColor("#6688FF88"),
         Color.parseColor("#66FF8888"),
@@ -405,6 +411,13 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
                 canvas.drawRect(segmentRect, selectedBorderPaint)
             }
         }
+    }
+
+    fun drawSplitPreview(canvas: Canvas) {
+        val splitTimeMs = seeker.splitPreviewTimeMs ?: return
+        if (splitTimeMs < 0 || splitTimeMs > seeker.videoDurationMs) return
+        val x = seeker.timeToX(splitTimeMs)
+        canvas.drawLine(x, 0f, x, seeker.height.toFloat(), splitPreviewPaint)
     }
 
     fun drawTimeLabels(canvas: Canvas, startTime: Long, endTime: Long) {

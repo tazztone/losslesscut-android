@@ -103,6 +103,7 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
             if (segment != null) {
                 seeker.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 seeker.selectedSegmentId = segment.id
+                seeker.splitPreviewTimeMs = timeMs
                 seeker.onSegmentSelected?.invoke(segment.id)
                 seeker.onSegmentLongPress?.invoke(
                     SegmentLongPressEvent(segment = segment, timeMs = timeMs, x = x, y = y)

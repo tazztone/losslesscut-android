@@ -58,6 +58,14 @@ open class CustomVideoSeeker @JvmOverloads constructor(
             }
         }
 
+    var splitPreviewTimeMs: Long? = null
+        set(value) {
+            if (field != value) {
+                field = value
+                invalidate()
+            }
+        }
+
     var playheadVisible: Boolean = true
         set(value) {
             if (field != value) {
@@ -282,6 +290,7 @@ open class CustomVideoSeeker @JvmOverloads constructor(
         if (segmentsVisible) {
             seekerRenderer.drawSegments(canvas)
         }
+        seekerRenderer.drawSplitPreview(canvas)
 
         // Draw keyframes (optimized with binary search culling)
         if (keyframes.isNotEmpty()) {

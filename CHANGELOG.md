@@ -1,7 +1,7 @@
 # Changelog
 
 ### July 2026: Timeline Actions & Persistent Analysis Cache
-* **Segment Context Actions**: Long-press a kept timeline segment to reveal anchored delete and split icons at the press position, including when the playhead overlaps the segment; selected segments remain clearly highlighted.
+* **Segment Context Actions**: Long-press a kept timeline segment to reveal anchored delete and split icons at the press position with a vertical split line indicator, including when the playhead overlaps the segment; selected segments remain clearly highlighted.
 * **Clip Reset**: Added a confirmation-protected action to reset the current clip to one full KEEP segment; the operation participates in undo/redo.
 * **Analysis Reuse**: Persisted waveform and visual-analysis results across sessions with clip/settings-aware cache keys.
 * **Cache Governance**: Added configurable maximum cache size, retention age, usage reporting, and a confirmation-protected clear action.

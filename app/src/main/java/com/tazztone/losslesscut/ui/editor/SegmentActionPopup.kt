@@ -16,6 +16,8 @@ import com.google.android.material.color.MaterialColors
 import com.tazztone.losslesscut.R
 import kotlin.math.roundToInt
 
+import com.tazztone.losslesscut.customviews.SegmentLongPressEvent
+
 internal object SegmentActionPopupPosition {
     data class Bounds(val left: Int, val top: Int, val right: Int, val bottom: Int)
     data class Position(val left: Int, val top: Int)
@@ -43,10 +45,10 @@ internal class SegmentActionPopup(private val context: Context) {
 
     fun show(
         anchorView: View,
-        x: Float,
-        y: Float,
+        event: SegmentLongPressEvent,
         onDelete: () -> Unit,
-        onSplit: () -> Unit
+        onSplit: () -> Unit,
+        onDismiss: (() -> Unit)? = null
     ) {
         dismiss()
 
@@ -63,10 +65,11 @@ internal class SegmentActionPopup(private val context: Context) {
             isOutsideTouchable = true
             isClippingEnabled = true
             setOnDismissListener {
+                onDismiss?.invoke()
                 popupWindow = null
             }
         }
-        val position = calculatePosition(anchorView, x, y, buttonSize)
+        val position = calculatePosition(anchorView, event.x, event.y, buttonSize)
         popupWindow?.showAtLocation(anchorView, Gravity.TOP or Gravity.START, position.left, position.top)
     }
 

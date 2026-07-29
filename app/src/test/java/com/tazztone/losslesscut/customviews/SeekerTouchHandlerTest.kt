@@ -283,6 +283,7 @@ class SeekerTouchHandlerTest {
         assertEquals(320f, capturedX)
         assertEquals(50f, capturedY)
         assertEquals(segmentId, seeker.selectedSegmentId)
+        assertEquals(3000L, seeker.splitPreviewTimeMs)
     }
 
     @Test

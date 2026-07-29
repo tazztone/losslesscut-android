@@ -276,10 +276,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.seekerContainer.customVideoSeeker.onSegmentLongPress = { event ->
             segmentActionPopup.show(
                 anchorView = binding.seekerContainer.customVideoSeeker,
-                x = event.x,
-                y = event.y,
+                event = event,
                 onDelete = { viewModel.markSegmentDiscarded(event.segment.id) },
-                onSplit = { viewModel.splitSegmentAt(event.timeMs) }
+                onSplit = { viewModel.splitSegmentAt(event.timeMs) },
+                onDismiss = { binding.seekerContainer.customVideoSeeker.splitPreviewTimeMs = null }
             )
         }
     }
