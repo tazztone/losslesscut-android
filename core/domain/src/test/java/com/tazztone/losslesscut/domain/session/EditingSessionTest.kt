@@ -319,6 +319,21 @@ public class EditingSessionTest {
     }
 
     @Test
+    public fun newEditAfterUndoClearsRedoStack() {
+        val session = EditingSession()
+        val clip = createTestClip(durationMs = 10000L)
+        session.setClips(listOf(clip))
+
+        session.splitSegmentAt(4000L)
+        assertTrue(session.undo())
+        assertTrue(session.currentSnapshot.canRedo)
+
+        session.splitSegmentAt(2000L)
+        assertFalse(session.currentSnapshot.canRedo)
+        assertFalse(session.redo())
+    }
+
+    @Test
     public fun markDirtyAndClearDirtyMutatesState() {
         val session = EditingSession()
         session.markDirty()
