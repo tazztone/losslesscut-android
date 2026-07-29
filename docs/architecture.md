@@ -84,7 +84,8 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 
 ### Smart Cut Detection Engine
 - **Silence Detection**: Analyzes raw PCM amplitudes (`AudioWaveformExtractor`) to compute RMS energy levels without noise floor distortion.
-- **Visual Detection**: Uses `MediaExtractor` frame stepping with Kotlin-native perceptual hashing (pHash), Sum of Absolute Differences (SAD), and Laplacian variance to flag scene cuts, black frames, freeze frames, and blur quality. Includes post-input-EOS timeout protection (`MAX_EOS_TIMEOUTS`) to prevent hardware decoder drain hangs.
+- **Visual Detection**: Uses `MediaExtractor` frame stepping with Kotlin-native perceptual hashing (pHash), normalized Sum of Absolute Differences rate (Luminance Delta/sec), and Laplacian variance to flag scene cuts, black frames, freeze frames, and blur quality (with extended threshold up to 25,000 var). Freeze frame ranges feature automatic start-timestamp backdating to frame $t_{i-1}$ to eliminate inter-frame sampling lag. Includes post-input-EOS timeout protection (`MAX_EOS_TIMEOUTS`) to prevent hardware decoder drain hangs.
+- **Segment Application**: `SilenceDetectionUseCase.applyDetectionRanges()` intersects newly detected ranges with existing clip `TrimSegment` bounds to preserve prior user clip trims.
 - **Coroutine Cancellation Contract**: All low-level `MediaCodec` and `MediaExtractor` loops enforce cooperative cancellation via `coroutineContext.ensureActive()` and rethrow `CancellationException` to guarantee immediate resource release upon cancellation.
 
 ### State Management & Navigation

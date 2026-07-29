@@ -85,7 +85,7 @@ public class VisualSegmentFilterTest {
         
         assertEquals(2, result.size)
         assertEquals(450L..550L, result[0])
-        assertEquals(1450L..1550L, result[1])
+        assertEquals(1000L..1500L, result[1])
     }
 
     @Test
@@ -175,7 +175,7 @@ public class VisualSegmentFilterTest {
             minSegmentMs = 0
         )
         assertEquals(1, freezeResult.size)
-        assertEquals(450L..550L, freezeResult[0])
+        assertEquals(0L..500L, freezeResult[0])
     }
 
     @Test
@@ -223,7 +223,7 @@ public class VisualSegmentFilterTest {
             minSegmentMs = 0
         )
         assertEquals(1, freezeResult.size)
-        assertEquals(450L..550L, freezeResult[0])
+        assertEquals(0L..500L, freezeResult[0])
     }
 
     @Test
@@ -348,6 +348,6 @@ public class VisualSegmentFilterTest {
         )
 
         assertEquals(1, result.size)
-        assertEquals(500L..1900L, result[0])
+        assertEquals(500L..1500L, result[0])
     }
 }

@@ -79,19 +79,55 @@ public class SilenceDetectionUseCase @Inject constructor(
         minKeepSegmentDurationMs: Long,
         mode: DetectionMode = DetectionMode.DISCARD_RANGES
     ): MediaClip {
-        val segments = when (mode) {
+        val rawDetectionSegments = when (mode) {
             DetectionMode.SPLIT_AT_BOUNDARIES -> buildSegmentsBySplitting(clip.durationMs, ranges)
             DetectionMode.KEEP_RANGES -> buildSegmentsFromKeepRanges(clip.durationMs, ranges)
             DetectionMode.DISCARD_RANGES -> buildSegmentsFromDiscardRanges(clip.durationMs, ranges, minKeepSegmentDurationMs)
         }
         
-        val finalSegments = if (segments.none { it.action == SegmentAction.KEEP }) {
+        val mergedSegments = applyDetectionToExistingSegments(clip.segments, rawDetectionSegments)
+
+        val finalSegments = if (mergedSegments.none { it.action == SegmentAction.KEEP }) {
             listOf(TrimSegment(UUID.randomUUID(), 0L, clip.durationMs, SegmentAction.KEEP))
         } else {
-            segments
+            mergedSegments
         }
         
         return clip.copy(segments = finalSegments)
+    }
+
+    private fun applyDetectionToExistingSegments(
+        existingSegments: List<TrimSegment>,
+        newDetectionSegments: List<TrimSegment>
+    ): List<TrimSegment> {
+        if (existingSegments.size <= 1 && existingSegments.firstOrNull()?.let { it.startMs == 0L && it.action == SegmentAction.KEEP } == true) {
+            return newDetectionSegments
+        }
+        
+        val result = mutableListOf<TrimSegment>()
+        for (existing in existingSegments) {
+            if (existing.action == SegmentAction.DISCARD) {
+                result.add(existing)
+            } else {
+                result.addAll(intersectSegmentWithNewRanges(existing, newDetectionSegments))
+            }
+        }
+        return mergeAdjacentSameAction(result)
+    }
+
+    private fun intersectSegmentWithNewRanges(
+        existing: TrimSegment,
+        newDetectionSegments: List<TrimSegment>
+    ): List<TrimSegment> {
+        val intersected = mutableListOf<TrimSegment>()
+        for (newSeg in newDetectionSegments) {
+            val overlapStart = maxOf(existing.startMs, newSeg.startMs)
+            val overlapEnd = minOf(existing.endMs, newSeg.endMs)
+            if (overlapEnd > overlapStart) {
+                intersected.add(TrimSegment(UUID.randomUUID(), overlapStart, overlapEnd, newSeg.action))
+            }
+        }
+        return intersected
     }
 
     private fun buildSegmentsFromKeepRanges(

@@ -209,7 +209,12 @@ class VisualSegmentDetectorImpl @Inject constructor(
             } else null
             
             val freezeDiff = if (currentSmallY != null && ctx.previousSmallY != null) {
-                VisualAlgorithms.calculateSAD(currentSmallY, ctx.previousSmallY!!)
+                val rawSad = VisualAlgorithms.calculateSAD(currentSmallY, ctx.previousSmallY!!)
+                val currentUs = ctx.info.presentationTimeUs
+                val actualIntervalMs = if (ctx.lastProcessedUs > 0) {
+                    (currentUs - ctx.lastProcessedUs) / US_PER_MS
+                } else ctx.sampleIntervalMs
+                if (actualIntervalMs > 0) (rawSad * MS_PER_SEC / actualIntervalMs) else rawSad
             } else null
             
             ctx.analyses.add(FrameAnalysis(
@@ -230,6 +235,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TIMEOUT_US = 10000L
         private const val MAX_EOS_TIMEOUTS = 50
         private const val US_PER_MS = 1000L
+        private const val MS_PER_SEC = 1000.0
         private const val DOWNSCALE_SIZE = 32
         private const val DEFAULT_MEAN_LUMA = 255.0
     }

@@ -327,7 +327,7 @@ class VisualDetectionOverlayController(
         private const val FILTER_DEBOUNCE_DELAY_MS = 100L
         private val SCENE_CHANGE_CONFIG = StrategyConfig(3f, 30f, 12f, 1f)
         private val BLACK_FRAMES_CONFIG = StrategyConfig(5f, 50f, 20f, 1f)
-        private val FREEZE_FRAME_CONFIG = StrategyConfig(1f, 15f, 3f, 0.5f)
-        private val BLUR_QUALITY_CONFIG = StrategyConfig(50f, 5000f, 500f, 10f)
+        private val FREEZE_FRAME_CONFIG = StrategyConfig(1f, 30f, 5f, 0.5f)
+        private val BLUR_QUALITY_CONFIG = StrategyConfig(50f, 25000f, 500f, 50f)
     }
 }

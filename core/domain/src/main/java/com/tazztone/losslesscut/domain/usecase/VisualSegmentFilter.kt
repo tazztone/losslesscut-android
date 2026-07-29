@@ -14,29 +14,7 @@ public object VisualSegmentFilter {
     ): List<LongRange> {
         if (frames.isEmpty()) return emptyList()
 
-        // Analysis results
-        val resultRanges = mutableListOf<LongRange>()
-        var currentRangeStart: Long? = null
-        var currentRangeEnd: Long? = null
-
-        // Group contiguous blocks of matches
-        for (frame in frames) {
-            if (isMatch(frame, strategy, threshold)) {
-                if (currentRangeStart == null) {
-                    currentRangeStart = frame.timeMs
-                }
-                currentRangeEnd = frame.timeMs
-            } else {
-                if (currentRangeStart != null && currentRangeEnd != null) {
-                    resultRanges.add(currentRangeStart..currentRangeEnd)
-                    currentRangeStart = null
-                    currentRangeEnd = null
-                }
-            }
-        }
-        if (currentRangeStart != null && currentRangeEnd != null) {
-            resultRanges.add(currentRangeStart..currentRangeEnd)
-        }
+        val resultRanges = groupMatchingRanges(frames, strategy, threshold)
 
         // Fix: Visual Regression. Expand single-frame matches to have a duration
         // so they are visible as mask rects in the seeker.
@@ -78,6 +56,42 @@ public object VisualSegmentFilter {
         }
         merged.add(currentStart..currentEnd)
         return merged
+    }
+
+    private fun groupMatchingRanges(
+        frames: List<FrameAnalysis>,
+        strategy: VisualStrategy,
+        threshold: Float
+    ): List<LongRange> {
+        val resultRanges = mutableListOf<LongRange>()
+        var currentRangeStart: Long? = null
+        var currentRangeEnd: Long? = null
+
+        for (i in frames.indices) {
+            val frame = frames[i]
+            if (isMatch(frame, strategy, threshold)) {
+                if (currentRangeStart == null) {
+                    currentRangeStart = getRangeStart(frames, i, strategy)
+                }
+                currentRangeEnd = frame.timeMs
+            } else if (currentRangeStart != null && currentRangeEnd != null) {
+                resultRanges.add(currentRangeStart..currentRangeEnd)
+                currentRangeStart = null
+                currentRangeEnd = null
+            }
+        }
+        if (currentRangeStart != null && currentRangeEnd != null) {
+            resultRanges.add(currentRangeStart..currentRangeEnd)
+        }
+        return resultRanges
+    }
+
+    private fun getRangeStart(frames: List<FrameAnalysis>, index: Int, strategy: VisualStrategy): Long {
+        return if (strategy == VisualStrategy.FREEZE_FRAME && index > 0) {
+            frames[index - 1].timeMs
+        } else {
+            frames[index].timeMs
+        }
     }
 
     private fun isMatch(frame: FrameAnalysis, strategy: VisualStrategy, threshold: Float): Boolean {
