@@ -3,9 +3,11 @@ package com.tazztone.losslesscut.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +31,8 @@ class AppPreferences @Inject constructor(
         val JPG_QUALITY = intPreferencesKey("jpg_quality")
         val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
+        val AUTO_EXTRACT_WAVEFORMS = booleanPreferencesKey("auto_extract_waveforms")
+        val DEFAULT_VISUAL_SAMPLE_INTERVAL_MS = longPreferencesKey("default_visual_sample_interval_ms")
     }
 
     private val sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
@@ -97,6 +101,30 @@ class AppPreferences @Inject constructor(
             preferences[PreferencesKeys.CUSTOM_OUTPUT_URI]
         }
 
+    val autoExtractWaveformsFlow: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.AUTO_EXTRACT_WAVEFORMS] ?: true
+        }
+
+    val defaultVisualSampleIntervalFlow: Flow<Long> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.DEFAULT_VISUAL_SAMPLE_INTERVAL_MS] ?: DEFAULT_SAMPLE_INTERVAL_MS
+        }
+
     suspend fun setUndoLimit(limit: Int) {
         require(limit in 1..100) { "Undo limit must be between 1 and 100" }
         context.dataStore.edit { preferences ->
@@ -133,5 +161,24 @@ class AppPreferences @Inject constructor(
                 preferences[PreferencesKeys.CUSTOM_OUTPUT_URI] = uri
             }
         }
+    }
+
+    suspend fun setAutoExtractWaveforms(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.AUTO_EXTRACT_WAVEFORMS] = enabled
+        }
+    }
+
+    suspend fun setDefaultVisualSampleIntervalMs(intervalMs: Long) {
+        require(intervalMs in MIN_SAMPLE_INTERVAL_MS..MAX_SAMPLE_INTERVAL_MS) { "Sample interval must be valid" }
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DEFAULT_VISUAL_SAMPLE_INTERVAL_MS] = intervalMs
+        }
+    }
+
+    companion object {
+        const val DEFAULT_SAMPLE_INTERVAL_MS = 1000L
+        const val MIN_SAMPLE_INTERVAL_MS = 100L
+        const val MAX_SAMPLE_INTERVAL_MS = 5000L
     }
 }

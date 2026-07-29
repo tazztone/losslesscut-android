@@ -198,7 +198,12 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     private fun extractWaveformInternal(clip: MediaClip) {
-        waveformController.extractWaveform(viewModelScope, clip)
+        viewModelScope.launch(ioDispatcher) {
+            val autoExtract = preferences.autoExtractWaveformsFlow.firstOrNull() ?: true
+            if (autoExtract) {
+                waveformController.extractWaveform(viewModelScope, clip)
+            }
+        }
     }
 
     public fun selectClip(index: Int) {

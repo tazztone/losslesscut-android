@@ -63,6 +63,8 @@ fun SettingsScreen(
     val jpgQuality by preferences.jpgQualityFlow.collectAsStateWithLifecycle(initialValue = 95)
     val customOutputUri by preferences.customOutputUriFlow.collectAsStateWithLifecycle(initialValue = null)
     val currentAccentColor by preferences.accentColorFlow.collectAsStateWithLifecycle(initialValue = "cyan")
+    val autoExtractWaveforms by preferences.autoExtractWaveformsFlow.collectAsStateWithLifecycle(initialValue = true)
+    val visualSampleIntervalMs by preferences.defaultVisualSampleIntervalFlow.collectAsStateWithLifecycle(initialValue = 1000L)
 
     val isJpeg = snapshotFormat == "JPEG"
 
@@ -73,7 +75,7 @@ fun SettingsScreen(
             .padding(24.dp)
             .verticalScroll(scrollState)
     ) {
-        // Handle
+        // Drag Handle
         Box(
             modifier = Modifier
                 .width(32.dp)
@@ -91,7 +93,39 @@ fun SettingsScreen(
             fontWeight = FontWeight.Bold
         )
 
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // ⚡ 1. Performance & Smart Cut Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_performance))
+
+        AutoExtractWaveformsSetting(
+            autoExtract = autoExtractWaveforms,
+            onToggled = { enabled ->
+                coroutineScope.launch {
+                    preferences.setAutoExtractWaveforms(enabled)
+                }
+            }
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
+
+        VisualSampleIntervalSetting(
+            intervalMs = visualSampleIntervalMs,
+            onIntervalChanged = { interval ->
+                coroutineScope.launch {
+                    preferences.setDefaultVisualSampleIntervalMs(interval)
+                }
+            }
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 20.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+        )
+
+        // ✂️ 2. General & Editing Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_editing))
 
         LosslessModeSetting(
             isLossless = initialLosslessState,
@@ -99,6 +133,24 @@ fun SettingsScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        UndoLimitSetting(
+            undoLimit = undoLimit,
+            onUndoLimitChanged = { value ->
+                coroutineScope.launch {
+                    preferences.setUndoLimit(value)
+                }
+            }
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 20.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+        )
+
+        // 💾 3. Export & Snapshots Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_export))
 
         SnapshotFormatSetting(
             isJpeg = isJpeg,
@@ -117,20 +169,20 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        UndoLimitSetting(
-            undoLimit = undoLimit,
-            onUndoLimitChanged = { value ->
-                coroutineScope.launch {
-                    preferences.setUndoLimit(value)
-                }
-            }
+        ExportFolderSetting(
+            customOutputUri = customOutputUri,
+            onChangePath = onChangePath,
+            onResetPath = onResetPath
         )
 
         HorizontalDivider(
-            modifier = Modifier.padding(vertical = 16.dp),
+            modifier = Modifier.padding(vertical = 20.dp),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
         )
+
+        // 🎨 4. Appearance Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_appearance))
 
         AccentColorSetting(
             currentAccentColor = currentAccentColor,
@@ -138,11 +190,81 @@ fun SettingsScreen(
         )
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
 
-        ExportFolderSetting(
-            customOutputUri = customOutputUri,
-            onChangePath = onChangePath,
-            onResetPath = onResetPath
+@Composable
+fun SettingsCategoryHeader(title: String) {
+    Text(
+        text = title,
+        color = MaterialTheme.colorScheme.primary,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(bottom = 12.dp)
+    )
+}
+
+@Composable
+fun AutoExtractWaveformsSetting(
+    autoExtract: Boolean,
+    onToggled: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.setting_auto_extract_waveforms),
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp
+        )
+        Switch(
+            checked = autoExtract,
+            onCheckedChange = onToggled
+        )
+    }
+
+    Text(
+        text = stringResource(R.string.setting_auto_extract_waveforms_desc),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontSize = 14.sp
+    )
+}
+
+@Composable
+fun VisualSampleIntervalSetting(
+    intervalMs: Long,
+    onIntervalChanged: (Long) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.setting_visual_sample_interval),
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "${intervalMs}ms",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+        }
+        Text(
+            text = stringResource(R.string.setting_visual_sample_interval_desc),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Slider(
+            value = intervalMs.toFloat(),
+            onValueChange = { value ->
+                val rounded = (value / 100).toInt() * 100L
+                onIntervalChanged(rounded.coerceIn(100L, 5000L))
+            },
+            valueRange = 100f..2000f,
+            steps = 18
         )
     }
 }
@@ -159,7 +281,8 @@ fun LosslessModeSetting(
         Text(
             text = stringResource(R.string.lossless_mode_snap),
             modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp
         )
         Switch(
             checked = isLossless,

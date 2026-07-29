@@ -67,4 +67,18 @@ class AppPreferencesTest {
         val quality = preferences.jpgQualityFlow.first()
         assertEquals(80, quality)
     }
+
+    @Test
+    fun testSetAutoExtractWaveforms() = runTest {
+        preferences.setAutoExtractWaveforms(false)
+        val enabled = preferences.autoExtractWaveformsFlow.first()
+        assertEquals(false, enabled)
+    }
+
+    @Test
+    fun testSetDefaultVisualSampleIntervalMs() = runTest {
+        preferences.setDefaultVisualSampleIntervalMs(500L)
+        val interval = preferences.defaultVisualSampleIntervalFlow.first()
+        assertEquals(500L, interval)
+    }
 }
