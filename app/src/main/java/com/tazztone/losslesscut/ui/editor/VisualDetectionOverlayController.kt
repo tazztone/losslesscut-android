@@ -133,7 +133,7 @@ class VisualDetectionOverlayController(
             triggerFiltering()
         }
         sliderInterval.addOnChangeListener { _, value, _ ->
-            updateValueText(tvIntervalValue, value / 1000f, "s")
+            updateIntervalText(value.toInt())
             if (value != lastAnalyzedInterval) {
                 btnDetectAction.isEnabled = true
             }
@@ -186,7 +186,7 @@ class VisualDetectionOverlayController(
         strategy = currentStrategy,
         sensitivityThreshold = sliderSensitivity.value,
         minSegmentDurationMs = sliderMinSegment.value.toLong(),
-        sampleIntervalMs = sliderInterval.value.toLong()
+        sampleIntervalFrames = sliderInterval.value.toInt()
     )
 
     private fun updateStrategyUI() {
@@ -228,6 +228,16 @@ class VisualDetectionOverlayController(
 
     private fun updateValueText(tv: TextView, value: Float, unit: String) {
         tv.text = String.format(Locale.getDefault(), "%.1f %s", value, unit)
+    }
+
+    private fun updateIntervalText(frameStep: Int) {
+        val fps = (viewModel.uiState.value as? VideoEditingUiState.Success)?.videoFps ?: 30f
+        val sec = if (fps > 0f) frameStep / fps else frameStep * 0.0333f
+        tvIntervalValue.text = if (frameStep == 1) {
+            String.format(Locale.getDefault(), "1 frame (%.2fs)", sec)
+        } else {
+            String.format(Locale.getDefault(), "%d frames (%.2fs)", frameStep, sec)
+        }
     }
 
     private fun observeState() {

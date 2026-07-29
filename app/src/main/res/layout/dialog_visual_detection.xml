@@ -158,7 +158,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Interval"
+                android:text="Frame Step"
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
             <ImageButton
@@ -169,7 +169,7 @@
                 app:tint="#88FFFFFF"
                 android:tooltipText="@string/tooltip_sample_interval"
                 android:tag="@string/tooltip_sample_interval"
-                android:contentDescription="Sample Interval"/>
+                android:contentDescription="Frame Step"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderInterval"
                 android:layout_width="0dp"
@@ -177,20 +177,20 @@
                 android:layout_weight="1"
                 android:layout_marginStart="2dp"
                 android:layout_marginEnd="2dp"
-                android:valueFrom="100"
-                android:valueTo="2000"
-                android:stepSize="100"
-                android:value="500"
+                android:valueFrom="1"
+                android:valueTo="30"
+                android:stepSize="1"
+                android:value="5"
                 app:haloRadius="0dp"
                 app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:tooltipText="@string/tooltip_sample_interval"/>
             <TextView
                 android:id="@+id/tvIntervalValue"
-                android:layout_width="36dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="end"
-                android:text="0.5s"
+                android:text="5 frames"
                 android:textSize="11sp"
                 android:textColor="@android:color/white"/>
             <com.google.android.material.button.MaterialButton

@@ -32,7 +32,7 @@ public class SegmentDetectorUseCase @Inject constructor(
     @Volatile
     private var cachedAnalysis: List<FrameAnalysis>? = null
     @Volatile
-    private var cachedIntervalMs: Long = -1L
+    private var cachedIntervalFrames: Int = -1
     @Volatile
     private var cachedUri: String? = null
     @Volatile
@@ -83,7 +83,7 @@ public class SegmentDetectorUseCase @Inject constructor(
                 fps = 0f, rotation = 0, isAudioOnly = false
             )
             val persistentAnalysis = analysisCache?.getFrameAnalysis(
-                targetClip, config.strategy, config.sampleIntervalMs
+                targetClip, config.strategy, config.sampleIntervalFrames
             )
 
             val analysis = if (persistentAnalysis != null) {
@@ -92,19 +92,19 @@ public class SegmentDetectorUseCase @Inject constructor(
                 notifyIfCurrent(requestId) { listener.onProgress(null) }
                 val newAnalysis = visualSegmentDetector.analyze(
                     uri = uri,
-                    sampleIntervalMs = config.sampleIntervalMs,
+                    sampleIntervalFrames = config.sampleIntervalFrames,
                     strategy = config.strategy
                 ) { processed, total ->
                     notifyIfCurrent(requestId) { listener.onProgress(processed to total) }
                 }
                 analysisCache?.saveFrameAnalysis(
-                    targetClip, config.strategy, config.sampleIntervalMs, newAnalysis
+                    targetClip, config.strategy, config.sampleIntervalFrames, newAnalysis
                 )
                 newAnalysis
             }
 
             cachedAnalysis = analysis
-            cachedIntervalMs = config.sampleIntervalMs
+            cachedIntervalFrames = config.sampleIntervalFrames
             cachedUri = uri
             cachedStrategy = config.strategy
 
@@ -138,7 +138,7 @@ public class SegmentDetectorUseCase @Inject constructor(
 
     public fun clearCache() {
         cachedAnalysis = null
-        cachedIntervalMs = -1L
+        cachedIntervalFrames = -1
         cachedUri = null
         cachedStrategy = null
     }
@@ -146,7 +146,7 @@ public class SegmentDetectorUseCase @Inject constructor(
     private fun hasCachedAnalysisFor(uri: String, config: VisualDetectionConfig): Boolean {
         return cachedAnalysis != null &&
                 cachedUri == uri &&
-                cachedIntervalMs == config.sampleIntervalMs &&
+                cachedIntervalFrames == config.sampleIntervalFrames &&
                 cachedStrategy == config.strategy
     }
 

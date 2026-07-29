@@ -6,7 +6,7 @@ import com.tazztone.losslesscut.domain.model.VisualStrategy
 public interface IVisualSegmentDetector {
     public suspend fun analyze(
         uri: String, 
-        sampleIntervalMs: Long,
+        sampleIntervalFrames: Int,
         strategy: VisualStrategy = VisualStrategy.FREEZE_FRAME,
         onProgress: (processed: Int, total: Int) -> Unit = { _, _ -> }
     ): List<FrameAnalysis>

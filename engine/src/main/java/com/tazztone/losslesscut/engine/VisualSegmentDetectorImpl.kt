@@ -19,7 +19,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
     private class DetectionContext(
         val extractor: MediaExtractor,
         val codec: MediaCodec,
-        val sampleIntervalMs: Long,
+        val sampleIntervalFrames: Int,
         val strategy: VisualStrategy,
         val analyses: MutableList<FrameAnalysis> = mutableListOf()
     ) {
@@ -27,7 +27,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         var previousSmallY: ByteArray? = null
 
         var lastProcessedUs: Long = -1L
-        val sampleIntervalUs: Long = sampleIntervalMs * US_PER_MS
+        var decodedFrameIndex: Int = 0
         val info: MediaCodec.BufferInfo = MediaCodec.BufferInfo()
 
         var sawInputEOS = false
@@ -36,7 +36,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
     override suspend fun analyze(
         uri: String,
-        sampleIntervalMs: Long,
+        sampleIntervalFrames: Int,
         strategy: VisualStrategy,
         onProgress: (Int, Int) -> Unit
     ): List<FrameAnalysis> {
@@ -61,8 +61,9 @@ class VisualSegmentDetectorImpl @Inject constructor(
             codec.configure(format, null, null, 0 /* flags */)
             codec.start()
 
-            context = DetectionContext(extractor, codec, sampleIntervalMs, strategy)
-            val estimatedTotal = (durationUs / context.sampleIntervalUs).toInt().coerceAtLeast(1)
+            context = DetectionContext(extractor, codec, sampleIntervalFrames, strategy)
+            val estimatedTotalFrames = durationUs / ESTIMATED_FRAME_DURATION_US
+            val estimatedTotal = (estimatedTotalFrames / context.sampleIntervalFrames).toInt().coerceAtLeast(1)
             
             detectLoop(context, estimatedTotal, onProgress)
 
@@ -153,10 +154,10 @@ class VisualSegmentDetectorImpl @Inject constructor(
         }
 
         if (ctx.info.size > 0) {
-            val currentUs = ctx.info.presentationTimeUs
-            if (shouldProcess(ctx.lastProcessedUs, currentUs, ctx.sampleIntervalUs)) {
+            ctx.decodedFrameIndex++
+            if ((ctx.decodedFrameIndex - 1) % ctx.sampleIntervalFrames == 0) {
                 processOutputBuffer(ctx, index)
-                ctx.lastProcessedUs = currentUs
+                ctx.lastProcessedUs = ctx.info.presentationTimeUs
                 didProcess = true
             }
         }
@@ -177,10 +178,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
             ctx.extractor.advance()
         }
         return false
-    }
-
-    private fun shouldProcess(lastProcessedUs: Long, currentUs: Long, intervalUs: Long): Boolean {
-        return lastProcessedUs == -1L || (currentUs - lastProcessedUs >= intervalUs)
     }
 
     private fun processOutputBuffer(ctx: DetectionContext, index: Int) {
@@ -213,7 +210,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
                 val currentUs = ctx.info.presentationTimeUs
                 val actualIntervalMs = if (ctx.lastProcessedUs > 0) {
                     (currentUs - ctx.lastProcessedUs) / US_PER_MS
-                } else ctx.sampleIntervalMs
+                } else DEFAULT_FRAME_DURATION_MS
                 if (actualIntervalMs > 0) (rawSad * MS_PER_SEC / actualIntervalMs) else rawSad
             } else null
             
@@ -234,6 +231,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TAG = "VisualSegmentDetector"
         private const val TIMEOUT_US = 10000L
         private const val MAX_EOS_TIMEOUTS = 50
+        private const val ESTIMATED_FRAME_DURATION_US = 33333L
+        private const val DEFAULT_FRAME_DURATION_MS = 33L
         private const val US_PER_MS = 1000L
         private const val MS_PER_SEC = 1000.0
         private const val DOWNSCALE_SIZE = 32

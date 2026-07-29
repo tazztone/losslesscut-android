@@ -39,7 +39,7 @@ internal class SegmentDetectorUseCaseTest {
         val config = VisualDetectionConfig(
             strategy = VisualStrategy.BLACK_FRAMES,
             sensitivityThreshold = 0.1f,
-            sampleIntervalMs = 1000L,
+            sampleIntervalFrames = 5,
             minSegmentDurationMs = 100L
         )
         val analyses = listOf(
@@ -47,7 +47,7 @@ internal class SegmentDetectorUseCaseTest {
             FrameAnalysis(timeMs = 1000L, meanLuma = 0.2, blurVariance = 10.0, sceneDistance = null, freezeDiff = null)
         )
 
-        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalMs = eq(1000L), strategy = any(), onProgress = any()) } returns analyses
+        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalFrames = eq(5), strategy = any(), onProgress = any()) } returns analyses
 
         var progressCalls = 0
         var rangesResult: List<LongRange>? = null
@@ -110,11 +110,11 @@ internal class SegmentDetectorUseCaseTest {
         val config = VisualDetectionConfig(
             strategy = VisualStrategy.BLACK_FRAMES,
             sensitivityThreshold = 0.1f,
-            sampleIntervalMs = 1000L,
+            sampleIntervalFrames = 5,
             minSegmentDurationMs = 100L
         )
 
-        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalMs = eq(1000L), strategy = any(), onProgress = any()) } coAnswers {
+        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalFrames = eq(5), strategy = any(), onProgress = any()) } coAnswers {
             kotlinx.coroutines.delay(500)
             emptyList()
         }
@@ -148,14 +148,14 @@ internal class SegmentDetectorUseCaseTest {
         val config = VisualDetectionConfig(
             strategy = VisualStrategy.BLACK_FRAMES,
             sensitivityThreshold = 0.1f,
-            sampleIntervalMs = 1000L,
+            sampleIntervalFrames = 5,
             minSegmentDurationMs = 100L
         )
 
         coEvery {
             visualDetector.analyze(
                 uri = any(),
-                sampleIntervalMs = any(),
+                sampleIntervalFrames = any(),
                 strategy = any(),
                 onProgress = any()
             )

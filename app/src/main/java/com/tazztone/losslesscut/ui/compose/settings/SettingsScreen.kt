@@ -74,7 +74,7 @@ fun SettingsScreen(
     val customOutputUri by preferences.customOutputUriFlow.collectAsStateWithLifecycle(initialValue = null)
     val currentAccentColor by preferences.accentColorFlow.collectAsStateWithLifecycle(initialValue = "cyan")
     val autoExtractWaveforms by preferences.autoExtractWaveformsFlow.collectAsStateWithLifecycle(initialValue = true)
-    val visualSampleIntervalMs by preferences.defaultVisualSampleIntervalFlow.collectAsStateWithLifecycle(initialValue = 1000L)
+    val visualFrameStep by preferences.defaultVisualFrameStepFlow.collectAsStateWithLifecycle(initialValue = 5)
     val cacheCapacityMB by preferences.cacheCapacityMBFlow.collectAsStateWithLifecycle(initialValue = 250)
     val cacheRetentionDays by preferences.cacheRetentionDaysFlow.collectAsStateWithLifecycle(initialValue = 30)
 
@@ -130,11 +130,11 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        VisualSampleIntervalSetting(
-            intervalMs = visualSampleIntervalMs,
-            onIntervalChanged = { interval ->
+        VisualFrameStepSetting(
+            frameStep = visualFrameStep,
+            onFrameStepChanged = { step ->
                 coroutineScope.launch {
-                    preferences.setDefaultVisualSampleIntervalMs(interval)
+                    preferences.setDefaultVisualFrameStep(step)
                 }
             }
         )
@@ -417,9 +417,9 @@ fun AutoExtractWaveformsSetting(
 }
 
 @Composable
-fun VisualSampleIntervalSetting(
-    intervalMs: Long,
-    onIntervalChanged: (Long) -> Unit
+fun VisualFrameStepSetting(
+    frameStep: Int,
+    onFrameStepChanged: (Int) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -430,7 +430,7 @@ fun VisualSampleIntervalSetting(
                 fontSize = 16.sp
             )
             Text(
-                text = "${intervalMs}ms",
+                text = if (frameStep == 1) "1 frame" else "$frameStep frames",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
@@ -442,13 +442,11 @@ fun VisualSampleIntervalSetting(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Slider(
-            value = intervalMs.toFloat(),
+            value = frameStep.toFloat(),
             onValueChange = { value ->
-                val rounded = (value / 100).toInt() * 100L
-                onIntervalChanged(rounded.coerceIn(100L, 5000L))
+                onFrameStepChanged(value.toInt().coerceIn(1, 30))
             },
-            valueRange = 100f..2000f,
-            steps = 18
+            valueRange = 1f..30f
         )
     }
 }

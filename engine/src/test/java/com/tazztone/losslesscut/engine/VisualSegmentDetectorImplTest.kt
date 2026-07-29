@@ -80,7 +80,7 @@ class VisualSegmentDetectorImplTest {
         every { mockCodec.getOutputFormat(any()) } returns format
 
         var progressCount = 0
-        val result = detector.analyze("test_uri", 1000) { current, total -> 
+        val result = detector.analyze("test_uri", 1) { current, total -> 
             progressCount++
         }
 
@@ -103,7 +103,7 @@ class VisualSegmentDetectorImplTest {
 
         every { MediaCodec.createDecoderByType(any()) } throws IllegalStateException("Codec failed")
 
-        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        val result = detector.analyze("test_uri", 5) { _, _ -> }
 
         assertTrue(result.isEmpty())
         verify { anyConstructed<MediaExtractor>().release() }
@@ -125,7 +125,7 @@ class VisualSegmentDetectorImplTest {
         // Throw IllegalStateException during loop to simulate codec failure
         every { mockCodec.dequeueInputBuffer(any()) } throws IllegalStateException("Simulated Codec Error")
 
-        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        val result = detector.analyze("test_uri", 5) { _, _ -> }
 
         assertTrue(result.isEmpty())
         verify { mockCodec.stop() }
@@ -149,7 +149,7 @@ class VisualSegmentDetectorImplTest {
         // Throw generic exception during loop
         every { mockCodec.dequeueInputBuffer(any()) } throws RuntimeException("Unexpected error")
 
-        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        val result = detector.analyze("test_uri", 5) { _, _ -> }
 
         assertTrue(result.isEmpty())
         verify { mockCodec.stop() }
@@ -166,7 +166,7 @@ class VisualSegmentDetectorImplTest {
         every { format.getString(MediaFormat.KEY_MIME) } returns "audio/mp4"
         every { anyConstructed<MediaExtractor>().release() } returns Unit
 
-        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        val result = detector.analyze("test_uri", 5) { _, _ -> }
         
         assertTrue(result.isEmpty())
         verify(exactly = 0) { anyConstructed<MediaExtractor>().selectTrack(any()) }
@@ -190,7 +190,7 @@ class VisualSegmentDetectorImplTest {
 
                 every { mockCodec.dequeueInputBuffer(any()) } throws kotlinx.coroutines.CancellationException("Job cancelled")
 
-                detector.analyze("test_uri", 1000) { _, _ -> }
+                detector.analyze("test_uri", 5) { _, _ -> }
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             threwCancellation = true
@@ -217,7 +217,7 @@ class VisualSegmentDetectorImplTest {
         every { mockCodec.dequeueOutputBuffer(any(), any()) } returns MediaCodec.INFO_TRY_AGAIN_LATER
 
         // Ensure analyze finishes without hanging infinitely
-        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        val result = detector.analyze("test_uri", 5) { _, _ -> }
         assertTrue(result.isEmpty())
         verify { mockCodec.stop() }
         verify { mockCodec.release() }

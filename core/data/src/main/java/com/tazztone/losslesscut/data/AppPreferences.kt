@@ -36,7 +36,7 @@ class AppPreferences @Inject constructor(
         val ACCENT_COLOR = stringPreferencesKey("accent_color")
         val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
         val AUTO_EXTRACT_WAVEFORMS = booleanPreferencesKey("auto_extract_waveforms")
-        val DEFAULT_VISUAL_SAMPLE_INTERVAL_MS = longPreferencesKey("default_visual_sample_interval_ms")
+        val DEFAULT_VISUAL_FRAME_STEP = intPreferencesKey("default_visual_frame_step")
         val CACHE_CAPACITY_MB = intPreferencesKey("cache_capacity_mb")
         val CACHE_RETENTION_DAYS = intPreferencesKey("cache_retention_days")
     }
@@ -119,7 +119,7 @@ class AppPreferences @Inject constructor(
             preferences[PreferencesKeys.AUTO_EXTRACT_WAVEFORMS] ?: true
         }
 
-    val defaultVisualSampleIntervalFlow: Flow<Long> = context.dataStore.data
+    val defaultVisualFrameStepFlow: Flow<Int> = context.dataStore.data
         .catch { exception ->
             if (exception is IOException) {
                 emit(emptyPreferences())
@@ -128,7 +128,7 @@ class AppPreferences @Inject constructor(
             }
         }
         .map { preferences ->
-            preferences[PreferencesKeys.DEFAULT_VISUAL_SAMPLE_INTERVAL_MS] ?: DEFAULT_SAMPLE_INTERVAL_MS
+            preferences[PreferencesKeys.DEFAULT_VISUAL_FRAME_STEP] ?: DEFAULT_FRAME_STEP
         }
 
     suspend fun setUndoLimit(limit: Int) {
@@ -175,12 +175,12 @@ class AppPreferences @Inject constructor(
         }
     }
 
-    suspend fun setDefaultVisualSampleIntervalMs(intervalMs: Long) {
-        require(intervalMs in MIN_SAMPLE_INTERVAL_MS..MAX_SAMPLE_INTERVAL_MS) {
-            "Sample interval must be valid"
+    suspend fun setDefaultVisualFrameStep(frameStep: Int) {
+        require(frameStep in MIN_FRAME_STEP..MAX_FRAME_STEP) {
+            "Frame step must be between $MIN_FRAME_STEP and $MAX_FRAME_STEP"
         }
         context.dataStore.edit { preferences ->
-            preferences[PreferencesKeys.DEFAULT_VISUAL_SAMPLE_INTERVAL_MS] = intervalMs
+            preferences[PreferencesKeys.DEFAULT_VISUAL_FRAME_STEP] = frameStep
         }
     }
 
@@ -237,9 +237,9 @@ class AppPreferences @Inject constructor(
 
     companion object {
         private const val BYTES_PER_MIB = 1024L * 1024L
-        const val DEFAULT_SAMPLE_INTERVAL_MS = 1000L
-        const val MIN_SAMPLE_INTERVAL_MS = 100L
-        const val MAX_SAMPLE_INTERVAL_MS = 5000L
+        const val DEFAULT_FRAME_STEP = 5
+        const val MIN_FRAME_STEP = 1
+        const val MAX_FRAME_STEP = 30
         const val DEFAULT_CACHE_CAPACITY_MB = 250
         const val MIN_CACHE_CAPACITY_MB = 50
         const val MAX_CACHE_CAPACITY_MB = 1000

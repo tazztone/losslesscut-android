@@ -76,9 +76,9 @@ class AppPreferencesTest {
     }
 
     @Test
-    fun testSetDefaultVisualSampleIntervalMs() = runTest {
-        preferences.setDefaultVisualSampleIntervalMs(500L)
-        val interval = preferences.defaultVisualSampleIntervalFlow.first()
-        assertEquals(500L, interval)
+    fun testSetDefaultVisualFrameStep() = runTest {
+        preferences.setDefaultVisualFrameStep(10)
+        val frameStep = preferences.defaultVisualFrameStepFlow.first()
+        assertEquals(10, frameStep)
     }
 }

@@ -5,19 +5,20 @@ import android.media.MediaFormat
 import java.nio.ByteBuffer
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sqrt
 
 internal object VisualAlgorithms {
     private const val DOWNSCALE_SIZE = 32
     private const val DCT_SIZE = 8
     private const val PHASH_SIZE = 64
-    private const val FIXED_POINT_SHIFT = 16
     private const val PIXEL_MASK = 0xFF
     private const val STEP_X = 10
     private const val STEP_Y = 10
     private const val LAPLACIAN_CENTER_WEIGHT = 4
     private const val DCT_SCALE = 0.25
     private const val MAX_LUMA = 255.0
+    private const val NORM_OFFSET = 0.05
     private const val DCT_DENOMINATOR = 2.0 * DOWNSCALE_SIZE
     private const val BLUR_TARGET_WIDTH = 256
 
@@ -79,7 +80,15 @@ internal object VisualAlgorithms {
 
         if (count == 0) return 0.0
         val mean = sumVar / count
-        return (sumSqVar / count) - (mean * mean)
+        val rawVar = (sumSqVar / count) - (mean * mean)
+
+        var lumaSum = 0.0
+        for (i in 0 until (w * h)) {
+            lumaSum += downscaled[i].toInt() and PIXEL_MASK
+        }
+        val meanLuma = lumaSum / (w * h)
+        val lumaNorm = (meanLuma / MAX_LUMA).pow(2) + NORM_OFFSET
+        return rawVar / lumaNorm
     }
 
     fun calculateSAD(current: ByteArray, previous: ByteArray): Double {
@@ -153,23 +162,45 @@ internal object VisualAlgorithms {
         val finalH = if (h < 1) 1 else h
 
         val out = ByteArray(targetW * finalH)
-
-        val xRatio = (width shl FIXED_POINT_SHIFT) / targetW
-        val yRatio = (height shl FIXED_POINT_SHIFT) / finalH
-
         val limit = buffer.limit()
+        val stepX = (width.toFloat() / targetW).coerceAtLeast(1.0f)
+        val stepY = (height.toFloat() / finalH).coerceAtLeast(1.0f)
+
         for (y in 0 until finalH) {
-            val srcY = (y * yRatio) shr FIXED_POINT_SHIFT
-            val rowOffset = info.offset + srcY * stride
+            val srcY0 = (y * stepY).toInt().coerceIn(0, height - 1)
+            val srcY1 = ((y + 1) * stepY).toInt().coerceIn(srcY0 + 1, height)
+            val yRange = srcY0 until srcY1
             for (x in 0 until targetW) {
-                val srcX = (x * xRatio) shr FIXED_POINT_SHIFT
-                val offset = rowOffset + srcX
-                if (offset < limit) {
-                    out[y * targetW + x] = buffer.get(offset)
-                }
+                val srcX0 = (x * stepX).toInt().coerceIn(0, width - 1)
+                val srcX1 = ((x + 1) * stepX).toInt().coerceIn(srcX0 + 1, width)
+                out[y * targetW + x] = calculateBoxAverage(buffer, info, stride, srcX0 until srcX1, yRange)
             }
         }
         return DownscaleResult(out, targetW, finalH)
+    }
+
+    private fun calculateBoxAverage(
+        buffer: ByteBuffer,
+        info: MediaCodec.BufferInfo,
+        stride: Int,
+        xRange: IntRange,
+        yRange: IntRange
+    ): Byte {
+        var sum = 0
+        var pixelCount = 0
+        val limit = buffer.limit()
+        for (sy in yRange) {
+            val rowOffset = info.offset + sy * stride
+            for (sx in xRange) {
+                val offset = rowOffset + sx
+                if (offset < limit) {
+                    sum += buffer.get(offset).toInt() and PIXEL_MASK
+                    pixelCount++
+                }
+            }
+        }
+        val avg = if (pixelCount > 0) (sum / pixelCount) else 0
+        return avg.toByte()
     }
 
     data class DownscaleResult(val data: ByteArray, val width: Int, val height: Int)

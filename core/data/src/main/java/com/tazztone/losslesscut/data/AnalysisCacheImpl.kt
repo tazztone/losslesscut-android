@@ -127,10 +127,10 @@ class AnalysisCacheImpl @Inject constructor(
     override fun getFrameAnalysis(
         clip: MediaClip,
         strategy: VisualStrategy,
-        sampleIntervalMs: Long
+        sampleIntervalFrames: Int
     ): List<FrameAnalysis>? = synchronized(lock) {
         val clipHash = getClipIdentityHash(clip)
-        val file = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalMs}_v1.bin")
+        val file = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin")
         if (!file.exists()) return null
 
         try {
@@ -182,13 +182,13 @@ class AnalysisCacheImpl @Inject constructor(
     override fun saveFrameAnalysis(
         clip: MediaClip,
         strategy: VisualStrategy,
-        sampleIntervalMs: Long,
+        sampleIntervalFrames: Int,
         analysis: List<FrameAnalysis>
     ): Unit = synchronized(lock) {
         if (analysis.size > MAX_FRAME_ANALYSIS_SAMPLES) return
         val clipHash = getClipIdentityHash(clip)
-        val targetFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalMs}_v1.bin")
-        val tmpFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalMs}_v1.bin.tmp")
+        val targetFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin")
+        val tmpFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin.tmp")
 
         try {
             DataOutputStream(FileOutputStream(tmpFile)).use { out ->

@@ -6,7 +6,7 @@ public data class VisualDetectionConfig(
     val strategy: VisualStrategy,
     val sensitivityThreshold: Float,
     val minSegmentDurationMs: Long,
-    val sampleIntervalMs: Long = 500L  // 2 FPS equivalent
+    val sampleIntervalFrames: Int = 5  // Step every 5th frame (~166ms at 30fps)
 )
 
 public enum class VisualStrategy {
