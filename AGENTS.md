@@ -2,7 +2,7 @@
 
 ## Build & Verification Commands
 - Run verification: `./scripts/dev-scripts/project-verify.sh` (Executes Detekt, Lint, unit tests, and Kover).
-- Run module test: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>` (Applies `:test` for `:core:domain` JVM module, `:testDebugUnitTest` for Android modules).
+- Run module test: `./scripts/dev-scripts/gradle-test.sh <module> "*"` (Applies `:test` for `:core:domain` JVM module, `:testDebugUnitTest` for Android modules; use wildcard `"*"` to avoid pattern matching errors).
 
 ## Architectural Guardrails
 - **External Storage**: SAF / `ContentResolver` ONLY for user media. `java.io.File` is strictly forbidden for shared storage.

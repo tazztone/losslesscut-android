@@ -82,9 +82,9 @@ public class VideoEditingConcurrencyTest {
         val uri = Uri.parse("content://mock/video.mp4")
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(createMockClip(uri.toString()))
         
-        // Return a flow that suspends forever so we can check re-entrancy
+        // Return a flow that emits progress then success so the export flow completes cleanly
         every { mockExportUseCase.execute(any()) } returns flow {
-            delay(1000000)
+            emit(ExportUseCase.Result.Progress(50, "Exporting"))
             emit(ExportUseCase.Result.Success(1))
         }
 

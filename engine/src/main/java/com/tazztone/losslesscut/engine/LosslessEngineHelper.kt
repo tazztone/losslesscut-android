@@ -41,7 +41,7 @@ internal object LosslessEngineHelper {
             val isAudio = mime.startsWith("audio/")
             if (isVideo) {
                 videoMime = mime
-                fps = LosslessEngineImpl.getVideoFps(format)
+                fps = com.tazztone.losslesscut.engine.muxing.MuxingPipeline.getVideoFps(format)
             } else if (isAudio) {
                 audioMime = mime
                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {

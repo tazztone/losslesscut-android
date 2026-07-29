@@ -87,10 +87,13 @@ public class VideoEditingViewModel @Inject constructor(
     private var currentPlaybackSpeed = 1.0f
     private var isPitchCorrectionEnabled = false
 
-    private var currentClips = listOf<MediaClip>()
-    private var selectedClipIndex = 0
+    public val editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
+        com.tazztone.losslesscut.domain.session.EditingSession(historyLimit = 30)
+
+    private val currentClips get() = editingSession.currentSnapshot.clips
+    private val selectedClipIndex get() = editingSession.currentSnapshot.selectedClipIndex
+    private val selectedSegmentId get() = editingSession.currentSnapshot.selectedSegmentId
     private var currentKeyframes: List<Long> = emptyList()
-    private var selectedSegmentId: UUID? = null
     
     private val historyManager = HistoryManager(limit = 30)
     private val sessionController = SessionController(useCases.sessionUseCase, ioDispatcher)
@@ -158,8 +161,7 @@ public class VideoEditingViewModel @Inject constructor(
                     val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
                     result.fold(
                         onSuccess = { clips ->
-                            currentClips = clips
-                            selectedClipIndex = 0
+                            editingSession.setClips(clips, 0)
                             loadClipDataInternal(selectedClipIndex)
                         },
                         onFailure = { e ->
@@ -203,7 +205,7 @@ public class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (index == selectedClipIndex || index !in currentClips.indices) return@withLock
-                selectedClipIndex = index
+                editingSession.selectClip(index)
                 loadClipDataInternal(selectedClipIndex)
             }
         }
@@ -215,8 +217,8 @@ public class VideoEditingViewModel @Inject constructor(
             result.fold(
                 onSuccess = { newClips ->
                     stateMutex.withLock {
-                        historyManager.save(currentClips)
-                        currentClips = currentClips + newClips
+                        val updated = currentClips + newClips
+                        editingSession.updateClipsList(updated, selectedClipIndex)
                         _isDirty.value = true
                         updateStateInternal()
                     }
@@ -245,17 +247,15 @@ public class VideoEditingViewModel @Inject constructor(
                     ) 
                     return@withLock
                 }
-                historyManager.save(currentClips)
                 val newList = currentClips.toMutableList()
                 newList.removeAt(index)
-                currentClips = newList
-            
-                if (index < selectedClipIndex) {
-                    selectedClipIndex--
-                } else if (selectedClipIndex >= currentClips.size) {
-                    selectedClipIndex = currentClips.size - 1
+                val newIndex = when {
+                    index < selectedClipIndex -> selectedClipIndex - 1
+                    selectedClipIndex >= newList.size -> newList.size - 1
+                    else -> selectedClipIndex
                 }
-            
+                editingSession.updateClipsList(newList, newIndex)
+                _isDirty.value = true
                 loadClipDataInternal(selectedClipIndex)
             }
         }
@@ -264,24 +264,11 @@ public class VideoEditingViewModel @Inject constructor(
     public fun reorderClips(from: Int, to: Int) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                if (from == to || from !in currentClips.indices || to !in currentClips.indices) return@withLock
-                
-                historyManager.save(currentClips)
-                currentClips = useCases.clipManagementUseCase.reorderClips(
-                    currentClips, from, to
-                )
-                
-                // Update selectedIndex
-                if (selectedClipIndex == from) {
-                    selectedClipIndex = to
-                } else if (from < selectedClipIndex && to >= selectedClipIndex) {
-                    selectedClipIndex--
-                } else if (from > selectedClipIndex && to <= selectedClipIndex) {
-                    selectedClipIndex++
+                val success = editingSession.reorderClips(from, to)
+                if (success) {
+                    _isDirty.value = true
+                    updateStateInternal()
                 }
-                
-                _isDirty.value = true
-                updateStateInternal()
             }
         }
     }
@@ -289,7 +276,7 @@ public class VideoEditingViewModel @Inject constructor(
     public fun selectSegment(id: UUID?) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                selectedSegmentId = id
+                editingSession.selectSegment(id)
                 updateStateInternal()
             }
         }
@@ -298,18 +285,11 @@ public class VideoEditingViewModel @Inject constructor(
     public fun splitSegmentAt(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.splitSegment(
-                    currentClip, positionMs
-                )
-                
-                if (updatedClip == null) {
+                val success = editingSession.splitSegmentAt(positionMs)
+                if (!success) {
                     _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split))) 
                     return@withLock
                 }
-
-                historyManager.save(currentClips)
-                currentClips = currentClips.toMutableList().apply { this[selectedClipIndex] = updatedClip }
                 _isDirty.value = true
                 updateStateInternal()
             }
@@ -319,12 +299,8 @@ public class VideoEditingViewModel @Inject constructor(
     public fun markSegmentDiscarded(id: UUID) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.markSegmentDiscarded(
-                    currentClip, id
-                )
-                
-                if (updatedClip == null) {
+                val success = editingSession.toggleSegmentDiscard(id)
+                if (!success) {
                     _uiEvents.send(
                         VideoEditingEvent.ShowToast(
                             UiText.StringResource(R.string.error_cannot_discard_last)
@@ -332,9 +308,6 @@ public class VideoEditingViewModel @Inject constructor(
                     )
                     return@withLock
                 }
-
-                historyManager.save(currentClips)
-                currentClips = currentClips.toMutableList().apply { this[selectedClipIndex] = updatedClip }
                 _isDirty.value = true
                 updateStateInternal()
             }
@@ -344,9 +317,7 @@ public class VideoEditingViewModel @Inject constructor(
     public fun updateSegmentBounds(id: UUID, start: Long, end: Long) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val currentClip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
-                val updatedClip = useCases.clipManagementUseCase.updateSegmentBounds(currentClip, id, start, end)
-                currentClips = currentClips.toMutableList().apply { this[selectedClipIndex] = updatedClip }
+                editingSession.updateSegmentBounds(id, start, end)
                 updateStateInternal()
             }
         }
@@ -355,7 +326,6 @@ public class VideoEditingViewModel @Inject constructor(
     public fun commitSegmentBounds() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                historyManager.save(currentClips)
                 _isDirty.value = true
                 updateStateInternal()
             }
@@ -365,12 +335,8 @@ public class VideoEditingViewModel @Inject constructor(
     public fun undo() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val undone = historyManager.undo(currentClips)
-                if (undone != null) {
-                    currentClips = undone
-                    if (selectedClipIndex >= currentClips.size) {
-                        selectedClipIndex = currentClips.size - 1
-                    }
+                if (editingSession.undo()) {
+                    _isDirty.value = true
                     updateStateInternal()
                     loadClipDataInternal(selectedClipIndex)
                 }
@@ -381,12 +347,8 @@ public class VideoEditingViewModel @Inject constructor(
     public fun redo() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val redone = historyManager.redo(currentClips)
-                if (redone != null) {
-                    currentClips = redone
-                    if (selectedClipIndex >= currentClips.size) {
-                        selectedClipIndex = currentClips.size - 1
-                    }
+                if (editingSession.redo()) {
+                    _isDirty.value = true
                     updateStateInternal()
                     loadClipDataInternal(selectedClipIndex)
                 }
@@ -404,9 +366,7 @@ public class VideoEditingViewModel @Inject constructor(
 
     private fun resetInternal() {
         _uiState.value = VideoEditingUiState.Initial
-        currentClips = emptyList()
-        selectedClipIndex = 0
-        selectedSegmentId = null
+        editingSession.setClips(emptyList(), 0)
         historyManager.clear()
         _isDirty.value = false
         _waveformData.value = null
@@ -422,14 +382,15 @@ public class VideoEditingViewModel @Inject constructor(
     }
 
     private fun updateStateInternal() {
+        val snapshot = editingSession.currentSnapshot
         _uiState.value = VideoEditingStateMapper.mapToState(
             MapStateInput(
-                currentClips = currentClips,
-                selectedClipIndex = selectedClipIndex,
+                currentClips = snapshot.clips,
+                selectedClipIndex = snapshot.selectedClipIndex,
                 currentKeyframes = currentKeyframes,
-                selectedSegmentId = selectedSegmentId,
-                canUndo = historyManager.canUndo,
-                canRedo = historyManager.canRedo,
+                selectedSegmentId = snapshot.selectedSegmentId,
+                canUndo = snapshot.canUndo,
+                canRedo = snapshot.canRedo,
                 isSnapshotInProgress = exportController.isSnapshotInProgress.value,
                 detectionPreviewRanges = _detectionPreviewRanges.value,
                 playbackSpeed = currentPlaybackSpeed,
@@ -554,9 +515,7 @@ public class VideoEditingViewModel @Inject constructor(
                     clip, ranges, minKeepSegmentDurationMs, mode
                 )
                 
-                currentClips = currentClips.toMutableList().apply {
-                    this[selectedClipIndex] = updatedClip
-                }
+                editingSession.applySegments(updatedClip.segments)
                 
                 _detectionPreviewRanges.value = emptyList()
                 _rawSilencePreviewRanges.value = null
@@ -673,8 +632,8 @@ public class VideoEditingViewModel @Inject constructor(
                 }
 
                 stateMutex.withLock {
-                    currentClips = validClips
-                    selectedClipIndex = 0
+                    editingSession.setClips(validClips, 0)
+                    editingSession.markDirty()
                     _isDirty.value = true
                     loadClipDataInternal(selectedClipIndex)
                 }

@@ -55,15 +55,16 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 
 - **`:app`**: Android UI & presentation.
   - `ui/`: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`), `PlayerManager`, `ShortcutHandler`.
-  - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
+  - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `TimelineViewport`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
   - `ui/compose/`: Isolated Compose dialogs and sheets.
-  - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and state stacks.
+  - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and delegating state to `EditingSession`.
 - **`:core:domain`**: Core business domain (Pure JVM).
+  - `session/`: `EditingSession` domain aggregate managing segment boundaries, undo/redo stacks, and dirty state.
   - `model/`: `MediaClip`, `TrimSegment`, `FrameAnalysis`, `VisualDetectionConfig`, `WaveformResult`.
   - `usecase/`: `ExportUseCase`, `SilenceDetectionUseCase`, `SegmentDetectorUseCase`, `ClipManagementUseCase`, `SessionUseCase`, `ExtractSnapshotUseCase`.
   - `engine/` & `repository/`: Domain interfaces (`ILosslessEngine`, `IVideoEditingRepository`, `IMediaFinalizer`, `IVisualSegmentDetector`).
 - **`:engine`**: Native media extraction & muxing engine.
-  - `muxing/`: Pipeline components (`ExtractorSampleCopier`, `MuxerWriter`, `MergeValidator`, `SegmentGapCalculator`, `TrackInspector`, `SampleTimeMapper`).
+  - `muxing/`: Deep pipeline (`MuxingPipeline`, `ExtractorSampleCopier`, `MuxerWriter`, `MergeValidator`, `SegmentGapCalculator`, `TrackInspector`, `SampleTimeMapper`).
   - `VisualAlgorithms.kt` & `VisualSegmentDetectorImpl.kt`: Frame pHash, SAD, and Laplacian variance analysis.
   - `AudioWaveformExtractor.kt` & `AudioDecoderImpl.kt`: Low-level PCM audio decoding and amplitude extraction.
 - **`:core:data`**: Storage, repositories, and preferences.

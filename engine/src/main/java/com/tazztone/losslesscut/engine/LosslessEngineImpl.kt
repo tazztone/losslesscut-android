@@ -2,353 +2,175 @@ package com.tazztone.losslesscut.engine
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.media.MediaCodec
 import android.media.MediaExtractor
-import android.media.MediaFormat
-import android.media.MediaMuxer
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.engine.MediaMetadata
-import com.tazztone.losslesscut.domain.engine.TrackMetadata
-import com.tazztone.losslesscut.domain.engine.IMediaFinalizer
 import com.tazztone.losslesscut.domain.model.MediaClip
-import com.tazztone.losslesscut.engine.muxing.ExtractorSampleCopier
-import com.tazztone.losslesscut.engine.muxing.MediaDataSource
-import com.tazztone.losslesscut.engine.muxing.MergeValidator
-import com.tazztone.losslesscut.engine.muxing.MuxerWriter
-import com.tazztone.losslesscut.engine.muxing.SampleTimeMapper
-import com.tazztone.losslesscut.engine.muxing.SegmentGapCalculator
-import com.tazztone.losslesscut.engine.muxing.SelectedTrackPlan
-import com.tazztone.losslesscut.engine.muxing.TrackInspector
+import com.tazztone.losslesscut.engine.muxing.MuxingCutRequest
+import com.tazztone.losslesscut.engine.muxing.MuxingMergeRequest
+import com.tazztone.losslesscut.engine.muxing.MuxingPipeline
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.currentCoroutineContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class LosslessEngineImpl @Inject constructor(
-    @param:ApplicationContext private val context: Context,
-    private val mediaFinalizer: IMediaFinalizer,
+    @param:ApplicationContext context: Context,
     private val collaborators: EngineCollaborators,
+    private val muxingPipeline: MuxingPipeline,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
     
+    private val appContext: Context = context
     private val dataSource get() = collaborators.dataSource
-    private val inspector get() = collaborators.inspector
-    private val timeMapper get() = collaborators.timeMapper
-    private val mergeValidator get() = collaborators.mergeValidator
 
-    companion object {
+    public companion object {
         private const val TAG = "LosslessEngine"
-        private const val MAX_KEYFRAME_COUNT = 3000
-        private const val MAX_PROBE_SAMPLES = 15000
-        private const val DEFAULT_FPS = 30f
-        private const val SNAPSHOT_QUALITY = 90
-        private const val AUDIO_SAMPLE_RATE_44100 = 44100
         private const val MS_TO_US = 1000L
+        private const val JPEG_QUALITY = 80
+    }
 
-        fun getVideoFps(format: MediaFormat): Float {
-            return if (format.containsKey(MediaFormat.KEY_FRAME_RATE)) {
-                try {
-                    format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
-                } catch (_: Exception) {
-                    try {
-                        format.getFloat(MediaFormat.KEY_FRAME_RATE)
-                    } catch (_: Exception) {
-                        DEFAULT_FPS
-                    }
-                }
-            } else DEFAULT_FPS
+    override suspend fun getMediaMetadata(uriString: String): Result<MediaMetadata> = withContext(ioDispatcher) {
+        val uri = Uri.parse(uriString)
+        val retriever = MediaMetadataRetriever()
+        val extractor = MediaExtractor()
+
+        try {
+            retriever.setDataSource(appContext, uri)
+            dataSource.setExtractorSource(extractor, uriString)
+
+            val basic = LosslessEngineHelper.readBasicMetadata(retriever, uriString)
+            val trackData = LosslessEngineHelper.readTrackMetadata(extractor)
+
+            Result.success(MediaMetadata(
+                durationMs = basic.duration,
+                width = basic.width,
+                height = basic.height,
+                rotation = basic.rotation,
+                videoMime = trackData.videoMime,
+                audioMime = trackData.audioMime,
+                sampleRate = trackData.sampleRate,
+                channelCount = trackData.channelCount,
+                fps = trackData.fps,
+                tracks = trackData.tracks
+            ))
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read metadata for $uriString", e)
+            Result.failure(e)
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: IOException) {
+                Log.w(TAG, "Failed to release retriever", e)
+            }
+            extractor.release()
         }
     }
 
-    override suspend fun getKeyframes(videoUri: String): Result<List<Long>> = withContext(ioDispatcher) {
-        val keyframes = mutableListOf<Long>()
+    override suspend fun getKeyframes(uriString: String): Result<List<Long>> = withContext(ioDispatcher) {
         val extractor = MediaExtractor()
         try {
-            dataSource.setExtractorSource(extractor, videoUri)
-            val vIdx = findVideoTrack(extractor)
-            if (vIdx >= 0) {
-                extractor.selectTrack(vIdx)
-                var count = 0; var totalSamples = 0
-                while (extractor.sampleTime >= 0 && count < MAX_KEYFRAME_COUNT && 
-                    totalSamples < MAX_PROBE_SAMPLES && currentCoroutineContext().isActive) {
-                    if ((extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
-                        keyframes.add(extractor.sampleTime / MS_TO_US); count++
-                    }
-                    totalSamples++
-                    if (!extractor.advance()) break
+            dataSource.setExtractorSource(extractor, uriString)
+            val trackData = LosslessEngineHelper.readTrackMetadata(extractor)
+            val videoTrackIndex = trackData.tracks.firstOrNull { it.isVideo }?.id
+                ?: return@withContext Result.failure(IllegalStateException("No video track found"))
+
+            extractor.selectTrack(videoTrackIndex)
+            val keyframes = mutableListOf<Long>()
+
+            while (true) {
+                val sampleTime = extractor.sampleTime
+                if (sampleTime < 0) break
+
+                val flags = extractor.sampleFlags
+                if ((flags and MediaExtractor.SAMPLE_FLAG_SYNC) != 0) {
+                    keyframes.add(sampleTime / MS_TO_US)
                 }
+                if (!extractor.advance()) break
             }
+
             Result.success(keyframes)
-        } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            Log.e(TAG, "Error probing keyframes", e); Result.failure(e)
-        } finally { extractor.release() }
-    }
-
-    private fun findVideoTrack(extractor: MediaExtractor): Int {
-        for (i in 0 until extractor.trackCount) {
-            val format = extractor.getTrackFormat(i)
-            if (format.getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true) return i
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract keyframes from $uriString", e)
+            Result.failure(e)
+        } finally {
+            extractor.release()
         }
-        return -1
     }
 
-    override suspend fun getMediaMetadata(uri: String): Result<MediaMetadata> = withContext(ioDispatcher) {
-        val retriever = MediaMetadataRetriever()
-        try {
-            dataSource.setRetrieverSource(retriever, uri)
-            val basicMeta = LosslessEngineHelper.readBasicMetadata(retriever, uri)
-            val extractor = MediaExtractor()
-            try {
-                dataSource.setExtractorSource(extractor, uri)
-                if (extractor.trackCount == 0) return@withContext Result.failure(IOException("No tracks"))
-                val trackData = LosslessEngineHelper.readTrackMetadata(extractor)
-                Result.success(MediaMetadata(
-                    basicMeta.duration, basicMeta.width, basicMeta.height, trackData.videoMime,
-                    trackData.audioMime, trackData.sampleRate, trackData.channelCount, 
-                    trackData.fps, basicMeta.rotation, trackData.tracks
-                ))
-            } finally { extractor.release() }
-        } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            Log.e(TAG, "Failed to get metadata for $uri", e); Result.failure(e)
-        } finally { retriever.release() }
-    }
-
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray? = withContext(ioDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
-            dataSource.setRetrieverSource(retriever, uri)
-            val bitmap = retriever.getFrameAtTime(positionMs * MS_TO_US, MediaMetadataRetriever.OPTION_CLOSEST)
-            bitmap?.let {
+            retriever.setDataSource(appContext, Uri.parse(uri))
+            val bitmap = retriever.getFrameAtTime(positionMs * MS_TO_US, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+            if (bitmap != null) {
                 val stream = ByteArrayOutputStream()
-                it.compress(Bitmap.CompressFormat.JPEG, SNAPSHOT_QUALITY, stream); stream.toByteArray()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+                bitmap.recycle()
+                stream.toByteArray()
+            } else {
+                null
             }
-        } catch (e: CancellationException) { throw e } catch (e: Exception) { null } finally {
-            retriever.release()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to capture frame at $positionMs for $uri", e)
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: IOException) {
+                Log.w(TAG, "Failed to release retriever", e)
+            }
         }
     }
 
     override suspend fun executeLosslessCut(
-        inputUri: String, outputUri: String, startMs: Long, endMs: Long,
-        keepAudio: Boolean, keepVideo: Boolean, rotationOverride: Int?, selectedTracks: List<Int>?
+        inputUri: String,
+        outputUri: String,
+        startMs: Long,
+        endMs: Long,
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        rotationOverride: Int?,
+        selectedTracks: List<Int>?
     ): Result<String> = withContext(ioDispatcher) {
-        val outUriParsed = Uri.parse(outputUri)
-        if (endMs <= startMs) return@withContext Result.failure(IllegalArgumentException("endMs <= startMs"))
-        val extractor = MediaExtractor()
-        var muxerWriter: MuxerWriter? = null; var pfd: ParcelFileDescriptor? = null
-        var success = false
-        try {
-            dataSource.setExtractorSource(extractor, inputUri)
-            pfd = context.contentResolver.openFileDescriptor(outUriParsed, "rw") ?: 
-                return@withContext Result.failure(IOException("Failed to open PFD"))
-            muxerWriter = MuxerWriter(MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4))
-            val plan = inspector.inspect(extractor, muxerWriter, keepAudio, keepVideo, selectedTracks)
-            if (plan.trackMap.isEmpty()) return@withContext Result.failure(IOException("No tracks found"))
-            val endUs = if (endMs > 0) {
-                endMs * MS_TO_US
-            } else if (plan.durationUs > 0) {
-                plan.durationUs
-            } else {
-                Long.MAX_VALUE
-            }
-            if (plan.hasVideoTrack && rotationOverride != null) muxerWriter.setOrientationHint(rotationOverride)
-            muxerWriter.start()
-            val copier = ExtractorSampleCopier(extractor, muxerWriter, timeMapper)
-            copier.copy(plan, startMs * MS_TO_US, endUs, ByteBuffer.allocateDirect(plan.bufferSize))
-            if (plan.hasVideoTrack) {
-                mediaFinalizer.finalizeVideo(outputUri)
-            } else {
-                mediaFinalizer.finalizeAudio(outputUri)
-            }
-            success = true
-            Result.success(outputUri)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            muxerWriter?.stopAndRelease(); pfd?.close(); extractor.release()
-            if (!success) {
-                try {
-                    context.contentResolver.delete(outUriParsed, null, null)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete corrupted file $outputUri", e)
-                }
-            }
-        }
+        val request = MuxingCutRequest(
+            inputUri = inputUri,
+            outputUri = outputUri,
+            startMs = startMs,
+            endMs = endMs,
+            keepAudio = keepAudio,
+            keepVideo = keepVideo,
+            rotationOverride = rotationOverride,
+            selectedTracks = selectedTracks
+        )
+        muxingPipeline.executeCut(request)
     }
 
     override suspend fun executeLosslessMerge(
-        outputUri: String, clips: List<MediaClip>, keepAudio: Boolean, keepVideo: Boolean,
-        rotationOverride: Int?, selectedTracks: List<Int>?
+        outputUri: String,
+        clips: List<MediaClip>,
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        rotationOverride: Int?,
+        selectedTracks: List<Int>?
     ): Result<String> = withContext(ioDispatcher) {
-        val outUriParsed = Uri.parse(outputUri)
-        if (clips.isEmpty()) return@withContext Result.failure(IOException("No clips"))
-        var muxerWriter: MuxerWriter? = null; var pfd: ParcelFileDescriptor? = null
-        var success = false
-        try {
-            pfd = context.contentResolver.openFileDescriptor(outUriParsed, "rw") ?: 
-                return@withContext Result.failure(IOException("Failed to open PFD"))
-            muxerWriter = MuxerWriter(MediaMuxer(pfd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4))
-            val init = initializeMuxerForMerge(clips[0], muxerWriter, keepAudio, keepVideo, selectedTracks)
-            if (init.plan.trackMap.isEmpty()) return@withContext Result.failure(IOException("No tracks found"))
-            if (init.plan.hasVideoTrack) muxerWriter.setOrientationHint(rotationOverride ?: clips[0].rotation)
-            muxerWriter.start()
-            val mParams = LosslessEngineHelper.MergeParams(
-                clips, muxerWriter, init, keepAudio, keepVideo, selectedTracks
-            )
-            processClipsForMerge(mParams)
-            if (init.plan.hasVideoTrack) {
-                mediaFinalizer.finalizeVideo(outputUri)
-            } else {
-                mediaFinalizer.finalizeAudio(outputUri)
-            }
-            success = true
-            Result.success(outputUri)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
-        } finally {
-            muxerWriter?.stopAndRelease(); pfd?.close()
-            if (!success) {
-                try {
-                    context.contentResolver.delete(outUriParsed, null, null)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete corrupted file $outputUri", e)
-                }
-            }
-        }
+        val request = MuxingMergeRequest(
+            outputUri = outputUri,
+            clips = clips,
+            keepAudio = keepAudio,
+            keepVideo = keepVideo,
+            rotationOverride = rotationOverride,
+            selectedTracks = selectedTracks
+        )
+        muxingPipeline.executeMerge(request)
     }
-
-    private fun initializeMuxerForMerge(
-        firstClip: MediaClip, mux: MuxerWriter, keepA: Boolean, keepV: Boolean, sel: List<Int>?
-    ): LosslessEngineHelper.MergeInitialPlan {
-        val ex = MediaExtractor()
-        return try {
-            dataSource.setExtractorSource(ex, firstClip.uri)
-            val preTrackInfo = readTracksForInitialPlan(ex)
-            Log.d("LosslessEngineDebug", "BEFORE INSPECT - vMime: ${preTrackInfo.vMime}")
-            val plan = inspector.inspect(ex, mux, keepA, keepV, sel)
-            val trackInfo = readTracksForInitialPlan(ex)
-            Log.d("LosslessEngineDebug", "AFTER INSPECT - vMime: ${trackInfo.vMime}, aMime: ${trackInfo.aMime}")
-            LosslessEngineHelper.MergeInitialPlan(
-                plan, trackInfo.audioRate, trackInfo.videoFps, trackInfo.vMime, trackInfo.aMime
-            )
-        } finally { ex.release() }
-    }
-
-    private fun readTracksForInitialPlan(ex: MediaExtractor): InitialTrackInfo {
-        var audioRate = AUDIO_SAMPLE_RATE_44100; var videoFps = DEFAULT_FPS
-        var vMime: String? = null; var aMime: String? = null
-        Log.d("LosslessEngineDebug", "readTracksForInitialPlan: trackCount=${ex.trackCount}")
-        for (i in 0 until ex.trackCount) {
-            val format = ex.getTrackFormat(i); val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            Log.d("LosslessEngineDebug", "readTracksForInitialPlan: track $i MIME is $mime")
-            if (mime.startsWith("video/") && vMime == null) {
-                vMime = mime; videoFps = getVideoFps(format) 
-            } else if (mime.startsWith("audio/") && aMime == null) {
-                aMime = mime
-                if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                    audioRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                }
-            }
-        }
-        return InitialTrackInfo(audioRate, videoFps, vMime, aMime)
-    }
-
-    private suspend fun processClipsForMerge(params: LosslessEngineHelper.MergeParams) {
-        val init = params.initialPlan
-        val gapUs = SegmentGapCalculator.calculateGapUs(init.audioSampleRate, init.videoFps)
-        var maxBuf = init.plan.bufferSize; var buffer = ByteBuffer.allocateDirect(maxBuf); var offUs = 0L
-        for (clip in params.clips) {
-            currentCoroutineContext().ensureActive()
-            val ex = MediaExtractor()
-            try {
-                dataSource.setExtractorSource(ex, clip.uri)
-                val trackInfo = mapTracksForMerge(ex, params)
-                if (trackInfo.maxInputSize > maxBuf) {
-                    maxBuf = trackInfo.maxInputSize; buffer = ByteBuffer.allocateDirect(maxBuf)
-                }
-                val cp = ExtractorSampleCopier(ex, params.muxerWriter, timeMapper)
-                val cpParams = LosslessEngineHelper.CopySegmentsParams(
-                    clip, cp, trackInfo, buffer, offUs, gapUs, maxBuf
-                )
-                offUs = LosslessEngineHelper.copyClipSegments(cpParams)
-            } finally { ex.release() }
-        }
-    }
-
-    private fun mapTracksForMerge(
-        ex: MediaExtractor, params: LosslessEngineHelper.MergeParams
-    ): LosslessEngineHelper.ClipTrackInfo {
-        val tMap = mutableMapOf<Int, Int>(); val isVMap = mutableMapOf<Int, Boolean>(); var maxSize = 0
-        Log.d("LosslessEngineDebug", "mapTracksForMerge: trackCount=${ex.trackCount}")
-        var videoCount = 0
-        var nonVideoCount = 0
-        for (i in 0 until ex.trackCount) {
-            val format = ex.getTrackFormat(i)
-            if (format.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) {
-                maxSize = maxOf(maxSize, format.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE))
-            }
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            Log.d("LosslessEngineDebug", "mapTracksForMerge: track $i MIME is $mime")
-            val isV = mime.startsWith("video/"); val isA = mime.startsWith("audio/")
-            if (!isTrackSelectedForMerge(i, isV, isA, params)) continue
-            
-            val typeIdx = if (isV) videoCount++ else nonVideoCount++
-            val muxIdx = findAndValidateTrack(isV, isA, mime, typeIdx, params.initialPlan)
-            if (muxIdx != null) {
-                tMap[i] = muxIdx
-                isVMap[i] = isV
-            }
-        }
-        return LosslessEngineHelper.ClipTrackInfo(tMap, isVMap, maxSize)
-    }
-
-    private fun isTrackSelectedForMerge(
-        index: Int,
-        isV: Boolean,
-        isA: Boolean,
-        params: LosslessEngineHelper.MergeParams
-    ): Boolean {
-        val selected = params.selectedTracks
-        if (selected != null) {
-            return selected.contains(index)
-        }
-        return (isV && params.keepVideo) || (isA && params.keepAudio)
-    }
-
-    private fun findAndValidateTrack(
-        isV: Boolean,
-        isA: Boolean,
-        mime: String,
-        typeIdx: Int,
-        initialPlan: LosslessEngineHelper.MergeInitialPlan
-    ): Int? {
-        val muxIdx = LosslessEngineHelper.findMuxerTrack(initialPlan, isV, typeIdx) ?: return null
-        if (isV || isA) {
-            val expMime = if (isV) initialPlan.expectedVideoMime else initialPlan.expectedAudioMime
-            Log.d("LosslessEngineDebug", "mapTracksForMerge: validateCodec mime=$mime, expMime=$expMime")
-            mergeValidator.validateCodec("clip", mime, expMime, if (isV) "video" else "audio")
-        } else {
-            Log.d("LosslessEngineDebug", "mapTracksForMerge: skip validateCodec for metadata track mime=$mime")
-        }
-        return muxIdx
-    }
-
-    private data class InitialTrackInfo(val audioRate: Int, val videoFps: Float, val vMime: String?, val aMime: String?)
 }

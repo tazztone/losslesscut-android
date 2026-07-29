@@ -179,9 +179,15 @@ public class VideoEditingEdgeCaseTest {
         val clip = createMockClip(uri.toString(), 1000L)
         
         coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        coEvery { mockRepo.getKeyframes(any()) } returns listOf(0L, 500L, 1000L)
         
         val waveform = FloatArray(100) { i -> if (i in 2..50) 0.01f else 0.5f }
-        coEvery { mockRepo.getWaveform(any(), any()) } returns WaveformResult(waveform, 0.5f, 1000L)
+        coEvery { mockRepo.getWaveform(any(), any()) } coAnswers {
+            val callback = secondArg<(WaveformResult) -> Unit>()
+            val res = WaveformResult(waveform, 0.5f, 1000L)
+            callback(res)
+            res
+        }
         
         viewModel.initialize(listOf(uri))
         advanceUntilIdle()

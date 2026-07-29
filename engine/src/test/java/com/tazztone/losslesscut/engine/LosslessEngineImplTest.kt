@@ -2,7 +2,6 @@ package com.tazztone.losslesscut.engine
 
 import android.content.ContentResolver
 import android.content.Context
-import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
@@ -38,6 +37,8 @@ class LosslessEngineImplTest {
     private val timeMapper = SampleTimeMapper()
     private val mergeValidator = MergeValidator()
     
+    private val muxingPipeline = mockk<MuxingPipeline>(relaxed = true)
+    
     private lateinit var collaborators: EngineCollaborators
     private lateinit var engine: LosslessEngineImpl
 
@@ -45,7 +46,7 @@ class LosslessEngineImplTest {
     fun setUp() {
         every { context.contentResolver } returns contentResolver
         collaborators = EngineCollaborators(dataSource, inspector, timeMapper, mergeValidator)
-        engine = LosslessEngineImpl(context, mediaFinalizer, collaborators, Dispatchers.Unconfined)
+        engine = LosslessEngineImpl(context, collaborators, muxingPipeline, Dispatchers.Unconfined)
         
         mockkConstructor(MediaExtractor::class)
         mockkConstructor(MediaMuxer::class)
@@ -61,9 +62,14 @@ class LosslessEngineImplTest {
 
     @Test
     fun testGetMediaMetadata() = runBlocking {
-        val uri = "test_uri"
+        val uri = "content://media/external/video/1"
         
-        every { anyConstructed<MediaMetadataRetriever>().extractMetadata(any<Int>()) } returns "1000"
+        val retrieverMeta = LosslessEngineHelper.BasicMeta(1000L, 1920, 1080, 0)
+        mockkObject(LosslessEngineHelper)
+        every { LosslessEngineHelper.readBasicMetadata(any(), any()) } returns retrieverMeta
+        every { LosslessEngineHelper.readTrackMetadata(any()) } returns LosslessEngineHelper.TrackData(
+            "video/avc", "audio/mp4a-latm", 44100, 2, 30f, emptyList()
+        )
         
         every { anyConstructed<MediaExtractor>().trackCount } returns 1
         val format = mockk<MediaFormat>()
@@ -86,39 +92,12 @@ class LosslessEngineImplTest {
     fun testExecuteLosslessCut() = runBlocking {
         val inputUri = "input_uri"
         val outputUri = "output_uri"
-        
-        val mockPfd = mockk<android.os.ParcelFileDescriptor>(relaxed = true)
-        every { contentResolver.openFileDescriptor(any<Uri>(), any<String>()) } returns mockPfd
-        every { mockPfd.fileDescriptor } returns FileDescriptor()
-        
-        val plan = SelectedTrackPlan(
-            trackMap = mapOf(0 to 0),
-            isVideoTrackMap = mapOf(0 to true),
-            bufferSize = 1024,
-            durationUs = 1000000L,
-            hasVideoTrack = true
-        )
-        every { inspector.inspect(any<MediaExtractor>(), any<MuxerWriter>(), any<Boolean>(), any<Boolean>(), any()) } returns plan
-        
-        // Mock MuxerWriter methods to avoid calling real MediaMuxer
-        every { anyConstructed<MuxerWriter>().start() } returns Unit
-        every { anyConstructed<MuxerWriter>().stopAndRelease() } returns Unit
-        every { anyConstructed<MuxerWriter>().addTrack(any<MediaFormat>()) } returns 0
-        every { anyConstructed<MuxerWriter>().writeSampleData(any<Int>(), any<ByteBuffer>(), any<MediaCodec.BufferInfo>()) } returns Unit
 
-        // Mock ExtractorSampleCopier to bypass MediaExtractor loop issues
-        coEvery { 
-            anyConstructed<ExtractorSampleCopier>().copy(any(), any(), any(), any(), any()) 
-        } returns mapOf(0 to 1000000L)
+        coEvery { muxingPipeline.executeCut(any()) } returns Result.success(outputUri)
 
-        // Mock simple extractor calls that happen before copier
-        every { anyConstructed<MediaExtractor>().setDataSource(any<Context>(), any<Uri>(), any()) } returns Unit
-        every { anyConstructed<MediaExtractor>().setDataSource(any<String>()) } returns Unit
-        
         val result = engine.executeLosslessCut(inputUri, outputUri, 0, 1000, true, true, null, null)
         assertTrue(result.isSuccess)
-        verify { anyConstructed<MuxerWriter>().start() }
-        verify { mediaFinalizer.finalizeVideo(outputUri) }
+        coVerify { muxingPipeline.executeCut(any()) }
     }
 
     @Test
@@ -130,40 +109,12 @@ class LosslessEngineImplTest {
             sampleRate = 0, channelCount = 0, fps = 30f, rotation = 0, isAudioOnly = false,
             segments = listOf(TrimSegment(startMs = 0, endMs = 1000))
         )
-        
-        val mockPfd = mockk<android.os.ParcelFileDescriptor>(relaxed = true)
-        every { contentResolver.openFileDescriptor(any<Uri>(), any<String>()) } returns mockPfd
-        
-        val plan = SelectedTrackPlan(
-            trackMap = mapOf(0 to 0),
-            isVideoTrackMap = mapOf(0 to true),
-            bufferSize = 1024,
-            durationUs = 1000000L,
-            hasVideoTrack = true
-        )
-        every { inspector.inspect(any<MediaExtractor>(), any<MuxerWriter>(), any<Boolean>(), any<Boolean>(), any()) } returns plan
-        
-        // Mock MuxerWriter methods
-        every { anyConstructed<MuxerWriter>().start() } returns Unit
-        every { anyConstructed<MuxerWriter>().stopAndRelease() } returns Unit
-        every { anyConstructed<MuxerWriter>().addTrack(any<MediaFormat>()) } returns 0
-        every { anyConstructed<MuxerWriter>().writeSampleData(any<Int>(), any<ByteBuffer>(), any<MediaCodec.BufferInfo>()) } returns Unit
 
-        // Mock ExtractorSampleCopier
-        coEvery { 
-            anyConstructed<ExtractorSampleCopier>().copy(any(), any(), any(), any(), any()) 
-        } returns mapOf(0 to 1000000L)
-
-        every { anyConstructed<MediaExtractor>().trackCount } returns 1
-        val format = mockk<MediaFormat>(relaxed = true)
-        every { anyConstructed<MediaExtractor>().getTrackFormat(any<Int>()) } returns format
-        every { format.getString(any<String>()) } returns "video/avc"
-        every { anyConstructed<MediaExtractor>().setDataSource(any<Context>(), any<Uri>(), any()) } returns Unit
+        coEvery { muxingPipeline.executeMerge(any()) } returns Result.success(outputUri)
 
         val result = engine.executeLosslessMerge(outputUri, listOf(clip), true, true, null, null)
         assertTrue(result.isSuccess)
-        verify { anyConstructed<MuxerWriter>().start() }
-        verify { mediaFinalizer.finalizeVideo(outputUri) }
+        coVerify { muxingPipeline.executeMerge(any()) }
     }
 
     @Test
@@ -175,57 +126,11 @@ class LosslessEngineImplTest {
             sampleRate = 44100, channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false,
             segments = listOf(TrimSegment(startMs = 0, endMs = 1000))
         )
-        
-        val mockPfd = mockk<android.os.ParcelFileDescriptor>(relaxed = true)
-        every { contentResolver.openFileDescriptor(any<Uri>(), any<String>()) } returns mockPfd
-        
-        val plan = SelectedTrackPlan(
-            trackMap = mapOf(0 to 0, 1 to 1, 2 to 2),
-            isVideoTrackMap = mapOf(0 to true, 1 to false, 2 to false),
-            bufferSize = 1024,
-            durationUs = 1000000L,
-            hasVideoTrack = true
-        )
-        every { inspector.inspect(any<MediaExtractor>(), any<MuxerWriter>(), any<Boolean>(), any<Boolean>(), any()) } returns plan
-        
-        // Mock MuxerWriter methods
-        every { anyConstructed<MuxerWriter>().start() } returns Unit
-        every { anyConstructed<MuxerWriter>().stopAndRelease() } returns Unit
-        every { anyConstructed<MuxerWriter>().addTrack(any<MediaFormat>()) } returns 0
-        every { anyConstructed<MuxerWriter>().writeSampleData(any<Int>(), any<ByteBuffer>(), any<MediaCodec.BufferInfo>()) } returns Unit
 
-        // Mock ExtractorSampleCopier
-        coEvery { 
-            anyConstructed<ExtractorSampleCopier>().copy(any(), any(), any(), any(), any()) 
-        } returns mapOf(0 to 1000000L, 1 to 1000000L, 2 to 1000000L)
+        coEvery { muxingPipeline.executeMerge(any()) } returns Result.success(outputUri)
 
-        // The media file has 3 tracks: video, audio, and metadata (application/octet-stream)
-        every { anyConstructed<MediaExtractor>().trackCount } returns 3
-        
-        val videoFormat = mockk<MediaFormat>(relaxed = true)
-        every { videoFormat.getString(MediaFormat.KEY_MIME) } returns "video/avc"
-        
-        val audioFormat = mockk<MediaFormat>(relaxed = true)
-        every { audioFormat.getString(MediaFormat.KEY_MIME) } returns "audio/mp4a-latm"
-        every { audioFormat.containsKey(MediaFormat.KEY_SAMPLE_RATE) } returns true
-        every { audioFormat.getInteger(MediaFormat.KEY_SAMPLE_RATE) } returns 44100
-        
-        val metaFormat = mockk<MediaFormat>(relaxed = true)
-        every { metaFormat.getString(MediaFormat.KEY_MIME) } returns "application/octet-stream"
-
-        every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns videoFormat
-        every { anyConstructed<MediaExtractor>().getTrackFormat(1) } returns audioFormat
-        every { anyConstructed<MediaExtractor>().getTrackFormat(2) } returns metaFormat
-        
-        every { anyConstructed<MediaExtractor>().setDataSource(any<Context>(), any<Uri>(), any()) } returns Unit
-
-        val result = engine.executeLosslessMerge(
-            outputUri, listOf(clip), keepAudio = true, keepVideo = true, 
-            rotationOverride = null, selectedTracks = listOf(0, 1, 2)
-        )
-        
+        val result = engine.executeLosslessMerge(outputUri, listOf(clip), true, true, 90, listOf(0, 1))
         assertTrue(result.isSuccess)
-        verify { anyConstructed<MuxerWriter>().start() }
-        verify { mediaFinalizer.finalizeVideo(outputUri) }
+        coVerify { muxingPipeline.executeMerge(any()) }
     }
 }
