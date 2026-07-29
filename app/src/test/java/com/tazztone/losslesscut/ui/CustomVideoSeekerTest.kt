@@ -46,7 +46,7 @@ class CustomVideoSeekerTest {
         // With width=1000, padding=50, availableWidth=900.
         // x(1000ms) = 50 + (1000 / 10000) * 900 = 50 + 90 = 140
         val downX = 140f
-        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, downX, 90f, 0)
+        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, downX, 20f, 0)
         seeker.onTouchEvent(downEvent)
         assertEquals(CustomVideoSeeker.TouchTarget.HANDLE_LEFT, seeker.currentTouchTarget)
 
@@ -60,7 +60,7 @@ class CustomVideoSeekerTest {
         val onBoundsChanged = mockk<((UUID, Long, Long, Long) -> Unit)>(relaxed = true)
         seeker.onSegmentBoundsChanged = onBoundsChanged
 
-        val moveEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, moveX, 90f, 0)
+        val moveEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, moveX, 20f, 0)
         seeker.onTouchEvent(moveEvent)
 
         // Should have snapped to 2000ms
@@ -75,14 +75,14 @@ class CustomVideoSeekerTest {
         ), null)
 
         // Left handle is at x(2000) = 50 + (2000/10000)*900 = 50 + 180 = 230
-        val downLeft = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 230f, 90f, 0)
+        val downLeft = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 230f, 20f, 0)
         seeker.onTouchEvent(downLeft)
         assertEquals(CustomVideoSeeker.TouchTarget.HANDLE_LEFT, seeker.currentTouchTarget)
         
         seeker.currentTouchTarget = CustomVideoSeeker.TouchTarget.NONE
 
         // Right handle is at x(5000) = 50 + (5000/10000)*900 = 50 + 450 = 500
-        val downRight = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 500f, 90f, 0)
+        val downRight = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 500f, 20f, 0)
         seeker.onTouchEvent(downRight)
         assertEquals(CustomVideoSeeker.TouchTarget.HANDLE_RIGHT, seeker.currentTouchTarget)
     }
@@ -164,7 +164,7 @@ class CustomVideoSeekerTest {
         // View width is 1000. x=1000 is right edge. 
         // EDGE_PAN_THRESHOLD is 100. So anything > 900 triggers it.
         
-        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1000f, 95f, 0)
+        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 1000f, 20f, 0)
         seeker.onTouchEvent(downEvent)
         
         // The touch handler should have started the auto-pan runnable
@@ -205,13 +205,13 @@ class CustomVideoSeekerTest {
         
         // Grab left handle (at 2000ms)
         val leftX = 50f + (2000f/10000f)*900f
-        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, leftX, 90f, 0)
+        val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, leftX, 20f, 0)
         seeker.onTouchEvent(downEvent)
         assertEquals(CustomVideoSeeker.TouchTarget.HANDLE_LEFT, seeker.currentTouchTarget)
 
         // Try to drag left handle past max to 6000ms
         val dragX = 50f + (6000f/10000f)*900f
-        val moveEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, dragX, 90f, 0)
+        val moveEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_MOVE, dragX, 20f, 0)
         seeker.onTouchEvent(moveEvent)
         
         // Should clamp to (5000 - min_duration) -> 4900L
