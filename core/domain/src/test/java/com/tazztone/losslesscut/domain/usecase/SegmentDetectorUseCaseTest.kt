@@ -6,9 +6,13 @@ import com.tazztone.losslesscut.domain.model.VisualStrategy
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -133,5 +137,68 @@ internal class SegmentDetectorUseCaseTest {
 
         assertFalse("onComplete should not be called when cancelled", completed)
         assertFalse(segmentDetector.hasCachedAnalysis())
+    }
+
+    @Test
+    internal fun testSupersededDetection_cannotPublishOldResult() = runTest(testDispatcher) {
+        val firstStarted = CompletableDeferred<Unit>()
+        val releaseFirst = CompletableDeferred<Unit>()
+        val firstUri = "content://mock/first.mp4"
+        val secondUri = "content://mock/second.mp4"
+        val config = VisualDetectionConfig(
+            strategy = VisualStrategy.BLACK_FRAMES,
+            sensitivityThreshold = 0.1f,
+            sampleIntervalMs = 1000L,
+            minSegmentDurationMs = 100L
+        )
+
+        coEvery {
+            visualDetector.analyze(
+                uri = any(),
+                sampleIntervalMs = any(),
+                strategy = any(),
+                onProgress = any()
+            )
+        } coAnswers {
+            if (firstArg<String>() == firstUri) {
+                firstStarted.complete(Unit)
+                withContext(NonCancellable) {
+                    releaseFirst.await()
+                }
+            }
+            emptyList()
+        }
+
+        var firstCompleted = false
+        var secondCompleted = false
+        segmentDetector.detectVisual(
+            scope = this,
+            uri = firstUri,
+            config = config,
+            listener = object : VisualDetectionListener {
+                override fun onComplete(ranges: List<LongRange>) {
+                    firstCompleted = true
+                }
+            }
+        )
+        runCurrent()
+        assertTrue(firstStarted.isCompleted)
+
+        segmentDetector.detectVisual(
+            scope = this,
+            uri = secondUri,
+            config = config,
+            listener = object : VisualDetectionListener {
+                override fun onComplete(ranges: List<LongRange>) {
+                    secondCompleted = true
+                }
+            }
+        )
+        advanceUntilIdle()
+        releaseFirst.complete(Unit)
+        advanceUntilIdle()
+
+        assertFalse(firstCompleted)
+        assertTrue(secondCompleted)
     }
 }

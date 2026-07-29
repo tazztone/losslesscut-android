@@ -517,7 +517,9 @@ public class VideoEditingViewModel @Inject constructor(
 
     public fun clearSilencePreview() {
         waveformController.clearSilencePreview(viewModelScope) {
-            stateMutex.withLock { updateStateInternal() }
+            viewModelScope.launch {
+                stateMutex.withLock { updateStateInternal() }
+            }
         }
     }
 
