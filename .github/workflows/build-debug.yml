@@ -1,5 +1,5 @@
 
-name: Development Build (Debug APK)
+name: Manual Release Build
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       release_name:
         description: 'Release Title'
         required: false
-        default: 'Debug Build'
+        default: 'Manual Release'
 
 permissions:
   contents: write
@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-debug:
-    name: Development Build (Debug APK)
+  build-release:
+    name: Build & Publish Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -40,50 +40,70 @@ jobs:
       - name: Run Detekt
         run: ./gradlew detekt --no-daemon
 
+      - name: Prepare Keystore
+        id: decode_keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::Missing ANDROID_KEYSTORE_BASE64 secret!"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > keystore.jks
+
       - name: Determine Build Metadata
         id: meta
         run: |
           VERSION_CODE=$(git rev-list --count HEAD)
           TIMESTAMP=$(date +'%Y-%m-%d %H:%M')
           DATE_SUFFIX=$(date +'%Y%m%d-%H%M%S')
-          SHORT_SHA=$(git rev-parse --short HEAD)
           echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
           echo "versionName=$DATE_SUFFIX" >> $GITHUB_OUTPUT
           echo "timestamp=$TIMESTAMP" >> $GITHUB_OUTPUT
           echo "date_suffix=$DATE_SUFFIX" >> $GITHUB_OUTPUT
 
-      - name: Development Build (Debug APK)
-        run: ./gradlew assembleDebug -PversionCode=${{ steps.meta.outputs.versionCode }} -PversionName=${{ steps.meta.outputs.versionName }} --no-daemon
+      - name: Build Release APK
+        run: |
+          ./gradlew assembleRelease \
+            -PversionCode=${{ steps.meta.outputs.versionCode }} \
+            -PversionName=${{ steps.meta.outputs.versionName }} \
+            -PstoreFile=../keystore.jks \
+            -PstorePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
+            -PkeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
+            -PkeyPassword=${{ secrets.ANDROID_KEY_PASSWORD }} \
+            --no-daemon
 
       - name: Prepare APK for Artifacts
         id: prepare_apk
         run: |
-          SRC=app/build/outputs/apk/debug/app-debug.apk
+          SRC=app/build/outputs/apk/release/app-release.apk
           if [ ! -f "$SRC" ]; then
             echo "::error::APK not found at $SRC"
             exit 1
           fi
-          APK_NAME="lossless-cut-debug-${{ steps.meta.outputs.versionName }}.apk"
-          DST="app/build/outputs/apk/debug/$APK_NAME"
+          APK_NAME="lossless-cut-release-${{ steps.meta.outputs.versionName }}.apk"
+          DST="app/build/outputs/apk/release/$APK_NAME"
           mv "$SRC" "$DST"
           echo "apk_path=$DST" >> $GITHUB_OUTPUT
           echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
 
-      - name: Upload Debug APK to Artifacts
+      - name: Upload Release APK to Artifacts
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: ${{ steps.prepare_apk.outputs.apk_name }}
           path: ${{ steps.prepare_apk.outputs.apk_path }}
           if-no-files-found: error
 
-      - name: Upload Debug APK to Release
+      - name: Create GitHub Release & Upload APK
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
-          tag_name: debug-build-${{ steps.meta.outputs.date_suffix }}
+          tag_name: v${{ steps.meta.outputs.date_suffix }}
           name: "${{ github.event.inputs.release_name }} v${{ steps.meta.outputs.versionCode }} (${{ steps.meta.outputs.timestamp }})"
           files: ${{ steps.prepare_apk.outputs.apk_path }}
-          prerelease: true
-          make_latest: false
+          prerelease: false
+          make_latest: true
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
