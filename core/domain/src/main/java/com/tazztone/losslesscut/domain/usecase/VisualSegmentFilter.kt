@@ -1,7 +1,6 @@
 package com.tazztone.losslesscut.domain.usecase
 
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
-import com.tazztone.losslesscut.domain.model.TimeRangeMs
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 
 public object VisualSegmentFilter {
@@ -12,11 +11,11 @@ public object VisualSegmentFilter {
         strategy: VisualStrategy,
         threshold: Float,
         minSegmentMs: Long
-    ): List<TimeRangeMs> {
+    ): List<LongRange> {
         if (frames.isEmpty()) return emptyList()
 
         // Analysis results
-        val resultRanges = mutableListOf<TimeRangeMs>()
+        val resultRanges = mutableListOf<LongRange>()
         var currentRangeStart: Long? = null
         var currentRangeEnd: Long? = null
 
@@ -44,7 +43,7 @@ public object VisualSegmentFilter {
         // We use minSegmentMs or a fixed fallback if minSegmentMs is 0.
         val displayPadding = if (minSegmentMs > 0) minSegmentMs else MIN_VISIBLE_STAMP_DURATION_MS
         
-        return resultRanges.map { range ->
+        val expandedRanges = resultRanges.map { range ->
             if (range.first == range.last) {
                 // Expand slightly so it's a visible rect, but don't exceed video bounds (implicit)
                 val start = (range.first - displayPadding / 2).coerceAtLeast(0)
@@ -53,7 +52,32 @@ public object VisualSegmentFilter {
             } else {
                 range
             }
-        }.filter { (it.last - it.first) >= minSegmentMs }
+        }
+
+        val filteredRanges = expandedRanges.filter { (it.last - it.first) >= minSegmentMs }
+
+        return mergeOverlappingRanges(filteredRanges)
+    }
+
+    private fun mergeOverlappingRanges(ranges: List<LongRange>): List<LongRange> {
+        if (ranges.isEmpty()) return emptyList()
+        val sorted = ranges.sortedBy { it.first }
+        val merged = mutableListOf<LongRange>()
+        var currentStart = sorted[0].first
+        var currentEnd = sorted[0].last
+
+        for (i in 1 until sorted.size) {
+            val range = sorted[i]
+            if (range.first <= currentEnd) {
+                currentEnd = maxOf(currentEnd, range.last)
+            } else {
+                merged.add(currentStart..currentEnd)
+                currentStart = range.first
+                currentEnd = range.last
+            }
+        }
+        merged.add(currentStart..currentEnd)
+        return merged
     }
 
     private fun isMatch(frame: FrameAnalysis, strategy: VisualStrategy, threshold: Float): Boolean {

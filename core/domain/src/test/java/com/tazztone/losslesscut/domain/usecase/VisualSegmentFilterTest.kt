@@ -331,4 +331,23 @@ public class VisualSegmentFilterTest {
         // Expected duration is exactly 101: start should be 0, end should be 101
         assertEquals(0L..101L, result[0])
     }
+
+    @Test
+    public fun `filter merges overlapping expanded ranges`() {
+        val frames = listOf(
+            FrameAnalysis(1000, 100.0, 1000.0, null, 1.0),
+            FrameAnalysis(1200, 100.0, 1000.0, null, 10.0),
+            FrameAnalysis(1400, 100.0, 1000.0, null, 1.0)
+        )
+
+        val result = VisualSegmentFilter.filter(
+            frames = frames,
+            strategy = VisualStrategy.FREEZE_FRAME,
+            threshold = 2f,
+            minSegmentMs = 1000L
+        )
+
+        assertEquals(1, result.size)
+        assertEquals(500L..1900L, result[0])
+    }
 }
