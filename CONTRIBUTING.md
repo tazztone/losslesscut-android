@@ -14,8 +14,8 @@ Thank you for your interest in contributing! This guide outlines local environme
 ### Building the App
 ```bash
 # Clone the repository
-git clone https://github.com/tazztone/lossless-video-cut.git
-cd lossless-video-cut
+git clone https://github.com/tazztone/losslesscut-android.git
+cd losslesscut-android
 
 # Build the debug APK
 ./gradlew assembleDebug

@@ -61,7 +61,7 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 ### Development
 ```bash
 # Clone the repo
-git clone https://github.com/tazztone/lossless-video-cut.git
+git clone https://github.com/tazztone/losslesscut-android.git
 
 # Generate icons (Consolidated tool)
 java scripts/dev-scripts/asset-generate-icons.java
@@ -73,7 +73,7 @@ java scripts/dev-scripts/asset-generate-icons.java
 ### Downloads
 
 Prebuilt APK and AAB artifacts are published with tagged releases on
-[GitHub Releases](https://github.com/tazztone/lossless-video-cut/releases/latest).
+[GitHub Releases](https://github.com/tazztone/losslesscut-android/releases/latest).
 
 ## 🤝 Contributing
 
