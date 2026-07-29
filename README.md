@@ -92,7 +92,7 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 - [x] **Smart Cut (v2.0)**: Integrated advanced algorithm-driven visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
 - [ ] ~~**Task Orchestration**~~ (Shelved: Background orchestration not required for near-instant exports)
 - [ ] **Advanced Tags**: Title, artist, and creation date editing.
-- [ ] **Architectural Enforcement**: Implement Konsist testing to safeguard module boundaries in the CI pipeline.
+- [x] **Architectural Enforcement**: Implemented Konsist testing to safeguard module boundaries in the CI pipeline.
 - [x] **Domain Purification**: Extracted standard JVM domain module for maximum portability and testability.
 - [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
 - [x] **Remux Utility**: Instant container switching.

@@ -32,6 +32,41 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `app module production code does not import engine module classes directly`() {
+        Konsist.scopeFromModule(":app")
+            .files
+            .filter { it.path.contains("/src/main/") }
+            .assertTrue { file ->
+                file.imports.none {
+                    it.name.startsWith("com.tazztone.losslesscut.engine.")
+                }
+            }
+    }
+
+    @Test
+    fun `domain and app main modules do not import java io File`() {
+        (Konsist.scopeFromModule(":core:domain").files +
+         Konsist.scopeFromModule(":app").files.filter { it.path.contains("/src/main/") })
+            .assertTrue { file ->
+                file.imports.none {
+                    it.name == "java.io.File"
+                }
+            }
+    }
+
+    @Test
+    fun `custom views do not import Compose`() {
+        Konsist.scopeFromModule(":app")
+            .files
+            .filter { it.path.contains("/customviews/") }
+            .assertTrue { file ->
+                file.imports.none {
+                    it.name.startsWith("androidx.compose.")
+                }
+            }
+    }
+
+    @Test
     fun `engine module does not import data layer utilities`() {
         Konsist.scopeFromModule(":engine")
             .files

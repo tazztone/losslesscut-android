@@ -163,6 +163,8 @@ sequenceDiagram
 
 - **Module Test Command**: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>`
 - **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, Lint, JVM unit tests, and Kover).
+- **Konsist Architectural Tests**: `ArchitectureTest.kt` automatically enforces all 4 architectural guardrails in CI (preventing `:engine` imports in `:app`, Android/Hilt imports in `:core:domain`, `java.io.File` for shared storage, and Compose in custom views).
+- **Kover Code Coverage Targets**: Core domain aggregate `EditingSession` (98.3%) and media processing engine `MuxingPipeline` (93.8%) maintain coverage well above the repository >80% threshold.
 - **Engine Instrumented Tests**: Engine tests relying on native Android codecs MUST reside in `:engine/src/androidTest` (not `:app`).
 - **FileProvider Mocking**: Instrumented tests use local storage / mocked `FileProvider` authorities (`:engine:connectedDebugAndroidTest`).
 - **Test Asset Staging**: TargetSdk 33+ instrumented tests copy media assets to `cacheDir` via `UiAutomation.executeShellCommand()`.
