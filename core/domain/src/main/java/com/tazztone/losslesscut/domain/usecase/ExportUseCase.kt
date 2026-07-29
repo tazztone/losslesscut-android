@@ -37,6 +37,8 @@ public class ExportUseCase @Inject constructor(
             } else {
                 cutSegments(params).collect { emit(it) }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             emit(Result.Failure(e.message ?: "Unknown export error"))
         }

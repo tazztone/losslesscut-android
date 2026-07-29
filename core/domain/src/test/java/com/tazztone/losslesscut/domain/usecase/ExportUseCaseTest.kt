@@ -190,4 +190,22 @@ internal class ExportUseCaseTest {
         assertTrue(results.any { it is ExportUseCase.Result.Failure })
         assertTrue((results.last() as ExportUseCase.Result.Failure).error.contains("Failed to create output file"))
     }
+
+    @Test(expected = kotlinx.coroutines.CancellationException::class)
+    internal fun `execute rethrows CancellationException when flow throws CancellationException`() = runTest {
+        val clip = createDummyClip(segments = listOf(TrimSegment(startMs = 0, endMs = 500)))
+        val params = ExportUseCase.Params(
+            clips = listOf(clip),
+            selectedClipIndex = 0,
+            isLossless = true,
+            keepAudio = true,
+            keepVideo = true,
+            rotationOverride = null,
+            mergeSegments = false
+        )
+
+        coEvery { repository.createMediaOutputUri(any(), any()) } throws kotlinx.coroutines.CancellationException("Job cancelled")
+
+        useCase.execute(params).toList()
+    }
 }

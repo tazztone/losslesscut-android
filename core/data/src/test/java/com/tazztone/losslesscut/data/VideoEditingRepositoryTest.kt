@@ -34,11 +34,13 @@ class VideoEditingRepositoryTest {
 
     @Before
     fun setUp() {
+        val analysisCache = AnalysisCacheImpl(context)
         repository = VideoEditingRepositoryImpl(
             context,
             engine,
             storageUtils,
             waveformExtractor,
+            analysisCache,
             ioDispatcher
         )
     }

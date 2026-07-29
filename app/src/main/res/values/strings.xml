@@ -198,4 +198,19 @@
     <string name="short_in">In</string>
     <string name="short_out">Out</string>
     <string name="redo">Redo</string>
+
+    <string name="reset_segments">Reset segments</string>
+    <string name="split_here">Split here</string>
+    <string name="segment_actions">Segment actions</string>
+    <string name="reset_segments_confirm_title">Reset segments?</string>
+    <string name="reset_segments_confirm_message">Are you sure you want to reset all cuts and restore a single segment for this clip?</string>
+    <string name="category_cache">Analysis Cache</string>
+    <string name="setting_cache_capacity">Cache Capacity</string>
+    <string name="setting_cache_capacity_desc">Maximum disk space used for persistent waveform and visual analysis data.</string>
+    <string name="setting_cache_retention">Cache Retention</string>
+    <string name="setting_cache_retention_desc">Maximum days to retain unused analysis cache files.</string>
+    <string name="setting_cache_usage">Current Cache Usage</string>
+    <string name="clear_analysis_cache">Clear Analysis Cache</string>
+    <string name="clear_cache_confirm_title">Clear Analysis Cache?</string>
+    <string name="clear_cache_confirm_message">Are you sure you want to clear all persisted analysis cache files? Active editor data will remain unchanged.</string>
 </resources>

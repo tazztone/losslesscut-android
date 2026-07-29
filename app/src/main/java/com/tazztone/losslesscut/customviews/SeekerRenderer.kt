@@ -27,7 +27,8 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         private const val VISUAL_KEEP_PREVIEW_COLOR = 0x884CAF50.toInt() // Soft green for Keep mode
         private const val PLAYHEAD_STROKE_WIDTH = 5f
         private const val KEYFRAME_STROKE_WIDTH = 2f
-        private const val SELECTED_BORDER_WIDTH = 8f
+        private const val SELECTED_BORDER_WIDTH = 12f
+        private const val HIGHLIGHTED_HANDLE_STROKE_WIDTH = 14f
         private const val HANDLE_STROKE_WIDTH = 10f
         private const val ZOOM_HINT_TEXT_SIZE = 64f
         private const val ZOOM_HINT_SHADOW_RADIUS = 4f
@@ -120,14 +121,25 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
     val keepSegmentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     val selectedBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = Color.CYAN
         style = Paint.Style.STROKE
         strokeWidth = SELECTED_BORDER_WIDTH
+    }
+
+    val selectedOverlayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(0x44, 0, 255, 255)
+        style = Paint.Style.FILL
     }
 
     val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         strokeWidth = HANDLE_STROKE_WIDTH
+        strokeCap = Paint.Cap.ROUND
+    }
+
+    val highlightedHandlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.CYAN
+        strokeWidth = HIGHLIGHTED_HANDLE_STROKE_WIDTH
         strokeCap = Paint.Cap.ROUND
     }
 
@@ -191,6 +203,9 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         thresholdMaskPaint.color = Color.argb(0x66, r, g, b)
         droppedSilencePaint.color = Color.argb(0x88, r, g, b)
         bridgedNoisePaint.color = Color.argb(0x88, r, g, b)
+        selectedBorderPaint.color = color
+        selectedOverlayPaint.color = Color.argb(0x44, r, g, b)
+        highlightedHandlePaint.color = color
     }
 
     internal val waveformCache = WaveformCache()
@@ -366,21 +381,29 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
             if (segment.action == SegmentAction.DISCARD) continue
             val startX = seeker.timeToX(segment.startMs)
             val endX = seeker.timeToX(segment.endMs)
+            val isSelected = segment.id == seeker.selectedSegmentId
             segmentRect.set(startX, 0f, endX, seeker.height.toFloat())
             keepSegmentPaint.color = keepColors[keepSegmentIndex % keepColors.size]
             canvas.drawRect(segmentRect, keepSegmentPaint)
+            if (isSelected) {
+                canvas.drawRect(segmentRect, selectedOverlayPaint)
+            }
             keepSegmentIndex++
 
-            canvas.drawLine(startX, 0f, startX, seeker.height.toFloat(), handlePaint)
+            val activeHandlePaint = if (isSelected) highlightedHandlePaint else handlePaint
+
+            canvas.drawLine(startX, 0f, startX, seeker.height.toFloat(), activeHandlePaint)
             val circleY = seeker.height.toFloat() - HANDLE_CIRCLE_OFFSET_Y
-            canvas.drawCircle(startX, circleY, HANDLE_CIRCLE_RADIUS, handlePaint)
+            canvas.drawCircle(startX, circleY, HANDLE_CIRCLE_RADIUS, activeHandlePaint)
             if (seeker.showHandleHint) drawHandleArrow(canvas, startX, circleY, true)
             
-            canvas.drawLine(endX, 0f, endX, seeker.height.toFloat(), handlePaint)
-            canvas.drawCircle(endX, circleY, HANDLE_CIRCLE_RADIUS, handlePaint)
+            canvas.drawLine(endX, 0f, endX, seeker.height.toFloat(), activeHandlePaint)
+            canvas.drawCircle(endX, circleY, HANDLE_CIRCLE_RADIUS, activeHandlePaint)
             if (seeker.showHandleHint) drawHandleArrow(canvas, endX, circleY, false)
             
-            if (segment.id == seeker.selectedSegmentId) canvas.drawRect(segmentRect, selectedBorderPaint)
+            if (isSelected) {
+                canvas.drawRect(segmentRect, selectedBorderPaint)
+            }
         }
     }
 

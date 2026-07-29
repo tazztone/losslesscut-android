@@ -253,4 +253,49 @@ class SeekerTouchHandlerTest {
         assertTrue(boundsChangedCalled)
         assertEquals(6000L, capturedEndMs) // Snapped to 6000L
     }
+
+    @Test
+    fun `longPressOnKeptSegment selectsSegmentAndFiresCallback`() {
+        val segmentId = UUID.randomUUID()
+        seeker.setSegments(listOf(
+            TrimSegment(segmentId, 2000L, 5000L, SegmentAction.KEEP)
+        ), null)
+
+        var longPressCalled = false
+        var capturedSegmentId: UUID? = null
+        var capturedTimeMs = -1L
+        seeker.onSegmentLongPress = { segment, timeMs ->
+            longPressCalled = true
+            capturedSegmentId = segment.id
+            capturedTimeMs = timeMs
+        }
+
+        // Long press at x(3000) = 50 + (3000/10000)*900 = 320
+        touchHandler.onLongPress(320f, 50f)
+
+        assertTrue(longPressCalled)
+        assertEquals(segmentId, capturedSegmentId)
+        assertEquals(3000L, capturedTimeMs)
+        assertEquals(segmentId, seeker.selectedSegmentId)
+    }
+
+    @Test
+    fun `longPressDuringHandleDrag doesNotTriggerCallback`() {
+        val segmentId = UUID.randomUUID()
+        seeker.setSegments(listOf(
+            TrimSegment(segmentId, 2000L, 5000L, SegmentAction.KEEP)
+        ), null)
+
+        var longPressCalled = false
+        seeker.onSegmentLongPress = { _, _ ->
+            longPressCalled = true
+        }
+
+        // Set touch target to handle drag
+        seeker.currentTouchTarget = CustomVideoSeeker.TouchTarget.HANDLE_LEFT
+
+        touchHandler.onLongPress(320f, 50f)
+
+        assertFalse(longPressCalled)
+    }
 }

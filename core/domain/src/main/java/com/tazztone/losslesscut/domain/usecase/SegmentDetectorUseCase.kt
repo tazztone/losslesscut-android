@@ -1,14 +1,16 @@
 package com.tazztone.losslesscut.domain.usecase
 
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
+import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
-import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -21,6 +23,7 @@ public interface VisualDetectionListener {
 @Singleton
 public class SegmentDetectorUseCase @Inject constructor(
     private val visualSegmentDetector: IVisualSegmentDetector,
+    private val analysisCache: IAnalysisCache? = null,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private var visualJob: Job? = null
@@ -40,13 +43,14 @@ public class SegmentDetectorUseCase @Inject constructor(
         scope: CoroutineScope,
         uri: String,
         config: VisualDetectionConfig,
-        listener: VisualDetectionListener
+        listener: VisualDetectionListener,
+        clip: MediaClip? = null
     ) {
         cancelVisual()
         val requestId = requestGeneration.incrementAndGet()
 
         if (hasCachedAnalysisFor(uri, config)) {
-            // Cache hit, fast-path filter
+            // Memory cache hit, fast-path filter
             visualJob = scope.launch(ioDispatcher) {
                 val ranges = VisualSegmentFilter.filter(
                     frames = cachedAnalysis!!,
@@ -60,33 +64,64 @@ public class SegmentDetectorUseCase @Inject constructor(
         }
 
         visualJob = scope.launch(ioDispatcher) {
-            try {
+            performVisualAnalysis(requestId, uri, config, listener, clip)
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun performVisualAnalysis(
+        requestId: Long,
+        uri: String,
+        config: VisualDetectionConfig,
+        listener: VisualDetectionListener,
+        clip: MediaClip?
+    ) {
+        try {
+            val targetClip = clip ?: MediaClip(
+                uri = uri, fileName = "", durationMs = 0L, width = 0, height = 0,
+                videoMime = null, audioMime = null, sampleRate = 0, channelCount = 0,
+                fps = 0f, rotation = 0, isAudioOnly = false
+            )
+            val persistentAnalysis = analysisCache?.getFrameAnalysis(
+                targetClip, config.strategy, config.sampleIntervalMs
+            )
+
+            val analysis = if (persistentAnalysis != null) {
+                persistentAnalysis
+            } else {
                 notifyIfCurrent(requestId) { listener.onProgress(null) }
-                val analysis = visualSegmentDetector.analyze(
-                    uri = uri, 
+                val newAnalysis = visualSegmentDetector.analyze(
+                    uri = uri,
                     sampleIntervalMs = config.sampleIntervalMs,
                     strategy = config.strategy
                 ) { processed, total ->
                     notifyIfCurrent(requestId) { listener.onProgress(processed to total) }
                 }
-                cachedAnalysis = analysis
-                cachedIntervalMs = config.sampleIntervalMs
-                cachedUri = uri
-                cachedStrategy = config.strategy
-
-                val ranges = VisualSegmentFilter.filter(
-                    frames = analysis,
-                    strategy = config.strategy,
-                    threshold = config.sensitivityThreshold,
-                    minSegmentMs = config.minSegmentDurationMs
+                analysisCache?.saveFrameAnalysis(
+                    targetClip, config.strategy, config.sampleIntervalMs, newAnalysis
                 )
-                notifyIfCurrent(requestId) { listener.onComplete(ranges) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                notifyIfCurrent(requestId) { listener.onError(e) }
-            } finally {
-                notifyIfCurrent(requestId) { listener.onProgress(null) }
+                newAnalysis
+            }
+
+            cachedAnalysis = analysis
+            cachedIntervalMs = config.sampleIntervalMs
+            cachedUri = uri
+            cachedStrategy = config.strategy
+
+            val ranges = VisualSegmentFilter.filter(
+                frames = analysis,
+                strategy = config.strategy,
+                threshold = config.sensitivityThreshold,
+                minSegmentMs = config.minSegmentDurationMs
+            )
+            notifyIfCurrent(requestId) { listener.onComplete(ranges) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            notifyIfCurrent(requestId) { listener.onError(e) }
+        } finally {
+            if (requestGeneration.get() == requestId) {
+                visualJob = null
             }
         }
     }

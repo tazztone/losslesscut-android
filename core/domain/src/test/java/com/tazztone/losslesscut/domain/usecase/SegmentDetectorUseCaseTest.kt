@@ -28,8 +28,8 @@ internal class SegmentDetectorUseCaseTest {
     @Before
     internal fun setUp() {
         segmentDetector = SegmentDetectorUseCase(
-            visualDetector,
-            testDispatcher
+            visualSegmentDetector = visualDetector,
+            ioDispatcher = testDispatcher
         )
     }
 

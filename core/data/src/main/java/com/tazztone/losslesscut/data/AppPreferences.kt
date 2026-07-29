@@ -12,17 +12,21 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
+
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "lossless_cut_prefs")
 
 @Singleton
 class AppPreferences @Inject constructor(
-    @param:ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context,
+    private val analysisCache: IAnalysisCache? = null
 ) {
 
     private object PreferencesKeys {
@@ -33,6 +37,8 @@ class AppPreferences @Inject constructor(
         val CUSTOM_OUTPUT_URI = stringPreferencesKey("custom_output_uri")
         val AUTO_EXTRACT_WAVEFORMS = booleanPreferencesKey("auto_extract_waveforms")
         val DEFAULT_VISUAL_SAMPLE_INTERVAL_MS = longPreferencesKey("default_visual_sample_interval_ms")
+        val CACHE_CAPACITY_MB = intPreferencesKey("cache_capacity_mb")
+        val CACHE_RETENTION_DAYS = intPreferencesKey("cache_retention_days")
     }
 
     private val sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
@@ -170,15 +176,75 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun setDefaultVisualSampleIntervalMs(intervalMs: Long) {
-        require(intervalMs in MIN_SAMPLE_INTERVAL_MS..MAX_SAMPLE_INTERVAL_MS) { "Sample interval must be valid" }
+        require(intervalMs in MIN_SAMPLE_INTERVAL_MS..MAX_SAMPLE_INTERVAL_MS) {
+            "Sample interval must be valid"
+        }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DEFAULT_VISUAL_SAMPLE_INTERVAL_MS] = intervalMs
         }
     }
 
+    val cacheCapacityMBFlow: Flow<Int> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.CACHE_CAPACITY_MB] ?: DEFAULT_CACHE_CAPACITY_MB
+        }
+
+    val cacheRetentionDaysFlow: Flow<Int> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.CACHE_RETENTION_DAYS] ?: DEFAULT_CACHE_RETENTION_DAYS
+        }
+
+    suspend fun setCacheCapacityMB(capacityMB: Int) {
+        require(capacityMB in MIN_CACHE_CAPACITY_MB..MAX_CACHE_CAPACITY_MB) {
+            "Cache capacity must be between $MIN_CACHE_CAPACITY_MB and $MAX_CACHE_CAPACITY_MB MiB"
+        }
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CACHE_CAPACITY_MB] = capacityMB
+        }
+        analysisCache?.updateCachePolicy(capacityMB * BYTES_PER_MIB, cacheRetentionDaysFlow.first())
+    }
+
+    suspend fun setCacheRetentionDays(days: Int) {
+        require(days in MIN_CACHE_RETENTION_DAYS..MAX_CACHE_RETENTION_DAYS) {
+            "Cache retention must be between $MIN_CACHE_RETENTION_DAYS and $MAX_CACHE_RETENTION_DAYS days"
+        }
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.CACHE_RETENTION_DAYS] = days
+        }
+        analysisCache?.updateCachePolicy(cacheCapacityMBFlow.first() * BYTES_PER_MIB, days)
+    }
+
+    suspend fun applyAnalysisCachePolicy() {
+        analysisCache?.updateCachePolicy(
+            cacheCapacityMBFlow.first() * BYTES_PER_MIB,
+            cacheRetentionDaysFlow.first()
+        )
+    }
+
     companion object {
+        private const val BYTES_PER_MIB = 1024L * 1024L
         const val DEFAULT_SAMPLE_INTERVAL_MS = 1000L
         const val MIN_SAMPLE_INTERVAL_MS = 100L
         const val MAX_SAMPLE_INTERVAL_MS = 5000L
+        const val DEFAULT_CACHE_CAPACITY_MB = 250
+        const val MIN_CACHE_CAPACITY_MB = 50
+        const val MAX_CACHE_CAPACITY_MB = 1000
+        const val DEFAULT_CACHE_RETENTION_DAYS = 30
+        const val MIN_CACHE_RETENTION_DAYS = 1
+        const val MAX_CACHE_RETENTION_DAYS = 90
     }
 }

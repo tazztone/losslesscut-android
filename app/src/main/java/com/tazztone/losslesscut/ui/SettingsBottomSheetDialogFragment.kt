@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.tazztone.losslesscut.data.AppPreferences
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
 import com.tazztone.losslesscut.ui.compose.settings.SettingsScreen
 import com.tazztone.losslesscut.ui.compose.theme.LosslessCutTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -46,6 +47,9 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
     @Inject
     lateinit var preferences: AppPreferences
 
+    @Inject
+    lateinit var analysisCache: IAnalysisCache
+
     fun setSettingsListener(listener: SettingsListener) {
         this.listener = listener
     }
@@ -74,6 +78,7 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 LosslessCutTheme {
                     SettingsScreen(
                         preferences = preferences,
+                        analysisCache = analysisCache,
                         initialLosslessState = initialLosslessState,
                         onLosslessModeToggled = { isChecked ->
                             listener?.onLosslessModeToggled(isChecked)

@@ -81,7 +81,31 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
             seeker.invalidate()
             return true
         }
+
+        override fun onLongPress(e: MotionEvent) {
+            this@SeekerTouchHandler.onLongPress(e.x, e.y)
+        }
     })
+
+    internal fun onLongPress(x: Float, @Suppress("UNUSED_PARAMETER") y: Float) {
+        if (scaleGestureDetector.isInProgress || seeker.currentTouchTarget != CustomVideoSeeker.TouchTarget.NONE) {
+            return
+        }
+        val contentX = x + seeker.scrollOffsetX
+        val timeMs = seeker.xToTime(contentX)
+        if (!seeker.isRemuxMode) {
+            val segment = seeker.segments.find {
+                it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs
+            }
+            if (segment != null) {
+                seeker.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                seeker.selectedSegmentId = segment.id
+                seeker.onSegmentSelected?.invoke(segment.id)
+                seeker.onSegmentLongPress?.invoke(segment, timeMs)
+                seeker.invalidate()
+            }
+        }
+    }
 
     val autoPanRunnable = object : Runnable {
         override fun run() {

@@ -114,6 +114,32 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/containerReset"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:clickable="true"
+        android:focusable="true">
+        <ImageButton
+            android:id="@+id/btnReset"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_restore_24"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/reset_segments"
+            android:tooltipText="@string/reset_segments"
+            app:tint="?attr/colorOnSurface"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/reset_segments"
+            android:textSize="10sp"
+            android:textColor="?attr/colorOnSurfaceVariant"/>
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/containerSmartCut"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

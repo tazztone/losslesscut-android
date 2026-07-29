@@ -31,59 +31,19 @@ class MainActivitySecurityTest {
     }
 
     @Test
-    fun testIsValidUri_FileScheme_SafePath_ReturnsTrue() {
+    fun testIsValidUri_FileScheme_ReturnsFalse() {
         val uri = Uri.parse("file:///storage/emulated/0/Download/video.mp4")
-        assertTrue(invokeIsValidUri(uri))
-    }
-
-    @Test
-    fun testIsValidUri_FileScheme_PathTraversal_ReturnsFalse() {
-        val uri = Uri.parse("file:///data/data/com.tazztone.losslesscut/../../../../etc/passwd")
         assertFalse(invokeIsValidUri(uri))
 
-        val uri2 = Uri.parse("file:///storage/emulated/0/Download/../illegal.mp4")
+        val uri2 = Uri.parse("file:///data/data/com.tazztone.losslesscut/../../../../etc/passwd")
         assertFalse(invokeIsValidUri(uri2))
     }
 
     @Test
-    fun testIsValidUri_FileScheme_AbsoluteAppDir_ReturnsFalse() {
-        val appDataDir = activity.applicationInfo.dataDir
-        val uri = Uri.parse("file://$appDataDir/shared_prefs/prefs.xml")
-        assertFalse(invokeIsValidUri(uri))
-    }
-
-    @Test
-    fun testIsValidUri_InvalidScheme_ReturnsFalse() {
-        val uri = Uri.parse("http://example.com/video.mp4")
-        assertFalse(invokeIsValidUri(uri))
-
-        val uri2 = Uri.parse("https://example.com/video.mp4")
-        assertFalse(invokeIsValidUri(uri2))
-    }
-
-    @Test
-    fun testIsValidUri_NullUri_ReturnsFalse() {
+    fun testIsValidUri_InvalidSchemeOrNull_ReturnsFalse() {
         assertFalse(invokeIsValidUri(null))
-    }
-
-    @Test
-    fun testIsValidUri_FileScheme_NullPath_ReturnsFalse() {
-        val uri = Uri.parse("file://")
-        assertFalse(invokeIsValidUri(uri))
-    }
-
-    @Test
-    fun testIsValidUri_FileScheme_EmptyPath_ReturnsFalse() {
-        val uri = Uri.parse("file:")
-        assertFalse(invokeIsValidUri(uri))
-    }
-
-    @Test
-    fun testIsValidUri_FileScheme_SimilarAppDir_ReturnsTrue() {
-        val appDataDir = activity.applicationInfo.dataDir
-        val similarDataDir = "${appDataDir}2"
-        val uri = Uri.parse("file://$similarDataDir/shared_prefs/prefs.xml")
-        assertTrue(invokeIsValidUri(uri))
+        assertFalse(invokeIsValidUri(Uri.parse("http://example.com/video.mp4")))
+        assertFalse(invokeIsValidUri(Uri.parse("https://example.com/video.mp4")))
     }
 
     private fun invokeIsValidUri(uri: Uri?): Boolean {

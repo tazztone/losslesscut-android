@@ -22,6 +22,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import javax.inject.Inject
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
 import javax.inject.Singleton
 
 @Singleton
@@ -31,6 +32,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
     private val engine: ILosslessEngine,
     private val storageUtils: StorageUtils,
     private val waveformExtractor: AudioWaveformExtractor,
+    private val analysisCache: IAnalysisCache,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : IVideoEditingRepository {
     private val json = Json {
@@ -176,82 +178,16 @@ class VideoEditingRepositoryImpl @Inject constructor(
         clip: MediaClip,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(ioDispatcher) {
-        evictOldCacheFiles()
-        val cacheKeyInput = "${clip.uri}_${clip.durationMs}_${clip.width}x${clip.height}"
-        val cacheKey = "waveform_${HashUtils.sha256(cacheKeyInput)}.v3.bin"
-        
-        val cached = loadWaveformFromCache(cacheKey)
+        val cached = analysisCache.getWaveform(clip)
         if (cached != null) {
             return@withContext cached
         }
-        
+
         val extracted = extractWaveform(clip.uri, onProgress)
         if (extracted != null) {
-            saveWaveformToCache(cacheKey, extracted)
+            analysisCache.saveWaveform(clip, extracted)
         }
         extracted
-    }
-
-    private suspend fun saveWaveformToCache(cacheKey: String, result: WaveformResult) {
-        withContext(ioDispatcher) {
-            try {
-                val cacheFile = File(context.cacheDir, cacheKey)
-                DataOutputStream(FileOutputStream(cacheFile)).use { out ->
-                    out.writeInt(2) // Version 2: 100Hz resolution
-                    out.writeLong(result.durationUs)
-                    out.writeFloat(result.maxAmplitude)
-                    out.writeInt(result.rawAmplitudes.size)
-                    val byteBuffer = java.nio.ByteBuffer.allocate(result.rawAmplitudes.size * Float.SIZE_BYTES)
-                        .order(java.nio.ByteOrder.BIG_ENDIAN)
-                    byteBuffer.asFloatBuffer().put(result.rawAmplitudes)
-                    out.write(byteBuffer.array())
-                }
-            } catch (e: Exception) {
-                Log.e("VideoEditingRepositoryImpl", "Failed to save waveform to cache", e)
-            }
-        }
-    }
-
-    private suspend fun loadWaveformFromCache(cacheKey: String): WaveformResult? = withContext(ioDispatcher) {
-        val cacheFile = File(context.cacheDir, cacheKey)
-        if (!cacheFile.exists()) return@withContext null
-        try {
-            DataInputStream(FileInputStream(cacheFile)).use { input ->
-                val version = input.readInt()
-                if (version == 2) {
-                    val durationUs = input.readLong()
-                    val maxAmplitude = input.readFloat()
-                    val size = input.readInt()
-                    val bytes = ByteArray(size * Float.SIZE_BYTES)
-                    input.readFully(bytes)
-                    val amplitudes = FloatArray(size)
-                    java.nio.ByteBuffer.wrap(bytes)
-                        .order(java.nio.ByteOrder.BIG_ENDIAN)
-                        .asFloatBuffer()
-                        .get(amplitudes)
-                    WaveformResult(amplitudes, maxAmplitude, durationUs)
-                } else {
-                    null // Version mismatch, ignore old cache
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("VideoEditingRepositoryImpl", "Failed to load waveform from cache", e)
-            null
-        }
-    }
-
-    private suspend fun evictOldCacheFiles() {
-        withContext(ioDispatcher) {
-            try {
-                val sevenDaysAgo = System.currentTimeMillis() - 7 * 86_400_000L
-                context.cacheDir.listFiles()
-                    ?.filter { it.name.startsWith("waveform_") || it.name.startsWith("session_") }
-                    ?.filter { it.lastModified() < sevenDaysAgo }
-                    ?.forEach { it.delete() }
-            } catch (e: Exception) {
-                Log.e("VideoEditingRepositoryImpl", "Failed to evict old cache files", e)
-            }
-        }
     }
 
     override suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {

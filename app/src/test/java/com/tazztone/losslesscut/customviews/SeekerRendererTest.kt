@@ -110,8 +110,8 @@ class SeekerRendererTest {
 
         renderer.drawSegments(canvas)
 
-        // 1 normal rect, 1 selected border rect
-        verify(exactly = 2) { canvas.drawRect(any<android.graphics.RectF>(), any()) }
+        // 1 normal rect, 1 selected overlay, 1 selected border rect
+        verify(exactly = 3) { canvas.drawRect(any<android.graphics.RectF>(), any()) }
     }
 
     @Test

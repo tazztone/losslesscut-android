@@ -43,6 +43,8 @@ public class ExtractSnapshotUseCase @Inject constructor(
             } else {
                 Result.Failure("Failed to extract frame")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Result.Failure(e.message ?: "Unknown snapshot error")
         }

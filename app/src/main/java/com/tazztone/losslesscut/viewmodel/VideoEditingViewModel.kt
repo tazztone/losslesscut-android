@@ -153,6 +153,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 resetInternal()
+                preferences.applyAnalysisCachePolicy()
                 _uiState.value = VideoEditingUiState.Loading()
                 try {
                     val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
@@ -364,6 +365,17 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    fun resetClipSegments() {
+        viewModelScope.launch(ioDispatcher) {
+            stateMutex.withLock {
+                if (editingSession.resetClipSegments()) {
+                    _isDirty.value = true
+                    updateStateInternal()
+                }
+            }
+        }
+    }
+
     fun reset() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
@@ -465,7 +477,8 @@ class VideoEditingViewModel @Inject constructor(
                         Log.e("VideoEditingViewModel", "Unexpected error in visual analysis: ${error.message}", error)
                         publishVisualError()
                     }
-                }
+                },
+                clip = clip
             )
         }
     }

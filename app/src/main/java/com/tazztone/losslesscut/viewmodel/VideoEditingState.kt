@@ -17,6 +17,7 @@ public sealed class VideoEditingUiState {
         val selectedSegmentId: UUID? = null,
         val canUndo: Boolean = false,
         val canRedo: Boolean = false,
+        val canResetSegments: Boolean = false,
         val videoFps: Float = 30f,
         val isAudioOnly: Boolean = false,
         val hasAudioTrack: Boolean = true,

@@ -133,35 +133,8 @@ class MainActivity : BaseActivity() {
             return true
         }
 
-        if (scheme == "file") {
-            return isSafeFileUri(uri.path)
-        }
-
-        Log.w("Security", "Blocked URI with invalid scheme: $scheme")
+        Log.w("Security", "Blocked non-SAF URI with scheme: $scheme")
         return false
-    }
-
-    private fun isSafeFileUri(path: String?): Boolean {
-        if (path.isNullOrEmpty()) return false
-        return try {
-            val file = java.io.File(path)
-            val canonicalPath = file.canonicalPath
-            if (canonicalPath != file.absolutePath) {
-                Log.w("Security", "Blocked URI with path traversal attempt: $path")
-                false
-            } else if (canonicalPath.startsWith("${applicationInfo.dataDir}/") || canonicalPath == applicationInfo.dataDir) {
-                Log.w("Security", "Blocked URI pointing to app private data: $path")
-                false
-            } else {
-                true
-            }
-        } catch (e: java.io.IOException) {
-            Log.w("Security", "Blocked URI due to path resolution error: $path", e)
-            false
-        } catch (e: IllegalArgumentException) {
-            Log.w("Security", "Blocked URI due to invalid path argument: $path", e)
-            false
-        }
     }
 
     private fun showAboutDialog() {

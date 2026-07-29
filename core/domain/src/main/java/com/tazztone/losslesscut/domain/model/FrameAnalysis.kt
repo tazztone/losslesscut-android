@@ -1,5 +1,8 @@
 package com.tazztone.losslesscut.domain.model
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 public data class FrameAnalysis(
     val timeMs: Long,
     val meanLuma: Double,         // Black frames: mean Y value (0-255)

@@ -13,6 +13,8 @@
 
 - 🚀 **Zero Quality Loss**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer`—no transcoding involved.
 - 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
+- 👆 **Segment Actions**: Long-press a kept segment to discard it or split it at the pressed position; the selected segment is clearly highlighted for reliable editing.
+- ♻️ **Clip Reset**: Restore the current clip's timeline to one full KEEP segment with an explicit confirmation step.
 - 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
 - 🧲 **Keyframe Snapping**: Mandatory, strict keyframe snapping in lossless mode ensures frame-perfect cuts. Features haptic feedback and visual snapping.
 - 📱 **Adaptive UI**: Ergonomic landscape sidebars and a unified floating player overlay for maximum screen real estate.
@@ -31,6 +33,7 @@
 - ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
 - ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
+- ⚡ **Analysis Cache**: Waveforms and visual-analysis results are reused across sessions. Cache capacity, retention age, usage, and clearing are configurable in Settings.
 - 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
 - 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.
 - 🏷️ **Quick Metadata Fix**: Correct video orientation and rotation flags in seconds.
@@ -51,6 +54,12 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 1. **Probe**: Scans the file structure to identify stream metadata and track availability.
 2. **Visualize**: Renders a zoomable timeline where keyframes are marked as snapping points.
 3. **Mux**: During export, the app extracts the original encoded samples between cut points and remuxes them into a new container. If the video track is excluded, it smartly routes to an audio-only `.m4a` container to preserve original quality.
+
+### Timeline editing
+
+Tap a kept segment to select it. Long-press inside the segment to open its context actions, then choose **Discard** or **Split here**. Use **Reset segments** to replace all edits for the current clip with one full-length KEEP segment; the app asks for confirmation before changing the timeline. All segment changes remain undoable.
+
+Visual analysis and waveform extraction are cached in the app's private storage and keyed to the clip's media identity and analysis settings. The cache uses least-recently-used eviction and an age limit, so it does not grow without bound. Configure both limits or clear the cache from Settings.
 
 ## 🚀 Getting Started
 
@@ -93,6 +102,7 @@ If you discover a security vulnerability within LosslessCut, please do not open 
 ## 🔒 Permissions & Privacy
 - **Privacy-First Model**: Removed all unnecessary runtime permissions (Notifications, Media Access). The app relies on the **Storage Access Framework (SAF)** for user-initiated file selection.
 - **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio extraction). 
+- **Private Analysis Cache**: Derived waveforms and visual-analysis data stay in app-private storage and can be bounded by size and age or cleared from Settings. Source media remains accessed through SAF and is never copied into the shared cache.
 - **Privacy**: 100% offline. No analytics, no tracking, no data collection.
 
 ## 🗺️ Roadmap

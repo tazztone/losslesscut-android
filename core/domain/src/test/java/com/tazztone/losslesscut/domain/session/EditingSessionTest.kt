@@ -357,4 +357,40 @@ public class EditingSessionTest {
         assertTrue(session.undo())
         assertFalse(session.undo())
     }
+
+    @Test
+    public fun resetClipSegments_resetsSegmentsToOneFullKeepSegmentAndPushesUndo() {
+        val session = EditingSession()
+        val clip = createTestClip(durationMs = 10000L)
+        session.setClips(listOf(clip))
+        session.splitSegmentAt(4000L)
+        session.toggleSegmentDiscard(clip.segments.first().id)
+
+        assertEquals(2, session.currentSnapshot.selectedClip!!.segments.size)
+
+        val resetSuccess = session.resetClipSegments()
+        assertTrue(resetSuccess)
+
+        val snapshot = session.currentSnapshot
+        assertEquals(1, snapshot.selectedClip!!.segments.size)
+        val resetSeg = snapshot.selectedClip!!.segments.first()
+        assertEquals(0L, resetSeg.startMs)
+        assertEquals(10000L, resetSeg.endMs)
+        assertEquals(SegmentAction.KEEP, resetSeg.action)
+        assertEquals(resetSeg.id, snapshot.selectedSegmentId)
+        assertTrue(snapshot.canUndo)
+
+        // Verify undo restores the multi-segment state
+        assertTrue(session.undo())
+        assertEquals(2, session.currentSnapshot.selectedClip!!.segments.size)
+    }
+
+    @Test
+    public fun resetClipSegments_returnsFalseWhenAlreadyOneFullKeepSegment() {
+        val session = EditingSession()
+        val clip = createTestClip(durationMs = 10000L)
+        session.setClips(listOf(clip))
+
+        assertFalse(session.resetClipSegments())
+    }
 }

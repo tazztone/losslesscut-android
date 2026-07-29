@@ -193,4 +193,19 @@
     <string name="tooltip_visual_tab">Sucht Szenenwechsel, schwarze Frames und Standbilder.</string>
     <string name="content_desc_link_padding">Puffer-Schieberegler verknüpfen</string>
     <string name="error_visual_on_audio">Visuelle Erkennung ist für Audiodateien nicht verfügbar</string>
+
+    <string name="reset_segments">Segmente zurücksetzen</string>
+    <string name="split_here">Hier teilen</string>
+    <string name="segment_actions">Segmentaktionen</string>
+    <string name="reset_segments_confirm_title">Segmente zurücksetzen?</string>
+    <string name="reset_segments_confirm_message">Möchtest du wirklich alle Schnitte zurücksetzen und ein einzelnes Segment für diesen Clip wiederherstellen?</string>
+    <string name="category_cache">Analyse-Cache</string>
+    <string name="setting_cache_capacity">Cache-Kapazität</string>
+    <string name="setting_cache_capacity_desc">Maximaler Speicherplatz für dauerhafte Wellenform- und visuelle Analysedaten.</string>
+    <string name="setting_cache_retention">Cache-Aufbewahrung</string>
+    <string name="setting_cache_retention_desc">Maximale Anzahl an Tagen, die ungenutzte Analyse-Cache-Dateien aufbewahrt werden.</string>
+    <string name="setting_cache_usage">Aktuelle Cache-Nutzung</string>
+    <string name="clear_analysis_cache">Analyse-Cache leeren</string>
+    <string name="clear_cache_confirm_title">Analyse-Cache leeren?</string>
+    <string name="clear_cache_confirm_message">Möchtest du wirklich alle gespeicherten Analyse-Cache-Dateien löschen? Aktive Editor-Daten bleiben unverändert.</string>
 </resources>

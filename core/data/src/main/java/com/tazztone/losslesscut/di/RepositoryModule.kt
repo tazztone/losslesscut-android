@@ -1,6 +1,8 @@
 package com.tazztone.losslesscut.di
 
+import com.tazztone.losslesscut.data.AnalysisCacheImpl
 import com.tazztone.losslesscut.data.VideoEditingRepositoryImpl
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
 import com.tazztone.losslesscut.domain.engine.IMediaFinalizer
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import dagger.Binds
@@ -19,4 +21,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindMediaFinalizer(impl: MediaFinalizerImpl): IMediaFinalizer
+
+    @Binds
+    @Singleton
+    abstract fun bindAnalysisCache(impl: AnalysisCacheImpl): IAnalysisCache
 }

@@ -65,4 +65,12 @@ public class ExtractSnapshotUseCaseTest {
         assertTrue(result is ExtractSnapshotUseCase.Result.Failure)
         assertEquals("Failed to write snapshot", (result as ExtractSnapshotUseCase.Result.Failure).error)
     }
+
+    @Test(expected = kotlinx.coroutines.CancellationException::class)
+    public fun executeRethrowsCancellationException(): Unit = runBlocking {
+        val uri = "file:///test.mp4"
+        coEvery { repository.getFrameAt(uri, 1000L) } throws kotlinx.coroutines.CancellationException("Cancelled")
+
+        extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
+    }
 }

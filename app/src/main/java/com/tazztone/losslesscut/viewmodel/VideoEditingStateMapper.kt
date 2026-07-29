@@ -29,6 +29,13 @@ public object VideoEditingStateMapper {
             }
         }
 
+        val canReset = if (clip.segments.size == 1) {
+            val seg = clip.segments[0]
+            !(seg.action == com.tazztone.losslesscut.domain.model.SegmentAction.KEEP && seg.startMs == 0L && seg.endMs == clip.durationMs)
+        } else {
+            clip.segments.isNotEmpty()
+        }
+
         return VideoEditingUiState.Success(
             clips = input.currentClips,
             selectedClipIndex = input.selectedClipIndex,
@@ -37,6 +44,7 @@ public object VideoEditingStateMapper {
             selectedSegmentId = input.selectedSegmentId,
             canUndo = input.canUndo,
             canRedo = input.canRedo,
+            canResetSegments = canReset,
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,

@@ -68,7 +68,8 @@ To prevent technical debt and maintain zero-loss performance, the following rule
   - `VisualAlgorithms.kt` & `VisualSegmentDetectorImpl.kt`: Frame pHash, SAD, and Laplacian variance analysis.
   - `AudioWaveformExtractor.kt` & `AudioDecoderImpl.kt`: Low-level PCM audio decoding and amplitude extraction.
 - **`:core:data`**: Storage, repositories, and preferences.
-  - `data/`: `VideoEditingRepositoryImpl`, `AppPreferences` (DataStore).
+  - `data/`: `VideoEditingRepositoryImpl`, `AnalysisCacheImpl`, `AppPreferences` (DataStore).
+  - `AnalysisCacheImpl`: App-private, versioned binary cache for waveform and visual frame-analysis results with LRU size eviction and age-based expiry.
   - `utils/`: `StorageUtils` for SAF tree creation and MediaStore operations.
   - `di/`: `MediaFinalizerImpl` implementation of `IMediaFinalizer`.
 
@@ -116,6 +117,15 @@ LosslessCut writes output media directly to destination URIs without requiring f
 - **SAF Fallback**: If a custom directory is selected in preferences, `StorageUtils` creates the output file via `DocumentFile.fromTreeUri()`.
 - **MediaStore Lifecycle**: On Android 10+ (API 29+), output files in public MediaStore collections are marked `IS_PENDING = 1` during writing and updated to `0` upon completion.
 - **Non-MediaStore URIs**: `MediaFinalizerImpl` catches `UnsupportedOperationException` when invoking `IS_PENDING = 0` on SAF or FileProvider URIs.
+
+### Analysis cache
+
+Derived analysis data is separate from user media and is stored under the app's private `noBackupFilesDir/analysis_cache` directory. `IAnalysisCache` in `:core:domain` defines the platform-neutral contract; `AnalysisCacheImpl` in `:core:data` provides the Android file-backed implementation.
+
+- Waveforms and visual frame analyses use versioned binary payloads and atomic replacement on write.
+- Cache keys include the source URI, media metadata, and analysis parameters so a changed clip or configuration does not reuse stale results.
+- Reads refresh access time. Expired entries are removed by age, then least-recently-used entries are removed until the configured byte cap is met.
+- Settings persist the maximum size (50–1000 MiB) and retention age (1–90 days). Users can inspect current usage or clear all derived analysis data; clearing does not affect source media or editing sessions.
 
 ---
 

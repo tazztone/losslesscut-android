@@ -160,6 +160,36 @@ public class EditingSession(
         return true
     }
 
+    public fun resetClipSegments(): Boolean {
+        val current = _state.value
+        val clip = current.selectedClip ?: return false
+
+        if (clip.segments.size == 1) {
+            val single = clip.segments[0]
+            if (single.action == SegmentAction.KEEP && single.startMs == 0L && single.endMs == clip.durationMs) {
+                return false
+            }
+        }
+
+        pushHistory()
+
+        val newSegmentId = UUID.randomUUID()
+        val resetSegment = TrimSegment(id = newSegmentId, startMs = 0L, endMs = clip.durationMs, action = SegmentAction.KEEP)
+        val updatedClip = clip.copy(segments = listOf(resetSegment))
+        val updatedClips = current.clips.toMutableList().apply {
+            this[current.selectedClipIndex] = updatedClip
+        }
+
+        _state.value = current.copy(
+            clips = updatedClips,
+            selectedSegmentId = newSegmentId,
+            isDirty = true,
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = false
+        )
+        return true
+    }
+
     public fun updateSegmentBounds(
         segmentId: UUID,
         startMs: Long,

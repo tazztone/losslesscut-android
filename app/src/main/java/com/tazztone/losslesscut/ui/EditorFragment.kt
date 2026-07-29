@@ -251,12 +251,40 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             smartCutController.show()
         }
 
+        val handleResetAction = {
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.reset_segments_confirm_title)
+                .setMessage(R.string.reset_segments_confirm_message)
+                .setPositiveButton(R.string.reset_segments) { _, _ ->
+                    viewModel.resetClipSegments()
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+        binding.editingControls.btnReset.setOnClickListener { handleResetAction() }
+        binding.editingControls.containerReset.setOnClickListener { handleResetAction() }
+
         binding.playerSection.btnNudgeBack.setOnClickListener { playerManager.seekToKeyframe(-1) }
         binding.playerSection.btnNudgeForward.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
     private fun setupCustomSeeker() {
         seekerDelegate.setup()
+        binding.seekerContainer.customVideoSeeker.onSegmentLongPress = { segment, longPressTimeMs ->
+            val options = arrayOf(
+                getString(R.string.discard_segment),
+                getString(R.string.split_here)
+            )
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.segment_actions)
+                .setItems(options) { _, which ->
+                    when (which) {
+                        0 -> viewModel.markSegmentDiscarded(segment.id)
+                        1 -> viewModel.splitSegmentAt(longPressTimeMs)
+                    }
+                }
+                .show()
+        }
     }
 
     private fun observeViewModel() {
@@ -345,6 +373,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
         binding.navBar.btnRedo.isEnabled = state.canRedo
         binding.navBar.btnRedo.alpha = if (state.canRedo) 1.0f else 0.5f
+
+        binding.editingControls.btnReset.isEnabled = state.canResetSegments
+        binding.editingControls.btnReset.alpha = if (state.canResetSegments) 1.0f else 0.5f
+        binding.editingControls.containerReset.isEnabled = state.canResetSegments
 
         val selectedSeg = state.segments.find { it.id == state.selectedSegmentId }
         val deleteIcon = if (selectedSeg?.action == SegmentAction.DISCARD) {

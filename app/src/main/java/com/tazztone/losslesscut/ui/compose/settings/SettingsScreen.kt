@@ -24,6 +24,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -45,10 +46,19 @@ import com.tazztone.losslesscut.ui.compose.theme.PurpleAccent
 import com.tazztone.losslesscut.ui.compose.theme.RedAccent
 import com.tazztone.losslesscut.ui.compose.theme.YellowAccent
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.tazztone.losslesscut.domain.cache.IAnalysisCache
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
     preferences: AppPreferences,
+    analysisCache: IAnalysisCache? = null,
     initialLosslessState: Boolean,
     onLosslessModeToggled: (Boolean) -> Unit,
     onChangePath: () -> Unit,
@@ -65,6 +75,17 @@ fun SettingsScreen(
     val currentAccentColor by preferences.accentColorFlow.collectAsStateWithLifecycle(initialValue = "cyan")
     val autoExtractWaveforms by preferences.autoExtractWaveformsFlow.collectAsStateWithLifecycle(initialValue = true)
     val visualSampleIntervalMs by preferences.defaultVisualSampleIntervalFlow.collectAsStateWithLifecycle(initialValue = 1000L)
+    val cacheCapacityMB by preferences.cacheCapacityMBFlow.collectAsStateWithLifecycle(initialValue = 250)
+    val cacheRetentionDays by preferences.cacheRetentionDaysFlow.collectAsStateWithLifecycle(initialValue = 30)
+
+    var cacheUsageBytes by remember { mutableStateOf(0L) }
+    var showClearConfirmDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(analysisCache) {
+        cacheUsageBytes = kotlinx.coroutines.withContext(Dispatchers.IO) {
+            analysisCache?.getCacheUsageBytes() ?: 0L
+        }
+    }
 
     val isJpeg = snapshotFormat == "JPEG"
 
@@ -189,7 +210,170 @@ fun SettingsScreen(
             onAccentColorChanged = onAccentColorChanged
         )
 
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 20.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+        )
+
+        // 💾 5. Analysis Cache Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_cache))
+
+        CacheCapacitySetting(
+            capacityMB = cacheCapacityMB,
+            onCapacityChanged = { capacity ->
+                coroutineScope.launch(Dispatchers.IO) {
+                    preferences.setCacheCapacityMB(capacity)
+                    cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
+                }
+            }
+        )
+
         Spacer(modifier = Modifier.height(16.dp))
+
+        CacheRetentionSetting(
+            retentionDays = cacheRetentionDays,
+            onRetentionChanged = { days ->
+                coroutineScope.launch(Dispatchers.IO) {
+                    preferences.setCacheRetentionDays(days)
+                    cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        CacheUsageAndClearSetting(
+            usageBytes = cacheUsageBytes,
+            onClearClicked = { showClearConfirmDialog = true }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (showClearConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConfirmDialog = false },
+            title = { Text(stringResource(R.string.clear_cache_confirm_title)) },
+            text = { Text(stringResource(R.string.clear_cache_confirm_message)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearConfirmDialog = false
+                        coroutineScope.launch(Dispatchers.IO) {
+                            analysisCache?.clearCache()
+                            cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
+                        }
+                    }
+                ) {
+                    Text(stringResource(R.string.clear_analysis_cache), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearConfirmDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun CacheCapacitySetting(
+    capacityMB: Int,
+    onCapacityChanged: (Int) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.setting_cache_capacity),
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "$capacityMB MiB",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+        }
+        Text(
+            text = stringResource(R.string.setting_cache_capacity_desc),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Slider(
+            value = capacityMB.toFloat(),
+            onValueChange = { value -> onCapacityChanged(value.toInt().coerceIn(50, 1000)) },
+            valueRange = 50f..1000f
+        )
+    }
+}
+
+@Composable
+fun CacheRetentionSetting(
+    retentionDays: Int,
+    onRetentionChanged: (Int) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.setting_cache_retention),
+                modifier = Modifier.weight(1f),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+            Text(
+                text = "$retentionDays days",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+        }
+        Text(
+            text = stringResource(R.string.setting_cache_retention_desc),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Slider(
+            value = retentionDays.toFloat(),
+            onValueChange = { value -> onRetentionChanged(value.toInt().coerceIn(1, 90)) },
+            valueRange = 1f..90f
+        )
+    }
+}
+
+@Composable
+fun CacheUsageAndClearSetting(
+    usageBytes: Long,
+    onClearClicked: () -> Unit
+) {
+    val usageMiB = usageBytes / (1024f * 1024f)
+    val usageText = String.format(Locale.ROOT, "%.2f MiB", usageMiB)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.setting_cache_usage),
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 16.sp
+            )
+            Text(
+                text = usageText,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp
+            )
+        }
+        TextButton(onClick = onClearClicked) {
+            Text(
+                text = stringResource(R.string.clear_analysis_cache),
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     }
 }
 

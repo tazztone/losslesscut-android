@@ -31,6 +31,7 @@ open class CustomVideoSeeker @JvmOverloads constructor(
     var onSeekStart: (() -> Unit)? = null
     var onSeekEnd: (() -> Unit)? = null
     var onSegmentSelected: ((UUID?) -> Unit)? = null
+    var onSegmentLongPress: ((TrimSegment, Long) -> Unit)? = null
     var onSegmentBoundsChanged: ((UUID, Long, Long, Long) -> Unit)? = null
     var onSegmentBoundsDragEnd: (() -> Unit)? = null
 
