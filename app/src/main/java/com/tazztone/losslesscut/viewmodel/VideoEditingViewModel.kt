@@ -423,17 +423,19 @@ public class VideoEditingViewModel @Inject constructor(
 
     private fun updateStateInternal() {
         _uiState.value = VideoEditingStateMapper.mapToState(
-            currentClips = currentClips,
-            selectedClipIndex = selectedClipIndex,
-            currentKeyframes = currentKeyframes,
-            selectedSegmentId = selectedSegmentId,
-            canUndo = historyManager.canUndo,
-            canRedo = historyManager.canRedo,
-            isSnapshotInProgress = exportController.isSnapshotInProgress.value,
-            detectionPreviewRanges = _detectionPreviewRanges.value,
-            playbackSpeed = currentPlaybackSpeed,
-            isPitchCorrectionEnabled = isPitchCorrectionEnabled,
-            currentState = _uiState.value
+            MapStateInput(
+                currentClips = currentClips,
+                selectedClipIndex = selectedClipIndex,
+                currentKeyframes = currentKeyframes,
+                selectedSegmentId = selectedSegmentId,
+                canUndo = historyManager.canUndo,
+                canRedo = historyManager.canRedo,
+                isSnapshotInProgress = exportController.isSnapshotInProgress.value,
+                detectionPreviewRanges = _detectionPreviewRanges.value,
+                playbackSpeed = currentPlaybackSpeed,
+                isPitchCorrectionEnabled = isPitchCorrectionEnabled,
+                currentState = _uiState.value
+            )
         )
     }
 

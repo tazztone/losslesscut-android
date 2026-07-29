@@ -3,46 +3,48 @@ package com.tazztone.losslesscut.viewmodel
 import com.tazztone.losslesscut.domain.model.MediaClip
 import java.util.UUID
 
+public data class MapStateInput(
+    val currentClips: List<MediaClip>,
+    val selectedClipIndex: Int,
+    val currentKeyframes: List<Long>,
+    val selectedSegmentId: UUID?,
+    val canUndo: Boolean,
+    val canRedo: Boolean,
+    val isSnapshotInProgress: Boolean,
+    val detectionPreviewRanges: List<LongRange>,
+    val playbackSpeed: Float,
+    val isPitchCorrectionEnabled: Boolean,
+    val currentState: VideoEditingUiState
+)
+
 public object VideoEditingStateMapper {
 
-    public fun mapToState(
-        currentClips: List<MediaClip>,
-        selectedClipIndex: Int,
-        currentKeyframes: List<Long>,
-        selectedSegmentId: UUID?,
-        canUndo: Boolean,
-        canRedo: Boolean,
-        isSnapshotInProgress: Boolean,
-        detectionPreviewRanges: List<LongRange>,
-        playbackSpeed: Float,
-        isPitchCorrectionEnabled: Boolean,
-        currentState: VideoEditingUiState
-    ): VideoEditingUiState {
-        val clip = currentClips.getOrNull(selectedClipIndex)
+    public fun mapToState(input: MapStateInput): VideoEditingUiState {
+        val clip = input.currentClips.getOrNull(input.selectedClipIndex)
         if (clip == null) {
-            return if (currentState is VideoEditingUiState.Success) {
+            return if (input.currentState is VideoEditingUiState.Success) {
                 VideoEditingUiState.Initial
             } else {
-                currentState
+                input.currentState
             }
         }
 
         return VideoEditingUiState.Success(
-            clips = currentClips,
-            selectedClipIndex = selectedClipIndex,
-            keyframes = currentKeyframes,
+            clips = input.currentClips,
+            selectedClipIndex = input.selectedClipIndex,
+            keyframes = input.currentKeyframes,
             segments = clip.segments,
-            selectedSegmentId = selectedSegmentId,
-            canUndo = canUndo,
-            canRedo = canRedo,
+            selectedSegmentId = input.selectedSegmentId,
+            canUndo = input.canUndo,
+            canRedo = input.canRedo,
             videoFps = clip.fps,
             isAudioOnly = clip.isAudioOnly,
             hasAudioTrack = clip.audioMime != null,
-            isSnapshotInProgress = isSnapshotInProgress,
-            detectionPreviewRanges = detectionPreviewRanges,
+            isSnapshotInProgress = input.isSnapshotInProgress,
+            detectionPreviewRanges = input.detectionPreviewRanges,
             availableTracks = clip.availableTracks,
-            playbackSpeed = playbackSpeed,
-            isPitchCorrectionEnabled = isPitchCorrectionEnabled
+            playbackSpeed = input.playbackSpeed,
+            isPitchCorrectionEnabled = input.isPitchCorrectionEnabled
         )
     }
 }

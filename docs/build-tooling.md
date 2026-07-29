@@ -1,6 +1,6 @@
 # Build Tooling Matrix
 
-This document tracks the current stable toolchain and dependency matrix for Lossless Video Cut Android, as required by [GEMINI.md](../GEMINI.md).
+This document tracks the current stable toolchain and dependency matrix for Lossless Video Cut Android, as required by [AGENTS.md](../AGENTS.md).
 
 ## Core Toolchain
 

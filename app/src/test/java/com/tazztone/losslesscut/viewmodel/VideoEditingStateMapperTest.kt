@@ -11,17 +11,19 @@ public class VideoEditingStateMapperTest {
     @Test
     public fun `mapToState returns Initial when clip is null and currentState is Success`() {
         val result = VideoEditingStateMapper.mapToState(
-            currentClips = emptyList(),
-            selectedClipIndex = 0,
-            currentKeyframes = emptyList(),
-            selectedSegmentId = null,
-            canUndo = false,
-            canRedo = false,
-            isSnapshotInProgress = false,
-            detectionPreviewRanges = emptyList(),
-            playbackSpeed = 1.0f,
-            isPitchCorrectionEnabled = false,
-            currentState = VideoEditingUiState.Success(emptyList(), keyframes = emptyList(), segments = emptyList())
+            MapStateInput(
+                currentClips = emptyList(),
+                selectedClipIndex = 0,
+                currentKeyframes = emptyList(),
+                selectedSegmentId = null,
+                canUndo = false,
+                canRedo = false,
+                isSnapshotInProgress = false,
+                detectionPreviewRanges = emptyList(),
+                playbackSpeed = 1.0f,
+                isPitchCorrectionEnabled = false,
+                currentState = VideoEditingUiState.Success(emptyList(), keyframes = emptyList(), segments = emptyList())
+            )
         )
 
         assertEquals(VideoEditingUiState.Initial, result)
@@ -31,17 +33,19 @@ public class VideoEditingStateMapperTest {
     public fun `mapToState returns currentState when clip is null and currentState is not Success`() {
         val currentState = VideoEditingUiState.Loading(50)
         val result = VideoEditingStateMapper.mapToState(
-            currentClips = emptyList(),
-            selectedClipIndex = 0,
-            currentKeyframes = emptyList(),
-            selectedSegmentId = null,
-            canUndo = false,
-            canRedo = false,
-            isSnapshotInProgress = false,
-            detectionPreviewRanges = emptyList(),
-            playbackSpeed = 1.0f,
-            isPitchCorrectionEnabled = false,
-            currentState = currentState
+            MapStateInput(
+                currentClips = emptyList(),
+                selectedClipIndex = 0,
+                currentKeyframes = emptyList(),
+                selectedSegmentId = null,
+                canUndo = false,
+                canRedo = false,
+                isSnapshotInProgress = false,
+                detectionPreviewRanges = emptyList(),
+                playbackSpeed = 1.0f,
+                isPitchCorrectionEnabled = false,
+                currentState = currentState
+            )
         )
 
         assertEquals(currentState, result)
@@ -71,17 +75,19 @@ public class VideoEditingStateMapperTest {
         val previewRanges = listOf(0L..100L)
 
         val result = VideoEditingStateMapper.mapToState(
-            currentClips = clips,
-            selectedClipIndex = 0,
-            currentKeyframes = keyframes,
-            selectedSegmentId = selectedSegmentId,
-            canUndo = true,
-            canRedo = false,
-            isSnapshotInProgress = true,
-            detectionPreviewRanges = previewRanges,
-            playbackSpeed = 1.5f,
-            isPitchCorrectionEnabled = true,
-            currentState = VideoEditingUiState.Initial
+            MapStateInput(
+                currentClips = clips,
+                selectedClipIndex = 0,
+                currentKeyframes = keyframes,
+                selectedSegmentId = selectedSegmentId,
+                canUndo = true,
+                canRedo = false,
+                isSnapshotInProgress = true,
+                detectionPreviewRanges = previewRanges,
+                playbackSpeed = 1.5f,
+                isPitchCorrectionEnabled = true,
+                currentState = VideoEditingUiState.Initial
+            )
         )
 
         assertTrue(result is VideoEditingUiState.Success)

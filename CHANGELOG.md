@@ -3,7 +3,7 @@
 ### Late February 2026: Architectural Purification & Domain Isolation
 * **Domain Purity**: Converted `:core:domain` into a **pure JVM library**, stripping all Android SDK and Hilt dependencies. Established a clean business logic layer that is agnostic of the platform.
 * **Engine Decoupling**: Fully isolated the `:engine` module by removing direct dependencies on `:core:data` and Media3. Introduced `IMediaFinalizer` abstraction to handle SAF post-processing.
-* **Storage Governance**: Clarified and enforced storage rules in `GEMINI.md`, distinguishing between SAF-only external media and `java.io.File`-permissible internal storage.
+* **Storage Governance**: Clarified and enforced storage rules in `AGENTS.md`, distinguishing between SAF-only external media and `java.io.File`-permissible internal storage.
 * **UI Resilience**: Implemented `UiText` resolution via `:app`-level extension functions, ensuring the domain layer remains context-free.
 
 ### Late February 2026: Build Modernization, UI Polish & Advanced Workflows
