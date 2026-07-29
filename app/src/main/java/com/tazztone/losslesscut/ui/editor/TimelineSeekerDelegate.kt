@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.ui.editor
 
 import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.ui.PlayerManager
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
@@ -9,7 +10,7 @@ import java.util.UUID
 /**
  * Binds customVideoSeeker callbacks and provides a higher-level API for the fragment.
  */
-@UnstableApi
+@OptIn(UnstableApi::class)
 class TimelineSeekerDelegate(
     private val seeker: CustomVideoSeeker,
     private val viewModel: VideoEditingViewModel,

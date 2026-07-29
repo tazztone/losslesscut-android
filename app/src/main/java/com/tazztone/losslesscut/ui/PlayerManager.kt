@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.ui
 
 import android.content.Context
 import android.net.Uri
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -10,7 +11,7 @@ import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import com.tazztone.losslesscut.viewmodel.*
 
-@UnstableApi
+@OptIn(UnstableApi::class)
 class PlayerManager(
     private val context: Context,
     private val playerView: androidx.media3.ui.PlayerView,

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -15,7 +16,7 @@ import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
-@UnstableApi
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class VideoEditingActivity : BaseActivity() {
 

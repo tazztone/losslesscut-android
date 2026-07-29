@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.ui.editor
 
 import androidx.media3.common.util.UnstableApi
+import androidx.annotation.OptIn
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.ui.PlayerManager
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +13,7 @@ import kotlinx.coroutines.launch
 /**
  * Owns the progress ticker job that updates the seeker UI during playback.
  */
-@UnstableApi
+@OptIn(UnstableApi::class)
 class PlaybackProgressTicker(
     private val scope: CoroutineScope,
     private val seeker: CustomVideoSeeker,

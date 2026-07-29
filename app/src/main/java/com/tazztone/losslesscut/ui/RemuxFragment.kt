@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.ui
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
@@ -14,7 +15,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-@UnstableApi
+@OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
     private var _binding: FragmentRemuxBinding? = null

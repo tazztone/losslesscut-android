@@ -19,6 +19,7 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
+import java.util.Locale
 import java.util.UUID
 
 @AndroidEntryPoint
@@ -400,7 +401,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     private fun updatePlaybackSpeedUI(speed: Float) {
-        val formatted = if (speed % 1f == 0f) "${speed.toInt()}x" else String.format("%.2gx", speed)
+        val formatted = if (speed % 1f == 0f) "${speed.toInt()}x" else String.format(Locale.ROOT, "%.2gx", speed)
         binding.playerSection.btnPlaybackSpeed.text = formatted
     }
 

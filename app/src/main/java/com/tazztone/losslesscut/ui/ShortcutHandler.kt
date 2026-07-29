@@ -1,10 +1,11 @@
 package com.tazztone.losslesscut.ui
 
 import android.view.KeyEvent
+import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 
-@UnstableApi
+@OptIn(UnstableApi::class)
 class ShortcutHandler(
     private val viewModel: VideoEditingViewModel,
     private val playerManager: PlayerManager,
