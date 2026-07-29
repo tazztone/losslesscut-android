@@ -27,7 +27,7 @@ class TimelineSeekerDelegate(
         seeker.onSegmentSelected = { id -> viewModel.selectSegment(id) }
         seeker.onSegmentBoundsChanged = { id, start, end, seekPos ->
             onDraggingChanged(true)
-            viewModel.updateSegmentBounds(id, start, end)
+            viewModel.updateSegmentBounds(id, start, end, coalesceHistory = true)
             playerManager.seekTo(seekPos)
             onSeek(seekPos)
         }

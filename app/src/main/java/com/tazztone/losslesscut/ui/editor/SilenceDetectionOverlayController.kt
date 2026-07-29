@@ -85,13 +85,17 @@ class SilenceDetectionOverlayController(
         val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
         val btnToggleModeSilence = overlay.findViewById<MaterialButtonToggleGroup>(R.id.btnToggleModeSilence)
 
-        val updateLinkIcon = {
-            btnLinkPadding.setImageResource(
-                if (isPaddingLinked) R.drawable.ic_link_24 else R.drawable.ic_link_off_24
-            )
-        }
+        setupModeListener(overlay, btnToggleModeSilence)
+        setupPaddingLinkListener(btnLinkPadding)
+        setupSliderListeners()
+        setupActionListeners(btnCancel, btnApply)
+    }
 
-        btnToggleModeSilence?.addOnButtonCheckedListener { _, checkedId, isChecked ->
+    private fun setupModeListener(
+        overlay: View,
+        toggleGroup: MaterialButtonToggleGroup?
+    ) {
+        toggleGroup?.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 currentMode = if (checkedId == R.id.btnModeKeepSilence) {
                     SilenceDetectionUseCase.DetectionMode.KEEP_RANGES
@@ -102,6 +106,14 @@ class SilenceDetectionOverlayController(
                 updateStatusText(overlay)
             }
         }
+    }
+
+    private fun setupPaddingLinkListener(btnLinkPadding: ImageButton) {
+        val updateLinkIcon = {
+            btnLinkPadding.setImageResource(
+                if (isPaddingLinked) R.drawable.ic_link_24 else R.drawable.ic_link_off_24
+            )
+        }
 
         btnLinkPadding.setOnClickListener {
             isPaddingLinked = !isPaddingLinked
@@ -111,7 +123,10 @@ class SilenceDetectionOverlayController(
                 updatePreview()
             }
         }
+        updateLinkIcon()
+    }
 
+    private fun setupSliderListeners() {
         sliderThreshold?.addOnChangeListener { _, value, _ ->
             val maxAmp = viewModel.waveformMaxAmplitude.value
             binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = if (maxAmp > 0f) value / maxAmp else value
@@ -170,14 +185,18 @@ class SilenceDetectionOverlayController(
             if (fromUser && isPaddingLinked) sliderPaddingPrefix?.value = value
             updatePreview() 
         }
+    }
 
+    private fun setupActionListeners(
+        btnCancel: android.widget.Button,
+        btnApply: android.widget.Button
+    ) {
         btnCancel.setOnClickListener { onDismiss() }
         btnApply.setOnClickListener {
             val minKeep = sliderMinSegment?.value?.toLong() ?: 10L
             viewModel.applyDetection(currentMode, minKeep)
             onDismiss()
         }
-        updateLinkIcon()
     }
 
     private fun updatePreview() {

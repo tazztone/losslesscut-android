@@ -81,7 +81,7 @@ class TimelineSeekerDelegateTest {
         verify { seeker.onSegmentBoundsChanged = capture(callback) }
         val id = UUID.randomUUID()
         callback.captured.invoke(id, 1000L, 5000L, 2000L)
-        verify { viewModel.updateSegmentBounds(id, 1000L, 5000L) }
+        verify { viewModel.updateSegmentBounds(id, 1000L, 5000L, coalesceHistory = true) }
         verify { playerManager.seekTo(2000L) }
         assertEquals(listOf(true), draggingStates)
         assertEquals(listOf(2000L), seekPositions)

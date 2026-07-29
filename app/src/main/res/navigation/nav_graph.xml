@@ -21,6 +21,6 @@
         android:id="@+id/metadataFragment"
         android:name="com.tazztone.losslesscut.ui.MetadataFragment"
         android:label="Metadata"
-        tools:layout="@layout/fragment_metadata" />
+        tools:layout="@layout/fragment_remux" />
 
 </navigation>

@@ -2,20 +2,13 @@ package com.tazztone.losslesscut.ui
 
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import android.view.View
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.annotation.OptIn
 import androidx.appcompat.widget.TooltipCompat
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
-import androidx.media3.common.util.UnstableApi
-import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.RecyclerView
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.util.asString
@@ -26,10 +19,8 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 import java.util.UUID
 
-@UnstableApi
 @AndroidEntryPoint
 class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBottomSheetDialogFragment.SettingsListener {
 
@@ -38,7 +29,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private lateinit var rotationManager: RotationManager
     private lateinit var shortcutHandler: ShortcutHandler
-    private lateinit var clipAdapter: MediaClipAdapter
+    private lateinit var playlistDelegate: com.tazztone.losslesscut.ui.editor.PlaylistDelegate
     
     private lateinit var progressTicker: com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker
     private lateinit var seekerDelegate: com.tazztone.losslesscut.ui.editor.TimelineSeekerDelegate
@@ -74,8 +65,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                 updatePlaybackIcons()
             },
             onMediaTransition = { index ->
-                if (::clipAdapter.isInitialized) {
-                    clipAdapter.updateSelection(index)
+                if (::playlistDelegate.isInitialized) {
+                    playlistDelegate.updateSelection(index)
                 }
             },
             onIsPlayingChanged = { isPlaying ->
@@ -183,63 +174,17 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
         }
 
-        val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
-            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
-                val from = viewHolder.bindingAdapterPosition
-                val to = target.bindingAdapterPosition
-                clipAdapter.moveItemVisual(from, to)
-                return true
-            }
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                // Do nothing on swipe
-            }
-            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
-                super.onSelectedChanged(viewHolder, actionState)
-                if (actionState == ItemTouchHelper.ACTION_STATE_DRAG && viewHolder != null) {
-                    clipAdapter.startDrag(viewHolder.bindingAdapterPosition)
-                }
-            }
-            override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
-                super.clearView(recyclerView, viewHolder)
-                clipAdapter.commitPendingMove(viewHolder.bindingAdapterPosition)
-            }
-            override fun isLongPressDragEnabled(): Boolean = false
-        })
-
         binding.navBar.btnAddClips.setOnClickListener { addClipsAction() }
         TooltipCompat.setTooltipText(binding.navBar.btnAddClips, getString(R.string.add_video))
 
-        clipAdapter = MediaClipAdapter(
-            onClipSelected = { index -> 
-                val currentState = viewModel.uiState.value as? VideoEditingUiState.Success
-                if (currentState != null && index != currentState.selectedClipIndex) {
-                    rotationManager.setRotation(0, animate = false)
-                    viewModel.selectClip(index)
-                }
-            },
-            onClipsReordered = { from, to -> 
-                viewModel.reorderClips(from, to)
-                playerManager.moveMediaItem(from, to)
-            },
-            onClipLongPressed = { index ->
-                val clip = (viewModel.uiState.value as? VideoEditingUiState.Success)?.clips?.getOrNull(index)
-                if (clip != null) {
-                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                        .setTitle(getString(R.string.delete))
-                        .setMessage(getString(R.string.remove_clip_confirm))
-                        .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                            viewModel.removeClip(index)
-                            playerManager.removeMediaItem(index)
-                        }
-                        .setNegativeButton(getString(R.string.cancel), null)
-                        .show()
-                }
-            },
-            onStartDrag = { viewHolder -> itemTouchHelper.startDrag(viewHolder) },
-            onAddClicked = { addClipsAction() }
-        )
-        binding.playlistArea.rvClips.adapter = clipAdapter
-        binding.playlistArea.rvClips.let { itemTouchHelper.attachToRecyclerView(it) }
+        playlistDelegate = com.tazztone.losslesscut.ui.editor.PlaylistDelegate(
+            container = binding.playlistArea.root,
+            recyclerView = binding.playlistArea.rvClips,
+            viewModel = viewModel,
+            playerManager = playerManager,
+            rotationManager = rotationManager,
+            onAddClicked = addClipsAction
+        ).also { it.setup() }
 
         binding.playerSection.btnPlayPause.setOnClickListener { playerManager.togglePlayback() }
         binding.playerSection.btnPlayPauseControls.setOnClickListener { playerManager.togglePlayback() }
@@ -376,13 +321,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         }
 
         binding.seekerContainer.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
-        if (state.clips.size > 1) {
-            binding.playlistArea.root.visibility = View.VISIBLE
-            clipAdapter.submitList(state.clips)
-            clipAdapter.updateSelection(state.selectedClipIndex)
-        } else {
-            binding.playlistArea.root.visibility = View.GONE
-        }
+        playlistDelegate.submitList(state)
 
         if (state.isAudioOnly) {
             binding.playerSection.playerView.visibility = View.GONE

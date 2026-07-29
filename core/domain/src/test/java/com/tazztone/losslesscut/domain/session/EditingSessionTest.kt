@@ -236,6 +236,25 @@ public class EditingSessionTest {
     }
 
     @Test
+    public fun coalescedSegmentBoundsEditsUndoAsOneOperation() {
+        val session = EditingSession()
+        val clip = createTestClip(durationMs = 10000L)
+        session.setClips(listOf(clip))
+        val segmentId = clip.segments.first().id
+
+        session.updateSegmentBounds(segmentId, 1000L, 9000L, coalesceHistory = true)
+        session.updateSegmentBounds(segmentId, 1500L, 8500L, coalesceHistory = true)
+        session.updateSegmentBounds(segmentId, 2000L, 8000L, coalesceHistory = true)
+        session.finishSegmentBoundsEdit()
+
+        assertEquals(2000L, session.currentSnapshot.selectedSegment?.startMs)
+        assertTrue(session.undo())
+        assertEquals(0L, session.currentSnapshot.selectedSegment?.startMs)
+        assertEquals(10000L, session.currentSnapshot.selectedSegment?.endMs)
+        assertFalse(session.undo())
+    }
+
+    @Test
     public fun applySegmentsUpdatesClipAndPreservesOrResetsSelection() {
         val session = EditingSession()
         val clip = createTestClip(durationMs = 10000L)

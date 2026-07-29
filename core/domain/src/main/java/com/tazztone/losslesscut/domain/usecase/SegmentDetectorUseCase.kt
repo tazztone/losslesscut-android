@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,6 +24,7 @@ public class SegmentDetectorUseCase @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     private var visualJob: Job? = null
+    private val requestGeneration = AtomicLong(0L)
     
     @Volatile
     private var cachedAnalysis: List<FrameAnalysis>? = null
@@ -40,30 +42,32 @@ public class SegmentDetectorUseCase @Inject constructor(
         config: VisualDetectionConfig,
         listener: VisualDetectionListener
     ) {
-        if (cachedUri == uri && cachedIntervalMs == config.sampleIntervalMs && cachedStrategy == config.strategy && cachedAnalysis != null) {
+        cancelVisual()
+        val requestId = requestGeneration.incrementAndGet()
+
+        if (hasCachedAnalysisFor(uri, config)) {
             // Cache hit, fast-path filter
-            scope.launch {
+            visualJob = scope.launch(ioDispatcher) {
                 val ranges = VisualSegmentFilter.filter(
                     frames = cachedAnalysis!!,
                     strategy = config.strategy,
                     threshold = config.sensitivityThreshold,
                     minSegmentMs = config.minSegmentDurationMs
                 )
-                listener.onComplete(ranges)
+                notifyIfCurrent(requestId) { listener.onComplete(ranges) }
             }
             return
         }
 
-        cancelVisual()
         visualJob = scope.launch(ioDispatcher) {
             try {
-                listener.onProgress(null)
+                notifyIfCurrent(requestId) { listener.onProgress(null) }
                 val analysis = visualSegmentDetector.analyze(
                     uri = uri, 
                     sampleIntervalMs = config.sampleIntervalMs,
                     strategy = config.strategy
                 ) { processed, total ->
-                    listener.onProgress(processed to total)
+                    notifyIfCurrent(requestId) { listener.onProgress(processed to total) }
                 }
                 cachedAnalysis = analysis
                 cachedIntervalMs = config.sampleIntervalMs
@@ -76,18 +80,19 @@ public class SegmentDetectorUseCase @Inject constructor(
                     threshold = config.sensitivityThreshold,
                     minSegmentMs = config.minSegmentDurationMs
                 )
-                listener.onComplete(ranges)
+                notifyIfCurrent(requestId) { listener.onComplete(ranges) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                listener.onError(e)
+                notifyIfCurrent(requestId) { listener.onError(e) }
             } finally {
-                listener.onProgress(null)
+                notifyIfCurrent(requestId) { listener.onProgress(null) }
             }
         }
     }
 
     public fun cancelVisual() {
+        requestGeneration.incrementAndGet()
         visualJob?.cancel()
         visualJob = null
     }
@@ -101,5 +106,16 @@ public class SegmentDetectorUseCase @Inject constructor(
         cachedIntervalMs = -1L
         cachedUri = null
         cachedStrategy = null
+    }
+
+    private fun hasCachedAnalysisFor(uri: String, config: VisualDetectionConfig): Boolean {
+        return cachedAnalysis != null &&
+                cachedUri == uri &&
+                cachedIntervalMs == config.sampleIntervalMs &&
+                cachedStrategy == config.strategy
+    }
+
+    private inline fun notifyIfCurrent(requestId: Long, callback: () -> Unit) {
+        if (requestGeneration.get() == requestId) callback()
     }
 }

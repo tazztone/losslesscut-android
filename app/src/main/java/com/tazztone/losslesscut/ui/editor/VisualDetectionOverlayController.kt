@@ -79,6 +79,13 @@ class VisualDetectionOverlayController(
     }
 
     private fun setupListeners() {
+        setupStrategyListeners()
+        setupModeListener()
+        setupSliderListeners()
+        setupActionListeners()
+    }
+
+    private fun setupStrategyListeners() {
         val onStrategyClick = View.OnClickListener { v ->
             val newStrategy = when (v.id) {
                 R.id.btnSceneChange -> VisualStrategy.SCENE_CHANGE
@@ -100,7 +107,9 @@ class VisualDetectionOverlayController(
         btnBlackFrames.setOnClickListener(onStrategyClick)
         btnFreezeFrame.setOnClickListener(onStrategyClick)
         btnBlurQuality.setOnClickListener(onStrategyClick)
+    }
 
+    private fun setupModeListener() {
         btnToggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 currentMode = if (checkedId == R.id.btnModeKeep) {
@@ -112,7 +121,9 @@ class VisualDetectionOverlayController(
                 updateStatusText()
             }
         }
+    }
 
+    private fun setupSliderListeners() {
         sliderSensitivity.addOnChangeListener { _, value, _ ->
             updateValueText(tvSensitivityValue, value, getStrategyUnit())
             triggerFiltering()
@@ -127,7 +138,9 @@ class VisualDetectionOverlayController(
                 btnDetectAction.isEnabled = true
             }
         }
+    }
 
+    private fun setupActionListeners() {
         btnDetectAction.setOnClickListener {
             val progress = viewModel.visualDetectionProgress.value
             if (progress != null) {

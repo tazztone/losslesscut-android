@@ -14,11 +14,9 @@
     <string name="add_overly">Add overlay</string>
     <string name="add_text">Add text</string>
     <string name="add_audio">Add audio</string>
-    <string name="crop_video">Crop</string>
     <string name="merge_video">Merge</string>
     <string name="loading">Importing Media…</string>
     <string name="default_time_stamp">00:00 / 00:00</string>
-    <string name="trim_your_video">Trim Media</string>
     <string name="cancel">Cancel</string>
     <string name="keep_right_portion">Remove left</string>
     <string name="keep_left_portion">Remove right</string>

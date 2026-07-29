@@ -35,6 +35,7 @@ public class EditingSession(
 
     private val undoStack = ArrayDeque<Snapshot>()
     private val redoStack = ArrayDeque<Snapshot>()
+    private var activeBoundsEditSegmentId: UUID? = null
 
     private val _state = MutableStateFlow(EditingSessionState())
     public val state: StateFlow<EditingSessionState> = _state.asStateFlow()
@@ -45,6 +46,7 @@ public class EditingSession(
     public fun setClips(clips: List<MediaClip>, selectedIndex: Int = 0) {
         undoStack.clear()
         redoStack.clear()
+        activeBoundsEditSegmentId = null
         val validIndex = if (clips.isEmpty()) 0 else selectedIndex.coerceIn(clips.indices)
         val firstSegmentId = clips.getOrNull(validIndex)?.segments?.firstOrNull()?.id
 
@@ -162,13 +164,17 @@ public class EditingSession(
         segmentId: UUID,
         startMs: Long,
         endMs: Long,
-        minDurationMs: Long = MIN_SEGMENT_DURATION_MS
+        minDurationMs: Long = MIN_SEGMENT_DURATION_MS,
+        coalesceHistory: Boolean = false
     ) {
         val current = _state.value
         val clip = current.selectedClip ?: return
         if (clip.segments.none { it.id == segmentId }) return
 
-        pushHistory()
+        if (!coalesceHistory || activeBoundsEditSegmentId != segmentId) {
+            pushHistory()
+            activeBoundsEditSegmentId = if (coalesceHistory) segmentId else null
+        }
 
         val coercedEnd = if (endMs - startMs < minDurationMs) startMs + minDurationMs else endMs
         val updatedSegments = clip.segments.map {
@@ -185,6 +191,10 @@ public class EditingSession(
             canUndo = undoStack.isNotEmpty(),
             canRedo = false
         )
+    }
+
+    public fun finishSegmentBoundsEdit() {
+        activeBoundsEditSegmentId = null
     }
 
     public fun applySegments(updatedSegments: List<TrimSegment>) {
@@ -245,6 +255,7 @@ public class EditingSession(
 
     public fun undo(): Boolean {
         if (undoStack.isEmpty()) return false
+        activeBoundsEditSegmentId = null
         val current = _state.value
         redoStack.addLast(Snapshot(current.clips, current.selectedClipIndex, current.selectedSegmentId))
 
@@ -262,6 +273,7 @@ public class EditingSession(
 
     public fun redo(): Boolean {
         if (redoStack.isEmpty()) return false
+        activeBoundsEditSegmentId = null
         val current = _state.value
         undoStack.addLast(Snapshot(current.clips, current.selectedClipIndex, current.selectedSegmentId))
 
@@ -286,6 +298,7 @@ public class EditingSession(
     }
 
     private fun pushHistory() {
+        activeBoundsEditSegmentId = null
         val current = _state.value
         if (undoStack.size >= historyLimit) {
             undoStack.removeFirst()

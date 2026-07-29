@@ -6,7 +6,7 @@ import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.databinding.FragmentMetadataBinding
+import com.tazztone.losslesscut.databinding.FragmentRemuxBinding
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.util.asString
@@ -16,14 +16,14 @@ import kotlinx.coroutines.launch
 
 @UnstableApi
 @AndroidEntryPoint
-class MetadataFragment : BaseEditingFragment(R.layout.fragment_metadata) {
-    private var _binding: FragmentMetadataBinding? = null
+class MetadataFragment : BaseEditingFragment(R.layout.fragment_remux) {
+    private var _binding: FragmentRemuxBinding? = null
     private val binding get() = _binding!!
 
     override fun getPlayerView() = binding.playerView
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        _binding = FragmentMetadataBinding.bind(view)
+        _binding = FragmentRemuxBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
         
         playerManager = PlayerManager(

@@ -174,7 +174,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         if (outputBuffer != null) {
             val meanLuma = if (ctx.strategy == VisualStrategy.BLACK_FRAMES) {
                 VisualAlgorithms.calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
-            } else 255.0
+            } else DEFAULT_MEAN_LUMA
 
             val blurVariance = if (ctx.strategy == VisualStrategy.BLUR_QUALITY) {
                 VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
@@ -214,5 +214,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TIMEOUT_US = 10000L
         private const val US_PER_MS = 1000L
         private const val DOWNSCALE_SIZE = 32
+        private const val DEFAULT_MEAN_LUMA = 255.0
     }
 }
