@@ -79,7 +79,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 
 ### Custom Timeline Seeker (`CustomVideoSeeker`)
 - **Performance**: Uses `LruCache` waveform bitmap tile caching (2048px tiles) to eliminate per-frame canvas line rendering during scrubbing.
-- **Interactivity**: Multi-touch zoom (up to 20x), playhead/segment edge drag gestures, auto-panning, split line preview, and anchored delete/split actions on long press. Long press resolves KEEP segments before the playhead target when the playhead overlaps a segment.
+- **Interactivity**: Multi-touch zoom (up to 20x), top-anchored segment edge drag handles (preventing system gesture navigation conflicts), playhead/segment edge drag gestures, auto-panning, split line preview, and anchored delete/split actions on long press. Long press resolves KEEP segments before the playhead target when the playhead overlaps a segment.
 - **Accessibility**: Virtual view hierarchy via `ExploreByTouchHelper` (`SeekerAccessibilityHelper`).
 
 ### Smart Cut Detection Engine

@@ -126,9 +126,9 @@ internal class SeekerAccessibilityHelper(private val seeker: CustomVideoSeeker) 
             val x = seeker.timeToX(timeMs) - seeker.scrollOffsetX
             val rect = Rect(
                 (x - HANDLE_HIT_WIDTH).toInt(),
-                seeker.height - HANDLE_Y_HIT_OFFSET,
+                0,
                 (x + HANDLE_HIT_WIDTH).toInt(),
-                seeker.height
+                HANDLE_Y_HIT_OFFSET
             )
             @Suppress("DEPRECATION")
             node.setBoundsInParent(rect)

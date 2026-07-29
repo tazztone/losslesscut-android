@@ -39,7 +39,7 @@ class SeekerTouchHandlerTest {
 
         // Left handle is at x(2000) = 50 + (2000/10000)*900 = 50 + 180 = 230
         val downX = 230f
-        val downY = 90f // Bottom area
+        val downY = 20f // Top area
         val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, downX, downY, 0)
 
         touchHandler.onTouchEvent(downEvent)
@@ -57,7 +57,7 @@ class SeekerTouchHandlerTest {
 
         // Right handle is at x(5000) = 50 + (5000/10000)*900 = 50 + 450 = 500
         val downX = 500f
-        val downY = 90f // Bottom area
+        val downY = 20f // Top area
         val downEvent = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, downX, downY, 0)
 
         touchHandler.onTouchEvent(downEvent)

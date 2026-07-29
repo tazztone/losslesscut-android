@@ -399,7 +399,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
             val activeHandlePaint = if (isSelected) highlightedHandlePaint else handlePaint
 
             canvas.drawLine(startX, 0f, startX, seeker.height.toFloat(), activeHandlePaint)
-            val circleY = seeker.height.toFloat() - HANDLE_CIRCLE_OFFSET_Y
+            val circleY = HANDLE_CIRCLE_OFFSET_Y
             canvas.drawCircle(startX, circleY, HANDLE_CIRCLE_RADIUS, activeHandlePaint)
             if (seeker.showHandleHint) drawHandleArrow(canvas, startX, circleY, true)
             

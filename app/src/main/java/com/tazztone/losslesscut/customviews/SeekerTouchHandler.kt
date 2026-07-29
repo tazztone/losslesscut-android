@@ -24,7 +24,7 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
         private const val EDGE_PAN_THRESHOLD = 100f
         private const val AUTO_PAN_DELAY_MS = 16L
         private const val HANDLE_HIT_THRESHOLD_DP = 60f
-        private const val HANDLE_TOUCH_BOTTOM_OFFSET = 80f
+        private const val HANDLE_TOUCH_TOP_OFFSET = 80f
     }
 
     var activeSegmentId: UUID? = null
@@ -184,8 +184,8 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
     }
 
     private fun handleSegmentHit(event: MotionEvent, touchTimeMs: Long, hitThresholdMs: Long): Boolean {
-        val isTouchingBottom = event.y > seeker.height - HANDLE_TOUCH_BOTTOM_OFFSET
-        val canHitSegments = seeker.segmentsVisible && isTouchingBottom && !seeker.isRemuxMode
+        val isTouchingTop = event.y < HANDLE_TOUCH_TOP_OFFSET
+        val canHitSegments = seeker.segmentsVisible && isTouchingTop && !seeker.isRemuxMode
         if (!canHitSegments) return false
 
         val (hitHandle, hitId) = findHandleHit(touchTimeMs, hitThresholdMs)
