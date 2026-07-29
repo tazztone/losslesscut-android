@@ -116,8 +116,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         while (!ctx.sawOutputEOS) {
             kotlin.coroutines.coroutineContext.ensureActive()
 
-            seekIfNeeded(ctx)
-
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
             val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)
@@ -131,35 +129,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         }
     }
 
-    private fun seekIfNeeded(ctx: DetectionContext) {
-        if (ctx.lastProcessedUs == -1L || ctx.sampleIntervalUs < MIN_SEEK_INTERVAL_US) return
-        val nextTargetUs = ctx.lastProcessedUs + ctx.sampleIntervalUs
-        val currentSampleUs = ctx.extractor.sampleTime
-
-        if (currentSampleUs in 0 until (nextTargetUs - MIN_SEEK_INTERVAL_US)) {
-            ctx.extractor.seekTo(nextTargetUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-            val newSampleUs = ctx.extractor.sampleTime
-            if (newSampleUs > ctx.lastProcessedUs) {
-                try {
-                    ctx.codec.flush()
-                    drainOutput(ctx)
-                } catch (e: IllegalStateException) {
-                    Log.w(TAG, "Codec flush failed during seek", e)
-                }
-            }
-        }
-    }
-
-    private fun drainOutput(ctx: DetectionContext) {
-        while (true) {
-            val outIndex = ctx.codec.dequeueOutputBuffer(ctx.info, 0L)
-            if (outIndex >= 0) {
-                ctx.codec.releaseOutputBuffer(outIndex, false)
-            } else {
-                break
-            }
-        }
-    }
 
     private fun processOutputBufferResult(ctx: DetectionContext, index: Int): Boolean {
         var didProcess = false
@@ -245,6 +214,5 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TIMEOUT_US = 10000L
         private const val US_PER_MS = 1000L
         private const val DOWNSCALE_SIZE = 32
-        private const val MIN_SEEK_INTERVAL_US = 300_000L
     }
 }
