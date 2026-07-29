@@ -1,130 +1,190 @@
 # LosslessCut Architecture & Technical Reference
 
-This document provides a detailed technical breakdown of the architecture, module design, component blueprint, key workflows, and format compatibility for LosslessCut (MP4).
+This document provides a technical breakdown of the architecture, layer boundaries, module blueprint, key workflows, storage design, and format compatibility for LosslessCut (Android).
 
 ---
 
 ## 1. System Architecture
 
-LosslessCut follows **MVVM + Clean Architecture** principles with strict layer boundaries, reactive state management, and native Android media processing.
+LosslessCut follows **MVVM + Clean Architecture** with strict layer boundaries, reactive state management via Kotlin Coroutines/Flows, and native Android media processing.
 
 ```
-                  ┌─────────────────────────────────────────┐
-                  │                 :app                    │
-                  │   (UI, Fragments, Jetpack ViewModels)   │
-                  └────────────────────┬────────────────────┘
-                                       │
-                                       ▼
-                  ┌─────────────────────────────────────────┐
-                  │              :core:domain               │
-                  │ (Pure JVM Library: Use Cases & Models)  │
-                  └────────────────────▲────────────────────┘
-                                       │
-                  ┌────────────────────┴────────────────────┐
-                  │                 :engine                 │
-                  │   (MediaExtractor & MediaMuxer Engine)  │
-                  └─────────────────────────────────────────┘
+                          ┌───────────────────────────────────────────┐
+                          │                   :app                    │
+                          │   (UI, Fragments, Jetpack ViewModels)     │
+                          └──────┬─────────────────────────────┬──────┘
+                                 │                             │
+                      runtimeOnly│                             │
+                                 ▼                             ▼
+                          ┌──────────────┐             ┌──────────────┐
+                          │   :engine    │             │  :core:data  │
+                          │(Media Engine)│             │(Repositories)│
+                          └──────┬───────┘             └──────┬───────┘
+                                 │                            │
+                                 └──────────────┬─────────────┘
+                                                │
+                                                ▼
+                          ┌───────────────────────────────────────────┐
+                          │               :core:domain                │
+                          │ (Pure JVM Library: Use Cases & Models)    │
+                          └───────────────────────────────────────────┘
 ```
 
 ### Technology Stack
 - **Languages**: Kotlin 2.2+, Gradle Kotlin DSL (`.gradle.kts`)
-- **Media Engine**: Native `MediaExtractor`, `MediaMuxer` (Processing in `:engine`), Media3 (Playback UI in `:app`)
-- **Dependency Inversion**: Clean boundaries via `:core:domain` interfaces (JSR-330)
-- **Dependency Injection**: Hilt (in Android modules `:app`, `:engine`, `:core:data`)
-- **Minimum SDK**: 26 (Android 8.0)
-- **Target SDK**: 36 (Android 15 / "Baklava")
-- **Tooling**: AGP 9.0+ (Built-in Kotlin Support), JDK 17/21 Toolchain
+- **Media Processing**: Native `MediaExtractor`, `MediaMuxer` (in `:engine`), Media3 / ExoPlayer (Playback UI in `:app`)
+- **Dependency Inversion & Injection**: Domain-level interfaces (`ILosslessEngine`, `IVideoEditingRepository`, `IMediaFinalizer`) resolved via Hilt (`:app`, `:engine`, `:core:data`)
+- **SDK Targets**: Min SDK 26 (Android 8.0), Target SDK 36 (Android 15 / "Baklava")
+- **Build System**: AGP 9.0+, JDK 17/21 Toolchain
 
 ---
 
-## 2. Project Structure & Module Boundaries
+## 2. Architectural Guardrails & Layer Boundaries
 
-The codebase is organized into modular layers:
-
-- **`:app`**: Main Android application module.
-  - `ui`: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`), Custom Views (`CustomVideoSeeker`), and Navigation graph.
-  - `ui/compose`: Allowed exclusively for new, isolated UI sheets/dialogs.
-  - `viewmodel`: Jetpack ViewModels (`VideoEditingViewModel`) delegating logic to Use Cases.
-- **`:core:domain`**: Pure Kotlin/JVM library. Contains Use Cases, Entities (`MediaClip`, `TrimSegment`), and Domain Interfaces. Zero Android/Hilt dependencies.
-- **`:engine`**: Core media processing engine (`LosslessEngine`, `TrackInspector`, `VisualSegmentDetectorImpl`). Decoupled from storage and UI via domain interfaces.
-- **`:core:data`**: Shared data layer containing persistence (`AppPreferences`), Repository implementations, and MediaStore/SAF finalizers (`IMediaFinalizer`).
+To prevent technical debt and maintain zero-loss performance, the following rules are enforced across the codebase:
 
 > [!IMPORTANT]
-> **Module Guardrails**: `:app` uses `runtimeOnly(:engine)` and cannot import engine classes directly. All interactions flow through Hilt bindings and `:core:domain` interfaces.
+> 1. **Module Isolation**: `:app` includes `:engine` strictly via `runtimeOnly(:engine)`. Direct code imports of engine classes inside `:app` are forbidden; all invocation flows through Hilt and `:core:domain` interfaces (`ILosslessEngine`).
+> 2. **Pure JVM Domain**: `:core:domain` must remain a pure JVM Kotlin library. Zero `android.*`, `androidx.*`, or Hilt dependencies allowed.
+> 3. **Storage Access Policy**: Shared user media must be accessed exclusively through SAF (`DocumentFile`) or `ContentResolver` / `MediaStore`. Direct `java.io.File` access on external storage is strictly forbidden.
+> 4. **UI Framework Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**` for modular dialogs/sheets. NLE timeline scrubbing and video player UI rely on custom Android `View` components.
 
 ---
 
-## 3. Component Blueprint
+## 3. Project Structure & Module Breakdown
 
-### UI & Navigation
-- **Jetpack Navigation**: Manages transitions between NLE editing modes (`EditorFragment`), container conversion (`RemuxFragment`), and rotation metadata overrides (`MetadataFragment`).
-- **`CustomVideoSeeker`**: High-performance custom `View` for NLE timeline scrubbing.
-  - *Logic*: Supports multi-touch zoom (up to 20x), playhead/segment drag gestures, and edge auto-panning.
-  - *Accessibility*: Implements `ExploreByTouchHelper` virtual view hierarchy for screen reader navigation.
-  - *Performance*: Uses `LruCache` waveform bitmap tile caching (2048px tiles) to eliminate per-frame canvas line rendering.
-- **Layout System**: Orientation-specific layouts (`layout` vs `layout-land`). Includes clip ID-based targeting for sidebar selection and auto-pausing player overlays upon opening dialogs.
-
-### User Interaction & Control Layer
-- **Smart Cut Overlay (`SmartCutOverlayController`)**: Tabbed overlay managing:
-  - `SilenceDetectionOverlayController`: Parameterized audio silence removal with ghost-state previews.
-  - `VisualDetectionOverlayController`: Visual segment detection engine (Scene Changes, Black Frames, Freeze Frames, Blur Quality).
-- **Keyboard Shortcuts (`ShortcutHandler`)**:
-  - `SPACE`: Play/Pause toggle.
-  - `I` / `O`: Set In/Out segment boundaries.
-  - `S`: Split segment at current playhead position.
-  - `LEFT` / `RIGHT`: Jump to previous/next keyframe.
-  - `ALT + LEFT/RIGHT`: Nudge playhead precision position.
-- **Playback Speed**: Configurable rates (`0.25x`, `0.5x`, `1.0x`, `1.5x`, `2.0x`, `4.0x`).
-
-### Data & Domain Logic
-- **`LosslessEngine`**: Central muxing engine.
-  - `executeLosslessCut`: Extracts and remuxes requested timestamps without re-encoding. Automatically routes audio-only clips to `.m4a` containers.
-  - `executeLosslessMerge`: Concatenates compatible media clips while shifting sample Presentation Timestamps (PTS).
-- **`VideoEditingViewModel`**: State machine orchestrator. Context-free design emitting one-time UI events via `Channel<VideoEditingEvent>` and preserving undo/redo history stacks.
-- **Detection Heuristics**:
-  - *Silence Detection*: Uses absolute raw amplitudes from waveform data to prevent false amplification of quiet passages.
-  - *Visual Detection*: Pure Kotlin frame analysis using pHash, Sum of Absolute Differences (SAD), and Laplacian variance on sequential `MediaExtractor` frames.
+- **`:app`**: Android UI & presentation.
+  - `ui/`: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`), `PlayerManager`, `ShortcutHandler`.
+  - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
+  - `ui/compose/`: Isolated Compose dialogs and sheets.
+  - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and state stacks.
+- **`:core:domain`**: Core business domain (Pure JVM).
+  - `model/`: `MediaClip`, `TrimSegment`, `FrameAnalysis`, `VisualDetectionConfig`, `WaveformResult`.
+  - `usecase/`: `ExportUseCase`, `SilenceDetectionUseCase`, `SegmentDetectorUseCase`, `ClipManagementUseCase`, `SessionUseCase`, `ExtractSnapshotUseCase`.
+  - `engine/` & `repository/`: Domain interfaces (`ILosslessEngine`, `IVideoEditingRepository`, `IMediaFinalizer`, `IVisualSegmentDetector`).
+- **`:engine`**: Native media extraction & muxing engine.
+  - `muxing/`: Pipeline components (`ExtractorSampleCopier`, `MuxerWriter`, `MergeValidator`, `SegmentGapCalculator`, `TrackInspector`, `SampleTimeMapper`).
+  - `VisualAlgorithms.kt` & `VisualSegmentDetectorImpl.kt`: Frame pHash, SAD, and Laplacian variance analysis.
+  - `AudioWaveformExtractor.kt` & `AudioDecoderImpl.kt`: Low-level PCM audio decoding and amplitude extraction.
+- **`:core:data`**: Storage, repositories, and preferences.
+  - `data/`: `VideoEditingRepositoryImpl`, `AppPreferences` (DataStore).
+  - `utils/`: `StorageUtils` for SAF tree creation and MediaStore operations.
+  - `di/`: `MediaFinalizerImpl` implementation of `IMediaFinalizer`.
 
 ---
 
-## 4. Key Media Workflows
+## 4. Component Blueprint
 
-### Lossless Export Process
-1. `MediaExtractor` seeks to the keyframe (sync sample) immediately preceding `startMs`.
-2. Encoded samples are extracted and written to `MediaMuxer`.
-3. Samples prior to `startMs` are filtered out based on Presentation Timestamps (PTS).
-4. Extracted samples write continuously until `endMs` is reached, ensuring lossless quality with zero transcoding.
+### Custom Timeline Seeker (`CustomVideoSeeker`)
+- **Performance**: Uses `LruCache` waveform bitmap tile caching (2048px tiles) to eliminate per-frame canvas line rendering during scrubbing.
+- **Interactivity**: Multi-touch zoom (up to 20x), playhead/segment edge drag gestures, auto-panning.
+- **Accessibility**: Virtual view hierarchy via `ExploreByTouchHelper` (`SeekerAccessibilityHelper`).
 
-### Multi-Clip Merging Workflow
-1. Validates stream compatibility across input clips (matching video/audio codecs and container parameters).
-2. Calculates cumulative duration offsets across input segments.
-3. Adjusts sample PTS values sequentially during muxing to create a seamless output file.
+### Smart Cut Detection Engine
+- **Silence Detection**: Analyzes raw PCM amplitudes (`AudioWaveformExtractor`) to compute RMS energy levels without noise floor distortion.
+- **Visual Detection**: Uses `MediaExtractor` frame stepping with Kotlin-native perceptual hashing (pHash), Sum of Absolute Differences (SAD), and Laplacian variance to flag scene cuts, black frames, freeze frames, and blur quality.
+
+### State Management & Navigation
+- **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.
+- **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds, `S` split, `LEFT`/`RIGHT` keyframe seek).
 
 ---
 
-## 5. Format Compatibility Matrix
+## 5. Storage Architecture & Media Finalization
 
-LosslessCut operates strictly at the **container level** using Android's native `MediaMuxer` to ensure lightning-fast processing and zero quality degradation.
+LosslessCut writes output media directly to destination URIs without requiring full temp file copies on shared storage:
 
-| Category | Primary Support (Lossless) | Legacy/Technical Support |
+```
+[Muxer Pipeline] ──> ParcelFileDescriptor / Temp Working File
+                                 │
+                                 ▼
+                     [StorageUtils.createMediaOutputUri]
+                                 │
+                 ┌───────────────┴───────────────┐
+                 ▼                               ▼
+       [Custom SAF Tree URI]          [MediaStore Collection]
+      (DocumentFile.createFile)       (IS_PENDING = 1 API 29+)
+                 │                               │
+                 └───────────────┬───────────────┘
+                                 ▼
+                       [IMediaFinalizer]
+                    (Set IS_PENDING = 0)
+```
+
+- **SAF Fallback**: If a custom directory is selected in preferences, `StorageUtils` creates the output file via `DocumentFile.fromTreeUri()`.
+- **MediaStore Lifecycle**: On Android 10+ (API 29+), output files in public MediaStore collections are marked `IS_PENDING = 1` during writing and updated to `0` upon completion.
+- **Non-MediaStore URIs**: `MediaFinalizerImpl` catches `UnsupportedOperationException` when invoking `IS_PENDING = 0` on SAF or FileProvider URIs.
+
+---
+
+## 6. Key Media Workflows
+
+### Lossless Cut / Export Flow
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as EditorFragment / ViewModel
+    participant UC as ExportUseCase
+    participant Engine as LosslessEngineImpl
+    participant Copier as ExtractorSampleCopier
+    participant Muxer as MuxerWriter
+    participant Fin as IMediaFinalizer
+
+    UI->>UC: exportSegments(uri, segments)
+    UC->>Engine: executeLosslessCut(uri, startMs, endMs)
+    Engine->>Copier: Seek to sync keyframe <= startMs
+    Copier->>Muxer: Copy encoded samples (PTS >= startMs & <= endMs)
+    Engine->>Fin: finalizeVideo(outputUri)
+    Fin-->>UI: Export Complete (MediaStore URI)
+```
+
+### Multi-Clip Merging Flow
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Engine as LosslessEngineImpl
+    participant Val as MergeValidator
+    participant Calc as SegmentGapCalculator
+    participant Muxer as MuxerWriter
+
+    Engine->>Val: validateCompatibility(inputClips)
+    Val-->>Engine: Stream & Codec Parameters Match
+    Engine->>Calc: computeCumulativeTimeOffsets(inputSegments)
+    loop Each Media Segment
+        Engine->>Muxer: Write samples with shifted PTS
+    end
+    Engine-->>Engine: Close MediaMuxer & Finalize Output
+```
+
+---
+
+## 7. Testing Architecture & Gotchas
+
+- **Module Test Command**: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>`
+- **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, Lint, JVM unit tests, and Kover).
+- **Engine Instrumented Tests**: Engine tests relying on native Android codecs MUST reside in `:engine/src/androidTest` (not `:app`).
+- **FileProvider Mocking**: Instrumented tests use local storage / mocked `FileProvider` authorities (`:engine:connectedDebugAndroidTest`).
+- **Test Asset Staging**: TargetSdk 33+ instrumented tests copy media assets to `cacheDir` via `UiAutomation.executeShellCommand()`.
+
+---
+
+## 8. Format Compatibility Matrix
+
+LosslessCut operates strictly at the **container & bitstream level** using Android native `MediaMuxer`:
+
+| Category | Lossless Direct Support | Container Remuxing / Notes |
 | :--- | :--- | :--- |
-| **Output Container** | `.mp4`, `.m4a` | — |
-| **Video Codecs** | **H.264 (AVC)**, **H.265 (HEVC)** | H.263, MPEG-4 Visual |
-| **Audio Codecs** | **AAC (LC, HE)** | AMR-NB, AMR-WB |
-| **Input Containers** | `.mp4`, `.m4a`, `.mov`, `.mkv`* | `.3gp`, `.webm`* |
-
-\* *MKV, MOV, and WebM input files can be remuxed to MP4 without re-encoding ONLY if internal audio/video streams match supported codecs.*
-
-> [!NOTE]
-> **Why are these the supported formats?**
-> Standard Android `MediaMuxer` enforces strict MP4 container compliance. Formats like **MP3**, **FLAC**, **VP9**, or **Vorbis** require full transcoding to place into an MP4 container, which would defeat the zero-loss purpose of LosslessCut.
+| **Output Containers** | `.mp4`, `.m4a` (audio-only) | Formats requiring transcoding (MP3, FLAC, VP9) are excluded to ensure zero loss. |
+| **Video Codecs** | **H.264 (AVC)**, **H.265 (HEVC)** | H.263, MPEG-4 Visual supported where container allows. |
+| **Audio Codecs** | **AAC (LC, HE)** | AMR-NB, AMR-WB supported natively. |
+| **Input Containers** | `.mp4`, `.m4a`, `.mov`, `.mkv`* | \*Remuxable to MP4 without re-encoding if internal audio/video codecs match target limits. |
 
 ---
 
-## 6. Context7 Documentation IDs
+## 9. Context7 Documentation IDs
 
 For external AI documentation lookups:
-- `/androidx/media` (Media3/ExoPlayer)
+- `/androidx/media` (Media3 / ExoPlayer)
 - `/kotlin/kotlinx.coroutines` (Coroutines & Flows)
 - `/androidx/datastore` (Preferences DataStore)
 - `/material-components/material-components-android` (Material 3 UI)
