@@ -113,20 +113,36 @@ class VisualSegmentDetectorImpl @Inject constructor(
 
     private suspend fun detectLoop(ctx: DetectionContext, estimatedTotal: Int, onProgress: (Int, Int) -> Unit) {
         var processedCount = 0
+        var consecutiveEosTimeouts = 0
+
         while (!ctx.sawOutputEOS) {
             kotlin.coroutines.coroutineContext.ensureActive()
 
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
             val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)
-            if (outputBufferIndex >= 0) {
-                val wasProcessed = processOutputBufferResult(ctx, outputBufferIndex)
-                if (wasProcessed) {
-                    processedCount++
-                    onProgress(processedCount, estimatedTotal)
+            when {
+                outputBufferIndex >= 0 -> {
+                    consecutiveEosTimeouts = 0
+                    if (processOutputBufferResult(ctx, outputBufferIndex)) {
+                        processedCount++
+                        onProgress(processedCount, estimatedTotal)
+                    }
+                }
+                outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    consecutiveEosTimeouts++
+                    if (shouldTerminateOnEosTimeout(ctx, consecutiveEosTimeouts)) break
                 }
             }
         }
+    }
+
+    private fun shouldTerminateOnEosTimeout(ctx: DetectionContext, timeouts: Int): Boolean {
+        if (ctx.sawInputEOS && timeouts >= MAX_EOS_TIMEOUTS) {
+            Log.w(TAG, "Decoder did not signal EOS after input EOS; force terminating detect loop.")
+            return true
+        }
+        return false
     }
 
 
@@ -212,6 +228,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
     companion object {
         private const val TAG = "VisualSegmentDetector"
         private const val TIMEOUT_US = 10000L
+        private const val MAX_EOS_TIMEOUTS = 50
         private const val US_PER_MS = 1000L
         private const val DOWNSCALE_SIZE = 32
         private const val DEFAULT_MEAN_LUMA = 255.0

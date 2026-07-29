@@ -497,6 +497,7 @@ class VideoEditingViewModel @Inject constructor(
             stateMutex.withLock {
                 _detectionPreviewRanges.value = ranges
                 _rawSilencePreviewRanges.value = null
+                _visualDetectionProgress.value = null
                 updateStateInternal()
             }
         }
@@ -511,6 +512,7 @@ class VideoEditingViewModel @Inject constructor(
             )
             stateMutex.withLock {
                 _detectionPreviewRanges.value = emptyList()
+                _visualDetectionProgress.value = null
                 updateStateInternal()
             }
         }

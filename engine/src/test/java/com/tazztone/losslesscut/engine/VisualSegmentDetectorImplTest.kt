@@ -197,4 +197,29 @@ class VisualSegmentDetectorImplTest {
         }
         assertTrue("CancellationException should be rethrown", threwCancellation)
     }
+
+    @Test
+    fun `analyze terminates when decoder fails to signal output EOS`() = runBlocking {
+        val format = mockk<MediaFormat>(relaxed = true)
+
+        every { anyConstructed<MediaExtractor>().trackCount } returns 1
+        every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns format
+        every { format.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+        every { format.getLong(MediaFormat.KEY_DURATION) } returns 1000000L
+        every { anyConstructed<MediaExtractor>().selectTrack(0) } returns Unit
+        every { anyConstructed<MediaExtractor>().readSampleData(any(), any()) } returns -1
+
+        val mockCodec = mockk<MediaCodec>(relaxed = true)
+        every { MediaCodec.createDecoderByType(any()) } returns mockCodec
+
+        every { mockCodec.dequeueInputBuffer(any()) } returns 0
+        every { mockCodec.getInputBuffer(any()) } returns ByteBuffer.allocate(1024)
+        every { mockCodec.dequeueOutputBuffer(any(), any()) } returns MediaCodec.INFO_TRY_AGAIN_LATER
+
+        // Ensure analyze finishes without hanging infinitely
+        val result = detector.analyze("test_uri", 1000) { _, _ -> }
+        assertTrue(result.isEmpty())
+        verify { mockCodec.stop() }
+        verify { mockCodec.release() }
+    }
 }
