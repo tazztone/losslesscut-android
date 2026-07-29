@@ -83,6 +83,11 @@ open class CustomVideoSeeker @JvmOverloads constructor(
             field = value
             invalidate()
         }
+    var detectionMode: SilenceDetectionUseCase.DetectionMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
+        set(value) {
+            field = value
+            invalidate()
+        }
     
     var detectionPreviewRanges: List<LongRange>
         get() = internalDetectionPreviewRanges

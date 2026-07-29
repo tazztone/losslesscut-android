@@ -57,6 +57,34 @@ public class SilenceDetectionUseCaseTest {
     }
 
     @Test
+    public fun testApplySilenceDetection_KeepMode(): Unit {
+        val clip = createClip(1000)
+        // Static/freeze scene detected between 400 and 600
+        val detectedRanges = listOf(400L..600L)
+        
+        val updatedClip = useCase.applyDetectionRanges(
+            clip = clip,
+            ranges = detectedRanges,
+            minKeepSegmentDurationMs = 100L,
+            mode = SilenceDetectionUseCase.DetectionMode.KEEP_RANGES
+        )
+        
+        // Invert: 0-400 (DISCARD), 400-600 (KEEP), 600-1000 (DISCARD)
+        assertEquals(3, updatedClip.segments.size)
+        assertEquals(0L, updatedClip.segments[0].startMs)
+        assertEquals(400L, updatedClip.segments[0].endMs)
+        assertEquals(SegmentAction.DISCARD, updatedClip.segments[0].action)
+        
+        assertEquals(400L, updatedClip.segments[1].startMs)
+        assertEquals(600L, updatedClip.segments[1].endMs)
+        assertEquals(SegmentAction.KEEP, updatedClip.segments[1].action)
+        
+        assertEquals(600L, updatedClip.segments[2].startMs)
+        assertEquals(1000L, updatedClip.segments[2].endMs)
+        assertEquals(SegmentAction.DISCARD, updatedClip.segments[2].action)
+    }
+
+    @Test
     public fun testApplySilenceDetection_AllSilent(): Unit {
         val clip = createClip(1000)
         val silenceRanges = listOf(0L..1000L)

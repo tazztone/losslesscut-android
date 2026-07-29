@@ -25,6 +25,9 @@
 - 🤖 **Smart Cut (v2.0)**: Unified, tabbed interface combining **Silence Cut** and **Visual Detection**.
     - **Silence**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations and live savings previews.
     - **Visual**: Algorithm-driven segment detection for **Scene Changes**, **Black Frames**, **Freeze Frames**, and **Blur Quality**.
+    - **Keep / Discard Invert Toggle**: Easily switch between discarding detected ranges or keeping matching ranges (e.g., static frame preservation for stop-motion animations).
+    - **Real-Time Analysis ETA**: Live throughput speed calculation and estimated time remaining during video analysis.
+    - **Compact Layout**: Density-optimized vertical overlay design maximizing screen space for video preview and seeker timeline.
 - ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
 - ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
 - 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.

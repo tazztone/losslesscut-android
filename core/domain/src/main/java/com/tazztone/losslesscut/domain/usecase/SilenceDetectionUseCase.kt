@@ -25,6 +25,7 @@ public class SilenceDetectionUseCase @Inject constructor(
 
     public enum class DetectionMode {
         DISCARD_RANGES,      // Detected ranges -> DISCARD, gaps -> KEEP (Silence, black, freeze)
+        KEEP_RANGES,         // Detected ranges -> KEEP, gaps -> DISCARD (Inverted: Stop-motion)
         SPLIT_AT_BOUNDARIES  // Split at range start points, all segments -> KEEP (Scene change)
     }
 
@@ -78,10 +79,10 @@ public class SilenceDetectionUseCase @Inject constructor(
         minKeepSegmentDurationMs: Long,
         mode: DetectionMode = DetectionMode.DISCARD_RANGES
     ): MediaClip {
-        val segments = if (mode == DetectionMode.SPLIT_AT_BOUNDARIES) {
-            buildSegmentsBySplitting(clip.durationMs, ranges)
-        } else {
-            buildSegmentsFromDiscardRanges(clip.durationMs, ranges, minKeepSegmentDurationMs)
+        val segments = when (mode) {
+            DetectionMode.SPLIT_AT_BOUNDARIES -> buildSegmentsBySplitting(clip.durationMs, ranges)
+            DetectionMode.KEEP_RANGES -> buildSegmentsFromKeepRanges(clip.durationMs, ranges)
+            DetectionMode.DISCARD_RANGES -> buildSegmentsFromDiscardRanges(clip.durationMs, ranges, minKeepSegmentDurationMs)
         }
         
         val finalSegments = if (segments.none { it.action == SegmentAction.KEEP }) {
@@ -91,6 +92,41 @@ public class SilenceDetectionUseCase @Inject constructor(
         }
         
         return clip.copy(segments = finalSegments)
+    }
+
+    private fun buildSegmentsFromKeepRanges(
+        clipEnd: Long,
+        ranges: List<LongRange>
+    ): List<TrimSegment> {
+        if (ranges.isEmpty()) {
+            return listOf(TrimSegment(UUID.randomUUID(), 0L, clipEnd, SegmentAction.DISCARD))
+        }
+
+        val rawSegments = mutableListOf<TrimSegment>()
+        var cursor = 0L
+
+        for (range in ranges) {
+            val keepStart = clampBoundary(range.first.coerceIn(0L, clipEnd), clipEnd)
+            val keepEnd = clampBoundary(range.last.coerceIn(0L, clipEnd), clipEnd)
+
+            if (keepEnd <= cursor) continue
+
+            val effectiveStart = maxOf(cursor, keepStart)
+
+            if (effectiveStart > cursor) {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, effectiveStart, SegmentAction.DISCARD))
+            }
+            if (keepEnd > effectiveStart) {
+                rawSegments.add(TrimSegment(UUID.randomUUID(), effectiveStart, keepEnd, SegmentAction.KEEP))
+            }
+            cursor = maxOf(cursor, keepEnd)
+        }
+
+        if (cursor < clipEnd) {
+            rawSegments.add(TrimSegment(UUID.randomUUID(), cursor, clipEnd, SegmentAction.DISCARD))
+        }
+
+        return mergeAdjacentSameAction(rawSegments)
     }
 
     private fun buildSegmentsFromDiscardRanges(

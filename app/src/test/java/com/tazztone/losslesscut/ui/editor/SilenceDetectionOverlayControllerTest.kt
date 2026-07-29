@@ -117,6 +117,21 @@ class SilenceDetectionOverlayControllerTest {
     }
 
     @Test
+    fun `btnKeepModeSilence_appliesKeepMode`() {
+        controller.show()
+        val btnModeKeepSilence = binding.smartCutOverlay.root.findViewById<com.google.android.material.button.MaterialButton>(R.id.btnModeKeepSilence)
+        val btnApply = binding.smartCutOverlay.root.findViewById<android.widget.Button>(R.id.btnApply)
+
+        btnModeKeepSilence.performClick()
+        btnApply.performClick()
+
+        io.mockk.verify {
+            viewModel.applyDetection(SilenceDetectionUseCase.DetectionMode.KEEP_RANGES, any())
+        }
+        assert(dismissCalled)
+    }
+
+    @Test
     fun `sliderChanges_triggerPreviewUpdate`() {
         controller.show()
         val sliderThreshold = binding.smartCutOverlay.root.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)

@@ -159,6 +159,7 @@
     <string name="strategy">Strategy</string>
     <string name="analyzing_video">Analyzing video content…</string>
     <string name="analyzing_progress">Analyzing: %1$d / %2$d frames</string>
+    <string name="analyzing_progress_eta">Analyzing: %1$d / %2$d frames (ETA %3$s)</string>
     <string name="error_visual_detection_failed">Visual analysis failed</string>
     <string name="sensitivity">Sensitivity</string>
     <string name="luma_threshold">Luma Threshold</string>
@@ -167,6 +168,10 @@
     <string name="min_segment">Min Segment</string>
     <string name="sample_interval">Interval</string>
     <string name="visual_detected_preview">%1$d segments detected (%2$s total)</string>
+    <string name="visual_detected_preview_discard">%1$d scenes detected (%2$s to discard)</string>
+    <string name="visual_detected_preview_keep">%1$d scenes detected (%2$s to keep)</string>
+    <string name="mode_discard_matching">Discard</string>
+    <string name="mode_keep_matching">Keep</string>
     <string name="scene_change">Scene Change</string>
     <string name="black_frames">Black Frames</string>
     <string name="freeze_frame">Freeze Frame</string>

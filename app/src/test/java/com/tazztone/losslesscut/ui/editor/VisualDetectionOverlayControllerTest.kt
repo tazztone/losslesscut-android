@@ -193,6 +193,23 @@ class VisualDetectionOverlayControllerTest {
     }
 
     @Test
+    fun `btnModeKeep_appliesKeepMode`() {
+        controller.activate()
+        // Switch to FREEZE_FRAME strategy so mode is respected (SCENE_CHANGE forces SPLIT_AT_BOUNDARIES)
+        val btnFreezeFrame = root.findViewById<View>(R.id.btnFreezeFrame)
+        btnFreezeFrame.performClick()
+
+        val btnModeKeep = root.findViewById<MaterialButton>(R.id.btnModeKeep)
+        val btnApplyVisual = root.findViewById<MaterialButton>(R.id.btnApplyVisual)
+
+        btnModeKeep.performClick()
+        btnApplyVisual.performClick()
+
+        verify { viewModel.applyDetection(SilenceDetectionUseCase.DetectionMode.KEEP_RANGES) }
+        assertTrue(dismissCalled)
+    }
+
+    @Test
     fun `observeState_updatesDetectedStatus_whenSuccess`() {
         controller.activate()
         val tvDetectedStatus = root.findViewById<TextView>(R.id.tvDetectedStatus)

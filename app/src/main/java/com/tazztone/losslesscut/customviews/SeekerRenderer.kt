@@ -24,6 +24,7 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         private const val VISUAL_BLACK_FRAMES_COLOR = 0xCC000000.toInt()
         private const val VISUAL_FREEZE_FRAME_COLOR = 0xBB3F51B5.toInt() // Indigo
         private const val VISUAL_BLUR_QUALITY_COLOR = 0xBB9C27B0.toInt() // Purple
+        private const val VISUAL_KEEP_PREVIEW_COLOR = 0x884CAF50.toInt() // Soft green for Keep mode
         private const val PLAYHEAD_STROKE_WIDTH = 5f
         private const val KEYFRAME_STROKE_WIDTH = 2f
         private const val SELECTED_BORDER_WIDTH = 8f
@@ -334,11 +335,15 @@ internal class SeekerRenderer(private val seeker: CustomVideoSeeker) {
         val strategy = seeker.visualStrategy
         val useSplitMarkers = strategy == com.tazztone.losslesscut.domain.model.VisualStrategy.SCENE_CHANGE
         
-        val paintColor = when (strategy) {
-            com.tazztone.losslesscut.domain.model.VisualStrategy.BLACK_FRAMES -> VISUAL_BLACK_FRAMES_COLOR
-            com.tazztone.losslesscut.domain.model.VisualStrategy.FREEZE_FRAME -> VISUAL_FREEZE_FRAME_COLOR
-            com.tazztone.losslesscut.domain.model.VisualStrategy.BLUR_QUALITY -> VISUAL_BLUR_QUALITY_COLOR
-            else -> SILENCE_PREVIEW_COLOR
+        val paintColor = if (seeker.detectionMode == SilenceDetectionUseCase.DetectionMode.KEEP_RANGES) {
+            VISUAL_KEEP_PREVIEW_COLOR
+        } else {
+            when (strategy) {
+                com.tazztone.losslesscut.domain.model.VisualStrategy.BLACK_FRAMES -> VISUAL_BLACK_FRAMES_COLOR
+                com.tazztone.losslesscut.domain.model.VisualStrategy.FREEZE_FRAME -> VISUAL_FREEZE_FRAME_COLOR
+                com.tazztone.losslesscut.domain.model.VisualStrategy.BLUR_QUALITY -> VISUAL_BLUR_QUALITY_COLOR
+                else -> SILENCE_PREVIEW_COLOR
+            }
         }
         silencePreviewPaint.color = paintColor
 

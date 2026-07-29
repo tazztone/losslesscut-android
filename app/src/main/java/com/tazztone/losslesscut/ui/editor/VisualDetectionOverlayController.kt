@@ -50,12 +50,15 @@ class VisualDetectionOverlayController(
     private var btnDetectAction: MaterialButton = root.findViewById(R.id.btnDetectAction)
     private var btnCancelVisual: MaterialButton = root.findViewById(R.id.btnCancelVisual)
     private var btnApplyVisual: MaterialButton = root.findViewById(R.id.btnApplyVisual)
+    private var btnToggleMode: MaterialButtonToggleGroup = root.findViewById(R.id.btnToggleMode)
 
     private var currentStrategy = VisualStrategy.SCENE_CHANGE
+    private var currentMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
     private var stateJob: Job? = null
     private var progressJob: Job? = null
     private var filterJob: Job? = null
     private var lastAnalyzedInterval = 0f
+    private var analysisStartTimeMs = 0L
 
     init {
         setupListeners()
@@ -98,6 +101,18 @@ class VisualDetectionOverlayController(
         btnFreezeFrame.setOnClickListener(onStrategyClick)
         btnBlurQuality.setOnClickListener(onStrategyClick)
 
+        btnToggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                currentMode = if (checkedId == R.id.btnModeKeep) {
+                    SilenceDetectionUseCase.DetectionMode.KEEP_RANGES
+                } else {
+                    SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
+                }
+                seeker.detectionMode = currentMode
+                updateStatusText()
+            }
+        }
+
         sliderSensitivity.addOnChangeListener { _, value, _ ->
             updateValueText(tvSensitivityValue, value, getStrategyUnit())
             triggerFiltering()
@@ -108,7 +123,6 @@ class VisualDetectionOverlayController(
         }
         sliderInterval.addOnChangeListener { _, value, _ ->
             updateValueText(tvIntervalValue, value / 1000f, "s")
-            // Re-enable detect button if interval changes from last analysis
             if (value != lastAnalyzedInterval) {
                 btnDetectAction.isEnabled = true
             }
@@ -131,7 +145,7 @@ class VisualDetectionOverlayController(
             val mode = if (currentStrategy == VisualStrategy.SCENE_CHANGE) {
                 SilenceDetectionUseCase.DetectionMode.SPLIT_AT_BOUNDARIES
             } else {
-                SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
+                currentMode
             }
             viewModel.applyDetection(mode)
             onDismiss()
@@ -140,7 +154,9 @@ class VisualDetectionOverlayController(
 
     private fun startDetection() {
         seeker.visualStrategy = currentStrategy
+        seeker.detectionMode = currentMode
         lastAnalyzedInterval = sliderInterval.value
+        analysisStartTimeMs = 0L
         val config = getVisualConfig()
         viewModel.previewVisualSegments(config)
     }
@@ -204,22 +220,8 @@ class VisualDetectionOverlayController(
     private fun observeState() {
         stateJob?.cancel()
         stateJob = scope.launch {
-            viewModel.uiState.collect { state ->
-                if (state is VideoEditingUiState.Success) {
-                    val ranges = state.detectionPreviewRanges
-                    if (ranges.isNotEmpty()) {
-                        val totalMs = ranges.sumOf { it.last - it.first }
-                        tvDetectedStatus.text = context.getString(
-                            R.string.visual_detected_preview,
-                            ranges.size,
-                            TimeUtils.formatDuration(totalMs)
-                        )
-                        btnApplyVisual.isEnabled = true
-                    } else {
-                        tvDetectedStatus.text = context.getString(R.string.no_visual_detected)
-                        btnApplyVisual.isEnabled = false
-                    }
-                }
+            viewModel.uiState.collect {
+                updateStatusText()
             }
         }
 
@@ -235,16 +237,29 @@ class VisualDetectionOverlayController(
                 btnBlackFrames.isEnabled = !isAnalyzing
                 btnFreezeFrame.isEnabled = !isAnalyzing
                 btnBlurQuality.isEnabled = !isAnalyzing
+                btnToggleMode.isEnabled = !isAnalyzing
 
                 if (isAnalyzing) {
                     layoutProgress.visibility = View.VISIBLE
                     btnDetectAction.text = context.getString(R.string.cancel)
                     btnDetectAction.isEnabled = true
+                    if (analysisStartTimeMs == 0L) {
+                        analysisStartTimeMs = System.currentTimeMillis()
+                    }
                     val (current, total) = progress!!
                     if (total > 0) {
                         progressIndicator.isIndeterminate = false
                         progressIndicator.progress = (current * 100 / total).coerceIn(0, 100)
-                        tvProgressText.text = context.getString(R.string.analyzing_progress, current, total)
+                        val elapsedMs = System.currentTimeMillis() - analysisStartTimeMs
+                        if (current > 0 && total > current && elapsedMs > 300) {
+                            val remainingFrames = total - current
+                            val msPerFrame = elapsedMs.toDouble() / current
+                            val etaMs = (remainingFrames * msPerFrame).toLong()
+                            val etaStr = TimeUtils.formatDuration(etaMs)
+                            tvProgressText.text = context.getString(R.string.analyzing_progress_eta, current, total, etaStr)
+                        } else {
+                            tvProgressText.text = context.getString(R.string.analyzing_progress, current, total)
+                        }
                     } else {
                         progressIndicator.isIndeterminate = true
                         tvProgressText.text = context.getString(R.string.analyzing_video)
@@ -252,8 +267,8 @@ class VisualDetectionOverlayController(
                 } else {
                     layoutProgress.visibility = View.GONE
                     btnDetectAction.text = context.getString(R.string.detect)
+                    analysisStartTimeMs = 0L
                     
-                    // If we just finished successful analysis, disable detect button
                     val hasCached = viewModel.hasCachedAnalysis()
 
                     if (hasCached && sliderInterval.value == lastAnalyzedInterval) {
@@ -263,6 +278,31 @@ class VisualDetectionOverlayController(
             }
         }
     }
+
+    private fun updateStatusText() {
+        val state = viewModel.uiState.value
+        if (state is VideoEditingUiState.Success) {
+            val ranges = state.detectionPreviewRanges
+            if (ranges.isNotEmpty()) {
+                val totalMs = ranges.sumOf { it.last - it.first }
+                val stringRes = if (currentMode == SilenceDetectionUseCase.DetectionMode.KEEP_RANGES) {
+                    R.string.visual_detected_preview_keep
+                } else {
+                    R.string.visual_detected_preview_discard
+                }
+                tvDetectedStatus.text = context.getString(
+                    stringRes,
+                    ranges.size,
+                    TimeUtils.formatDuration(totalMs)
+                )
+                btnApplyVisual.isEnabled = true
+                return
+            }
+        }
+        tvDetectedStatus.text = context.getString(R.string.no_visual_detected)
+        btnApplyVisual.isEnabled = false
+    }
+
     private fun updateSelectionUI() {
         btnSceneChange.isSelected = currentStrategy == VisualStrategy.SCENE_CHANGE
         btnBlackFrames.isSelected = currentStrategy == VisualStrategy.BLACK_FRAMES

@@ -8,32 +8,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="8dp">
-
-        <!-- SECTION: ANALYSIS -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="ANALYSIS"
-            android:textSize="10sp"
-            android:textColor="?attr/colorAccent"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/strategy"
-            android:textSize="11sp"
-            android:textColor="#CCCCCC"
-            android:layout_marginBottom="4dp"/>
+        android:padding="4dp">
 
         <LinearLayout
             android:id="@+id/layoutStrategySelector"
             android:layout_width="match_parent"
-            android:layout_height="36dp"
+            android:layout_height="32dp"
             android:orientation="horizontal"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="4dp">
 
             <!-- Scene Change -->
             <LinearLayout
@@ -166,7 +148,7 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- Sample Interval (Analysis stage) -->
+        <!-- Sample Interval + Detect Action Button Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="32dp"
@@ -180,8 +162,8 @@
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
             <ImageButton
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_info_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 app:tint="#88FFFFFF"
@@ -193,36 +175,38 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
                 android:valueFrom="100"
                 android:valueTo="2000"
                 android:stepSize="100"
                 android:value="500"
                 app:haloRadius="0dp"
-                app:thumbRadius="6dp"
+                app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:tooltipText="@string/tooltip_sample_interval"/>
             <TextView
                 android:id="@+id/tvIntervalValue"
-                android:layout_width="45dp"
+                android:layout_width="36dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"
                 android:text="0.5s"
                 android:textSize="11sp"
                 android:textColor="@android:color/white"/>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnDetectAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:layout_marginStart="6dp"
+                android:text="@string/detect"
+                android:textSize="11sp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:tooltipText="@string/tooltip_detect"/>
         </LinearLayout>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDetectAction"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/detect"
-            android:textSize="12sp"
-            android:minHeight="40dp"
-            android:layout_marginBottom="8dp"
-            android:tooltipText="@string/tooltip_detect"/>
 
         <!-- Progress and Status -->
         <LinearLayout
@@ -230,7 +214,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="4dp"
             android:visibility="gone">
             <com.google.android.material.progressindicator.LinearProgressIndicator
                 android:id="@+id/progressIndicator"
@@ -244,7 +228,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Analyzing..."
-                android:textSize="11sp"
+                android:textSize="10sp"
                 android:textColor="#CCCCCC"
                 android:layout_marginTop="2dp"/>
         </LinearLayout>
@@ -252,26 +236,64 @@
         <com.google.android.material.divider.MaterialDivider
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginBottom="4dp"
             app:dividerColor="#33FFFFFF"/>
 
-        <!-- SECTION: FILTER -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="FILTER"
-            android:textSize="10sp"
-            android:textColor="?attr/colorAccent"
-            android:textStyle="bold"
-            android:layout_marginBottom="4dp"/>
+        <!-- SECTION: FILTER + MODE TOGGLE -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="FILTER"
+                android:textSize="10sp"
+                android:textColor="?attr/colorAccent"
+                android:textStyle="bold"/>
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/btnToggleMode"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                app:singleSelection="true"
+                app:selectionRequired="true"
+                app:checkedButton="@id/btnModeDiscard">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeDiscard"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:textSize="10sp"
+                    android:text="@string/mode_discard_matching"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnModeKeep"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="26dp"
+                    android:textSize="10sp"
+                    android:text="@string/mode_keep_matching"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"/>
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+        </LinearLayout>
 
         <!-- Sensitivity Threshold -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="32dp"
+            android:layout_height="28dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="4dp">
+            android:layout_marginBottom="2dp">
             <TextView
                 android:id="@+id/tvSensitivityLabel"
                 android:layout_width="wrap_content"
@@ -280,8 +302,8 @@
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
             <ImageButton
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_info_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 app:tint="#88FFFFFF"
@@ -293,13 +315,13 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
                 android:valueFrom="3"
                 android:valueTo="30"
                 android:value="12"
                 app:haloRadius="0dp"
-                app:thumbRadius="6dp"
+                app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:stepSize="1.0"
                 android:tooltipText="@string/tooltip_sensitivity"/>
@@ -316,10 +338,10 @@
         <!-- Min Segment Duration -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="32dp"
+            android:layout_height="28dp"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:layout_marginBottom="4dp">
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -327,8 +349,8 @@
                 android:textSize="11sp"
                 android:textColor="#CCCCCC"/>
             <ImageButton
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:src="@drawable/ic_info_24"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 app:tint="#88FFFFFF"
@@ -340,14 +362,14 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
+                android:layout_marginStart="2dp"
+                android:layout_marginEnd="2dp"
                 android:valueFrom="100"
                 android:valueTo="5000"
                 android:stepSize="100"
                 android:value="500"
                 app:haloRadius="0dp"
-                app:thumbRadius="6dp"
+                app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:tooltipText="@string/tooltip_min_segment"/>
             <TextView
@@ -374,7 +396,7 @@
                 android:layout_weight="1"
                 android:text="Ready to detect"
                 android:textColor="@android:color/white"
-                android:textSize="12sp"
+                android:textSize="11sp"
                 android:textStyle="bold"/>
 
             <com.google.android.material.button.MaterialButton
@@ -385,7 +407,7 @@
                 android:text="@string/cancel"
                 android:textColor="@android:color/white"
                 android:textSize="12sp"
-                android:minHeight="36dp"/>
+                android:minHeight="32dp"/>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnApplyVisual"
@@ -393,7 +415,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/apply"
                 android:textSize="12sp"
-                android:minHeight="36dp"
+                android:minHeight="32dp"
                 android:enabled="false"
                 android:tooltipText="@string/tooltip_apply_smart_cut"/>
         </LinearLayout>

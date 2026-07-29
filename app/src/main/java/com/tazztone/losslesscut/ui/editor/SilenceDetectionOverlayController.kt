@@ -4,6 +4,8 @@ import android.content.Context
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.slider.Slider
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.customviews.CustomVideoSeeker
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
@@ -11,7 +13,6 @@ import com.tazztone.losslesscut.domain.model.TimeUtils
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
-import com.google.android.material.slider.Slider
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -29,6 +30,7 @@ class SilenceDetectionOverlayController(
 ) {
     private var silencePreviewJob: Job? = null
     private var isPaddingLinked = true
+    private var currentMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
 
     private var sliderThreshold: Slider? = null
     private var sliderDuration: Slider? = null
@@ -54,7 +56,6 @@ class SilenceDetectionOverlayController(
     internal fun showInsideSmartCut() {
         val overlay = binding.smartCutOverlay.root
 
-        
         initializeViews(overlay)
         setupListeners(overlay)
         observeState(overlay)
@@ -82,11 +83,24 @@ class SilenceDetectionOverlayController(
         val btnLinkPadding = overlay.findViewById<ImageButton>(R.id.btnLinkPadding)
         val btnCancel = overlay.findViewById<android.widget.Button>(R.id.btnCancel)
         val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
+        val btnToggleModeSilence = overlay.findViewById<MaterialButtonToggleGroup>(R.id.btnToggleModeSilence)
 
         val updateLinkIcon = {
             btnLinkPadding.setImageResource(
                 if (isPaddingLinked) R.drawable.ic_link_24 else R.drawable.ic_link_off_24
             )
+        }
+
+        btnToggleModeSilence?.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                currentMode = if (checkedId == R.id.btnModeKeepSilence) {
+                    SilenceDetectionUseCase.DetectionMode.KEEP_RANGES
+                } else {
+                    SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
+                }
+                binding.seekerContainer.customVideoSeeker.detectionMode = currentMode
+                updateStatusText(overlay)
+            }
         }
 
         btnLinkPadding.setOnClickListener {
@@ -160,7 +174,7 @@ class SilenceDetectionOverlayController(
         btnCancel.setOnClickListener { onDismiss() }
         btnApply.setOnClickListener {
             val minKeep = sliderMinSegment?.value?.toLong() ?: 10L
-            viewModel.applyDetection(SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES, minKeep)
+            viewModel.applyDetection(currentMode, minKeep)
             onDismiss()
         }
         updateLinkIcon()
@@ -183,13 +197,10 @@ class SilenceDetectionOverlayController(
     }
 
     private fun observeState(overlay: View) {
-        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
-        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
-
         silencePreviewJob?.cancel()
         silencePreviewJob = scope.launch {
-            viewModel.uiState.collect { state ->
-                handleUiStateUpdate(state, tvEstimatedCut, btnApply)
+            viewModel.uiState.collect {
+                updateStatusText(overlay)
             }
         }
         scope.launch {
@@ -199,22 +210,26 @@ class SilenceDetectionOverlayController(
         }
     }
 
-    private fun handleUiStateUpdate(state: VideoEditingUiState, tvEst: TextView, btnApply: View) {
+    private fun updateStatusText(overlay: View) {
+        val tvEstimatedCut = overlay.findViewById<TextView>(R.id.tvEstimatedCut)
+        val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
+        val state = viewModel.uiState.value
+
         if (state is VideoEditingUiState.Success) {
             val ranges = state.detectionPreviewRanges
             if (ranges.isNotEmpty()) {
                 val totalSilenceMs = ranges.sumOf { it.last - it.first }
-                tvEst.text = context.getString(
+                tvEstimatedCut.text = context.getString(
                     R.string.silence_detected_preview,
                     TimeUtils.formatDuration(totalSilenceMs),
                     ranges.size
                 )
                 btnApply.isEnabled = true
-            } else {
-                tvEst.text = context.getString(R.string.no_silence_detected)
-                btnApply.isEnabled = false
+                return
             }
         }
+        tvEstimatedCut.text = context.getString(R.string.no_silence_detected)
+        btnApply.isEnabled = false
     }
 
     fun hide() {
@@ -223,9 +238,7 @@ class SilenceDetectionOverlayController(
 
     internal fun hideInsideSmartCut() {
         silencePreviewJob?.cancel()
-        // Clear preview when hiding inside smart cut since detectionPreviewRanges is shared
         viewModel.clearSilencePreview()
-
         binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = null
     }
 }
