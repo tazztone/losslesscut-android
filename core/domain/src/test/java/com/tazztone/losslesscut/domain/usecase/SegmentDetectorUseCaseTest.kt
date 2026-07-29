@@ -43,7 +43,7 @@ internal class SegmentDetectorUseCaseTest {
             FrameAnalysis(timeMs = 1000L, meanLuma = 0.2, blurVariance = 10.0, sceneDistance = null, freezeDiff = null)
         )
 
-        coEvery { visualDetector.analyze(uri, 1000L, any()) } returns analyses
+        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalMs = eq(1000L), strategy = any(), onProgress = any()) } returns analyses
 
         var progressCalls = 0
         var rangesResult: List<LongRange>? = null
@@ -73,7 +73,7 @@ internal class SegmentDetectorUseCaseTest {
         assertTrue(segmentDetector.hasCachedAnalysis())
 
         // 2. Second run: cache hit (should not call analyze again)
-        coEvery { visualDetector.analyze(any(), any(), any()) } throws IllegalStateException("Should not call analyze again")
+        coEvery { visualDetector.analyze(any(), any(), any(), any()) } throws IllegalStateException("Should not call analyze again")
         var hitRangesResult: List<LongRange>? = null
 
         segmentDetector.detectVisual(
@@ -110,7 +110,7 @@ internal class SegmentDetectorUseCaseTest {
             minSegmentDurationMs = 100L
         )
 
-        coEvery { visualDetector.analyze(uri, 1000L, any()) } coAnswers {
+        coEvery { visualDetector.analyze(uri = eq(uri), sampleIntervalMs = eq(1000L), strategy = any(), onProgress = any()) } coAnswers {
             kotlinx.coroutines.delay(500)
             emptyList()
         }

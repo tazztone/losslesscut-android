@@ -4,20 +4,13 @@ import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
-import android.os.Build
 import android.util.Log
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.withContext
-import java.nio.ByteBuffer
 import javax.inject.Inject
-import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sqrt
 
 class VisualSegmentDetectorImpl @Inject constructor(
     private val dataSource: MediaDataSource
@@ -27,6 +20,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
         val extractor: MediaExtractor,
         val codec: MediaCodec,
         val sampleIntervalMs: Long,
+        val strategy: VisualStrategy,
         val analyses: MutableList<FrameAnalysis> = mutableListOf()
     ) {
         var previousHash: Long? = null
@@ -43,6 +37,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
     override suspend fun analyze(
         uri: String,
         sampleIntervalMs: Long,
+        strategy: VisualStrategy,
         onProgress: (Int, Int) -> Unit
     ): List<FrameAnalysis> {
         val extractor = MediaExtractor()
@@ -66,8 +61,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
             codec.configure(format, null, null, 0 /* flags */)
             codec.start()
 
-            context = DetectionContext(extractor, codec, sampleIntervalMs)
-            val estimatedTotal = (durationUs / context.sampleIntervalUs).toInt()
+            context = DetectionContext(extractor, codec, sampleIntervalMs, strategy)
+            val estimatedTotal = (durationUs / context.sampleIntervalUs).toInt().coerceAtLeast(1)
             
             detectLoop(context, estimatedTotal, onProgress)
 
@@ -120,6 +115,9 @@ class VisualSegmentDetectorImpl @Inject constructor(
         var processedCount = 0
         while (!ctx.sawOutputEOS) {
             kotlin.coroutines.coroutineContext.ensureActive()
+
+            seekIfNeeded(ctx)
+
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
             val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)
@@ -129,6 +127,36 @@ class VisualSegmentDetectorImpl @Inject constructor(
                     processedCount++
                     onProgress(processedCount, estimatedTotal)
                 }
+            }
+        }
+    }
+
+    private fun seekIfNeeded(ctx: DetectionContext) {
+        if (ctx.lastProcessedUs == -1L || ctx.sampleIntervalUs < MIN_SEEK_INTERVAL_US) return
+        val nextTargetUs = ctx.lastProcessedUs + ctx.sampleIntervalUs
+        val currentSampleUs = ctx.extractor.sampleTime
+
+        if (currentSampleUs in 0 until (nextTargetUs - MIN_SEEK_INTERVAL_US)) {
+            ctx.extractor.seekTo(nextTargetUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            val newSampleUs = ctx.extractor.sampleTime
+            if (newSampleUs > ctx.lastProcessedUs) {
+                try {
+                    ctx.codec.flush()
+                    drainOutput(ctx)
+                } catch (e: IllegalStateException) {
+                    Log.w(TAG, "Codec flush failed during seek", e)
+                }
+            }
+        }
+    }
+
+    private fun drainOutput(ctx: DetectionContext) {
+        while (true) {
+            val outIndex = ctx.codec.dequeueOutputBuffer(ctx.info, 0L)
+            if (outIndex >= 0) {
+                ctx.codec.releaseOutputBuffer(outIndex, false)
+            } else {
+                break
             }
         }
     }
@@ -175,18 +203,27 @@ class VisualSegmentDetectorImpl @Inject constructor(
         val outputFormat = ctx.codec.getOutputFormat(index)
 
         if (outputBuffer != null) {
-            Log.d(TAG, "Algorithm processing started")
-            val meanLuma = VisualAlgorithms.calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
-            val blurVariance = VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
-            val currentHash = VisualAlgorithms.calculatePHash(outputBuffer, outputFormat, ctx.info)
-            val resultSmall = VisualAlgorithms.downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE)
-            val currentSmallY = resultSmall.data
+            val meanLuma = if (ctx.strategy == VisualStrategy.BLACK_FRAMES) {
+                VisualAlgorithms.calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
+            } else 255.0
+
+            val blurVariance = if (ctx.strategy == VisualStrategy.BLUR_QUALITY) {
+                VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
+            } else 0.0
+
+            val currentHash = if (ctx.strategy == VisualStrategy.SCENE_CHANGE) {
+                VisualAlgorithms.calculatePHash(outputBuffer, outputFormat, ctx.info)
+            } else null
+
+            val currentSmallY = if (ctx.strategy == VisualStrategy.FREEZE_FRAME) {
+                VisualAlgorithms.downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
+            } else null
             
-            val sceneDistance = if (ctx.previousHash != null) {
+            val sceneDistance = if (currentHash != null && ctx.previousHash != null) {
                 java.lang.Long.bitCount(currentHash xor ctx.previousHash!!)
             } else null
             
-            val freezeDiff = if (ctx.previousSmallY != null) {
+            val freezeDiff = if (currentSmallY != null && ctx.previousSmallY != null) {
                 VisualAlgorithms.calculateSAD(currentSmallY, ctx.previousSmallY!!)
             } else null
             
@@ -198,8 +235,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
                 freezeDiff = freezeDiff
             ))
 
-            ctx.previousHash = currentHash
-            ctx.previousSmallY = currentSmallY
+            if (currentHash != null) ctx.previousHash = currentHash
+            if (currentSmallY != null) ctx.previousSmallY = currentSmallY
         }
     }
 
@@ -208,5 +245,6 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val TIMEOUT_US = 10000L
         private const val US_PER_MS = 1000L
         private const val DOWNSCALE_SIZE = 32
+        private const val MIN_SEEK_INTERVAL_US = 300_000L
     }
 }

@@ -30,6 +30,8 @@ public class SegmentDetectorUseCase @Inject constructor(
     private var cachedIntervalMs: Long = -1L
     @Volatile
     private var cachedUri: String? = null
+    @Volatile
+    private var cachedStrategy: com.tazztone.losslesscut.domain.model.VisualStrategy? = null
 
     @Suppress("TooGenericExceptionCaught")
     public fun detectVisual(
@@ -38,7 +40,7 @@ public class SegmentDetectorUseCase @Inject constructor(
         config: VisualDetectionConfig,
         listener: VisualDetectionListener
     ) {
-        if (cachedUri == uri && cachedIntervalMs == config.sampleIntervalMs && cachedAnalysis != null) {
+        if (cachedUri == uri && cachedIntervalMs == config.sampleIntervalMs && cachedStrategy == config.strategy && cachedAnalysis != null) {
             // Cache hit, fast-path filter
             scope.launch {
                 val ranges = VisualSegmentFilter.filter(
@@ -56,12 +58,17 @@ public class SegmentDetectorUseCase @Inject constructor(
         visualJob = scope.launch(ioDispatcher) {
             try {
                 listener.onProgress(null)
-                val analysis = visualSegmentDetector.analyze(uri, config.sampleIntervalMs) { processed, total ->
+                val analysis = visualSegmentDetector.analyze(
+                    uri = uri, 
+                    sampleIntervalMs = config.sampleIntervalMs,
+                    strategy = config.strategy
+                ) { processed, total ->
                     listener.onProgress(processed to total)
                 }
                 cachedAnalysis = analysis
                 cachedIntervalMs = config.sampleIntervalMs
                 cachedUri = uri
+                cachedStrategy = config.strategy
 
                 val ranges = VisualSegmentFilter.filter(
                     frames = analysis,
@@ -93,5 +100,6 @@ public class SegmentDetectorUseCase @Inject constructor(
         cachedAnalysis = null
         cachedIntervalMs = -1L
         cachedUri = null
+        cachedStrategy = null
     }
 }
