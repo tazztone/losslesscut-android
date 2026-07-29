@@ -140,6 +140,16 @@ public class VideoEditingViewModelTest {
         assertTrue(viewModel.uiState.value is VideoEditingUiState.Error)
     }
 
+    @Test
+    public fun testCancelVisualDetection_resetsProgressAndState() = runTest {
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+
+        viewModel.cancelVisualDetection()
+
+        verify { mockSegmentDetector.cancelVisual() }
+        assertNull(viewModel.visualDetectionProgress.value)
+    }
+
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(
         id = UUID.randomUUID(),
         uri = uri,

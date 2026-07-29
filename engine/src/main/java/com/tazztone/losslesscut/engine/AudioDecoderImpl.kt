@@ -30,6 +30,8 @@ class AudioDecoderImpl @Inject constructor(
             codec = createCodec(format)
 
             runDecodingLoop(extractor, codec, format)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
             Log.e(TAG, "Error decoding audio from $uri", e)
         } finally {

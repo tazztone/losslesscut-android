@@ -71,6 +71,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
             
             detectLoop(context, estimatedTotal, onProgress)
 
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: MediaCodec.CodecException) {
             Log.e(TAG, "MediaCodec error during visual detection", e)
         } catch (e: IllegalStateException) {
@@ -117,7 +119,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
     private suspend fun detectLoop(ctx: DetectionContext, estimatedTotal: Int, onProgress: (Int, Int) -> Unit) {
         var processedCount = 0
         while (!ctx.sawOutputEOS) {
-            
+            kotlin.coroutines.coroutineContext.ensureActive()
             if (!ctx.sawInputEOS) ctx.sawInputEOS = feedInput(ctx)
 
             val outputBufferIndex = ctx.codec.dequeueOutputBuffer(ctx.info, TIMEOUT_US)

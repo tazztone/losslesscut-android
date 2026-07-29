@@ -429,6 +429,7 @@ public class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
             lastMinSegmentMs = config.minSegmentDurationMs
+            _detectionPreviewRanges.value = emptyList()
 
             useCases.segmentDetector.detectVisual(
                 scope = viewModelScope,

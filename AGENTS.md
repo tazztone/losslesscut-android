@@ -8,6 +8,7 @@
 - **External Storage**: SAF / `ContentResolver` ONLY for user media. `java.io.File` is strictly forbidden for shared storage.
 - **Module Isolation**: Do NOT import `:engine` directly in `:app` (`runtimeOnly(:engine)`). Route via Hilt and `:core:domain` interfaces. `:core:domain` must remain a pure JVM library (no `androidx.*` or Hilt).
 - **UI Policy**: Jetpack Compose allowed ONLY under `:app/ui/compose/**`. NO Compose in `customviews/**` or timeline rendering.
+- **Coroutine Cancellation**: Always rethrow `CancellationException` (`catch (e: CancellationException) { throw e }`) before catching generic `Exception` in engine/domain coroutines, and include `ensureActive()` in loop iterations.
 
 ## Testing & Runtime Gotchas
 - **Engine Instrumented Tests**: Engine instrumented tests MUST reside in `:engine/src/androidTest` (not `:app`).

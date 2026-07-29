@@ -15,6 +15,7 @@ import com.tazztone.losslesscut.engine.muxing.MuxingMergeRequest
 import com.tazztone.losslesscut.engine.muxing.MuxingPipeline
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -62,6 +63,8 @@ class LosslessEngineImpl @Inject constructor(
                 fps = trackData.fps,
                 tracks = trackData.tracks
             ))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to read metadata for $uriString", e)
             Result.failure(e)
@@ -87,6 +90,7 @@ class LosslessEngineImpl @Inject constructor(
             val keyframes = mutableListOf<Long>()
 
             while (true) {
+                kotlin.coroutines.coroutineContext.ensureActive()
                 val sampleTime = extractor.sampleTime
                 if (sampleTime < 0) break
 
@@ -98,6 +102,8 @@ class LosslessEngineImpl @Inject constructor(
             }
 
             Result.success(keyframes)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract keyframes from $uriString", e)
             Result.failure(e)
@@ -120,6 +126,8 @@ class LosslessEngineImpl @Inject constructor(
             } else {
                 null
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Failed to capture frame at $positionMs for $uri", e)
             null

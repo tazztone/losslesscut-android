@@ -62,6 +62,8 @@ class AudioWaveformExtractorImpl @Inject constructor(
             AudioWaveformProcessor.fillEdgeBuckets(buckets)
             WaveformResult(rawForDetection, maxAmplitude, durationMs * US_PER_MS)
 
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error extracting waveform", e)
             null

@@ -84,6 +84,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### Smart Cut Detection Engine
 - **Silence Detection**: Analyzes raw PCM amplitudes (`AudioWaveformExtractor`) to compute RMS energy levels without noise floor distortion.
 - **Visual Detection**: Uses `MediaExtractor` frame stepping with Kotlin-native perceptual hashing (pHash), Sum of Absolute Differences (SAD), and Laplacian variance to flag scene cuts, black frames, freeze frames, and blur quality.
+- **Coroutine Cancellation Contract**: All low-level `MediaCodec` and `MediaExtractor` loops enforce cooperative cancellation via `coroutineContext.ensureActive()` and rethrow `CancellationException` to guarantee immediate resource release upon cancellation.
 
 ### State Management & Navigation
 - **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.

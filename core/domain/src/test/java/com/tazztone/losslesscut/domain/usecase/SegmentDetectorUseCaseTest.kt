@@ -99,4 +99,39 @@ internal class SegmentDetectorUseCaseTest {
         segmentDetector.clearCache()
         assertFalse(segmentDetector.hasCachedAnalysis())
     }
+
+    @Test
+    internal fun testCancelVisual_preventsOnComplete() = runTest(testDispatcher) {
+        val uri = "content://mock/cancel.mp4"
+        val config = VisualDetectionConfig(
+            strategy = VisualStrategy.BLACK_FRAMES,
+            sensitivityThreshold = 0.1f,
+            sampleIntervalMs = 1000L,
+            minSegmentDurationMs = 100L
+        )
+
+        coEvery { visualDetector.analyze(uri, 1000L, any()) } coAnswers {
+            kotlinx.coroutines.delay(500)
+            emptyList()
+        }
+
+        var completed = false
+
+        segmentDetector.detectVisual(
+            scope = this,
+            uri = uri,
+            config = config,
+            listener = object : VisualDetectionListener {
+                override fun onComplete(ranges: List<LongRange>) {
+                    completed = true
+                }
+            }
+        )
+
+        segmentDetector.cancelVisual()
+        advanceUntilIdle()
+
+        assertFalse("onComplete should not be called when cancelled", completed)
+        assertFalse(segmentDetector.hasCachedAnalysis())
+    }
 }

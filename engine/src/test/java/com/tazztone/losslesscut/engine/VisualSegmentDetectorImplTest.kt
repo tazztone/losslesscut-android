@@ -171,4 +171,30 @@ class VisualSegmentDetectorImplTest {
         assertTrue(result.isEmpty())
         verify(exactly = 0) { anyConstructed<MediaExtractor>().selectTrack(any()) }
     }
+
+    @Test
+    fun `analyze rethrows CancellationException during loop`() {
+        var threwCancellation = false
+        try {
+            runBlocking {
+                val format = mockk<MediaFormat>(relaxed = true)
+
+                every { anyConstructed<MediaExtractor>().trackCount } returns 1
+                every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns format
+                every { format.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+                every { format.getLong(MediaFormat.KEY_DURATION) } returns 1000000L
+                every { anyConstructed<MediaExtractor>().selectTrack(0) } returns Unit
+
+                val mockCodec = mockk<MediaCodec>(relaxed = true)
+                every { MediaCodec.createDecoderByType(any()) } returns mockCodec
+
+                every { mockCodec.dequeueInputBuffer(any()) } throws kotlinx.coroutines.CancellationException("Job cancelled")
+
+                detector.analyze("test_uri", 1000) { _, _ -> }
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            threwCancellation = true
+        }
+        assertTrue("CancellationException should be rethrown", threwCancellation)
+    }
 }
