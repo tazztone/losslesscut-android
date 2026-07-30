@@ -195,8 +195,8 @@
     <string name="content_desc_link_padding">Puffer-Schieberegler verknüpfen</string>
     <string name="error_visual_on_audio">Visuelle Erkennung ist für Audiodateien nicht verfügbar</string>
 
-    <string name="reset_segments">Segmente zurücksetzen</string>
-    <string name="reset_segments_confirm_title">Segmente zurücksetzen?</string>
+    <string name="reset_segments">Zurücksetzen</string>
+    <string name="reset_segments_confirm_title">Zurücksetzen?</string>
     <string name="reset_segments_confirm_message">Möchtest du wirklich alle Schnitte zurücksetzen und ein einzelnes Segment für diesen Clip wiederherstellen?</string>
     <string name="category_cache">Analyse-Cache</string>
     <string name="setting_cache_capacity">Cache-Kapazität</string>

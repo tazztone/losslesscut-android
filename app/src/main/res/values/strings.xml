@@ -200,8 +200,8 @@
     <string name="short_out">Out</string>
     <string name="redo">Redo</string>
 
-    <string name="reset_segments">Reset segments</string>
-    <string name="reset_segments_confirm_title">Reset segments?</string>
+    <string name="reset_segments">Reset</string>
+    <string name="reset_segments_confirm_title">Reset?</string>
     <string name="reset_segments_confirm_message">Are you sure you want to reset all cuts and restore a single segment for this clip?</string>
     <string name="category_cache">Analysis Cache</string>
     <string name="setting_cache_capacity">Cache Capacity</string>
