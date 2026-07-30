@@ -281,13 +281,15 @@ public class MuxingPipelineTest {
         every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns videoFormat
         every { anyConstructed<MediaExtractor>().getTrackFormat(1) } returns audioFormat
 
-        every { inspector.inspect(any(), any(), any(), any(), any()) } returns SelectedTrackPlan(
+        val mockPlan = SelectedTrackPlan(
             trackMap = mapOf(0 to 0, 1 to 1),
             isVideoTrackMap = mapOf(0 to true, 1 to false),
             bufferSize = 4096,
             hasVideoTrack = true,
             durationUs = 20000000L
         )
+        every { inspector.inspect(any(), any(), any(), any(), any()) } returns mockPlan
+        every { inspector.inspectClipForMerge(any(), any(), any(), any(), any()) } returns mockPlan
 
         coEvery { anyConstructed<ExtractorSampleCopier>().copy(any(), any(), any(), any()) } returns mapOf(0 to 5000000L)
         coEvery { anyConstructed<ExtractorSampleCopier>().copy(any(), any(), any(), any(), any()) } returns mapOf(0 to 5000000L)

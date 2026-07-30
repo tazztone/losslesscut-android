@@ -63,7 +63,8 @@
     <string name="accessibility_seek_forward">Vorwärts suchen</string>
     <string name="accessibility_seek_backward">Rückwärts suchen</string>
     <string name="audio_only_placeholder_desc">Audiodatei: %1$s</string>
-    <string name="merge_keep_segments">KEEP-Segmente zu einer Datei zusammenführen</string>
+    <string name="merge_keep_segments">Als einzelne Clips exportieren</string>
+    <string name="export_as_individual_clips">Als einzelne Clips exportieren</string>
     <string name="clips_added">%1$d neue(s) Medium/Medien hinzugefügt</string>
     <string name="remove_clip_confirm">Möchtest du dieses Medium wirklich aus der Wiedergabeliste entfernen?</string>
     <string name="duplicate_files_msg">Die ausgewählten Dateien sind bereits in der Wiedergabeliste.</string>

@@ -219,4 +219,42 @@ class TrackInspectorTest {
         val clean = capturedFormat.captured
         assertEquals("application/x-quicktime-metadata", clean.getString(MediaFormat.KEY_MIME))
     }
+
+    @Test
+    fun `inspectClipForMerge maps tracks without calling muxerWriter addTrack`() {
+        val extractor = mockk<MediaExtractor>()
+        
+        val videoFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+        videoFormat.setLong(MediaFormat.KEY_DURATION, 10_000_000L)
+        videoFormat.setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 512 * 1024)
+
+        val audioFormat = MediaFormat.createAudioFormat("audio/mp4a-latm", 44100, 2)
+
+        every { extractor.trackCount } returns 2
+        every { extractor.getTrackFormat(0) } returns videoFormat
+        every { extractor.getTrackFormat(1) } returns audioFormat
+
+        val initialPlan = com.tazztone.losslesscut.engine.LosslessEngineHelper.MergeInitialPlan(
+            plan = SelectedTrackPlan(
+                trackMap = mapOf(0 to 0, 1 to 1),
+                isVideoTrackMap = mapOf(0 to true, 1 to false),
+                bufferSize = 512 * 1024,
+                durationUs = 10_000_000L,
+                hasVideoTrack = true
+            ),
+            audioSampleRate = 44100,
+            videoFps = 30f,
+            expectedVideoMime = "video/avc",
+            expectedAudioMime = "audio/mp4a-latm"
+        )
+
+        val inspector = TrackInspector()
+        val plan = inspector.inspectClipForMerge(extractor, initialPlan, keepAudio = true, keepVideo = true, selectedTracks = null)
+
+        assertEquals(2, plan.trackMap.size)
+        assertEquals(0, plan.trackMap[0])
+        assertEquals(1, plan.trackMap[1])
+        assertEquals(512 * 1024, plan.bufferSize)
+        assertTrue(plan.hasVideoTrack)
+    }
 }

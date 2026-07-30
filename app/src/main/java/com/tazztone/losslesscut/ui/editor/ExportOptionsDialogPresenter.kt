@@ -28,27 +28,27 @@ class ExportOptionsDialogPresenter(
 
     fun show(state: VideoEditingUiState.Success) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
-        val cbMergeSegments = dialogView.findViewById<CheckBox>(R.id.cbMergeSegments)
+        val cbExportIndividualClips = dialogView.findViewById<CheckBox>(R.id.cbExportIndividualClips)
         
-        setupMergeVisibility(cbMergeSegments, state)
+        setupMergeVisibility(cbExportIndividualClips, state)
         val selectedTracks = setupTrackList(dialogView, state)
 
         MaterialAlertDialogBuilder(context)
             .setTitle(context.getString(R.string.export_options))
             .setView(dialogView)
             .setPositiveButton(context.getString(R.string.export)) { _, _ ->
-                handleExportClick(cbMergeSegments, state, selectedTracks)
+                handleExportClick(cbExportIndividualClips, state, selectedTracks)
             }
             .setNegativeButton(context.getString(R.string.cancel), null)
             .show()
     }
 
-    private fun setupMergeVisibility(cbMerge: CheckBox, state: VideoEditingUiState.Success) {
+    private fun setupMergeVisibility(cbExportIndividualClips: CheckBox, state: VideoEditingUiState.Success) {
         val totalKeepSegments = state.clips.sumOf { clip -> 
             clip.segments.count { it.action == SegmentAction.KEEP } 
         }
         if (totalKeepSegments > 1 || state.clips.size > 1) {
-            cbMerge.visibility = View.VISIBLE
+            cbExportIndividualClips.visibility = View.VISIBLE
         }
     }
 
@@ -95,7 +95,7 @@ class ExportOptionsDialogPresenter(
     }
 
     private fun handleExportClick(
-        cbMerge: CheckBox,
+        cbExportIndividualClips: CheckBox,
         state: VideoEditingUiState.Success,
         selectedTracks: Set<Int>
     ) {
@@ -121,7 +121,7 @@ class ExportOptionsDialogPresenter(
             state.hasAudioTrack // Fallback to current audio state
         }
 
-        val mergeSegments = cbMerge.isChecked
+        val mergeSegments = !cbExportIndividualClips.isChecked
         onExport(keepAudio, keepVideo, mergeSegments, trackList)
     }
 }

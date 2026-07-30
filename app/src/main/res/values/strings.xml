@@ -94,7 +94,8 @@
     <string name="error_no_tracks_found">No video or audio tracks found in file</string>
     <string name="export_success_audio">Successfully exported %1$d audio clip(s) to Music/LosslessCut</string>
     <string name="audio_only_placeholder_desc">Audio file: %1$s</string>
-    <string name="merge_keep_segments">Merge "KEEP" segments into one file</string>
+    <string name="merge_keep_segments">Export as individual clips</string>
+    <string name="export_as_individual_clips">Export as individual clips</string>
     <string name="error_incompatible_format">Clip \"%1$s\" has an incompatible format and was skipped.</string>
     <string name="error_no_valid_clips">No valid clips were imported.</string>
     <string name="clips_added">Added %1$d new clip(s)</string>

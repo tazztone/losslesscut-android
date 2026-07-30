@@ -253,7 +253,7 @@ public class MuxingPipeline @Inject constructor(
             val ex = MediaExtractor()
             try {
                 dataSource.setExtractorSource(ex, clip.uri)
-                val cPlan = inspector.inspect(ex, params.muxerWriter, params.keepAudio, params.keepVideo, params.selectedTracks)
+                val cPlan = inspector.inspectClipForMerge(ex, init, params.keepAudio, params.keepVideo, params.selectedTracks)
                 val trackInfo = readTracksForInitialPlan(ex)
                 mergeValidator.validateCodec(clip.uri, trackInfo.vMime, init.expectedVideoMime, "video")
                 mergeValidator.validateCodec(clip.uri, trackInfo.aMime, init.expectedAudioMime, "audio")

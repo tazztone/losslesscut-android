@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.engine.muxing
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.util.Log
+import com.tazztone.losslesscut.engine.LosslessEngineHelper
 import javax.inject.Inject
 
 data class SelectedTrackPlan(
@@ -45,6 +46,53 @@ class TrackInspector @Inject constructor() {
                 }
                 
                 trackMap[i] = muxerWriter.addTrack(cleanFormat(format, isVideo, isAudio))
+                bufferSize = maxOf(bufferSize, getBufferSize(format))
+            }
+        }
+
+        return SelectedTrackPlan(
+            trackMap = trackMap,
+            isVideoTrackMap = isVideoTrackMap,
+            bufferSize = if (bufferSize < 0) DEFAULT_BUFFER_SIZE else bufferSize,
+            durationUs = durationUs,
+            hasVideoTrack = isVideoTrackMap.values.any { it }
+        )
+    }
+
+    /**
+     * Inspects a clip for merging into an already started muxer.
+     * Maps clip extractor tracks to pre-existing muxer tracks without calling muxerWriter.addTrack().
+     */
+    internal fun inspectClipForMerge(
+        extractor: MediaExtractor,
+        initialPlan: LosslessEngineHelper.MergeInitialPlan,
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        selectedTracks: List<Int>?
+    ): SelectedTrackPlan {
+        var durationUs = -1L
+        val trackMap = mutableMapOf<Int, Int>()
+        val isVideoTrackMap = mutableMapOf<Int, Boolean>()
+        var bufferSize = -1
+        var videoTrackCount = 0
+        var audioTrackCount = 0
+
+        for (i in 0 until extractor.trackCount) {
+            val format = extractor.getTrackFormat(i)
+            val mime = format.getString(MediaFormat.KEY_MIME)
+            if (mime != null && isTrackSelected(i, mime, keepAudio, keepVideo, selectedTracks)) {
+                val isVideo = mime.startsWith("video/")
+                isVideoTrackMap[i] = isVideo
+                if (isVideo) {
+                    durationUs = getDuration(format)
+                }
+
+                val typeIndex = if (isVideo) videoTrackCount++ else audioTrackCount++
+                val muxTrack = LosslessEngineHelper.findMuxerTrack(initialPlan, isVideo, typeIndex)
+                if (muxTrack != null) {
+                    trackMap[i] = muxTrack
+                }
+
                 bufferSize = maxOf(bufferSize, getBufferSize(format))
             }
         }
