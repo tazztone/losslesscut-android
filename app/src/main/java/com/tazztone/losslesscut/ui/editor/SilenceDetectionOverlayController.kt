@@ -88,7 +88,57 @@ class SilenceDetectionOverlayController(
         setupModeListener(overlay, btnToggleModeSilence)
         setupPaddingLinkListener(btnLinkPadding)
         setupSliderListeners()
+        setupSliderStepButtons(overlay)
         setupActionListeners(btnCancel, btnApply)
+    }
+
+    private fun stepSlider(slider: Slider, direction: Int): Float {
+        val step = if (slider.stepSize > 0f) slider.stepSize else 1f
+        val rawValue = slider.value + (direction * step)
+        val clamped = rawValue.coerceIn(slider.valueFrom, slider.valueTo)
+        if (slider.stepSize > 0f) {
+            val stepsFromMin = Math.round((clamped - slider.valueFrom) / slider.stepSize)
+            val stepped = slider.valueFrom + (stepsFromMin * slider.stepSize)
+            return stepped.coerceIn(slider.valueFrom, slider.valueTo)
+        }
+        return clamped
+    }
+
+    private fun setupSliderStepButtons(overlay: View) {
+        bindSimpleStep(overlay, R.id.btnThresholdMinus, R.id.btnThresholdPlus, sliderThreshold)
+        bindSimpleStep(overlay, R.id.btnMinSegmentMinus, R.id.btnMinSegmentPlus, sliderMinSegment)
+        bindSimpleStep(overlay, R.id.btnDurationMinus, R.id.btnDurationPlus, sliderDuration)
+        bindPaddingStep(overlay)
+    }
+
+    private fun bindSimpleStep(overlay: View, minusId: Int, plusId: Int, slider: Slider?) {
+        overlay.findViewById<View>(minusId)?.setOnClickListener { slider?.let { s -> s.value = stepSlider(s, -1) } }
+        overlay.findViewById<View>(plusId)?.setOnClickListener { slider?.let { s -> s.value = stepSlider(s, 1) } }
+    }
+
+    private fun bindPaddingStep(overlay: View) {
+        overlay.findViewById<View>(R.id.btnPaddingPrefixMinus)?.setOnClickListener {
+            sliderPaddingPrefix?.let { updatePadding(stepSlider(it, -1), isPrefix = true) }
+        }
+        overlay.findViewById<View>(R.id.btnPaddingPrefixPlus)?.setOnClickListener {
+            sliderPaddingPrefix?.let { updatePadding(stepSlider(it, 1), isPrefix = true) }
+        }
+        overlay.findViewById<View>(R.id.btnPaddingPostfixMinus)?.setOnClickListener {
+            sliderPaddingPostfix?.let { updatePadding(stepSlider(it, -1), isPrefix = false) }
+        }
+        overlay.findViewById<View>(R.id.btnPaddingPostfixPlus)?.setOnClickListener {
+            sliderPaddingPostfix?.let { updatePadding(stepSlider(it, 1), isPrefix = false) }
+        }
+    }
+
+    private fun updatePadding(value: Float, isPrefix: Boolean) {
+        if (isPrefix) {
+            sliderPaddingPrefix?.value = value
+            if (isPaddingLinked) sliderPaddingPostfix?.value = value
+        } else {
+            sliderPaddingPostfix?.value = value
+            if (isPaddingLinked) sliderPaddingPrefix?.value = value
+        }
     }
 
     private fun setupModeListener(

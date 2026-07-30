@@ -224,4 +224,20 @@ class SilenceDetectionOverlayControllerTest {
         // Verify customVideoSeeker preview state is nullified
         assert(binding.seekerContainer.customVideoSeeker.noiseThresholdPreview == null)
     }
+
+    @Test
+    fun `stepButtons_incrementAndDecrementSliders`() {
+        controller.show()
+        val root = binding.smartCutOverlay.root
+        val sliderThreshold = root.findViewById<com.google.android.material.slider.Slider>(R.id.sliderThreshold)
+        val btnThresholdMinus = root.findViewById<android.widget.ImageButton>(R.id.btnThresholdMinus)
+        val btnThresholdPlus = root.findViewById<android.widget.ImageButton>(R.id.btnThresholdPlus)
+
+        val initialValue = sliderThreshold.value
+        btnThresholdPlus.performClick()
+        assert(sliderThreshold.value > initialValue)
+
+        btnThresholdMinus.performClick()
+        assert(Math.abs(sliderThreshold.value - initialValue) < 0.0001f)
+    }
 }

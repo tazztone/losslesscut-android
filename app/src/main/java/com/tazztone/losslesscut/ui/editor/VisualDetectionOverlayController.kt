@@ -52,6 +52,13 @@ class VisualDetectionOverlayController(
     private var btnApplyVisual: MaterialButton = root.findViewById(R.id.btnApplyVisual)
     private var btnToggleMode: MaterialButtonToggleGroup = root.findViewById(R.id.btnToggleMode)
 
+    private var btnIntervalMinus: View? = root.findViewById(R.id.btnIntervalMinus)
+    private var btnIntervalPlus: View? = root.findViewById(R.id.btnIntervalPlus)
+    private var btnSensitivityMinus: View? = root.findViewById(R.id.btnSensitivityMinus)
+    private var btnSensitivityPlus: View? = root.findViewById(R.id.btnSensitivityPlus)
+    private var btnMinSegmentVisualMinus: View? = root.findViewById(R.id.btnMinSegmentVisualMinus)
+    private var btnMinSegmentVisualPlus: View? = root.findViewById(R.id.btnMinSegmentVisualPlus)
+
     private var currentStrategy = VisualStrategy.SCENE_CHANGE
     private var currentMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
     private var stateJob: Job? = null
@@ -80,8 +87,7 @@ class VisualDetectionOverlayController(
 
     private fun setupListeners() {
         setupStrategyListeners()
-        setupModeListener()
-        setupSliderListeners()
+        setupModeAndSliderListeners()
         setupActionListeners()
     }
 
@@ -102,14 +108,13 @@ class VisualDetectionOverlayController(
                 btnDetectAction.isEnabled = true
             }
         }
-
         btnSceneChange.setOnClickListener(onStrategyClick)
         btnBlackFrames.setOnClickListener(onStrategyClick)
         btnFreezeFrame.setOnClickListener(onStrategyClick)
         btnBlurQuality.setOnClickListener(onStrategyClick)
     }
 
-    private fun setupModeListener() {
+    private fun setupModeAndSliderListeners() {
         btnToggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 currentMode = if (checkedId == R.id.btnModeKeep) {
@@ -121,9 +126,7 @@ class VisualDetectionOverlayController(
                 updateStatusText()
             }
         }
-    }
 
-    private fun setupSliderListeners() {
         sliderSensitivity.addOnChangeListener { _, value, _ ->
             updateValueText(tvSensitivityValue, value, getStrategyUnit())
             triggerFiltering()
@@ -138,22 +141,24 @@ class VisualDetectionOverlayController(
                 btnDetectAction.isEnabled = true
             }
         }
+
+        btnIntervalMinus?.setOnClickListener { sliderInterval.value = stepSlider(sliderInterval, -1) }
+        btnIntervalPlus?.setOnClickListener { sliderInterval.value = stepSlider(sliderInterval, 1) }
+        btnSensitivityMinus?.setOnClickListener { sliderSensitivity.value = stepSlider(sliderSensitivity, -1) }
+        btnSensitivityPlus?.setOnClickListener { sliderSensitivity.value = stepSlider(sliderSensitivity, 1) }
+        btnMinSegmentVisualMinus?.setOnClickListener { sliderMinSegment.value = stepSlider(sliderMinSegment, -1) }
+        btnMinSegmentVisualPlus?.setOnClickListener { sliderMinSegment.value = stepSlider(sliderMinSegment, 1) }
     }
 
     private fun setupActionListeners() {
         btnDetectAction.setOnClickListener {
-            val progress = viewModel.visualDetectionProgress.value
-            if (progress != null) {
+            if (viewModel.visualDetectionProgress.value != null) {
                 viewModel.cancelVisualDetection()
             } else {
                 startDetection()
             }
         }
-
-        btnCancelVisual.setOnClickListener {
-            onDismiss()
-        }
-
+        btnCancelVisual.setOnClickListener { onDismiss() }
         btnApplyVisual.setOnClickListener {
             val mode = if (currentStrategy == VisualStrategy.SCENE_CHANGE) {
                 SilenceDetectionUseCase.DetectionMode.SPLIT_AT_BOUNDARIES
@@ -163,6 +168,18 @@ class VisualDetectionOverlayController(
             viewModel.applyDetection(mode)
             onDismiss()
         }
+    }
+
+    private fun stepSlider(slider: Slider, direction: Int): Float {
+        val step = if (slider.stepSize > 0f) slider.stepSize else 1f
+        val rawValue = slider.value + (direction * step)
+        val clamped = rawValue.coerceIn(slider.valueFrom, slider.valueTo)
+        if (slider.stepSize > 0f) {
+            val stepsFromMin = Math.round((clamped - slider.valueFrom) / slider.stepSize)
+            val stepped = slider.valueFrom + (stepsFromMin * slider.stepSize)
+            return stepped.coerceIn(slider.valueFrom, slider.valueTo)
+        }
+        return clamped
     }
 
     private fun startDetection() {
@@ -251,53 +268,59 @@ class VisualDetectionOverlayController(
         progressJob?.cancel()
         progressJob = scope.launch {
             viewModel.visualDetectionProgress.collect { progress ->
-                val isAnalyzing = progress != null
-                sliderSensitivity.isEnabled = !isAnalyzing
-                sliderMinSegment.isEnabled = !isAnalyzing
-                sliderInterval.isEnabled = !isAnalyzing
-                
-                btnSceneChange.isEnabled = !isAnalyzing
-                btnBlackFrames.isEnabled = !isAnalyzing
-                btnFreezeFrame.isEnabled = !isAnalyzing
-                btnBlurQuality.isEnabled = !isAnalyzing
-                btnToggleMode.isEnabled = !isAnalyzing
+                updateProgressUI(progress)
+            }
+        }
+    }
 
-                if (isAnalyzing) {
-                    layoutProgress.visibility = View.VISIBLE
-                    btnDetectAction.text = context.getString(R.string.cancel)
-                    btnDetectAction.isEnabled = true
-                    if (analysisStartTimeMs == 0L) {
-                        analysisStartTimeMs = System.currentTimeMillis()
-                    }
-                    val (current, total) = progress!!
-                    if (total > 0) {
-                        progressIndicator.isIndeterminate = false
-                        progressIndicator.progress = (current * 100 / total).coerceIn(0, 100)
-                        val elapsedMs = System.currentTimeMillis() - analysisStartTimeMs
-                        if (current > 0 && total > current && elapsedMs > 300) {
-                            val remainingFrames = total - current
-                            val msPerFrame = elapsedMs.toDouble() / current
-                            val etaMs = (remainingFrames * msPerFrame).toLong()
-                            val etaStr = TimeUtils.formatDuration(etaMs)
-                            tvProgressText.text = context.getString(R.string.analyzing_progress_eta, current, total, etaStr)
-                        } else {
-                            tvProgressText.text = context.getString(R.string.analyzing_progress, current, total)
-                        }
-                    } else {
-                        progressIndicator.isIndeterminate = true
-                        tvProgressText.text = context.getString(R.string.analyzing_video)
-                    }
+    private fun updateProgressUI(progress: Pair<Int, Int>?) {
+        val isAnalyzing = progress != null
+        sliderSensitivity.isEnabled = !isAnalyzing
+        sliderMinSegment.isEnabled = !isAnalyzing
+        sliderInterval.isEnabled = !isAnalyzing
+        btnIntervalMinus?.isEnabled = !isAnalyzing
+        btnIntervalPlus?.isEnabled = !isAnalyzing
+        btnSensitivityMinus?.isEnabled = !isAnalyzing
+        btnSensitivityPlus?.isEnabled = !isAnalyzing
+        btnMinSegmentVisualMinus?.isEnabled = !isAnalyzing
+        btnMinSegmentVisualPlus?.isEnabled = !isAnalyzing
+        
+        btnSceneChange.isEnabled = !isAnalyzing
+        btnBlackFrames.isEnabled = !isAnalyzing
+        btnFreezeFrame.isEnabled = !isAnalyzing
+        btnBlurQuality.isEnabled = !isAnalyzing
+        btnToggleMode.isEnabled = !isAnalyzing
+
+        if (isAnalyzing) {
+            layoutProgress.visibility = View.VISIBLE
+            btnDetectAction.text = context.getString(R.string.cancel)
+            btnDetectAction.isEnabled = true
+            if (analysisStartTimeMs == 0L) analysisStartTimeMs = System.currentTimeMillis()
+            
+            val (current, total) = progress!!
+            if (total > 0) {
+                progressIndicator.isIndeterminate = false
+                progressIndicator.progress = (current * 100 / total).coerceIn(0, 100)
+                val elapsedMs = System.currentTimeMillis() - analysisStartTimeMs
+                if (current > 0 && total > current && elapsedMs > 300) {
+                    val remainingFrames = total - current
+                    val msPerFrame = elapsedMs.toDouble() / current
+                    val etaMs = (remainingFrames * msPerFrame).toLong()
+                    val etaStr = TimeUtils.formatDuration(etaMs)
+                    tvProgressText.text = context.getString(R.string.analyzing_progress_eta, current, total, etaStr)
                 } else {
-                    layoutProgress.visibility = View.GONE
-                    btnDetectAction.text = context.getString(R.string.detect)
-                    analysisStartTimeMs = 0L
-                    
-                    val hasCached = viewModel.hasCachedAnalysis()
-
-                    if (hasCached && sliderInterval.value == lastAnalyzedInterval) {
-                        btnDetectAction.isEnabled = false
-                    }
+                    tvProgressText.text = context.getString(R.string.analyzing_progress, current, total)
                 }
+            } else {
+                progressIndicator.isIndeterminate = true
+                tvProgressText.text = context.getString(R.string.analyzing_video)
+            }
+        } else {
+            layoutProgress.visibility = View.GONE
+            btnDetectAction.text = context.getString(R.string.detect)
+            analysisStartTimeMs = 0L
+            if (viewModel.hasCachedAnalysis() && sliderInterval.value == lastAnalyzedInterval) {
+                btnDetectAction.isEnabled = false
             }
         }
     }

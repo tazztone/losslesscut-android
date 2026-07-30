@@ -24,7 +24,7 @@
 - ♿ **Accessibility First**: Full screen-reader support via `ExploreByTouchHelper` virtual view hierarchies.
 
 ### 🤖 Smart Cut (v2.0) Automated Detection
-- 🔇 **Silence Cut**: Automated detection and removal of quiet sections with interactive ghost state preview.
+- 🔇 **Silence Cut**: Automated detection and removal of quiet sections with interactive ghost state preview and incremental +/- step slider controls.
 - 👁️ **Visual Detection**: pHash, SAD luminance delta, and contrast-normalized Laplacian variance for Scene, Black, Freeze, and Blur detection.
 - 🔀 **Invert Keep/Discard**: Instantly toggle between removing or preserving detected ranges.
 

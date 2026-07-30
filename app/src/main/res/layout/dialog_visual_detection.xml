@@ -170,6 +170,14 @@
                 android:tooltipText="@string/tooltip_sample_interval"
                 android:tag="@string/tooltip_sample_interval"
                 android:contentDescription="Frame Step"/>
+            <ImageButton
+                android:id="@+id/btnIntervalMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease frame step"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderInterval"
                 android:layout_width="0dp"
@@ -185,6 +193,14 @@
                 app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:tooltipText="@string/tooltip_sample_interval"/>
+            <ImageButton
+                android:id="@+id/btnIntervalPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase frame step"/>
             <TextView
                 android:id="@+id/tvIntervalValue"
                 android:layout_width="wrap_content"
@@ -310,6 +326,14 @@
                 android:tooltipText="@string/tooltip_sensitivity"
                 android:tag="@string/tooltip_sensitivity"
                 android:contentDescription="Sensitivity"/>
+            <ImageButton
+                android:id="@+id/btnSensitivityMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease sensitivity"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderSensitivity"
                 android:layout_width="0dp"
@@ -325,6 +349,14 @@
                 app:trackHeight="2dp"
                 android:stepSize="1.0"
                 android:tooltipText="@string/tooltip_sensitivity"/>
+            <ImageButton
+                android:id="@+id/btnSensitivityPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase sensitivity"/>
             <TextView
                 android:id="@+id/tvSensitivityValue"
                 android:layout_width="45dp"
@@ -357,6 +389,14 @@
                 android:tooltipText="@string/tooltip_min_segment"
                 android:tag="@string/tooltip_min_segment"
                 android:contentDescription="Min Segment"/>
+            <ImageButton
+                android:id="@+id/btnMinSegmentVisualMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease segment duration"/>
             <com.google.android.material.slider.Slider
                 android:id="@+id/sliderMinSegment"
                 android:layout_width="0dp"
@@ -372,6 +412,14 @@
                 app:thumbRadius="5dp"
                 app:trackHeight="2dp"
                 android:tooltipText="@string/tooltip_min_segment"/>
+            <ImageButton
+                android:id="@+id/btnMinSegmentVisualPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase segment duration"/>
             <TextView
                 android:id="@+id/tvMinSegmentValue"
                 android:layout_width="45dp"
