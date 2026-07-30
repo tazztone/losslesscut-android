@@ -7,33 +7,37 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
-import androidx.lifecycle.lifecycleScope
+import androidx.core.os.LocaleListCompat
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
-import com.tazztone.losslesscut.data.AppPreferences
-import com.tazztone.losslesscut.domain.cache.IAnalysisCache
+import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.ui.compose.settings.SettingsScreen
 import com.tazztone.losslesscut.ui.compose.theme.LosslessCutTheme
+import com.tazztone.losslesscut.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
+    private val viewModel: SettingsViewModel by viewModels()
+
     private val selectFolderLauncher = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
         uri?.let {
-            // Take persistable permission
             val contentResolver = requireContext().contentResolver
             val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION
             contentResolver.takePersistableUriPermission(it, takeFlags)
-            
-            viewLifecycleOwner.lifecycleScope.launch {
-                preferences.setCustomOutputUri(it.toString())
-            }
+            viewModel.setCustomOutputUri(it.toString())
         }
     }
 
@@ -43,12 +47,6 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     private var listener: SettingsListener? = null
     private var initialLosslessState: Boolean = true
-    
-    @Inject
-    lateinit var preferences: AppPreferences
-
-    @Inject
-    lateinit var analysisCache: IAnalysisCache
 
     fun setSettingsListener(listener: SettingsListener) {
         this.listener = listener
@@ -57,7 +55,7 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
     fun setInitialState(isLossless: Boolean) {
         this.initialLosslessState = isLossless
     }
-    
+
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (listener == null) {
@@ -72,13 +70,21 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         return ComposeView(requireContext()).apply {
-            // Dispose the Composition when the view's LifecycleOwner is destroyed
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
+                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                val context = requireContext()
+
+                LaunchedEffect(uiState.cacheClearSuccessMessage) {
+                    if (uiState.cacheClearSuccessMessage) {
+                        Toast.makeText(context, context.getString(R.string.cache_cleared_success), Toast.LENGTH_SHORT).show()
+                        viewModel.clearCacheMessageShown()
+                    }
+                }
+
                 LosslessCutTheme {
                     SettingsScreen(
-                        preferences = preferences,
-                        analysisCache = analysisCache,
+                        uiState = uiState,
                         initialLosslessState = initialLosslessState,
                         onLosslessModeToggled = { isChecked ->
                             listener?.onLosslessModeToggled(isChecked)
@@ -87,14 +93,35 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                             selectFolderLauncher.launch(null)
                         },
                         onResetPath = {
-                            viewLifecycleOwner.lifecycleScope.launch {
-                                preferences.setCustomOutputUri(null)
+                            viewModel.setCustomOutputUri(null)
+                        },
+                        onLanguageChanged = { langCode ->
+                            viewModel.setLanguage(langCode)
+                            val locales = if (langCode == "system") {
+                                LocaleListCompat.getEmptyLocaleList()
+                            } else {
+                                LocaleListCompat.forLanguageTags(langCode)
                             }
+                            AppCompatDelegate.setApplicationLocales(locales)
                         },
                         onAccentColorChanged = { colorName ->
-                            viewLifecycleOwner.lifecycleScope.launch {
-                                preferences.setAccentColor(colorName)
-                                activity?.recreate()
+                            viewModel.setAccentColor(colorName)
+                            activity?.recreate()
+                        },
+                        onUndoLimitChanged = { viewModel.setUndoLimit(it) },
+                        onSnapshotFormatChanged = { viewModel.setSnapshotFormat(it) },
+                        onJpgQualityChanged = { viewModel.setJpgQuality(it) },
+                        onAutoExtractWaveformsChanged = { viewModel.setAutoExtractWaveforms(it) },
+                        onVisualFrameStepChanged = { viewModel.setVisualFrameStep(it) },
+                        onCacheCapacityChanged = { viewModel.setCacheCapacityMB(it) },
+                        onCacheRetentionChanged = { viewModel.setCacheRetentionDays(it) },
+                        onClearCache = { viewModel.clearCache() },
+                        onScrollChanged = { scrollValue ->
+                            val bottomSheetDialog = dialog as? BottomSheetDialog
+                            val bottomSheet = bottomSheetDialog?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
+                            if (bottomSheet != null) {
+                                val behavior = BottomSheetBehavior.from(bottomSheet)
+                                behavior.isDraggable = (scrollValue == 0)
                             }
                         }
                     )
@@ -105,8 +132,17 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
-        // Ensure background is transparent to allow Compose background to show
         (view.parent as? View)?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val dialog = dialog as? BottomSheetDialog ?: return
+        val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return
+        bottomSheet.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+        val behavior = BottomSheetBehavior.from(bottomSheet)
+        behavior.isFitToContents = true
+        behavior.state = BottomSheetBehavior.STATE_EXPANDED
+        behavior.skipCollapsed = true
     }
 }

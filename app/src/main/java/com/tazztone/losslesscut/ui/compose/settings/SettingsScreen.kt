@@ -1,5 +1,6 @@
 package com.tazztone.losslesscut.ui.compose.settings
 
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,68 +30,61 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.ui.compose.theme.CyanAccent
 import com.tazztone.losslesscut.ui.compose.theme.GreenAccent
 import com.tazztone.losslesscut.ui.compose.theme.OrangeAccent
 import com.tazztone.losslesscut.ui.compose.theme.PurpleAccent
 import com.tazztone.losslesscut.ui.compose.theme.RedAccent
 import com.tazztone.losslesscut.ui.compose.theme.YellowAccent
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-
-import androidx.compose.material3.AlertDialog
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import com.tazztone.losslesscut.domain.cache.IAnalysisCache
+import com.tazztone.losslesscut.viewmodel.SettingsUiState
 import java.util.Locale
 
 @Composable
 fun SettingsScreen(
-    preferences: AppPreferences,
-    analysisCache: IAnalysisCache? = null,
+    uiState: SettingsUiState,
     initialLosslessState: Boolean,
     onLosslessModeToggled: (Boolean) -> Unit,
     onChangePath: () -> Unit,
     onResetPath: () -> Unit,
-    onAccentColorChanged: (String) -> Unit
+    onLanguageChanged: (String) -> Unit,
+    onAccentColorChanged: (String) -> Unit,
+    onUndoLimitChanged: (Int) -> Unit = {},
+    onSnapshotFormatChanged: (Boolean) -> Unit = {},
+    onJpgQualityChanged: (Int) -> Unit = {},
+    onAutoExtractWaveformsChanged: (Boolean) -> Unit = {},
+    onVisualFrameStepChanged: (Int) -> Unit = {},
+    onCacheCapacityChanged: (Int) -> Unit = {},
+    onCacheRetentionChanged: (Int) -> Unit = {},
+    onClearCache: () -> Unit = {},
+    onScrollChanged: (Int) -> Unit = {}
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
-
-    val undoLimit by preferences.undoLimitFlow.collectAsStateWithLifecycle(initialValue = 30)
-    val snapshotFormat by preferences.snapshotFormatFlow.collectAsStateWithLifecycle(initialValue = "JPEG")
-    val jpgQuality by preferences.jpgQualityFlow.collectAsStateWithLifecycle(initialValue = 95)
-    val customOutputUri by preferences.customOutputUriFlow.collectAsStateWithLifecycle(initialValue = null)
-    val currentAccentColor by preferences.accentColorFlow.collectAsStateWithLifecycle(initialValue = "cyan")
-    val autoExtractWaveforms by preferences.autoExtractWaveformsFlow.collectAsStateWithLifecycle(initialValue = true)
-    val visualFrameStep by preferences.defaultVisualFrameStepFlow.collectAsStateWithLifecycle(initialValue = 5)
-    val cacheCapacityMB by preferences.cacheCapacityMBFlow.collectAsStateWithLifecycle(initialValue = 250)
-    val cacheRetentionDays by preferences.cacheRetentionDaysFlow.collectAsStateWithLifecycle(initialValue = 30)
-
-    var cacheUsageBytes by remember { mutableStateOf(0L) }
     var showClearConfirmDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(analysisCache) {
-        cacheUsageBytes = kotlinx.coroutines.withContext(Dispatchers.IO) {
-            analysisCache?.getCacheUsageBytes() ?: 0L
-        }
+    LaunchedEffect(scrollState.value) {
+        onScrollChanged(scrollState.value)
     }
 
-    val isJpeg = snapshotFormat == "JPEG"
+    val isJpeg = uiState.snapshotFormat == "JPEG"
 
     Column(
         modifier = Modifier
@@ -116,27 +113,12 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // ⚡ 1. Performance & Smart Cut Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_performance))
+        // 🌐 1. Language & Region Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_language_region))
 
-        AutoExtractWaveformsSetting(
-            autoExtract = autoExtractWaveforms,
-            onToggled = { enabled ->
-                coroutineScope.launch {
-                    preferences.setAutoExtractWaveforms(enabled)
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        VisualFrameStepSetting(
-            frameStep = visualFrameStep,
-            onFrameStepChanged = { step ->
-                coroutineScope.launch {
-                    preferences.setDefaultVisualFrameStep(step)
-                }
-            }
+        LanguageSetting(
+            currentLanguage = uiState.language,
+            onLanguageChanged = onLanguageChanged
         )
 
         HorizontalDivider(
@@ -145,7 +127,28 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
         )
 
-        // ✂️ 2. General & Editing Category
+        // ⚡ 2. Performance & Smart Cut Category
+        SettingsCategoryHeader(title = stringResource(R.string.category_performance))
+
+        AutoExtractWaveformsSetting(
+            autoExtract = uiState.autoExtractWaveforms,
+            onToggled = onAutoExtractWaveformsChanged
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        VisualFrameStepSetting(
+            frameStep = uiState.visualFrameStep,
+            onFrameStepChanged = onVisualFrameStepChanged
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(vertical = 20.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
+        )
+
+        // ✂️ 3. General & Editing Category
         SettingsCategoryHeader(title = stringResource(R.string.category_editing))
 
         LosslessModeSetting(
@@ -156,12 +159,8 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         UndoLimitSetting(
-            undoLimit = undoLimit,
-            onUndoLimitChanged = { value ->
-                coroutineScope.launch {
-                    preferences.setUndoLimit(value)
-                }
-            }
+            undoLimit = uiState.undoLimit,
+            onUndoLimitChanged = onUndoLimitChanged
         )
 
         HorizontalDivider(
@@ -170,28 +169,20 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
         )
 
-        // 💾 3. Export & Snapshots Category
+        // 💾 4. Export & Snapshots Category
         SettingsCategoryHeader(title = stringResource(R.string.category_export))
 
         SnapshotFormatSetting(
             isJpeg = isJpeg,
-            jpgQuality = jpgQuality,
-            onFormatChanged = { checked ->
-                coroutineScope.launch {
-                    preferences.setSnapshotFormat(if (checked) "JPEG" else "PNG")
-                }
-            },
-            onQualityChanged = { value ->
-                coroutineScope.launch {
-                    preferences.setJpgQuality(value)
-                }
-            }
+            jpgQuality = uiState.jpgQuality,
+            onFormatChanged = onSnapshotFormatChanged,
+            onQualityChanged = onJpgQualityChanged
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         ExportFolderSetting(
-            customOutputUri = customOutputUri,
+            customOutputUri = uiState.customOutputUri,
             onChangePath = onChangePath,
             onResetPath = onResetPath
         )
@@ -202,11 +193,11 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
         )
 
-        // 🎨 4. Appearance Category
+        // 🎨 5. Appearance Category
         SettingsCategoryHeader(title = stringResource(R.string.category_appearance))
 
         AccentColorSetting(
-            currentAccentColor = currentAccentColor,
+            currentAccentColor = uiState.accentColor,
             onAccentColorChanged = onAccentColorChanged
         )
 
@@ -216,35 +207,26 @@ fun SettingsScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
         )
 
-        // 💾 5. Analysis Cache Category
+        // 💾 6. Analysis Cache Category
         SettingsCategoryHeader(title = stringResource(R.string.category_cache))
 
         CacheCapacitySetting(
-            capacityMB = cacheCapacityMB,
-            onCapacityChanged = { capacity ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    preferences.setCacheCapacityMB(capacity)
-                    cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
-                }
-            }
+            capacityMB = uiState.cacheCapacityMB,
+            onCapacityChanged = onCacheCapacityChanged
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         CacheRetentionSetting(
-            retentionDays = cacheRetentionDays,
-            onRetentionChanged = { days ->
-                coroutineScope.launch(Dispatchers.IO) {
-                    preferences.setCacheRetentionDays(days)
-                    cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
-                }
-            }
+            retentionDays = uiState.cacheRetentionDays,
+            onRetentionChanged = onCacheRetentionChanged
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         CacheUsageAndClearSetting(
-            usageBytes = cacheUsageBytes,
+            usageBytes = uiState.cacheUsageBytes,
+            isClearing = uiState.isClearingCache,
             onClearClicked = { showClearConfirmDialog = true }
         )
 
@@ -260,10 +242,7 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         showClearConfirmDialog = false
-                        coroutineScope.launch(Dispatchers.IO) {
-                            analysisCache?.clearCache()
-                            cacheUsageBytes = analysisCache?.getCacheUsageBytes() ?: 0L
-                        }
+                        onClearCache()
                     }
                 ) {
                     Text(stringResource(R.string.clear_analysis_cache), color = MaterialTheme.colorScheme.error)
@@ -279,10 +258,48 @@ fun SettingsScreen(
 }
 
 @Composable
+fun LanguageSetting(
+    currentLanguage: String,
+    onLanguageChanged: (String) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.setting_language),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 16.sp
+        )
+        Text(
+            text = stringResource(R.string.setting_language_desc),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                "system" to stringResource(R.string.language_system),
+                "en" to stringResource(R.string.language_en),
+                "de" to stringResource(R.string.language_de)
+            ).forEach { (code, label) ->
+                val isSelected = currentLanguage == code
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onLanguageChanged(code) },
+                    label = { Text(label) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CacheCapacitySetting(
     capacityMB: Int,
     onCapacityChanged: (Int) -> Unit
 ) {
+    var sliderValue by remember(capacityMB) { mutableStateOf(capacityMB.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -292,7 +309,7 @@ fun CacheCapacitySetting(
                 fontSize = 16.sp
             )
             Text(
-                text = "$capacityMB MiB",
+                text = "${sliderValue.toInt()} MiB",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
@@ -304,9 +321,11 @@ fun CacheCapacitySetting(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Slider(
-            value = capacityMB.toFloat(),
-            onValueChange = { value -> onCapacityChanged(value.toInt().coerceIn(50, 1000)) },
-            valueRange = 50f..1000f
+            value = sliderValue,
+            onValueChange = { value -> sliderValue = value },
+            onValueChangeFinished = { onCapacityChanged(sliderValue.toInt().coerceIn(50, 1000)) },
+            valueRange = 50f..1000f,
+            steps = 18
         )
     }
 }
@@ -316,6 +335,7 @@ fun CacheRetentionSetting(
     retentionDays: Int,
     onRetentionChanged: (Int) -> Unit
 ) {
+    var sliderValue by remember(retentionDays) { mutableStateOf(retentionDays.toFloat()) }
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -325,7 +345,7 @@ fun CacheRetentionSetting(
                 fontSize = 16.sp
             )
             Text(
-                text = "$retentionDays days",
+                text = "${sliderValue.toInt()} days",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
@@ -337,9 +357,11 @@ fun CacheRetentionSetting(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Slider(
-            value = retentionDays.toFloat(),
-            onValueChange = { value -> onRetentionChanged(value.toInt().coerceIn(1, 90)) },
-            valueRange = 1f..90f
+            value = sliderValue,
+            onValueChange = { value -> sliderValue = value },
+            onValueChangeFinished = { onRetentionChanged(sliderValue.toInt().coerceIn(1, 90)) },
+            valueRange = 1f..90f,
+            steps = 88
         )
     }
 }
@@ -347,6 +369,7 @@ fun CacheRetentionSetting(
 @Composable
 fun CacheUsageAndClearSetting(
     usageBytes: Long,
+    isClearing: Boolean,
     onClearClicked: () -> Unit
 ) {
     val usageMiB = usageBytes / (1024f * 1024f)
@@ -368,11 +391,18 @@ fun CacheUsageAndClearSetting(
                 fontSize = 14.sp
             )
         }
-        TextButton(onClick = onClearClicked) {
-            Text(
-                text = stringResource(R.string.clear_analysis_cache),
-                color = MaterialTheme.colorScheme.error
+        if (isClearing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                strokeWidth = 2.dp
             )
+        } else {
+            TextButton(onClick = onClearClicked) {
+                Text(
+                    text = stringResource(R.string.clear_analysis_cache),
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
@@ -421,6 +451,9 @@ fun VisualFrameStepSetting(
     frameStep: Int,
     onFrameStepChanged: (Int) -> Unit
 ) {
+    var sliderValue by remember(frameStep) { mutableStateOf(frameStep.toFloat()) }
+    val currentStep = sliderValue.toInt().coerceIn(1, 30)
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -430,7 +463,7 @@ fun VisualFrameStepSetting(
                 fontSize = 16.sp
             )
             Text(
-                text = if (frameStep == 1) "1 frame" else "$frameStep frames",
+                text = if (currentStep == 1) "1 frame" else "$currentStep frames",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
@@ -442,11 +475,11 @@ fun VisualFrameStepSetting(
         )
         Spacer(modifier = Modifier.height(4.dp))
         Slider(
-            value = frameStep.toFloat(),
-            onValueChange = { value ->
-                onFrameStepChanged(value.toInt().coerceIn(1, 30))
-            },
-            valueRange = 1f..30f
+            value = sliderValue,
+            onValueChange = { value -> sliderValue = value },
+            onValueChangeFinished = { onFrameStepChanged(sliderValue.toInt().coerceIn(1, 30)) },
+            valueRange = 1f..30f,
+            steps = 28
         )
     }
 }
@@ -486,6 +519,8 @@ fun SnapshotFormatSetting(
     onFormatChanged: (Boolean) -> Unit,
     onQualityChanged: (Int) -> Unit
 ) {
+    var qualitySliderValue by remember(jpgQuality) { mutableStateOf(jpgQuality.toFloat()) }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -513,15 +548,17 @@ fun SnapshotFormatSetting(
                     fontSize = 16.sp
                 )
                 Text(
-                    text = "$jpgQuality",
+                    text = "${qualitySliderValue.toInt()}",
                     color = MaterialTheme.colorScheme.onSurface,
                     fontSize = 16.sp
                 )
             }
             Slider(
-                value = jpgQuality.toFloat(),
-                onValueChange = { value -> onQualityChanged(value.toInt()) },
-                valueRange = 1f..100f
+                value = qualitySliderValue,
+                onValueChange = { value -> qualitySliderValue = value },
+                onValueChangeFinished = { onQualityChanged(qualitySliderValue.toInt().coerceIn(1, 100)) },
+                valueRange = 1f..100f,
+                steps = 98
             )
         }
     }
@@ -532,6 +569,8 @@ fun UndoLimitSetting(
     undoLimit: Int,
     onUndoLimitChanged: (Int) -> Unit
 ) {
+    var sliderValue by remember(undoLimit) { mutableStateOf(undoLimit.toFloat()) }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -541,15 +580,17 @@ fun UndoLimitSetting(
                 fontSize = 16.sp
             )
             Text(
-                text = "$undoLimit",
+                text = "${sliderValue.toInt()}",
                 color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 16.sp
             )
         }
         Slider(
-            value = undoLimit.toFloat(),
-            onValueChange = { value -> onUndoLimitChanged(value.toInt().coerceAtLeast(1)) },
-            valueRange = 1f..100f
+            value = sliderValue,
+            onValueChange = { value -> sliderValue = value },
+            onValueChangeFinished = { onUndoLimitChanged(sliderValue.toInt().coerceAtLeast(1)) },
+            valueRange = 1f..100f,
+            steps = 98
         )
     }
 }
@@ -574,14 +615,16 @@ fun AccentColorSetting(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         listOf(
-            "cyan" to CyanAccent,
-            "purple" to PurpleAccent,
-            "green" to GreenAccent,
-            "yellow" to YellowAccent,
-            "red" to RedAccent,
-            "orange" to OrangeAccent
-        ).forEach { (name, color) ->
+            "cyan" to (CyanAccent to "Cyan"),
+            "purple" to (PurpleAccent to "Purple"),
+            "green" to (GreenAccent to "Green"),
+            "yellow" to (YellowAccent to "Yellow"),
+            "red" to (RedAccent to "Red"),
+            "orange" to (OrangeAccent to "Orange")
+        ).forEach { (name, pair) ->
+            val (color, colorName) = pair
             ColorCircle(
+                colorName = colorName,
                 color = color,
                 isSelected = currentAccentColor == name,
                 onClick = { onAccentColorChanged(name) }
@@ -609,11 +652,12 @@ fun ExportFolderSetting(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = customOutputUri?.let { android.net.Uri.parse(it).path } ?: stringResource(R.string.default_export_path),
+            text = if (customOutputUri != null) formatDisplayPath(customOutputUri) else stringResource(R.string.default_export_path),
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 14.sp,
-            maxLines = 1
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         TextButton(onClick = onChangePath) {
             Text(stringResource(R.string.change))
@@ -630,8 +674,19 @@ fun ExportFolderSetting(
     }
 }
 
+private fun formatDisplayPath(uriString: String): String {
+    val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return uriString
+    val path = uri.path ?: uriString
+    return when {
+        path.contains("primary:") -> "Storage > " + Uri.decode(path.substringAfter("primary:"))
+        path.contains("tree/") -> Uri.decode(path.substringAfter("tree/"))
+        else -> Uri.decode(path)
+    }
+}
+
 @Composable
 fun ColorCircle(
+    colorName: String,
     color: Color,
     isSelected: Boolean,
     onClick: () -> Unit
@@ -641,6 +696,11 @@ fun ColorCircle(
             .size(if (isSelected) 40.dp else 36.dp)
             .clip(CircleShape)
             .background(color)
+            .semantics {
+                role = Role.RadioButton
+                selected = isSelected
+                contentDescription = colorName
+            }
             .clickable(onClick = onClick)
             .padding(4.dp),
         contentAlignment = Alignment.Center

@@ -81,4 +81,11 @@ class AppPreferencesTest {
         val frameStep = preferences.defaultVisualFrameStepFlow.first()
         assertEquals(10, frameStep)
     }
+
+    @Test
+    fun testSetLanguage() = runTest {
+        preferences.setLanguage("de")
+        val lang = preferences.languageFlow.first()
+        assertEquals("de", lang)
+    }
 }

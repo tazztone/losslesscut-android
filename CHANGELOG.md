@@ -1,5 +1,12 @@
 # Changelog
 
+### Late July 2026: Settings Modal Overhaul & Localization Support
+* **App Localization**: Added in-app language selection (System Default, English, Deutsch) using `AppCompatDelegate.setApplicationLocales()` for runtime language switching.
+* **MVVM Settings Architecture**: Introduced `SettingsViewModel` with reactive state management, decoupling preferences and cache operations from Compose UI components.
+* **Layout Jump & Drag Fixes**: Resolved initial bottom sheet snap/jump on launch and isolated vertical list scrolling from bottom sheet drag-to-dismiss gestures.
+* **Debounced Slider I/O**: Debounced continuous slider updates during dragging to eliminate unnecessary DataStore disk writes and UI jank.
+* **Accessibility & Usability Polish**: Added TalkBack accessibility semantics to accent color pickers, formatted SAF storage paths into clean human-readable directory trees, and added user feedback for cache clearing.
+
 ### July 2026: Timeline Actions & Persistent Analysis Cache
 * **Segment Context Actions**: Long-press a kept timeline segment to reveal anchored delete and split icons at the press position with a vertical split line indicator, including when the playhead overlaps the segment; selected segments remain clearly highlighted.
 * **Top-Anchored Segment Handles**: Positioned segment drag handle circles at the top of the timeline view to prevent interference with Android system gesture navigation and menu controls.

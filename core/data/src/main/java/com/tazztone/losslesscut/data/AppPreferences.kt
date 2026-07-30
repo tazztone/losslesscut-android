@@ -39,6 +39,7 @@ class AppPreferences @Inject constructor(
         val DEFAULT_VISUAL_FRAME_STEP = intPreferencesKey("default_visual_frame_step")
         val CACHE_CAPACITY_MB = intPreferencesKey("cache_capacity_mb")
         val CACHE_RETENTION_DAYS = intPreferencesKey("cache_retention_days")
+        val LANGUAGE = stringPreferencesKey("language")
     }
 
     private val sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
@@ -207,6 +208,24 @@ class AppPreferences @Inject constructor(
         .map { preferences ->
             preferences[PreferencesKeys.CACHE_RETENTION_DAYS] ?: DEFAULT_CACHE_RETENTION_DAYS
         }
+
+    val languageFlow: Flow<String> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.LANGUAGE] ?: "system"
+        }
+
+    suspend fun setLanguage(language: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LANGUAGE] = language
+        }
+    }
 
     suspend fun setCacheCapacityMB(capacityMB: Int) {
         require(capacityMB in MIN_CACHE_CAPACITY_MB..MAX_CACHE_CAPACITY_MB) {

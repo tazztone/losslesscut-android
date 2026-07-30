@@ -212,4 +212,11 @@
     <string name="clear_analysis_cache">Clear Analysis Cache</string>
     <string name="clear_cache_confirm_title">Clear Analysis Cache?</string>
     <string name="clear_cache_confirm_message">Are you sure you want to clear all persisted analysis cache files? Active editor data will remain unchanged.</string>
+    <string name="category_language_region">Language &amp; Region</string>
+    <string name="setting_language">App Language</string>
+    <string name="setting_language_desc">Select the language used throughout LosslessCut</string>
+    <string name="language_system">System Default</string>
+    <string name="language_en">English</string>
+    <string name="language_de">Deutsch</string>
+    <string name="cache_cleared_success">Analysis cache cleared successfully.</string>
 </resources>

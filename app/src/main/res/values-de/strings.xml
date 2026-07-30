@@ -207,4 +207,11 @@
     <string name="clear_analysis_cache">Analyse-Cache leeren</string>
     <string name="clear_cache_confirm_title">Analyse-Cache leeren?</string>
     <string name="clear_cache_confirm_message">Möchtest du wirklich alle gespeicherten Analyse-Cache-Dateien löschen? Aktive Editor-Daten bleiben unverändert.</string>
+    <string name="category_language_region">Sprache &amp; Region</string>
+    <string name="setting_language">App-Sprache</string>
+    <string name="setting_language_desc">Wähle die Sprache für LosslessCut</string>
+    <string name="language_system">Systemstandard</string>
+    <string name="language_en">English</string>
+    <string name="language_de">Deutsch</string>
+    <string name="cache_cleared_success">Analyse-Cache erfolgreich geleert.</string>
 </resources>
