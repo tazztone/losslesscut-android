@@ -12,6 +12,7 @@ import com.tazztone.losslesscut.domain.model.TimeUtils
 import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
+import com.tazztone.losslesscut.util.setupAutoRepeat
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -142,12 +143,12 @@ class VisualDetectionOverlayController(
             }
         }
 
-        btnIntervalMinus?.setOnClickListener { sliderInterval.value = stepSlider(sliderInterval, -1) }
-        btnIntervalPlus?.setOnClickListener { sliderInterval.value = stepSlider(sliderInterval, 1) }
-        btnSensitivityMinus?.setOnClickListener { sliderSensitivity.value = stepSlider(sliderSensitivity, -1) }
-        btnSensitivityPlus?.setOnClickListener { sliderSensitivity.value = stepSlider(sliderSensitivity, 1) }
-        btnMinSegmentVisualMinus?.setOnClickListener { sliderMinSegment.value = stepSlider(sliderMinSegment, -1) }
-        btnMinSegmentVisualPlus?.setOnClickListener { sliderMinSegment.value = stepSlider(sliderMinSegment, 1) }
+        btnIntervalMinus?.setupAutoRepeat { sliderInterval.value = stepSlider(sliderInterval, -1) }
+        btnIntervalPlus?.setupAutoRepeat { sliderInterval.value = stepSlider(sliderInterval, 1) }
+        btnSensitivityMinus?.setupAutoRepeat { sliderSensitivity.value = stepSlider(sliderSensitivity, -1) }
+        btnSensitivityPlus?.setupAutoRepeat { sliderSensitivity.value = stepSlider(sliderSensitivity, 1) }
+        btnMinSegmentVisualMinus?.setupAutoRepeat { sliderMinSegment.value = stepSlider(sliderMinSegment, -1) }
+        btnMinSegmentVisualPlus?.setupAutoRepeat { sliderMinSegment.value = stepSlider(sliderMinSegment, 1) }
     }
 
     private fun setupActionListeners() {

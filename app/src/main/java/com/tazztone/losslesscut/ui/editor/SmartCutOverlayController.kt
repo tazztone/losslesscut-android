@@ -219,13 +219,25 @@ class SmartCutOverlayController(
     }
 }
 
+@Suppress("SwallowedException")
 fun View.setupTooltipClicksForImageButtons(controller: SmartCutOverlayController) {
-    // Prefer Tag (where we'll store the long detailed string) over tooltipText
-    val tooltip = this.tag?.toString() ?: this.tooltipText?.toString()
-    
-    if (this is android.widget.ImageButton && tooltip != null) {
-        this.setOnClickListener {
-            controller.showTooltipPopup(this, tooltip)
+    if (this is android.widget.ImageButton) {
+        val entryName = if (id != View.NO_ID) {
+            try {
+                resources.getResourceEntryName(id)
+            } catch (e: android.content.res.Resources.NotFoundException) {
+                ""
+            }
+        } else {
+            ""
+        }
+        val isInfoButton = entryName.contains("info", ignoreCase = true)
+        val tooltip = this.tag?.toString() ?: this.tooltipText?.toString()
+        
+        if (isInfoButton && !tooltip.isNullOrBlank()) {
+            this.setOnClickListener {
+                controller.showTooltipPopup(this, tooltip)
+            }
         }
     } else if (this is android.view.ViewGroup) {
         for (i in 0 until this.childCount) {

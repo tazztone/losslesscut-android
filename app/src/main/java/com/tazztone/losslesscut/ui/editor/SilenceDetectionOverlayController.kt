@@ -13,6 +13,7 @@ import com.tazztone.losslesscut.domain.model.TimeUtils
 import com.tazztone.losslesscut.domain.usecase.SilenceDetectionUseCase
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.util.setupAutoRepeat
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -112,21 +113,21 @@ class SilenceDetectionOverlayController(
     }
 
     private fun bindSimpleStep(overlay: View, minusId: Int, plusId: Int, slider: Slider?) {
-        overlay.findViewById<View>(minusId)?.setOnClickListener { slider?.let { s -> s.value = stepSlider(s, -1) } }
-        overlay.findViewById<View>(plusId)?.setOnClickListener { slider?.let { s -> s.value = stepSlider(s, 1) } }
+        overlay.findViewById<View>(minusId)?.setupAutoRepeat { slider?.let { s -> s.value = stepSlider(s, -1) } }
+        overlay.findViewById<View>(plusId)?.setupAutoRepeat { slider?.let { s -> s.value = stepSlider(s, 1) } }
     }
 
     private fun bindPaddingStep(overlay: View) {
-        overlay.findViewById<View>(R.id.btnPaddingPrefixMinus)?.setOnClickListener {
+        overlay.findViewById<View>(R.id.btnPaddingPrefixMinus)?.setupAutoRepeat {
             sliderPaddingPrefix?.let { updatePadding(stepSlider(it, -1), isPrefix = true) }
         }
-        overlay.findViewById<View>(R.id.btnPaddingPrefixPlus)?.setOnClickListener {
+        overlay.findViewById<View>(R.id.btnPaddingPrefixPlus)?.setupAutoRepeat {
             sliderPaddingPrefix?.let { updatePadding(stepSlider(it, 1), isPrefix = true) }
         }
-        overlay.findViewById<View>(R.id.btnPaddingPostfixMinus)?.setOnClickListener {
+        overlay.findViewById<View>(R.id.btnPaddingPostfixMinus)?.setupAutoRepeat {
             sliderPaddingPostfix?.let { updatePadding(stepSlider(it, -1), isPrefix = false) }
         }
-        overlay.findViewById<View>(R.id.btnPaddingPostfixPlus)?.setOnClickListener {
+        overlay.findViewById<View>(R.id.btnPaddingPostfixPlus)?.setupAutoRepeat {
             sliderPaddingPostfix?.let { updatePadding(stepSlider(it, 1), isPrefix = false) }
         }
     }
@@ -158,31 +159,19 @@ class SilenceDetectionOverlayController(
         }
     }
 
-    private fun setupPaddingLinkListener(btnLinkPadding: ImageButton) {
-        val updateLinkIcon = {
-            btnLinkPadding.setImageResource(
-                if (isPaddingLinked) R.drawable.ic_link_24 else R.drawable.ic_link_off_24
-            )
-        }
-
-        btnLinkPadding.setOnClickListener {
+    private fun setupPaddingLinkListener(btnLinkPadding: ImageButton?) {
+        btnLinkPadding?.setOnClickListener {
             isPaddingLinked = !isPaddingLinked
-            updateLinkIcon()
+            btnLinkPadding.alpha = if (isPaddingLinked) 1.0f else 0.4f
             if (isPaddingLinked) {
-                sliderPaddingPostfix?.value = sliderPaddingPrefix?.value ?: 0f
-                updatePreview()
+                val prefixVal = sliderPaddingPrefix?.value ?: 0f
+                sliderPaddingPostfix?.value = prefixVal
             }
         }
-        updateLinkIcon()
     }
 
     private fun setupSliderListeners() {
-        sliderThreshold?.addOnChangeListener { _, value, _ ->
-            val maxAmp = viewModel.waveformMaxAmplitude.value
-            binding.seekerContainer.customVideoSeeker.noiseThresholdPreview = if (maxAmp > 0f) value / maxAmp else value
-            updatePreview()
-        }
-
+        sliderThreshold?.addOnChangeListener { _, _, _ -> updatePreview() }
         sliderThreshold?.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
                 val maxAmp = viewModel.waveformMaxAmplitude.value

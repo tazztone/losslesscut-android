@@ -13,17 +13,15 @@
         android:clickable="true"
         android:focusable="true">
 
-        <GridLayout
+        <!-- Threshold -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:columnCount="2"
-            android:alignmentMode="alignBounds"
-            android:clipChildren="false"
-            android:clipToPadding="false">
-
-            <!-- Threshold -->
+            android:layout_height="28dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
@@ -34,8 +32,10 @@
                     android:textSize="11sp"
                     android:textColor="#CCCCCC"/>
                 <ImageButton
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/infoThreshold"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
                     android:src="@drawable/ic_info_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="#88FFFFFF"
@@ -43,55 +43,56 @@
                     android:tag="@string/tooltip_noise_threshold"
                     android:contentDescription="Noise Threshold"/>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <ImageButton
-                    android:id="@+id/btnThresholdMinus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_remove_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Decrease threshold"/>
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/sliderThreshold"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:valueFrom="0.001"
-                    android:valueTo="0.1"
-                    android:stepSize="0.001"
-                    android:value="0.02"
-                    app:haloRadius="0dp"
-                    app:thumbRadius="5dp"
-                    app:trackHeight="2dp"
-                    android:tooltipText="@string/tooltip_noise_threshold"/>
-                <ImageButton
-                    android:id="@+id/btnThresholdPlus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Increase threshold"/>
-                <TextView
-                    android:id="@+id/tvThresholdValue"
-                    android:layout_width="45dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:text="2.0%"
-                    android:textSize="11sp"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
+            <ImageButton
+                android:id="@+id/btnThresholdMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease threshold"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderThreshold"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:valueFrom="0.001"
+                android:valueTo="0.1"
+                android:stepSize="0.001"
+                android:value="0.02"
+                app:haloRadius="0dp"
+                app:thumbRadius="5dp"
+                app:trackHeight="2dp"
+                android:tooltipText="@string/tooltip_noise_threshold"/>
+            <ImageButton
+                android:id="@+id/btnThresholdPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase threshold"/>
+            <TextView
+                android:id="@+id/tvThresholdValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="2.0%"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
-            <!-- Min Segment -->
+        <!-- Min Segment -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
@@ -102,8 +103,10 @@
                     android:textSize="11sp"
                     android:textColor="#CCCCCC"/>
                 <ImageButton
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/infoMinSegment"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
                     android:src="@drawable/ic_info_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="#88FFFFFF"
@@ -111,55 +114,56 @@
                     android:tag="@string/tooltip_min_segment_audio"
                     android:contentDescription="Min Segment Duration"/>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <ImageButton
-                    android:id="@+id/btnMinSegmentMinus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_remove_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Decrease segment duration"/>
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/sliderMinSegment"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:valueFrom="100"
-                    android:valueTo="5000"
-                    android:stepSize="100"
-                    android:value="100"
-                    app:haloRadius="0dp"
-                    app:thumbRadius="5dp"
-                    app:trackHeight="2dp"
-                    android:tooltipText="@string/tooltip_min_segment_audio"/>
-                <ImageButton
-                    android:id="@+id/btnMinSegmentPlus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Increase segment duration"/>
-                <TextView
-                    android:id="@+id/tvMinSegmentValue"
-                    android:layout_width="45dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:text="0.1s"
-                    android:textSize="11sp"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
+            <ImageButton
+                android:id="@+id/btnMinSegmentMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease segment duration"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderMinSegment"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:valueFrom="100"
+                android:valueTo="5000"
+                android:stepSize="100"
+                android:value="100"
+                app:haloRadius="0dp"
+                app:thumbRadius="5dp"
+                app:trackHeight="2dp"
+                android:tooltipText="@string/tooltip_min_segment_audio"/>
+            <ImageButton
+                android:id="@+id/btnMinSegmentPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase segment duration"/>
+            <TextView
+                android:id="@+id/tvMinSegmentValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.1s"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
-            <!-- Silence Duration -->
+        <!-- Silence Duration -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
@@ -170,8 +174,10 @@
                     android:textSize="11sp"
                     android:textColor="#CCCCCC"/>
                 <ImageButton
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/infoDuration"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
                     android:src="@drawable/ic_info_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="#88FFFFFF"
@@ -179,55 +185,56 @@
                     android:tag="@string/tooltip_min_silence_duration"
                     android:contentDescription="Min Silence Duration"/>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <ImageButton
-                    android:id="@+id/btnDurationMinus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_remove_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Decrease silence duration"/>
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/sliderDuration"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:valueFrom="200"
-                    android:valueTo="5000"
-                    android:stepSize="100"
-                    android:value="200"
-                    app:haloRadius="0dp"
-                    app:thumbRadius="5dp"
-                    app:trackHeight="2dp"
-                    android:tooltipText="@string/tooltip_min_silence_duration"/>
-                <ImageButton
-                    android:id="@+id/btnDurationPlus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Increase silence duration"/>
-                <TextView
-                    android:id="@+id/tvDurationValue"
-                    android:layout_width="45dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:text="0.2s"
-                    android:textSize="11sp"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
+            <ImageButton
+                android:id="@+id/btnDurationMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease silence duration"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderDuration"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:valueFrom="200"
+                android:valueTo="5000"
+                android:stepSize="100"
+                android:value="200"
+                app:haloRadius="0dp"
+                app:thumbRadius="5dp"
+                app:trackHeight="2dp"
+                android:tooltipText="@string/tooltip_min_silence_duration"/>
+            <ImageButton
+                android:id="@+id/btnDurationPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase silence duration"/>
+            <TextView
+                android:id="@+id/tvDurationValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.2s"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
-            <!-- Padding Prefix -->
+        <!-- Padding Prefix -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
@@ -238,8 +245,10 @@
                     android:textSize="11sp"
                     android:textColor="#CCCCCC"/>
                 <ImageButton
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/infoPaddingPrefix"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
                     android:src="@drawable/ic_info_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="#88FFFFFF"
@@ -247,69 +256,71 @@
                     android:tag="@string/tooltip_padding_prefix"
                     android:contentDescription="Prefix Padding"/>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <ImageButton
-                    android:id="@+id/btnPaddingPrefixMinus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_remove_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Decrease prefix padding"/>
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/sliderPaddingPrefix"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:valueFrom="0"
-                    android:valueTo="2000"
-                    android:stepSize="50"
-                    android:value="0"
-                    app:haloRadius="0dp"
-                    app:thumbRadius="5dp"
-                    app:trackHeight="2dp"
-                    android:tooltipText="@string/tooltip_padding_prefix"/>
-                <ImageButton
-                    android:id="@+id/btnPaddingPrefixPlus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Increase prefix padding"/>
-                <TextView
-                    android:id="@+id/tvPaddingPrefixValue"
-                    android:layout_width="45dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:text="0.0s"
-                    android:textSize="11sp"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
+            <ImageButton
+                android:id="@+id/btnPaddingPrefixMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease prefix padding"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderPaddingPrefix"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:valueFrom="0"
+                android:valueTo="2000"
+                android:stepSize="50"
+                android:value="0"
+                app:haloRadius="0dp"
+                app:thumbRadius="5dp"
+                app:trackHeight="2dp"
+                android:tooltipText="@string/tooltip_padding_prefix"/>
+            <ImageButton
+                android:id="@+id/btnPaddingPrefixPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase prefix padding"/>
+            <TextView
+                android:id="@+id/tvPaddingPrefixValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.0s"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
-            <!-- Link Button Row -->
-            <View android:layout_width="0dp" android:layout_height="0dp" />
+        <!-- Link Button Row -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="16dp">
             <ImageButton
                 android:id="@+id/btnLinkPadding"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="-4dp"
-                android:layout_marginBottom="-4dp"
+                android:layout_gravity="center"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_link_24"
                 app:tint="@android:color/white"
                 android:contentDescription="@string/content_desc_link_padding"/>
+        </FrameLayout>
 
-            <!-- Padding Postfix -->
+        <!-- Padding Postfix -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="28dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="2dp">
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="60dp"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
@@ -320,8 +331,10 @@
                     android:textSize="11sp"
                     android:textColor="#CCCCCC"/>
                 <ImageButton
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:id="@+id/infoPaddingPostfix"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:layout_marginStart="2dp"
                     android:src="@drawable/ic_info_24"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     app:tint="#88FFFFFF"
@@ -329,52 +342,46 @@
                     android:tag="@string/tooltip_padding_postfix"
                     android:contentDescription="Postfix Padding"/>
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="28dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-                <ImageButton
-                    android:id="@+id/btnPaddingPostfixMinus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_remove_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Decrease postfix padding"/>
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/sliderPaddingPostfix"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginEnd="2dp"
-                    android:valueFrom="0"
-                    android:valueTo="2000"
-                    android:stepSize="50"
-                    android:value="0"
-                    app:haloRadius="0dp"
-                    app:thumbRadius="5dp"
-                    app:trackHeight="2dp"
-                    android:tooltipText="@string/tooltip_padding_postfix"/>
-                <ImageButton
-                    android:id="@+id/btnPaddingPostfixPlus"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_add_24"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    app:tint="#88FFFFFF"
-                    android:contentDescription="Increase postfix padding"/>
-                <TextView
-                    android:id="@+id/tvPaddingPostfixValue"
-                    android:layout_width="45dp"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:text="0.0s"
-                    android:textSize="11sp"
-                    android:textColor="@android:color/white"/>
-            </LinearLayout>
-        </GridLayout>
+            <ImageButton
+                android:id="@+id/btnPaddingPostfixMinus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_remove_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Decrease postfix padding"/>
+            <com.google.android.material.slider.Slider
+                android:id="@+id/sliderPaddingPostfix"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="-6dp"
+                android:layout_marginEnd="-6dp"
+                android:valueFrom="0"
+                android:valueTo="2000"
+                android:stepSize="50"
+                android:value="0"
+                app:haloRadius="0dp"
+                app:thumbRadius="5dp"
+                app:trackHeight="2dp"
+                android:tooltipText="@string/tooltip_padding_postfix"/>
+            <ImageButton
+                android:id="@+id/btnPaddingPostfixPlus"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_add_24"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                app:tint="#88FFFFFF"
+                android:contentDescription="Increase postfix padding"/>
+            <TextView
+                android:id="@+id/tvPaddingPostfixValue"
+                android:layout_width="45dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="0.0s"
+                android:textSize="11sp"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
 
         <!-- Mode Toggle Row -->
         <LinearLayout
