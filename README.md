@@ -9,36 +9,29 @@
   <img src="docs/images/ic_banner.webp" width="400" alt="LosslessCut Banner">
 </p>
 
-## ✨ Features
+## ✨ Key Feature Pillars
 
-- 🚀 **Zero Quality Loss**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer`—no transcoding involved.
-- 🎞️ **Pro Timeline**: Desktop-class NLE timeline supporting multi-segment editing (Split, Discard, and Drag).
-- 👆 **Segment Actions**: Long-press a kept segment to reveal anchored delete and split icons at the press location; this also works when the playhead is over the segment.
-- ♻️ **Clip Reset**: Restore the current clip's timeline to one full KEEP segment with an explicit confirmation step.
-- 🔍 **Precision Seeking**: Zoom up to 20x for frame-accurate edits.
-- 🧲 **Keyframe Snapping**: Mandatory, strict keyframe snapping in lossless mode ensures frame-perfect cuts. Features haptic feedback and visual snapping.
-- 📱 **Adaptive UI**: Ergonomic landscape sidebars and a unified floating player overlay for maximum screen real estate.
-- ➕ **Smart Playlist**: Inline "Add Media" shortcut and intelligent duplicate detection on import.
-- 🎵 **Audio-Only Mode**: Intelligent UI adaptation for audio files with waveform visualization.
+### ⚡ Zero-Loss Direct Bitstream Engine
+- 🚀 **Direct Muxing**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer` with zero transcoding.
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
-- 🎼 **Smart Audio Extraction**: Automatically saves audio-only exports (when video is unchecked) as lossless `.m4a` files in the `Music` folder.
-- ♿ **Accessibility First**: Comprehensive screen reader support via virtual view hierarchies (`ExploreByTouchHelper`).
-- 🔄 **Non-Destructive Workflow**: Full **Undo/Redo** stack for all segment operations.
-- 🤖 **Smart Cut (v2.0)**: Unified, tabbed interface combining **Silence Cut** and **Visual Detection**.
-    - **Silence**: Automated, parameterized removal of quiet sections with interactive "Ghost State" visualizations and live savings previews.
-    - **Visual**: Algorithm-driven segment detection for **Scene Changes**, **Black Frames**, **Freeze Frames**, and **Blur Quality**.
-    - **Keep / Discard Invert Toggle**: Easily switch between discarding detected ranges or keeping matching ranges (e.g., static frame preservation for stop-motion animations).
-    - **Real-Time Analysis ETA**: Live throughput speed calculation and estimated time remaining during video analysis.
-    - **Compact Layout**: Density-optimized vertical overlay design maximizing screen space for video preview and seeker timeline.
-- ⏸️ **Intelligent Focus**: **Auto-pause** playback when opening settings, export options, or silence detection to prevent missing content.
-- ✨ **Contextual UX**: Seamless, auto-dismissing timeline hints and haptic feedback for a clean, professional interface.
-- 💾 **Project Persistence**: Seamless session restoration—resume your edits exactly where you left off.
-- ⚡ **Analysis Cache**: Waveforms and visual-analysis results are reused across sessions. Cache capacity, retention age, usage, and clearing are configurable in Settings.
-- 📂 **Custom Output Path**: Flexible export folder selection via Storage Access Framework (SAF).
-- 🔄 **Remux & Convert**: Change container formats (e.g., MKV to MP4) instantly without re-encoding.
-- 🏷️ **Quick Metadata Fix**: Correct video orientation and rotation flags in seconds.
-- 🏗️ **Clean Architecture**: Context-free ViewModels and a centralized Repository pattern for maximum maintainability.
-- 🧊 **Format Compatibility**: Optimized for modern codecs and containers (MP4, AAC). See [Technical Reference](#7-format-compatibility) for details.
+- 🎼 **Smart Audio Extraction**: Automatically routes audio-only exports to lossless `.m4a` files in the `Music` folder.
+- 🔄 **Remux & Quick Fix**: Container switching (MKV to MP4) and instantaneous orientation/rotation flag repairs.
+
+### 🎞️ Pro NLE Timeline & Ergonomics
+- 🔍 **Precision Timeline**: Zoom up to 20x for frame-accurate edits with mandatory keyframe snapping and haptic feedback.
+- 👆 **Anchored Actions**: Long-press inside a segment to split or delete at the touch location; non-destructive Undo/Redo history stack.
+- 📱 **Adaptive Layout**: Responsive landscape sidebar, floating player overlay, and audio waveform display.
+- ♿ **Accessibility First**: Full screen-reader support via `ExploreByTouchHelper` virtual view hierarchies.
+
+### 🤖 Smart Cut (v2.0) Automated Detection
+- 🔇 **Silence Cut**: Automated detection and removal of quiet sections with interactive ghost state preview.
+- 👁️ **Visual Detection**: pHash, SAD luminance delta, and contrast-normalized Laplacian variance for Scene, Black, Freeze, and Blur detection.
+- 🔀 **Invert Keep/Discard**: Instantly toggle between removing or preserving detected ranges.
+
+### 🔒 Privacy, SAF & Performance Cache
+- 📂 **Scoped Storage**: Storage Access Framework (SAF) tree output and MediaStore integration with zero unnecessary permissions.
+- ⚡ **Analysis Cache**: App-private LRU cache for waveforms and visual analysis with configurable size caps and retention age.
+- 🛡️ **100% Offline**: Zero analytics, zero data collection, zero network permissions.
 
 ## 📸 Screenshots
 
@@ -51,32 +44,28 @@
 
 Unlike traditional video editors that decode and re-encode every frame, LosslessCut operates at the **container level**:
 
-1. **Probe**: Scans the file structure to identify stream metadata and track availability.
-2. **Visualize**: Renders a zoomable timeline where keyframes are marked as snapping points.
-3. **Mux**: During export, the app extracts the original encoded samples between cut points and remuxes them into a new container. If the video track is excluded, it smartly routes to an audio-only `.m4a` container to preserve original quality.
-
-### Timeline editing
-
-Tap a kept segment to select it. Long-press inside the segment to reveal anchored **Delete** and **Split** icons. The icons remain available until an action is chosen or you tap outside them, and they are positioned at the press location even when the playhead is there. Use **Reset segments** to replace all edits for the current clip with one full-length KEEP segment; the app asks for confirmation before changing the timeline. All segment changes remain undoable.
-
-Visual analysis and waveform extraction are cached in the app's private storage and keyed to the clip's media identity and analysis settings. The cache uses least-recently-used eviction and an age limit, so it does not grow without bound. Configure both limits or clear the cache from Settings.
+1. **Probe**: Scans file bitstreams to extract stream metadata, tracks, and sync keyframes.
+2. **Visualize**: Renders a zoomable NLE timeline where keyframes act as mandatory snapping boundaries.
+3. **Mux**: Writes original encoded sample buffers directly to the target output container.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Android Studio Koala+
-- Android SDK 36 (Target) / 26 (Min)
+- **JDK 17 or 21**
+- **Android SDK 36** (Target) / **26** (Min)
+- **AGP 9.0+ / Gradle 9.2+**
 
-### Development
+### Development & Build
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/tazztone/losslesscut-android.git
+cd losslesscut-android
 
-# Generate icons (Consolidated tool)
-java scripts/dev-scripts/asset-generate-icons.java
-
-# Build debug APK using Gradle Kotlin DSL
+# Build debug APK
 ./gradlew assembleDebug
+
+# Deploy and launch on connected device
+./scripts/dev-scripts/adb-run-app.sh
 ```
 
 ### Downloads
@@ -86,44 +75,34 @@ Prebuilt APK and AAB artifacts are published with tagged releases on
 
 ## 🤝 Contributing
 
-We follow **MVVM + Clean Architecture** with a strict separation between UI, Domain, and Data layers.
+We follow **MVVM + Clean Architecture** with strict layer separation between UI, Domain, and Data modules.
 
 - **Multi-Module**: Core logic belongs in `:core:domain`, `:core:data`, or `:engine`.
-- **Use Cases**: All business logic MUST reside in Use Cases within the `:core:domain` module.
-- **Workflow**: Create a feature branch for every change and ensure CI passes before opening a PR.
-- **Code Style**: Follow standard Kotlin conventions and avoid "God Classes".
+- **Use Cases**: All business logic MUST reside in Use Cases within `:core:domain`.
+- **Verification**: Run `./scripts/dev-scripts/project-verify.sh` before submitting PRs.
 
 ## 🛡️ Security Policy
 
-### Reporting a Vulnerability
-
-If you discover a security vulnerability within LosslessCut, please do not open a public issue. Instead, report it privately to the maintainers. We aim to respond to all reports within 48 hours and provide a fix or mitigation plan as soon as possible.
-
-## 🔒 Permissions & Privacy
-- **Privacy-First Model**: Removed all unnecessary runtime permissions (Notifications, Media Access). The app relies on the **Storage Access Framework (SAF)** for user-initiated file selection.
-- **Scoped Storage**: Uses `MediaStore` to save results to `Movies/LosslessCut` (video) or `Music/LosslessCut` (audio extraction). 
-- **Private Analysis Cache**: Derived waveforms and visual-analysis data stay in app-private storage and can be bounded by size and age or cleared from Settings. Source media remains accessed through SAF and is never copied into the shared cache.
-- **Privacy**: 100% offline. No analytics, no tracking, no data collection.
+If you discover a security vulnerability, please report it privately to the maintainers rather than opening a public issue.
 
 ## 🗺️ Roadmap
 
-- [x] **Smart Cut (v2.0)**: Integrated advanced algorithm-driven visual detection (Scene, Black, Freeze, Blur) and unified it with Silence Cut.
-- [ ] **Advanced Tags**: Title, artist, and creation date editing.
-- [x] **Architectural Enforcement**: Implemented Konsist testing to safeguard module boundaries in the CI pipeline.
-- [x] **Domain Purification**: Extracted standard JVM domain module for maximum portability and testability.
-- [x] **Metadata Tuning**: Quick rotation and orientation flag fixes.
-- [x] **Remux Utility**: Instant container switching.
-- [x] **Activity Decomposition**: Refactored major UI logic into specialized delegates.
+- [x] **Smart Cut (v2.0)**: Integrated visual detection (Scene, Black, Freeze, Blur) with Silence Cut.
+- [x] **Architectural Enforcement**: Konsist tests safeguarding module boundaries.
+- [x] **Domain Purification**: Standard pure JVM domain module (`:core:domain`).
 - [x] **Modern Build**: Full migration to Gradle Kotlin DSL and AGP 9.0.
+- [ ] **Advanced Tags**: Title, artist, and creation date editing.
 
 ## 📚 Documentation Index
 
-For detailed technical specifications, architecture blueprints, developer workflows, and privacy details, refer to:
+For detailed technical specifications, architecture blueprints, domain model glossaries, and developer workflows:
 
-- 🏗️ **[Architecture & Technical Reference](docs/architecture.md)**: System architecture, multi-module structure, component blueprints (`CustomVideoSeeker`, `LosslessEngine`, `VideoEditingViewModel`), key workflows, and format compatibility matrix.
-- 🛠️ **[Contributing Guide](CONTRIBUTING.md)**: Development setup, PR checklist, and documentation for the `./scripts/dev-scripts/` automation suite.
-- ⚙️ **[Build Tooling Matrix](docs/build-tooling.md)**: Stable toolchain versions (AGP, Gradle, Kotlin, KSP), standard flags, and modernization roadmap.
+- 🏗️ **[Architecture & Technical Reference](docs/architecture.md)**: System architecture, multi-module structure, component blueprints, reactive state flow, risk tiers, and format matrix.
+- 📖 **[Domain Model & Glossary](CONTEXT.md)**: Ubiquitous domain language, aggregate boundaries (`EditingSession`), and smart cut entities.
+- 🛠️ **[Contributing Guide](CONTRIBUTING.md)**: Development setup, script automation suite, and CI verification pipeline.
+- ⚙️ **[Build Tooling Matrix](docs/build-tooling.md)**: Toolchain versions (AGP, Gradle, Kotlin, KSP), flags, and modernization roadmap.
 - 🔒 **[Privacy Policy](docs/privacy.html)**: Storage Access Framework (SAF) privacy model.
 
 ## 📄 License
 Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+

@@ -92,6 +92,14 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 - **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.
 - **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds, `S` split, `LEFT`/`RIGHT` keyframe seek).
 
+```mermaid
+flowchart TD
+    Domain["EditingSession Aggregate (:core:domain)"] -->|Emits EditingSessionState| StateFlow["StateFlow in VideoEditingViewModel"]
+    StateFlow -->|Exposes UI State| Fragment["EditorFragment UI Container"]
+    Fragment -->|Updates Geometry & Handles| Seeker["CustomVideoSeeker Timeline View"]
+    Fragment -->|Controls Playback| Player["PlayerManager (ExoPlayer)"]
+```
+
 ---
 
 ## 5. Storage Architecture & Media Finalization
@@ -171,7 +179,7 @@ sequenceDiagram
 
 ---
 
-## 7. Testing Architecture & Gotchas
+## 7. Testing Architecture & Harness Setup
 
 - **Module Test Command**: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>`
 - **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, Lint, JVM unit tests, and Kover).
@@ -179,7 +187,7 @@ sequenceDiagram
 - **Kover Code Coverage Targets**: Core domain aggregate `EditingSession` (98.3%) and media processing engine `MuxingPipeline` (93.8%) maintain coverage well above the repository >80% threshold.
 - **Engine Instrumented Tests**: Engine tests relying on native Android codecs MUST reside in `:engine/src/androidTest` (not `:app`).
 - **FileProvider Mocking**: Instrumented tests use local storage / mocked `FileProvider` authorities (`:engine:connectedDebugAndroidTest`).
-- **Test Asset Staging**: TargetSdk 33+ instrumented tests copy media assets to `cacheDir` via `UiAutomation.executeShellCommand()`.
+- **TargetSdk 33+ Test Asset Staging**: TargetSdk 33+ instrumented tests requiring media assets copy files to `cacheDir` via `UiAutomation.executeShellCommand()`.
 
 ---
 
@@ -196,10 +204,23 @@ LosslessCut operates strictly at the **container & bitstream level** using Andro
 
 ---
 
-## 9. Context7 Documentation IDs
+## 9. Operational Risk Tiers & Verification Matrix
+
+In accordance with Agentic Engineering standards, all code modifications are classified into three operational risk tiers with mandatory verification gates:
+
+| Risk Tier | Scope & Features | Required Verification Gates |
+| :--- | :--- | :--- |
+| **Low** | UI layouts, Compose sheets, strings, formatting, docs | Focused JVM unit tests, Detekt linting (`./scripts/dev-scripts/project-verify.sh`). |
+| **Medium** | Smart Cut algorithms (Silence/Visual), `EditingSession` mutations, ViewModel logic | Module JVM tests (`SilenceCutUseCaseTest`, `SegmentDetectorTest`), cache retention tests. |
+| **High / Critical** | Native Muxing pipeline (`:engine`), SAF storage (`StorageUtils`), remuxing, MediaStore finalization | Full `./scripts/dev-scripts/project-verify.sh`, SAF file write verification, single-thread `MediaMuxer` assertion. |
+
+---
+
+## 10. Context7 Documentation IDs
 
 For external AI documentation lookups:
 - `/androidx/media` (Media3 / ExoPlayer)
 - `/kotlin/kotlinx.coroutines` (Coroutines & Flows)
 - `/androidx/datastore` (Preferences DataStore)
 - `/material-components/material-components-android` (Material 3 UI)
+

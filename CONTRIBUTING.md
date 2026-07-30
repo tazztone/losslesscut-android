@@ -7,91 +7,65 @@ Thank you for your interest in contributing! This guide outlines local environme
 ## 🚀 Quick Start & Development Setup
 
 ### Prerequisites
-- **JDK 17+** (JDK 21 recommended for Gradle Daemon)
-- **Android Studio Koala+** or Android SDK with Target API 36 / Min API 26
-- **ADB** (in your `PATH` or standard Android SDK platform-tools location)
+- **JDK 17 or 21**
+- **Android SDK 36** (Target) / **26** (Min)
+- **AGP 9.0+ / Gradle 9.2+**
+- **ADB** (in system `PATH`)
 
-### Building the App
+### Building & Running
 ```bash
 # Clone the repository
 git clone https://github.com/tazztone/losslesscut-android.git
 cd losslesscut-android
 
-# Build the debug APK
+# Build debug APK
 ./gradlew assembleDebug
+
+# Deploy & launch on connected device/emulator
+./scripts/dev-scripts/adb-run-app.sh
 ```
 
 ---
 
-## 🛠️ Developer Scripts Suite
+## 🛠️ Developer Scripts Suite & Automation
 
-All developer automation scripts reside under `./scripts/dev-scripts/`.
+All developer automation scripts reside under `./scripts/dev-scripts/`:
 
-### 1. Full Project Verification (CI Equivalent)
-Run complete static analysis, unit tests, and coverage checks before pushing changes:
+| Script | Command | Purpose |
+| :--- | :--- | :--- |
+| **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes full CI verification suite (Detekt, Lint, Unit tests, Kover coverage). |
+| **Targeted Testing** | `./scripts/dev-scripts/gradle-test.sh <module> "*"` | Runs unit tests for specific modules (`:core:domain`, `:engine`, `:app`). |
+| **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
+| **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
+| **Logcat Stream** | `./scripts/dev-scripts/adb-logcat.sh` | Streams filtered logcat logs for `com.tazztone.losslesscut`. |
+| **Clean Caches** | `./scripts/dev-scripts/project-clean.sh` | Cleans Gradle build caches and temporary build artifacts. |
+
+---
+
+## 📐 Architectural Standards & Enforcement
+
+We enforce **MVVM + Clean Architecture** with strict layer boundaries. For full architectural specifications, see [docs/architecture.md](docs/architecture.md).
+
+### Konsist Architectural Guardrails (`ArchitectureTest.kt`)
+Module isolation is automatically enforced in CI via Konsist unit tests:
+1. **Pure JVM Domain**: `:core:domain` must remain pure JVM (zero `android.*` or `hilt` imports).
+2. **Engine Encapsulation**: `:app` accesses `:engine` strictly via `runtimeOnly(:engine)` and domain interfaces.
+3. **Storage Access**: Shared media access must rely on Storage Access Framework (SAF) or `ContentResolver` (`java.io.File` is forbidden for shared storage).
+4. **UI Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**`.
+
+---
+
+## 🧪 Pull Request & CI Verification Gates
+
+Before opening or merging a Pull Request, every change must pass the 4-gate verification pipeline:
+
+1. **Gate 1: Static Analysis & Formatting** — Detekt rules (`./gradlew detekt`) pass cleanly.
+2. **Gate 2: Android Lint** — Zero severe lint issues across all modules (`./gradlew lint`).
+3. **Gate 3: Unit Tests** — All JVM unit tests pass in `:core:domain`, `:engine`, and `:app`.
+4. **Gate 4: Code Coverage Target** — Kover HTML coverage report meets repository target (>80% domain coverage).
+
+Execute the full suite locally prior to pushing:
 ```bash
 ./scripts/dev-scripts/project-verify.sh
 ```
-*Executes Detekt, Android Lint, unit tests, and generates Kover HTML coverage reports.*
 
-### 2. Targeted Unit Testing
-Run tests for specific modules or classes:
-```bash
-./scripts/dev-scripts/gradle-test.sh <module> <test_pattern>
-
-# Examples:
-./scripts/dev-scripts/gradle-test.sh :core:domain "*.SilenceCutUseCaseTest"
-./scripts/dev-scripts/gradle-test.sh :engine "*.TrackInspectorTest"
-./scripts/dev-scripts/gradle-test.sh :app "*.VideoEditingViewModelTest"
-```
-*Automatically selects `:test` for pure JVM modules (`:core:domain`) and `:testDebugUnitTest` for Android library/app modules.*
-
-### 3. App Deployment & ADB Tooling
-- **Build & Launch App**:
-  ```bash
-  ./scripts/dev-scripts/adb-run-app.sh
-  ```
-- **Clean Uninstall & Reinstall** (resolves signature or Scoped Storage cache conflicts):
-  ```bash
-  ./scripts/dev-scripts/adb-reinstall.sh
-  ```
-- **Stream Filtered Logcat Logs**:
-  ```bash
-  ./scripts/dev-scripts/adb-logcat.sh
-  ```
-
-### 4. Build Cleaning & Asset Generation
-- **Clean Build Caches**:
-  ```bash
-  ./scripts/dev-scripts/project-clean.sh
-  ```
-- **Generate Launcher App Icons**:
-  ```bash
-  java scripts/dev-scripts/asset-generate-icons.java
-  ```
-
----
-
-## 📐 Architecture & Coding Standards
-
-We follow **MVVM + Clean Architecture** with strict layer separation. See [docs/architecture.md](docs/architecture.md) for the complete system architecture, module design, and component blueprints.
-
-1. **Module Boundaries**:
-   - `:core:domain` is a **pure JVM library** (no Android or Hilt dependencies). Business logic and Use Cases live here.
-   - `:engine` handles native `MediaExtractor` / `MediaMuxer` media processing and is isolated from storage and UI.
-   - `:app` owns UI, Fragments, and Jetpack ViewModels. `:app` accesses `:engine` via `runtimeOnly(:engine)` and domain interfaces.
-2. **Storage Policy**:
-   - **External/Shared Storage**: Access user media strictly via Storage Access Framework (SAF) and `ContentResolver`. `java.io.File` is forbidden for shared media.
-   - **Internal Storage**: App-private storage (`cacheDir`, `filesDir`) may use `java.io.File`.
-3. **UI Policy**:
-   - Jetpack Compose is permitted ONLY for new, isolated UI under `:app/ui/compose/**`.
-   - Custom timeline and seeker rendering remain XML / ViewBinding based (`CustomVideoSeeker`).
-
----
-
-## 🧪 Pull Request Checklist
-
-Before submitting a Pull Request:
-- [ ] Run `./scripts/dev-scripts/project-verify.sh` locally and ensure all checks pass (`detekt`, `lint`, and unit tests).
-- [ ] Verify that new business logic is covered by unit tests in `:core:domain`, `:engine`, or `:app`.
-- [ ] Ensure `:core:domain` remains free of `android.*` or `hilt` imports.
