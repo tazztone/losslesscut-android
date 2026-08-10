@@ -127,7 +127,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
                     consecutiveEosTimeouts = 0
                     if (processOutputBufferResult(ctx, outputBufferIndex)) {
                         processedCount++
-                        // ponytail: dynamic lower-bound total avoids a second full decode; exact totals require pre-scanning the stream.
+                        // ponytail: dynamic lower-bound total avoids a second full decode;
+                        // exact totals require pre-scanning the stream.
                         onProgress(processedCount, maxOf(estimatedTotal, processedCount))
                     }
                 }

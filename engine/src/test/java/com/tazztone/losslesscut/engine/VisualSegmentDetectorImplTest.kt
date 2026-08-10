@@ -86,7 +86,10 @@ class VisualSegmentDetectorImplTest {
 
         assertTrue("Results should not be empty", result.isNotEmpty())
         assertEquals(2, progress.size)
-        assertTrue("Progress must not exceed its total: $progress", progress.all { (current, total) -> current <= total })
+        assertTrue(
+            "Progress must not exceed its total: $progress",
+            progress.all { (current, total) -> current <= total }
+        )
         verify { mockCodec.start() }
         verify { mockCodec.release() }
     }
