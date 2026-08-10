@@ -1,9 +1,11 @@
 package com.tazztone.losslesscut.engine
 
+import android.media.MediaMetadataRetriever
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.os.Build
 import android.util.Log
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
 import com.tazztone.losslesscut.domain.model.VisualStrategy
@@ -60,6 +62,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             val format = extractor.getTrackFormat(trackIndex)
             val durationUs = format.getLong(MediaFormat.KEY_DURATION)
             val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext emptyList()
+            val frameCount = readFrameCount(uri)
 
             codec = MediaCodec.createDecoderByType(mime)
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
@@ -67,8 +70,14 @@ class VisualSegmentDetectorImpl @Inject constructor(
             codec.start()
 
             context = DetectionContext(extractor, codec, sampleIntervalFrames, strategy)
-            val estimatedTotalFrames = durationUs / ESTIMATED_FRAME_DURATION_US
-            val estimatedTotal = (estimatedTotalFrames / context.sampleIntervalFrames).toInt().coerceAtLeast(1)
+            val estimatedTotal = frameCount?.let {
+                val sampledFrames = it / context.sampleIntervalFrames +
+                    if (it % context.sampleIntervalFrames != 0L) 1 else 0
+                sampledFrames.coerceIn(1L, Int.MAX_VALUE.toLong()).toInt()
+            } ?: run {
+                val estimatedTotalFrames = durationUs / ESTIMATED_FRAME_DURATION_US
+                (estimatedTotalFrames / context.sampleIntervalFrames).toInt().coerceAtLeast(1)
+            }
             
             detectLoop(context, estimatedTotal, onProgress)
 
@@ -85,6 +94,27 @@ class VisualSegmentDetectorImpl @Inject constructor(
         }
 
         context?.analyses ?: emptyList()
+    }
+
+    private fun readFrameCount(uri: String): Long? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return null
+
+        val retriever = MediaMetadataRetriever()
+        return try {
+            dataSource.setRetrieverSource(retriever, uri)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT)
+                ?.toLongOrNull()
+                ?.takeIf { it > 0L }
+        } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
+            Log.w(TAG, "Video frame count metadata unavailable; using duration estimate", e)
+            null
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: IllegalStateException) {
+                Log.w(TAG, "Could not release metadata retriever", e)
+            }
+        }
     }
 
     private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {

@@ -38,13 +38,14 @@ public class SegmentDetectorUseCase @Inject constructor(
     @Volatile
     private var cachedStrategy: com.tazztone.losslesscut.domain.model.VisualStrategy? = null
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught", "LongParameterList")
     public fun detectVisual(
         scope: CoroutineScope,
         uri: String,
         config: VisualDetectionConfig,
         listener: VisualDetectionListener,
-        clip: MediaClip? = null
+        clip: MediaClip? = null,
+        allowDecode: Boolean = true
     ) {
         cancelVisual()
         val requestId = requestGeneration.incrementAndGet()
@@ -56,7 +57,8 @@ public class SegmentDetectorUseCase @Inject constructor(
                     frames = cachedAnalysis!!,
                     strategy = config.strategy,
                     threshold = config.sensitivityThreshold,
-                    minSegmentMs = config.minSegmentDurationMs
+                    minSegmentMs = config.minSegmentDurationMs,
+                    clipDurationMs = clip?.durationMs?.takeIf { it > 0L }
                 )
                 notifyIfCurrent(requestId) { listener.onComplete(ranges) }
             }
@@ -64,17 +66,18 @@ public class SegmentDetectorUseCase @Inject constructor(
         }
 
         visualJob = scope.launch(ioDispatcher) {
-            performVisualAnalysis(requestId, uri, config, listener, clip)
+            performVisualAnalysis(requestId, uri, config, listener, clip, allowDecode)
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught", "LongParameterList")
     private suspend fun performVisualAnalysis(
         requestId: Long,
         uri: String,
         config: VisualDetectionConfig,
         listener: VisualDetectionListener,
-        clip: MediaClip?
+        clip: MediaClip?,
+        allowDecode: Boolean
     ) {
         try {
             val targetClip = clip ?: MediaClip(
@@ -88,6 +91,8 @@ public class SegmentDetectorUseCase @Inject constructor(
 
             val analysis = if (persistentAnalysis != null) {
                 persistentAnalysis
+            } else if (!allowDecode) {
+                return
             } else {
                 notifyIfCurrent(requestId) { listener.onProgress(null) }
                 val newAnalysis = visualSegmentDetector.analyze(
@@ -112,7 +117,8 @@ public class SegmentDetectorUseCase @Inject constructor(
                 frames = analysis,
                 strategy = config.strategy,
                 threshold = config.sensitivityThreshold,
-                minSegmentMs = config.minSegmentDurationMs
+                minSegmentMs = config.minSegmentDurationMs,
+                clipDurationMs = targetClip.durationMs.takeIf { it > 0L }
             )
             notifyIfCurrent(requestId) { listener.onComplete(ranges) }
         } catch (e: CancellationException) {

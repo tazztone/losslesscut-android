@@ -16,7 +16,10 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,6 +41,7 @@ class VisualDetectionOverlayControllerTest {
     private lateinit var visualDetectionProgressFlow: MutableStateFlow<Pair<Int, Int>?>
     private lateinit var detectionPreviewRangesFlow: MutableStateFlow<List<LongRange>>
     private lateinit var uiStateFlow: MutableStateFlow<VideoEditingUiState>
+    private lateinit var defaultVisualFrameStepFlow: MutableStateFlow<Int>
 
     private lateinit var controller: VisualDetectionOverlayController
 
@@ -54,10 +58,12 @@ class VisualDetectionOverlayControllerTest {
         visualDetectionProgressFlow = MutableStateFlow(null)
         detectionPreviewRangesFlow = MutableStateFlow(emptyList())
         uiStateFlow = MutableStateFlow(VideoEditingUiState.Initial)
+        defaultVisualFrameStepFlow = MutableStateFlow(5)
 
         every { viewModel.visualDetectionProgress } returns visualDetectionProgressFlow
         every { viewModel.detectionPreviewRanges } returns detectionPreviewRangesFlow
         every { viewModel.uiState } returns uiStateFlow
+        every { viewModel.defaultVisualFrameStepFlow } returns defaultVisualFrameStepFlow
 
         dismissCalled = false
 
@@ -75,6 +81,60 @@ class VisualDetectionOverlayControllerTest {
     fun `activate_initializesViewsAndState`() {
         controller.activate()
         assert(root.visibility == View.VISIBLE)
+    }
+
+    @Test
+    fun `activate_doesNotStartFiltering`() {
+        controller.activate()
+
+        verify(exactly = 0) { viewModel.previewVisualSegments(any()) }
+        verify(exactly = 0) { viewModel.filterVisualSegments(any()) }
+    }
+
+    @Test
+    fun `preference_updatesFrameStepSliderAndDisplay`() {
+        controller.activate()
+        defaultVisualFrameStepFlow.value = 30
+        testScope.advanceUntilIdle()
+
+        assertEquals(30f, root.findViewById<Slider>(R.id.sliderInterval).value, 0.001f)
+        assertTrue(root.findViewById<android.widget.TextView>(R.id.tvIntervalValue).text.contains("30"))
+    }
+
+    @Test
+    fun `sceneStrategy_hidesModeControls`() {
+        controller.activate()
+        val modeLayout = root.findViewById<View>(R.id.layoutVisualMode)
+
+        assertEquals(View.GONE, modeLayout.visibility)
+        root.findViewById<View>(R.id.btnBlackFrames).performClick()
+        assertEquals(View.VISIBLE, modeLayout.visibility)
+        root.findViewById<View>(R.id.btnSceneChange).performClick()
+        assertEquals(View.GONE, modeLayout.visibility)
+    }
+
+    @Test
+    fun `sliderFiltering_startsOnlyAfterDetect`() {
+        controller.activate()
+        root.findViewById<Slider>(R.id.sliderSensitivity).value = 13f
+        testScope.advanceTimeBy(101)
+        testScope.advanceUntilIdle()
+        verify(exactly = 0) { viewModel.filterVisualSegments(any()) }
+
+        root.findViewById<MaterialButton>(R.id.btnDetectAction).performClick()
+        root.findViewById<Slider>(R.id.sliderSensitivity).value = 14f
+        testScope.advanceTimeBy(101)
+        testScope.advanceUntilIdle()
+        verify { viewModel.filterVisualSegments(any()) }
+    }
+
+    @Test
+    fun `progress_usesSampledFrameLabel`() {
+        controller.activate()
+        visualDetectionProgressFlow.value = 2 to 10
+        testScope.advanceUntilIdle()
+
+        assertTrue(root.findViewById<android.widget.TextView>(R.id.tvProgressText).text.contains("sampled frames"))
     }
 
     @Test

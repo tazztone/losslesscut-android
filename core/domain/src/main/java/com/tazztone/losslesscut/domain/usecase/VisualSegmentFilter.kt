@@ -10,7 +10,8 @@ public object VisualSegmentFilter {
         frames: List<FrameAnalysis>,
         strategy: VisualStrategy,
         threshold: Float,
-        minSegmentMs: Long
+        minSegmentMs: Long,
+        clipDurationMs: Long? = null
     ): List<LongRange> {
         if (frames.isEmpty()) return emptyList()
 
@@ -20,15 +21,37 @@ public object VisualSegmentFilter {
         // so they are visible as mask rects in the seeker.
         // We use minSegmentMs or a fixed fallback if minSegmentMs is 0.
         val displayPadding = if (minSegmentMs > 0) minSegmentMs else MIN_VISIBLE_STAMP_DURATION_MS
+        val clipEnd = clipDurationMs?.coerceAtLeast(0L)
         
-        val expandedRanges = resultRanges.map { range ->
-            if (range.first == range.last) {
-                // Expand slightly so it's a visible rect, but don't exceed video bounds (implicit)
-                val start = (range.first - displayPadding / 2).coerceAtLeast(0)
-                val end = start + displayPadding
+        val expandedRanges = resultRanges.mapNotNull { range ->
+            if (clipEnd != null && (range.last < 0L || range.first > clipEnd)) {
+                null
+            } else if (range.first == range.last) {
+                var start = range.first - displayPadding / 2
+                var end = start + displayPadding
+                if (clipEnd != null && end > clipEnd) {
+                    end = clipEnd
+                    start = (end - displayPadding).coerceAtLeast(0)
+                }
+                if (start < 0) {
+                    start = 0
+                    end = displayPadding
+                }
                 start..end
             } else {
                 range
+            }
+        }.mapNotNull { range ->
+            if (clipEnd == null) {
+                range
+            } else {
+                if (range.last < 0L || range.first > clipEnd) {
+                    null
+                } else {
+                    val start = range.first.coerceIn(0, clipEnd)
+                    val end = range.last.coerceIn(0, clipEnd)
+                    if (start < end) start..end else null
+                }
             }
         }
 

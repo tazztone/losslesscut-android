@@ -158,8 +158,8 @@
     <string name="detect">Detect</string>
     <string name="strategy">Strategy</string>
     <string name="analyzing_video">Analyzing video content…</string>
-    <string name="analyzing_progress">Analyzing: %1$d / %2$d frames</string>
-    <string name="analyzing_progress_eta">Analyzing: %1$d / %2$d frames (ETA %3$s)</string>
+    <string name="analyzing_progress">Analyzing: %1$d / %2$d sampled frames</string>
+    <string name="analyzing_progress_eta">Analyzing: %1$d / %2$d sampled frames (ETA %3$s)</string>
     <string name="error_visual_detection_failed">Visual analysis failed</string>
     <string name="sensitivity">Sensitivity</string>
     <string name="luma_threshold">Luma Threshold</string>

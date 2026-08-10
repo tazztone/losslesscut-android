@@ -2,7 +2,9 @@ package com.tazztone.losslesscut.engine
 
 import android.media.MediaCodec
 import android.media.MediaExtractor
+import android.media.MediaMetadataRetriever
 import android.media.MediaFormat
+import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -93,6 +95,50 @@ class VisualSegmentDetectorImplTest {
         )
         verify { mockCodec.start() }
         verify { mockCodec.release() }
+    }
+
+    @Test
+    fun `analyze uses metadata frame count for sampled progress total`() = runBlocking {
+        mockkConstructor(MediaMetadataRetriever::class)
+        val format = mockk<MediaFormat>(relaxed = true)
+        every { anyConstructed<MediaExtractor>().trackCount } returns 1
+        every { anyConstructed<MediaExtractor>().getTrackFormat(0) } returns format
+        every { format.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+        every { format.getLong(MediaFormat.KEY_DURATION) } returns 1_000_000L
+        every { format.getInteger(MediaFormat.KEY_WIDTH) } returns 1920
+        every { format.getInteger(MediaFormat.KEY_HEIGHT) } returns 1080
+        every { anyConstructed<MediaExtractor>().selectTrack(0) } returns Unit
+        every { anyConstructed<MediaExtractor>().readSampleData(any(), any()) } returns 100 andThen -1
+        every { anyConstructed<MediaExtractor>().sampleTime } returns 0L
+        every { anyConstructed<MediaExtractor>().advance() } returns true
+        every { anyConstructed<MediaExtractor>().release() } returns Unit
+        every {
+            anyConstructed<MediaMetadataRetriever>().extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_VIDEO_FRAME_COUNT
+            )
+        } returns "11"
+        every { anyConstructed<MediaMetadataRetriever>().release() } returns Unit
+
+        val mockCodec = mockk<MediaCodec>(relaxed = true)
+        every { MediaCodec.createDecoderByType(any()) } returns mockCodec
+        every { mockCodec.dequeueInputBuffer(any()) } returns 0
+        every { mockCodec.getInputBuffer(any()) } returns ByteBuffer.allocate(1024)
+        var outputCallCount = 0
+        every { mockCodec.dequeueOutputBuffer(any(), any()) } answers {
+            val info = firstArg<MediaCodec.BufferInfo>()
+            if (outputCallCount++ == 0) info.set(0, 100, 0, 0)
+            else info.set(0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
+            0
+        }
+        every { mockCodec.getOutputBuffer(any()) } returns ByteBuffer.allocate(1920 * 1080)
+        every { mockCodec.getOutputFormat(any()) } returns format
+
+        val progress = mutableListOf<Pair<Int, Int>>()
+        detector.analyze("test_uri", 5, VisualStrategy.BLACK_FRAMES) { current, total ->
+            progress += current to total
+        }
+
+        assertEquals(listOf(1 to 3), progress)
     }
 
     @Test

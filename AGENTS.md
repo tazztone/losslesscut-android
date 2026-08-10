@@ -3,6 +3,7 @@
 ## Build & Verification Commands
 - Run verification: `./scripts/dev-scripts/project-verify.sh`
 - Run module test: `./scripts/dev-scripts/gradle-test.sh <module> "*"` (Must use wildcard `"*"` to prevent shell glob errors; applies `:test` for `:core:domain`, `:testDebugUnitTest` for Android modules).
+- Gradle verification requires a writable `GRADLE_USER_HOME`. If the wrapper fails with a read-only filesystem error for a `.zip.lck` file, use approved escalation or a writable task-local cache such as `GRADLE_USER_HOME=/tmp/lossless-cut-gradle`.
 
 ## Architectural Guardrails
 - **External Storage**: SAF / `ContentResolver` ONLY for user media. `java.io.File` is strictly forbidden for shared storage.
@@ -14,4 +15,3 @@
 ## Runtime Gotchas
 - **Engine Instrumented Tests**: Engine instrumented tests MUST reside in `:engine/src/androidTest` (not `:app`).
 - **Non-MediaStore URIs**: Catch `UnsupportedOperationException` when invoking `resolver.update(uri, IS_PENDING=0)` on SAF or FileProvider URIs. (For extended test harness details, see docs/architecture.md#7-testing-architecture).
-

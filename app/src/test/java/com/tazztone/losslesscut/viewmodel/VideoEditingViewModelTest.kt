@@ -150,6 +150,44 @@ public class VideoEditingViewModelTest {
         assertNull(viewModel.visualDetectionProgress.value)
     }
 
+    @Test
+    public fun testLateVisualResult_afterCancelIsIgnored() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 1000L)
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        val listenerSlot = slot<VisualDetectionListener>()
+        every {
+            mockSegmentDetector.detectVisual(
+                scope = any(),
+                uri = any(),
+                config = any(),
+                listener = capture(listenerSlot),
+                clip = any(),
+                allowDecode = any()
+            )
+        } just Runs
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+        viewModel.previewVisualSegments(
+            com.tazztone.losslesscut.domain.model.VisualDetectionConfig(
+                strategy = com.tazztone.losslesscut.domain.model.VisualStrategy.BLACK_FRAMES,
+                sensitivityThreshold = 20f,
+                sampleIntervalFrames = 5,
+                minSegmentDurationMs = 100L
+            )
+        )
+        advanceUntilIdle()
+
+        listenerSlot.captured.onComplete(listOf(100L..200L))
+        advanceUntilIdle()
+        assertEquals(listOf(100L..200L), viewModel.detectionPreviewRanges.value)
+
+        viewModel.cancelVisualDetection()
+        listenerSlot.captured.onComplete(listOf(300L..400L))
+        advanceUntilIdle()
+        assertTrue(viewModel.detectionPreviewRanges.value.isEmpty())
+    }
+
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(
         id = UUID.randomUUID(),
         uri = uri,

@@ -84,6 +84,7 @@ internal class SegmentDetectorUseCaseTest {
             scope = this,
             uri = uri,
             config = config,
+            allowDecode = false,
             listener = object : VisualDetectionListener {
                 override fun onComplete(ranges: List<LongRange>) {
                     hitRangesResult = ranges
@@ -137,6 +138,33 @@ internal class SegmentDetectorUseCaseTest {
 
         assertFalse("onComplete should not be called when cancelled", completed)
         assertFalse(segmentDetector.hasCachedAnalysis())
+    }
+
+    @Test
+    internal fun testCacheOnlyMiss_doesNotDecode() = runTest(testDispatcher) {
+        val config = VisualDetectionConfig(
+            strategy = VisualStrategy.BLACK_FRAMES,
+            sensitivityThreshold = 0.1f,
+            sampleIntervalFrames = 5,
+            minSegmentDurationMs = 100L
+        )
+
+        var completed = false
+        segmentDetector.detectVisual(
+            scope = this,
+            uri = "content://mock/cache-miss.mp4",
+            config = config,
+            allowDecode = false,
+            listener = object : VisualDetectionListener {
+                override fun onComplete(ranges: List<LongRange>) {
+                    completed = true
+                }
+            }
+        )
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { visualDetector.analyze(any(), any(), any(), any()) }
+        assertFalse(completed)
     }
 
     @Test

@@ -350,4 +350,30 @@ public class VisualSegmentFilterTest {
         assertEquals(1, result.size)
         assertEquals(500L..1500L, result[0])
     }
+
+    @Test
+    public fun `filter shifts single frame inward and clamps to short clip`() {
+        val result = VisualSegmentFilter.filter(
+            frames = listOf(FrameAnalysis(49, 10.0, 0.0, null, null)),
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = 0,
+            clipDurationMs = 50
+        )
+
+        assertEquals(listOf(0L..50L), result)
+    }
+
+    @Test
+    public fun `filter drops a clamped range shorter than minimum`() {
+        val result = VisualSegmentFilter.filter(
+            frames = listOf(FrameAnalysis(49, 10.0, 0.0, null, null)),
+            strategy = VisualStrategy.BLACK_FRAMES,
+            threshold = 20f,
+            minSegmentMs = 100,
+            clipDurationMs = 50
+        )
+
+        assertEquals(emptyList<LongRange>(), result)
+    }
 }

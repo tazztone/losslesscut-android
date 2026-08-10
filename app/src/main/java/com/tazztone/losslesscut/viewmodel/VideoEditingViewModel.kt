@@ -33,9 +33,11 @@ import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 
 @HiltViewModel
+@Suppress("LargeClass")
 class VideoEditingViewModel @Inject constructor(
     private val repository: IVideoEditingRepository,
     private val preferences: AppPreferences,
@@ -65,6 +67,7 @@ class VideoEditingViewModel @Inject constructor(
 
     private val _visualDetectionProgress = MutableStateFlow<Pair<Int, Int>?>(null)
     val visualDetectionProgress: StateFlow<Pair<Int, Int>?> = _visualDetectionProgress.asStateFlow()
+    val defaultVisualFrameStepFlow: Flow<Int> = preferences.defaultVisualFrameStepFlow
 
     private val _rawSilencePreviewRanges = MutableStateFlow<SilenceDetectionUseCase.DetectionResult?>(null)
     val rawSilencePreviewRanges: StateFlow<SilenceDetectionUseCase.DetectionResult?> =
@@ -103,6 +106,9 @@ class VideoEditingViewModel @Inject constructor(
     val waveformMaxAmplitude: StateFlow<Float> = waveformController.maxAmplitude
     private val stateMutex = Mutex()
     private val isExporting = AtomicBoolean(false)
+    private val visualRequestGeneration = AtomicLong(0L)
+    @Volatile
+    private var visualRequestClipId: UUID? = null
     
     private val keyframeCache = ConcurrentHashMap<String, List<Long>>()
     init {
@@ -208,6 +214,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (index == selectedClipIndex || index !in currentClips.indices) return@withLock
+                invalidateVisualDetection()
                 editingSession.selectClip(index)
                 loadClipDataInternal(selectedClipIndex)
             }
@@ -247,9 +254,11 @@ class VideoEditingViewModel @Inject constructor(
                         VideoEditingEvent.ShowToast(
                             UiText.StringResource(R.string.error_cannot_delete_last)
                         )
-                    ) 
+                    )
                     return@withLock
                 }
+                if (index !in currentClips.indices) return@withLock
+                invalidateVisualDetection()
                 val newList = currentClips.toMutableList()
                 newList.removeAt(index)
                 val newIndex = when {
@@ -368,6 +377,7 @@ class VideoEditingViewModel @Inject constructor(
     fun resetClipSegments() {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
+                invalidateVisualDetection()
                 if (editingSession.resetClipSegments()) {
                     _isDirty.value = true
                     updateStateInternal()
@@ -384,15 +394,26 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    private fun invalidateVisualDetection() {
+        visualRequestGeneration.incrementAndGet()
+        visualRequestClipId = null
+        useCases.segmentDetector.cancelVisual()
+        _detectionPreviewRanges.value = emptyList()
+        _visualDetectionProgress.value = null
+    }
+
+    private fun isCurrentVisualRequest(requestId: Long, clipId: UUID): Boolean {
+        return visualRequestGeneration.get() == requestId && visualRequestClipId == clipId &&
+            currentClips.getOrNull(selectedClipIndex)?.id == clipId
+    }
+
     private fun resetInternal() {
+        invalidateVisualDetection()
         _uiState.value = VideoEditingUiState.Initial
         editingSession.setClips(emptyList(), 0)
         _isDirty.value = false
         _waveformData.value = null
-        _detectionPreviewRanges.value = emptyList()
         _rawSilencePreviewRanges.value = null
-        _visualDetectionProgress.value = null
-        useCases.segmentDetector.cancelVisual()
         _sessionExists.value = false
         currentPlaybackSpeed = 1.0f
         isPitchCorrectionEnabled = false
@@ -446,18 +467,30 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun previewVisualSegments(config: VisualDetectionConfig) {
-        detectVisualSegments(config, reportProgress = true)
+        detectVisualSegments(config, reportProgress = true, allowDecode = true)
     }
 
     fun filterVisualSegments(config: VisualDetectionConfig) {
-        detectVisualSegments(config, reportProgress = false)
+        detectVisualSegments(config, reportProgress = false, allowDecode = false)
     }
 
-    private fun detectVisualSegments(config: VisualDetectionConfig, reportProgress: Boolean) {
+    private fun detectVisualSegments(
+        config: VisualDetectionConfig,
+        reportProgress: Boolean,
+        allowDecode: Boolean
+    ) {
+        val requestId = visualRequestGeneration.incrementAndGet()
+        val targetClipId = currentClips.getOrNull(selectedClipIndex)?.id
+        visualRequestClipId = targetClipId
         viewModelScope.launch(ioDispatcher) {
-            val clip = stateMutex.withLock { currentClips.getOrNull(selectedClipIndex) } ?: return@launch
+            val clip = stateMutex.withLock {
+                currentClips.getOrNull(selectedClipIndex)?.takeIf {
+                    it.id == targetClipId && visualRequestGeneration.get() == requestId
+                }
+            } ?: return@launch
             if (reportProgress) {
                 _detectionPreviewRanges.value = emptyList()
+                _visualDetectionProgress.value = null
             }
 
             useCases.segmentDetector.detectVisual(
@@ -466,35 +499,38 @@ class VideoEditingViewModel @Inject constructor(
                 config = config,
                 listener = object : VisualDetectionListener {
                     override fun onProgress(progress: Pair<Int, Int>?) {
-                        if (reportProgress) publishVisualProgress(progress)
+                        if (reportProgress) publishVisualProgress(requestId, clip.id, progress)
                     }
 
                     override fun onComplete(ranges: List<LongRange>) {
-                        publishVisualRanges(ranges)
+                        publishVisualRanges(requestId, clip.id, ranges)
                     }
 
                     override fun onError(error: Throwable) {
                         Log.e("VideoEditingViewModel", "Unexpected error in visual analysis: ${error.message}", error)
-                        publishVisualError()
+                        publishVisualError(requestId, clip.id)
                     }
                 },
-                clip = clip
+                clip = clip,
+                allowDecode = allowDecode
             )
         }
     }
 
-    private fun publishVisualProgress(progress: Pair<Int, Int>?) {
+    private fun publishVisualProgress(requestId: Long, clipId: UUID, progress: Pair<Int, Int>?) {
         viewModelScope.launch {
             stateMutex.withLock {
+                if (!isCurrentVisualRequest(requestId, clipId)) return@withLock
                 _visualDetectionProgress.value = progress
                 updateStateInternal()
             }
         }
     }
 
-    private fun publishVisualRanges(ranges: List<LongRange>) {
+    private fun publishVisualRanges(requestId: Long, clipId: UUID, ranges: List<LongRange>) {
         viewModelScope.launch {
             stateMutex.withLock {
+                if (!isCurrentVisualRequest(requestId, clipId)) return@withLock
                 _detectionPreviewRanges.value = ranges
                 _rawSilencePreviewRanges.value = null
                 _visualDetectionProgress.value = null
@@ -503,24 +539,24 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    private fun publishVisualError() {
+    private fun publishVisualError(requestId: Long, clipId: UUID) {
         viewModelScope.launch {
+            stateMutex.withLock {
+                if (!isCurrentVisualRequest(requestId, clipId)) return@launch
+                _detectionPreviewRanges.value = emptyList()
+                _visualDetectionProgress.value = null
+                updateStateInternal()
+            }
             _uiEvents.send(
                 VideoEditingEvent.ShowToast(
                     UiText.StringResource(R.string.error_visual_detection_failed)
                 )
             )
-            stateMutex.withLock {
-                _detectionPreviewRanges.value = emptyList()
-                _visualDetectionProgress.value = null
-                updateStateInternal()
-            }
         }
     }
 
     fun cancelVisualDetection() {
-        useCases.segmentDetector.cancelVisual()
-        _visualDetectionProgress.value = null
+        invalidateVisualDetection()
         viewModelScope.launch { updateStateInternal() }
     }
 
@@ -542,12 +578,14 @@ class VideoEditingViewModel @Inject constructor(
         mode: SilenceDetectionUseCase.DetectionMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES,
         minKeepSegmentDurationMs: Long = 10L
     ) {
+        val ranges = _detectionPreviewRanges.value.toList()
+        val targetClipId = currentClips.getOrNull(selectedClipIndex)?.id
+        if (ranges.isEmpty() || targetClipId == null) return
+
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val ranges = _detectionPreviewRanges.value
-                if (ranges.isEmpty()) return@withLock
-                
-                val clip = currentClips.getOrNull(selectedClipIndex) ?: return@withLock
+                val clip = currentClips.getOrNull(selectedClipIndex)?.takeIf { it.id == targetClipId }
+                    ?: return@withLock
                 
                 val updatedClip = useCases.silenceDetectionUseCase.applyDetectionRanges(
                     clip, ranges, minKeepSegmentDurationMs, mode
@@ -555,6 +593,8 @@ class VideoEditingViewModel @Inject constructor(
                 
                 editingSession.applySegments(updatedClip.segments)
                 
+                visualRequestGeneration.incrementAndGet()
+                visualRequestClipId = null
                 _detectionPreviewRanges.value = emptyList()
                 _rawSilencePreviewRanges.value = null
                 _isDirty.value = true
