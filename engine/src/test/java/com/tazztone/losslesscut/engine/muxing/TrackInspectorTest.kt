@@ -257,4 +257,30 @@ class TrackInspectorTest {
         assertEquals(512 * 1024, plan.bufferSize)
         assertTrue(plan.hasVideoTrack)
     }
+
+    @Test
+    fun `inspect handles ClassCastException for duration gracefully`() {
+        val extractor = mockk<MediaExtractor>()
+        val muxerWriter = mockk<MuxerWriter>()
+
+        val videoFormat = MediaFormat.createVideoFormat("video/avc", 1920, 1080)
+        // Set duration as String instead of Long to trigger ClassCastException
+        videoFormat.setString(MediaFormat.KEY_DURATION, "invalid_duration")
+
+        every { extractor.trackCount } returns 1
+        every { extractor.getTrackFormat(0) } returns videoFormat
+
+        val capturedFormat = slot<MediaFormat>()
+        every { muxerWriter.addTrack(capture(capturedFormat)) } returns 0
+
+        val inspector = TrackInspector()
+        // Should not throw ClassCastException
+        val plan = inspector.inspect(extractor, muxerWriter, keepAudio = false, keepVideo = true, selectedTracks = null)
+
+        assertEquals(1, plan.trackMap.size)
+        // Duration should fallback to -1L
+        assertEquals(-1L, plan.durationUs)
+        assertTrue(plan.hasVideoTrack)
+        assertTrue(capturedFormat.isCaptured)
+    }
 }
