@@ -127,14 +127,46 @@ class MainActivity : BaseActivity() {
 
     private fun isValidUri(uri: Uri?): Boolean {
         if (uri == null) return false
-        val scheme = uri.scheme
 
-        if (scheme == "content") {
-            return true
+        return when (uri.scheme) {
+            "content" -> isValidContentUri(uri)
+            "file" -> isValidFileUri(uri)
+            else -> {
+                Log.w("Security", "Blocked non-SAF URI with scheme: ${uri.scheme}")
+                false
+            }
         }
+    }
 
-        Log.w("Security", "Blocked non-SAF URI with scheme: $scheme")
-        return false
+    private fun isValidContentUri(uri: Uri): Boolean {
+        val authority = uri.authority
+        return if (authority == packageName || authority == "$packageName.provider") {
+            Log.w("Security", "Blocked URI with internal authority: $authority")
+            false
+        } else {
+            true
+        }
+    }
+
+    private fun isValidFileUri(uri: Uri): Boolean {
+        val path = uri.path
+        if (path.isNullOrEmpty()) return false
+
+        return try {
+            val file = java.io.File(path)
+            if (file.canonicalPath != file.absolutePath) return false
+
+            val dataDir = applicationInfo.dataDir
+            val canonicalPath = file.canonicalPath
+
+            !canonicalPath.startsWith("$dataDir/") && canonicalPath != dataDir
+        } catch (e: java.io.IOException) {
+            Log.w("Security", "Invalid file path", e)
+            false
+        } catch (e: IllegalArgumentException) {
+            Log.w("Security", "Invalid file arguments", e)
+            false
+        }
     }
 
     private fun showAboutDialog() {

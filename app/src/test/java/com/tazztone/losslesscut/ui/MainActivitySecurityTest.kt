@@ -31,12 +31,29 @@ class MainActivitySecurityTest {
     }
 
     @Test
-    fun testIsValidUri_FileScheme_ReturnsFalse() {
-        val uri = Uri.parse("file:///storage/emulated/0/Download/video.mp4")
-        assertFalse(invokeIsValidUri(uri))
+    fun testIsValidUri_InternalContentScheme_ReturnsFalse() {
+        val packageName = activity.packageName
+        val uri1 = Uri.parse("content://$packageName/private/file")
+        assertFalse(invokeIsValidUri(uri1))
 
-        val uri2 = Uri.parse("file:///data/data/com.tazztone.losslesscut/../../../../etc/passwd")
+        val uri2 = Uri.parse("content://$packageName.provider/shared/file")
         assertFalse(invokeIsValidUri(uri2))
+    }
+
+    @Test
+    fun testIsValidUri_FileScheme_Validation() {
+        // Safe external file should be true
+        val uri = Uri.parse("file:///storage/emulated/0/Download/video.mp4")
+        assertTrue(invokeIsValidUri(uri))
+
+        // Path traversal should be false
+        val uri2 = Uri.parse("file:///storage/emulated/0/../../../../etc/passwd")
+        assertFalse(invokeIsValidUri(uri2))
+
+        // Private app data should be false
+        val dataDir = activity.applicationInfo.dataDir
+        val uri3 = Uri.parse("file://$dataDir/shared_prefs/prefs.xml")
+        assertFalse(invokeIsValidUri(uri3))
     }
 
     @Test
