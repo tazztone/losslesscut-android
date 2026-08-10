@@ -221,6 +221,37 @@ class TrackInspectorTest {
     }
 
     @Test
+    fun `inspect handles frame rate ClassCastException correctly`() {
+        val extractor = mockk<MediaExtractor>()
+        val muxerWriter = mockk<MuxerWriter>()
+
+        val videoFormat = mockk<MediaFormat>(relaxed = true)
+        every { videoFormat.getString(MediaFormat.KEY_MIME) } returns "video/avc"
+        every { videoFormat.containsKey(MediaFormat.KEY_WIDTH) } returns true
+        every { videoFormat.getInteger(MediaFormat.KEY_WIDTH) } returns 1920
+        every { videoFormat.containsKey(MediaFormat.KEY_HEIGHT) } returns true
+        every { videoFormat.getInteger(MediaFormat.KEY_HEIGHT) } returns 1080
+
+        // Explicitly simulate ClassCastException for getInteger but success for getFloat
+        every { videoFormat.containsKey(MediaFormat.KEY_FRAME_RATE) } returns true
+        every { videoFormat.getInteger(MediaFormat.KEY_FRAME_RATE) } throws ClassCastException()
+        every { videoFormat.getFloat(MediaFormat.KEY_FRAME_RATE) } returns 24.0f
+
+        every { extractor.trackCount } returns 1
+        every { extractor.getTrackFormat(0) } returns videoFormat
+
+        val capturedFormat = slot<MediaFormat>()
+        every { muxerWriter.addTrack(capture(capturedFormat)) } returns 0
+
+        val inspector = TrackInspector()
+        inspector.inspect(extractor, muxerWriter, keepAudio = false, keepVideo = true, selectedTracks = null)
+
+        assertTrue(capturedFormat.isCaptured)
+        val clean = capturedFormat.captured
+        assertEquals(24.0f, clean.getFloat(MediaFormat.KEY_FRAME_RATE), 0.001f)
+    }
+
+    @Test
     fun `inspectClipForMerge maps tracks without calling muxerWriter addTrack`() {
         val extractor = mockk<MediaExtractor>()
         
