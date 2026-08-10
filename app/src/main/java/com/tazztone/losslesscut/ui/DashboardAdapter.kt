@@ -19,12 +19,24 @@ class DashboardAdapter(
 ) : RecyclerView.Adapter<DashboardAdapter.ViewHolder>() {
 
     class ViewHolder(val binding: ItemDashboardActionBinding) : RecyclerView.ViewHolder(binding.root) {
-        val primaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimaryContainer)
-        val colorOnPrimaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer)
-        val colorSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSurfaceVariant)
-        val colorOnSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSurfaceVariant)
-        val colorOnSurface: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorOnSurface)
-        val colorPrimary: Int = com.google.android.material.color.MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+        val primaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorPrimaryContainer
+        )
+        val colorOnPrimaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer
+        )
+        val colorSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorSurfaceVariant
+        )
+        val colorOnSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnSurfaceVariant
+        )
+        val colorOnSurface: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnSurface
+        )
+        val colorPrimary: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorPrimary
+        )
 
         val colorStateListOnPrimaryContainer = android.content.res.ColorStateList.valueOf(colorOnPrimaryContainer)
         val colorStateListPrimary = android.content.res.ColorStateList.valueOf(colorPrimary)
