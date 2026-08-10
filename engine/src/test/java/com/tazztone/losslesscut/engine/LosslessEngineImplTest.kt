@@ -39,14 +39,14 @@ class LosslessEngineImplTest {
     
     private val muxingPipeline = mockk<MuxingPipeline>(relaxed = true)
     
-    private lateinit var collaborators: EngineCollaborators
     private lateinit var engine: LosslessEngineImpl
 
     @Before
     fun setUp() {
         every { context.contentResolver } returns contentResolver
-        collaborators = EngineCollaborators(dataSource, inspector, timeMapper, mergeValidator)
-        engine = LosslessEngineImpl(context, collaborators, muxingPipeline, Dispatchers.Unconfined)
+        engine = LosslessEngineImpl(
+            context, dataSource, muxingPipeline, Dispatchers.Unconfined
+        )
         
         mockkConstructor(MediaExtractor::class)
         mockkConstructor(MediaMuxer::class)

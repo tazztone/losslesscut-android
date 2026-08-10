@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.domain.usecase
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
+import com.tazztone.losslesscut.domain.model.SegmentBounds
 import com.tazztone.losslesscut.domain.model.TrimSegment
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
@@ -31,20 +32,17 @@ public open class ClipManagementUseCase @Inject constructor(
     public fun splitSegment(clip: MediaClip, positionMs: Long, minDurationMs: Long = MIN_SEGMENT_DURATION_MS): MediaClip? {
         val segment = clip.segments.find { positionMs in it.startMs..it.endMs }
         
-        val canSplit = segment != null && 
-            positionMs - segment.startMs >= minDurationMs && 
-            segment.endMs - positionMs >= minDurationMs
+        if (segment == null ||
+            positionMs - segment.startMs < minDurationMs ||
+            segment.endMs - positionMs < minDurationMs
+        ) return null
 
-        return if (canSplit && segment != null) {
-            val newSegments = clip.segments.toMutableList()
-            val index = newSegments.indexOf(segment)
-            newSegments.removeAt(index)
-            newSegments.add(index, segment.copy(endMs = positionMs))
-            newSegments.add(index + 1, segment.copy(id = UUID.randomUUID(), startMs = positionMs))
-            clip.copy(segments = newSegments)
-        } else {
-            null
-        }
+        val newSegments = clip.segments.toMutableList()
+        val index = newSegments.indexOf(segment)
+        newSegments.removeAt(index)
+        newSegments.add(index, segment.copy(endMs = positionMs))
+        newSegments.add(index + 1, segment.copy(id = UUID.randomUUID(), startMs = positionMs))
+        return clip.copy(segments = newSegments)
     }
 
     public fun markSegmentDiscarded(clip: MediaClip, id: UUID): MediaClip? {
@@ -65,15 +63,22 @@ public open class ClipManagementUseCase @Inject constructor(
     }
 
     public fun updateSegmentBounds(clip: MediaClip, id: UUID, start: Long, end: Long, minDurationMs: Long = MIN_SEGMENT_DURATION_MS): MediaClip {
-        val coercedEnd = if (end - start < minDurationMs) start + minDurationMs else end
+        val bounds = SegmentBounds.coerce(
+            clip.segments,
+            id,
+            start,
+            end,
+            clip.durationMs,
+            minDurationMs
+        ) ?: return clip
         val newSegments = clip.segments.map { 
-            if (it.id == id) it.copy(startMs = start, endMs = coercedEnd) else it 
+            if (it.id == id) it.copy(startMs = bounds.first, endMs = bounds.second) else it
         }
         return clip.copy(segments = newSegments)
     }
 
     public fun reorderClips(clips: List<MediaClip>, from: Int, to: Int): List<MediaClip> {
-        if (from !in clips.indices || to !in 0..clips.size || from == to) {
+        if (from !in clips.indices || to !in clips.indices || from == to) {
             return clips
         }
         val list = clips.toMutableList()

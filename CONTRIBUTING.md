@@ -33,7 +33,7 @@ All developer automation scripts reside under `./scripts/dev-scripts/`:
 
 | Script | Command | Purpose |
 | :--- | :--- | :--- |
-| **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes full CI verification suite (Detekt, Lint, Unit tests, Kover coverage). |
+| **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes the full CI verification suite sequentially: Detekt, unit tests, Lint, and Kover coverage. |
 | **Targeted Testing** | `./scripts/dev-scripts/gradle-test.sh <module> "*"` | Runs unit tests for specific modules (`:core:domain`, `:engine`, `:app`). |
 | **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
 | **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
@@ -57,11 +57,11 @@ Module isolation is automatically enforced in CI via Konsist unit tests:
 
 ## 🧪 Pull Request & CI Verification Gates
 
-Before opening or merging a Pull Request, every change must pass the 4-gate verification pipeline:
+Before opening or merging a Pull Request, every change must pass the 4-gate verification pipeline. The script runs these Gradle tasks sequentially because Android Lint and generated KSP/Hilt sources can conflict when their work overlaps:
 
 1. **Gate 1: Static Analysis & Formatting** — Detekt rules (`./gradlew detekt`) pass cleanly.
-2. **Gate 2: Android Lint** — Zero severe lint issues across all modules (`./gradlew lint`).
-3. **Gate 3: Unit Tests** — All JVM unit tests pass in `:core:domain`, `:engine`, and `:app`.
+2. **Gate 2: Unit Tests** — All JVM unit tests pass in `:core:domain`, `:engine`, and `:app`.
+3. **Gate 3: Android Lint** — Zero severe lint issues across all modules (`./gradlew lint`).
 4. **Gate 4: Code Coverage Target** — Kover HTML coverage report meets repository target (>80% domain coverage).
 
 Execute the full suite locally prior to pushing:
@@ -73,7 +73,7 @@ Execute the full suite locally prior to pushing:
 
 ## 🚀 Release Pipeline & Keystore Secrets
 
-Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-debug.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store.
+Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-debug.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
 
 ### Required GitHub Secrets
 
@@ -103,4 +103,3 @@ gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON < /path/to/service_account.json
 ```
 
 ---
-

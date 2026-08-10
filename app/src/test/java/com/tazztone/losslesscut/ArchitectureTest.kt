@@ -67,6 +67,16 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `Compose is confined to the compose package`() {
+        Konsist.scopeFromModule(":app")
+            .files
+            .filter { it.path.contains("/src/main/") && !it.path.contains("/ui/compose/") }
+            .assertTrue { file ->
+                file.imports.none { it.name.startsWith("androidx.compose.") }
+            }
+    }
+
+    @Test
     fun `engine module does not import data layer utilities`() {
         Konsist.scopeFromModule(":engine")
             .files

@@ -75,7 +75,6 @@ class RemuxFragment : BaseEditingFragment(R.layout.fragment_remux) {
             .setPositiveButton(R.string.export) { _, _ ->
                 viewModel.exportSegments(
                     ExportSettings(
-                        isLossless = true,
                         keepAudio = true,
                         keepVideo = true,
                         rotationOverride = null,

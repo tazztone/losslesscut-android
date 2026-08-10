@@ -9,6 +9,7 @@ import io.mockk.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
+import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
@@ -36,12 +37,12 @@ public class VideoEditingViewModelTest {
     private val mockExportUseCase = mockk<ExportUseCase>(relaxed = true)
     private val mockSnapUseCase = mockk<ExtractSnapshotUseCase>(relaxed = true)
     private val mockSessionUseCase = mockk<SessionUseCase>(relaxed = true)
-    private val mockVisualDetector = mockk<IVisualSegmentDetector>(relaxed = true)
     private val mockSegmentDetector = mockk<SegmentDetectorUseCase>(relaxed = true)
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { mockPrefs.undoLimitFlow } returns flowOf(30)
         clipUseCase = ClipManagementUseCase(mockRepo, testDispatcher)
         silenceUseCase = SilenceDetectionUseCase(mockRepo, testDispatcher)
     }
@@ -58,7 +59,6 @@ public class VideoEditingViewModelTest {
         mockSnapUseCase,
         silenceUseCase,
         mockSessionUseCase,
-        mockVisualDetector,
         mockSegmentDetector
     )
 

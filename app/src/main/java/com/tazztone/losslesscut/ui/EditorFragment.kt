@@ -18,6 +18,7 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.ui.editor.SegmentActionPopup
+import com.tazztone.losslesscut.ui.compose.settings.SettingsBottomSheetDialogFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
@@ -116,7 +117,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
             val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
             val settings = ExportSettings(
-                isLosslessMode, keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+                keepAudio, keepVideo, rot, mergeSegments, selectedTracks
             )
             viewModel.exportSegments(settings)
         }
@@ -328,7 +329,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun handleSuccessState(state: VideoEditingUiState.Success) {
         binding.loadingScreen.root.visibility = View.GONE
-        val selectedClip = state.clips[state.selectedClipIndex]
+        val selectedClip = state.clips.getOrNull(state.selectedClipIndex) ?: return
 
         val newStateUris = state.clips.map { Uri.parse(it.uri) }
         val currentUris = playerManager.player?.mediaItemCount?.let { count ->

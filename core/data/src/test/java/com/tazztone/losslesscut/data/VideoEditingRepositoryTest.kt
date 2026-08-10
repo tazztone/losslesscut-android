@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.HashUtils
 import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.utils.StorageUtils
 import io.mockk.coEvery
@@ -61,9 +62,34 @@ class VideoEditingRepositoryTest {
 
         repository.saveSession(clips)
         
-        val sessionId = clip.uri.hashCode().toString()
+        val sessionId = HashUtils.sha256(clip.uri)
         val sessionFile = File(context.cacheDir, "session_$sessionId.json")
         assertTrue("Session file should exist", sessionFile.exists())
+    }
+
+    @Test
+    fun sessionIdsDoNotCollideForDifferentUris() = runTest {
+        val clip = MediaClip(
+            uri = "Aa",
+            fileName = "sample.mp4",
+            durationMs = 1000L,
+            width = 1920,
+            height = 1080,
+            videoMime = "video/mp4",
+            audioMime = "audio/aac",
+            sampleRate = 44100,
+            channelCount = 2,
+            fps = 30f,
+            rotation = 0,
+            isAudioOnly = false
+        )
+
+        repository.saveSession(listOf(clip))
+        repository.saveSession(listOf(clip.copy(uri = "BB")))
+
+        assertNotEquals(HashUtils.sha256("Aa"), HashUtils.sha256("BB"))
+        assertTrue(repository.hasSavedSession("Aa"))
+        assertTrue(repository.hasSavedSession("BB"))
     }
 
     @Test

@@ -87,13 +87,14 @@ jobs:
 
       # 4. Build Artifacts
       - name: Build App Bundle & APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: ./gradlew bundleRelease assembleRelease \
             -PversionCode=${{ steps.meta.outputs.versionCode }} \
             -PversionName=${{ steps.meta.outputs.versionName }} \
-            -PstoreFile=../keystore.jks \
-            -PstorePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -PkeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
-            -PkeyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+            -PstoreFile=../keystore.jks
           
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0

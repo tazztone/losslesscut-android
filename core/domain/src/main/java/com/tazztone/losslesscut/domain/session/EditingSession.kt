@@ -27,6 +27,9 @@ public data class EditingSessionState(
 public class EditingSession(
     private val historyLimit: Int = DEFAULT_HISTORY_LIMIT
 ) {
+    init {
+        require(historyLimit > 0) { "historyLimit must be positive" }
+    }
     private data class Snapshot(
         val clips: List<MediaClip>,
         val selectedClipIndex: Int,
@@ -201,14 +204,22 @@ public class EditingSession(
         val clip = current.selectedClip ?: return
         if (clip.segments.none { it.id == segmentId }) return
 
+        val bounds = com.tazztone.losslesscut.domain.model.SegmentBounds.coerce(
+            clip.segments,
+            segmentId,
+            startMs,
+            endMs,
+            clip.durationMs,
+            minDurationMs
+        ) ?: return
+
         if (!coalesceHistory || activeBoundsEditSegmentId != segmentId) {
             pushHistory()
             activeBoundsEditSegmentId = if (coalesceHistory) segmentId else null
         }
 
-        val coercedEnd = if (endMs - startMs < minDurationMs) startMs + minDurationMs else endMs
         val updatedSegments = clip.segments.map {
-            if (it.id == segmentId) it.copy(startMs = startMs, endMs = coercedEnd) else it
+            if (it.id == segmentId) it.copy(startMs = bounds.first, endMs = bounds.second) else it
         }
         val updatedClip = clip.copy(segments = updatedSegments)
         val updatedClips = current.clips.toMutableList().apply {
@@ -256,7 +267,7 @@ public class EditingSession(
 
     public fun reorderClips(fromIndex: Int, toIndex: Int): Boolean {
         val current = _state.value
-        if (fromIndex !in current.clips.indices || toIndex !in 0..current.clips.size || fromIndex == toIndex) {
+        if (fromIndex !in current.clips.indices || toIndex !in current.clips.indices || fromIndex == toIndex) {
             return false
         }
 

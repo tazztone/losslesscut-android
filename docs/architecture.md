@@ -36,6 +36,7 @@ LosslessCut follows **MVVM + Clean Architecture** with strict layer boundaries, 
 - **Dependency Inversion & Injection**: Domain-level interfaces (`ILosslessEngine`, `IVideoEditingRepository`, `IMediaFinalizer`) resolved via Hilt (`:app`, `:engine`, `:core:data`)
 - **SDK Targets**: Min SDK 26 (Android 8.0), Target SDK 36 (Android 15 / "Baklava")
 - **Build System**: AGP 9.0+, JDK 17/21 Toolchain
+- **Native Threading**: All `MediaExtractor`, `MediaCodec`, and `MediaMuxer` work is serialized through a dedicated single-threaded engine dispatcher to avoid unsafe concurrent native calls.
 
 ---
 
@@ -126,6 +127,7 @@ LosslessCut writes output media directly to destination URIs without requiring f
 - **SAF Fallback**: If a custom directory is selected in preferences, `StorageUtils` creates the output file via `DocumentFile.fromTreeUri()`.
 - **MediaStore Lifecycle**: On Android 10+ (API 29+), output files in public MediaStore collections are marked `IS_PENDING = 1` during writing and updated to `0` upon completion.
 - **Non-MediaStore URIs**: `MediaFinalizerImpl` catches `UnsupportedOperationException` when invoking `IS_PENDING = 0` on SAF or FileProvider URIs.
+- **Finalization Order**: The muxer is stopped and released, and the output descriptor is closed, before `IMediaFinalizer` publishes the URI. Failed exports remove their incomplete output where the provider permits it.
 
 ### Analysis cache
 
@@ -174,7 +176,8 @@ sequenceDiagram
     loop Each Media Segment
         Engine->>Muxer: Write samples with shifted PTS
     end
-    Engine-->>Engine: Close MediaMuxer & Finalize Output
+    Engine->>Muxer: Close MediaMuxer & output descriptor
+    Muxer->>Fin: Publish completed output URI
 ```
 
 ---
@@ -182,7 +185,7 @@ sequenceDiagram
 ## 7. Testing Architecture & Harness Setup
 
 - **Module Test Command**: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>`
-- **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, Lint, JVM unit tests, and Kover).
+- **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, JVM unit tests, Lint, and Kover sequentially to avoid generated-source races.)
 - **Konsist Architectural Tests**: `ArchitectureTest.kt` automatically enforces all 4 architectural guardrails in CI (preventing `:engine` imports in `:app`, Android/Hilt imports in `:core:domain`, `java.io.File` for shared storage, and Compose in custom views).
 - **Kover Code Coverage Targets**: Core domain aggregate `EditingSession` (98.3%) and media processing engine `MuxingPipeline` (93.8%) maintain coverage well above the repository >80% threshold.
 - **Engine Instrumented Tests**: Engine tests relying on native Android codecs MUST reside in `:engine/src/androidTest` (not `:app`).
@@ -223,4 +226,3 @@ For external AI documentation lookups:
 - `/kotlin/kotlinx.coroutines` (Coroutines & Flows)
 - `/androidx/datastore` (Preferences DataStore)
 - `/material-components/material-components-android` (Material 3 UI)
-

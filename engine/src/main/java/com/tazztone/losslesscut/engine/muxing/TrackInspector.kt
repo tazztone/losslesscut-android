@@ -4,6 +4,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.util.Log
 import com.tazztone.losslesscut.engine.LosslessEngineHelper
+import java.io.IOException
 import javax.inject.Inject
 
 data class SelectedTrackPlan(
@@ -26,6 +27,7 @@ class TrackInspector @Inject constructor() {
         keepVideo: Boolean,
         selectedTracks: List<Int>?
     ): SelectedTrackPlan {
+        validateSelectedTracks(extractor, selectedTracks)
         var durationUs = -1L
         val trackMap = mutableMapOf<Int, Int>()
         val isVideoTrackMap = mutableMapOf<Int, Boolean>()
@@ -70,6 +72,7 @@ class TrackInspector @Inject constructor() {
         keepVideo: Boolean,
         selectedTracks: List<Int>?
     ): SelectedTrackPlan {
+        validateSelectedTracks(extractor, selectedTracks)
         var durationUs = -1L
         val trackMap = mutableMapOf<Int, Int>()
         val isVideoTrackMap = mutableMapOf<Int, Boolean>()
@@ -117,6 +120,18 @@ class TrackInspector @Inject constructor() {
         val isVideo = mime.startsWith("video/")
         val isAudio = mime.startsWith("audio/")
         return (isVideo && keepVideo) || (isAudio && keepAudio)
+    }
+
+    private fun validateSelectedTracks(extractor: MediaExtractor, selectedTracks: List<Int>?) {
+        selectedTracks?.forEach { index ->
+            if (index !in 0 until extractor.trackCount) {
+                throw IOException("Selected track index is invalid: $index")
+            }
+            val mime = extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME).orEmpty()
+            if (!mime.startsWith("video/") && !mime.startsWith("audio/")) {
+                throw IOException("Unsupported selected track $index with MIME $mime")
+            }
+        }
     }
 
     private fun getDuration(format: MediaFormat): Long {
@@ -189,14 +204,15 @@ class TrackInspector @Inject constructor() {
         }
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun getFormatInt(format: MediaFormat, key: String): Int {
         return try {
-            format.getInteger(key)
-        } catch (_: ClassCastException) {
-            0
-        } catch (_: NullPointerException) {
-            0
-        } ?: 0
+            format.getInteger(key).also {
+                require(it > 0) { "Invalid $key value: $it" }
+            }
+        } catch (e: RuntimeException) {
+            throw IOException("Missing valid $key in media format", e)
+        }
     }
 
     private fun copyVideoMetadataKeys(original: MediaFormat, clean: MediaFormat) {
@@ -227,9 +243,7 @@ class TrackInspector @Inject constructor() {
     private fun copyIntKey(from: MediaFormat, to: MediaFormat, key: String) {
         try {
             val value = from.getInteger(key)
-            if (value != null) {
-                to.setInteger(key, value)
-            }
+            to.setInteger(key, value)
         } catch (_: ClassCastException) {
             if (key == MediaFormat.KEY_FRAME_RATE) {
                 try {

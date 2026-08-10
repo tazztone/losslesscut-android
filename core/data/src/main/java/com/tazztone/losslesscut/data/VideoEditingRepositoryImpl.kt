@@ -10,17 +10,18 @@ import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.utils.StorageUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import java.io.DataInputStream
-import java.io.DataOutputStream
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption.ATOMIC_MOVE
+import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import javax.inject.Inject
 import com.tazztone.losslesscut.domain.cache.IAnalysisCache
 import javax.inject.Singleton
@@ -132,8 +133,17 @@ class VideoEditingRepositoryImpl @Inject constructor(
         try {
             val sessionId = getSessionId(clips.first().uri.toString())
             val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-            val jsonText = json.encodeToString(clips)
-            sessionFile.writeText(jsonText)
+            val temporaryFile = File(context.cacheDir, "session_$sessionId.json.tmp")
+            try {
+                temporaryFile.writeText(json.encodeToString(clips))
+                Files.move(temporaryFile.toPath(), sessionFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(temporaryFile.toPath(), sessionFile.toPath(), REPLACE_EXISTING)
+            } finally {
+                if (temporaryFile.exists()) temporaryFile.delete()
+            }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("VideoEditingRepositoryImpl", "Failed to save session", e)
         }
@@ -156,6 +166,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
                             context.contentResolver.query(clipUri, null, null, null, null)?.use {
                                 it.moveToFirst()
                             } ?: false
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: Exception) {
                             false
                         }
@@ -163,6 +175,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
                     }
                 }.awaitAll().filterNotNull()
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("VideoEditingRepositoryImpl", "Failed to restore session", e)
             null
@@ -197,6 +211,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
                 outputStream.write(bitmap)
                 true
             } ?: false
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e("VideoEditingRepositoryImpl", "Failed to write snapshot", e)
             false
@@ -204,7 +220,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
     }
 
     private fun getSessionId(uriString: String): String {
-        return uriString.hashCode().toString()
+        return HashUtils.sha256(uriString)
     }
 
     private fun validateMimeCompatibility(videoMime: String?, audioMime: String?) {

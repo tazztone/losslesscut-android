@@ -4,7 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
 import java.nio.ByteBuffer
 
 /**
@@ -46,7 +46,8 @@ class ExtractorSampleCopier(
         extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
 
         var hasMore = true
-        while (currentCoroutineContext().isActive && hasMore) {
+        while (hasMore) {
+            currentCoroutineContext().ensureActive()
             val sampleSize = extractor.readSampleData(buffer, 0)
             val sampleTime = extractor.sampleTime
             

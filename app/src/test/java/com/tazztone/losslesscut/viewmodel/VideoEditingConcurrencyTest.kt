@@ -9,6 +9,7 @@ import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -28,7 +29,6 @@ public class VideoEditingConcurrencyTest {
     private val mockRepo = mockk<IVideoEditingRepository>(relaxed = true)
     private val mockPrefs = mockk<AppPreferences>(relaxed = true)
     private val mockExportUseCase = mockk<ExportUseCase>(relaxed = true)
-    private val mockVisualDetector = mockk<IVisualSegmentDetector>(relaxed = true)
     private val mockSegmentDetector = mockk<SegmentDetectorUseCase>(relaxed = true)
     
     private lateinit var viewModel: VideoEditingViewModel
@@ -36,6 +36,7 @@ public class VideoEditingConcurrencyTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { mockPrefs.undoLimitFlow } returns flowOf(30)
         
         coEvery { mockRepo.getWaveform(any(), any()) } returns null
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
@@ -46,7 +47,6 @@ public class VideoEditingConcurrencyTest {
             ExtractSnapshotUseCase(mockRepo, testDispatcher),
             SilenceDetectionUseCase(mockRepo, testDispatcher),
             SessionUseCase(mockRepo, testDispatcher),
-            mockVisualDetector,
             mockSegmentDetector
         )
         
@@ -92,7 +92,7 @@ public class VideoEditingConcurrencyTest {
         advanceUntilIdle()
 
         val settings = ExportSettings(
-            isLossless = true, keepAudio = true, keepVideo = true,
+            keepAudio = true, keepVideo = true,
             rotationOverride = null, mergeSegments = false
         )
         

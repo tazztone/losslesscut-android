@@ -34,7 +34,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -59,7 +58,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -83,7 +81,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -107,7 +104,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip1, clip2),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -131,7 +127,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -157,7 +152,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -178,7 +172,6 @@ internal class ExportUseCaseTest {
         val params = ExportUseCase.Params(
             clips = listOf(clip),
             selectedClipIndex = 0,
-            isLossless = true,
             keepAudio = true,
             keepVideo = true,
             rotationOverride = null,
@@ -188,5 +181,30 @@ internal class ExportUseCaseTest {
         coEvery { repository.createMediaOutputUri(any(), any()) } throws kotlinx.coroutines.CancellationException("Job cancelled")
 
         useCase.execute(params).toList()
+    }
+
+    @Test
+    internal fun `execute rejects empty clips`() = runTest {
+        val results = useCase.execute(
+            ExportUseCase.Params(emptyList(), 0, true, true, null, mergeSegments = false)
+        ).toList()
+
+        assertEquals(ExportUseCase.Result.Failure("No clips to export"), results.single())
+    }
+
+    @Test
+    internal fun `execute rejects an invalid selected clip`() = runTest {
+        val results = useCase.execute(
+            ExportUseCase.Params(
+                clips = listOf(createDummyClip()),
+                selectedClipIndex = 1,
+                keepAudio = true,
+                keepVideo = true,
+                rotationOverride = null,
+                mergeSegments = false
+            )
+        ).toList()
+
+        assertEquals(ExportUseCase.Result.Failure("Selected clip index is invalid"), results.single())
     }
 }

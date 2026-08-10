@@ -63,14 +63,15 @@ jobs:
           echo "date_suffix=$DATE_SUFFIX" >> $GITHUB_OUTPUT
 
       - name: Build Release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           ./gradlew assembleRelease \
             -PversionCode=${{ steps.meta.outputs.versionCode }} \
             -PversionName=${{ steps.meta.outputs.versionName }} \
             -PstoreFile=../keystore.jks \
-            -PstorePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }} \
-            -PkeyAlias=${{ secrets.ANDROID_KEY_ALIAS }} \
-            -PkeyPassword=${{ secrets.ANDROID_KEY_PASSWORD }} \
             --no-daemon
 
       - name: Prepare APK for Artifacts
@@ -105,5 +106,4 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 

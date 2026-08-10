@@ -46,6 +46,7 @@
     <string name="error_waveform_not_ready">Waveform is still loading, please wait</string>
     <string name="error_no_segments_export">No segments to export</string>
     <string name="error_create_file">Cannot create output file</string>
+    <string name="error_output_folder_access">Could not access the selected output folder.</string>
     <string name="error_segment_failed">Segment %1$d failed: %2$s</string>
     <string name="error_cannot_delete_last">Cannot delete the last remaining clip</string>
     <string name="error_export_failed">Export failed: %1$s</string>

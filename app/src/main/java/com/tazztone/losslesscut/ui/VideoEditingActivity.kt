@@ -2,7 +2,6 @@ package com.tazztone.losslesscut.ui
 
 import android.net.Uri
 import android.os.Bundle
-import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.annotation.OptIn
@@ -13,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.fragment.NavHostFragment
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
+import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -52,8 +52,11 @@ class VideoEditingActivity : BaseActivity() {
 
         hideSystemUI()
 
-        if (savedInstanceState == null) {
+        if (savedInstanceState == null || viewModel.uiState.value is VideoEditingUiState.Initial) {
             viewModel.initialize(videoUris)
+        }
+
+        if (savedInstanceState == null) {
             setupNavigation()
         }
     }

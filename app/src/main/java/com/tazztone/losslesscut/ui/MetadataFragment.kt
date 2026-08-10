@@ -87,7 +87,7 @@ class MetadataFragment : BaseEditingFragment(R.layout.fragment_remux) {
                     else -> null // Keep Original
                 }
                 val settings = ExportSettings(
-                    isLossless = true, keepAudio = true, keepVideo = true,
+                    keepAudio = true, keepVideo = true,
                     rotationOverride = selectedRotation, mergeSegments = false
                 )
                 viewModel.exportSegments(settings)

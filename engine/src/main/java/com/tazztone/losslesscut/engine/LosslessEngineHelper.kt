@@ -3,6 +3,7 @@ package com.tazztone.losslesscut.engine
 import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.util.Log
 import com.tazztone.losslesscut.domain.engine.TrackMetadata
 import com.tazztone.losslesscut.domain.model.MediaClip
@@ -19,7 +20,7 @@ internal object LosslessEngineHelper {
 
     fun readBasicMetadata(retriever: MediaMetadataRetriever, uri: String): BasicMeta {
         val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0L
-        if (duration <= 0) Log.w(TAG, "Duration is 0 or null for $uri")
+        if (duration <= 0) Log.w(TAG, "Duration is 0 or null for authority: ${Uri.parse(uri).authority}")
         val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
         val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 0
         val rotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
@@ -98,7 +99,9 @@ internal object LosslessEngineHelper {
     )
     data class MergeInitialPlan(
         val plan: SelectedTrackPlan, val audioSampleRate: Int, val videoFps: Float, 
-        val expectedVideoMime: String?, val expectedAudioMime: String?
+        val expectedVideoMime: String?, val expectedAudioMime: String?,
+        val expectedVideoFormat: MediaFormat? = null,
+        val expectedAudioFormat: MediaFormat? = null
     )
     data class ClipTrackInfo(val trackMap: Map<Int, Int>, val isVideoTrackMap: Map<Int, Boolean>, val maxInputSize: Int)
     data class MergeParams(

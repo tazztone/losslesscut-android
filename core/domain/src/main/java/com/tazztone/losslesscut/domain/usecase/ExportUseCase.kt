@@ -4,6 +4,8 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -22,7 +24,6 @@ public class ExportUseCase @Inject constructor(
     public data class Params(
         val clips: List<MediaClip>,
         val selectedClipIndex: Int,
-        val isLossless: Boolean,
         val keepAudio: Boolean,
         val keepVideo: Boolean,
         val rotationOverride: Int?,
@@ -32,6 +33,14 @@ public class ExportUseCase @Inject constructor(
 
     public fun execute(params: Params): Flow<Result> = flow {
         try {
+            if (params.clips.isEmpty()) {
+                emit(Result.Failure("No clips to export"))
+                return@flow
+            }
+            if (params.selectedClipIndex !in params.clips.indices) {
+                emit(Result.Failure("Selected clip index is invalid"))
+                return@flow
+            }
             if (params.mergeSegments) {
                 mergeSegments(params).collect { emit(it) }
             } else {
@@ -91,6 +100,7 @@ public class ExportUseCase @Inject constructor(
         val errors = mutableListOf<String>()
 
         for ((index, segment) in segments.withIndex()) {
+            currentCoroutineContext().ensureActive()
             val progress = ((index.toFloat() / segments.size) * 100).toInt()
             emit(Result.Progress(progress, "Saving segment ${index + 1} of ${segments.size}"))
 

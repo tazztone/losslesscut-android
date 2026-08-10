@@ -31,7 +31,6 @@ class ExportController(
         val params = ExportUseCase.Params(
             clips = clips,
             selectedClipIndex = selectedClipIndex,
-            isLossless = settings.isLossless,
             keepAudio = settings.keepAudio,
             keepVideo = settings.keepVideo,
             rotationOverride = settings.rotationOverride,

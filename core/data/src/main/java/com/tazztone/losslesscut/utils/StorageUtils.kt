@@ -6,9 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import android.provider.OpenableColumns
 import android.util.Log
-import android.media.MediaFormat
 import androidx.documentfile.provider.DocumentFile
 import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -48,9 +46,11 @@ class StorageUtils @Inject constructor(
         if (customUriString != null) {
             val customUri = Uri.parse(customUriString)
             val parentDoc = DocumentFile.fromTreeUri(context, customUri)
-            if (parentDoc != null && parentDoc.exists()) {
-                val newFile = parentDoc.createFile(mimeType, finalFileName)
-                return newFile?.uri
+            if (parentDoc == null || !parentDoc.exists() || !parentDoc.canWrite()) return null
+            return try {
+                parentDoc.createFile(mimeType, finalFileName)?.uri
+            } catch (_: SecurityException) {
+                null
             }
         }
 
@@ -104,7 +104,9 @@ class StorageUtils @Inject constructor(
             try {
                 resolver.update(uri, updatedDetails, null, null)
             } catch (e: UnsupportedOperationException) {
-                Log.d("StorageUtils", "Skipping IS_PENDING update for non-MediaStore URI: $uri", e)
+                Log.d("StorageUtils", "Skipping IS_PENDING update for non-MediaStore URI from ${uri.authority}", e)
+            } catch (e: SecurityException) {
+                Log.w("StorageUtils", "No permission to finalize URI from ${uri.authority}", e)
             }
         }
     }
@@ -114,10 +116,12 @@ class StorageUtils @Inject constructor(
         if (customUriString != null) {
             val customUri = Uri.parse(customUriString)
             val parentDoc = DocumentFile.fromTreeUri(context, customUri)
-            if (parentDoc != null && parentDoc.exists()) {
-                val mimeType = if (fileName.endsWith(".jpeg", ignoreCase = true) || fileName.endsWith(".jpg", ignoreCase = true)) "image/jpeg" else "image/png"
-                val newFile = parentDoc.createFile(mimeType, fileName)
-                return newFile?.uri
+            if (parentDoc == null || !parentDoc.exists() || !parentDoc.canWrite()) return null
+            val mimeType = if (fileName.endsWith(".jpeg", ignoreCase = true) || fileName.endsWith(".jpg", ignoreCase = true)) "image/jpeg" else "image/png"
+            return try {
+                parentDoc.createFile(mimeType, fileName)?.uri
+            } catch (_: SecurityException) {
+                null
             }
         }
 
@@ -151,7 +155,9 @@ class StorageUtils @Inject constructor(
             try {
                 resolver.update(uri, updatedDetails, null, null)
             } catch (e: UnsupportedOperationException) {
-                Log.d("StorageUtils", "Skipping IS_PENDING update for non-MediaStore URI: $uri", e)
+                Log.d("StorageUtils", "Skipping IS_PENDING update for non-MediaStore URI from ${uri.authority}", e)
+            } catch (e: SecurityException) {
+                Log.w("StorageUtils", "No permission to finalize URI from ${uri.authority}", e)
             }
         }
     }

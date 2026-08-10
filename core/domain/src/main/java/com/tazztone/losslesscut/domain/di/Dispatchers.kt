@@ -13,3 +13,7 @@ public annotation class MainDispatcher
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 public annotation class DefaultDispatcher
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+public annotation class EngineDispatcher

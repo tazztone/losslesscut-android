@@ -47,6 +47,11 @@ class MuxerWriter(private val muxer: MediaMuxer) {
     }
 
     fun stopAndRelease() {
+        stopAndReleaseSafely()
+    }
+
+    fun stopAndReleaseSafely(): Boolean {
+        var success = true
         try {
             if (isStarted) {
                 muxer.stop()
@@ -54,13 +59,16 @@ class MuxerWriter(private val muxer: MediaMuxer) {
             }
         } catch (e: IllegalStateException) {
             Log.e(TAG, "Muxer stop failed, likely already stopped or released", e)
+            success = false
         } finally {
             try {
                 muxer.release()
             } catch (e: IllegalStateException) {
                 Log.e(TAG, "Muxer release failed", e)
+                success = false
             }
         }
+        return success
     }
 
     companion object {

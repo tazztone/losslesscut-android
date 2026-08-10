@@ -27,11 +27,10 @@ class RobolectricEngineTest {
     private val inspector = TrackInspector()
     private val timeMapper = SampleTimeMapper()
     private val mergeValidator = MergeValidator()
-    private val collaborators = EngineCollaborators(dataSource, inspector, timeMapper, mergeValidator)
     private val muxingPipeline = com.tazztone.losslesscut.engine.muxing.MuxingPipeline(context, dataSource, inspector, timeMapper, mergeValidator, mediaFinalizer)
     private val engine = LosslessEngineImpl(
         context, 
-        collaborators, 
+        dataSource,
         muxingPipeline,
         kotlinx.coroutines.Dispatchers.IO
     )

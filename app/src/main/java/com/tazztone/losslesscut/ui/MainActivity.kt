@@ -2,18 +2,13 @@ package com.tazztone.losslesscut.ui
 
 import com.tazztone.losslesscut.R
 
-import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -30,9 +25,10 @@ class MainActivity : BaseActivity() {
 
     private val selectMediaLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
-            if (uris.isNotEmpty()) {
-                Log.d("MediaSelection", "Media selected: $uris")
-                navigateToEditingScreen(uris)
+            val validUris = uris.filter(::isValidUri)
+            if (validUris.isNotEmpty()) {
+                Log.d("MediaSelection", "Selected ${validUris.size} media item(s)")
+                navigateToEditingScreen(validUris)
             } else {
                 Log.e("MediaSelectionError", "No media selected")
             }
@@ -103,7 +99,7 @@ class MainActivity : BaseActivity() {
             }
             val validUris = uris?.filter { isValidUri(it) }
             if (!validUris.isNullOrEmpty()) {
-                Log.d("IncomingIntent", "Received multiple URIs: $validUris")
+                Log.d("IncomingIntent", "Received ${validUris.size} valid media item(s)")
                 navigateToEditingScreen(validUris)
             }
         } else if ((Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) && type != null) {
@@ -119,7 +115,7 @@ class MainActivity : BaseActivity() {
             }
 
             if (isValidUri(uri)) {
-                Log.d("IncomingIntent", "Received URI: $uri")
+                Log.d("IncomingIntent", "Received media URI from ${uri?.authority}")
                 navigateToEditingScreen(listOf(uri!!))
             }
         }
@@ -130,7 +126,6 @@ class MainActivity : BaseActivity() {
 
         return when (uri.scheme) {
             "content" -> isValidContentUri(uri)
-            "file" -> isValidFileUri(uri)
             else -> {
                 Log.w("Security", "Blocked non-SAF URI with scheme: ${uri.scheme}")
                 false
@@ -140,31 +135,22 @@ class MainActivity : BaseActivity() {
 
     private fun isValidContentUri(uri: Uri): Boolean {
         val authority = uri.authority
-        return if (authority == packageName || authority == "$packageName.provider") {
+        if (authority == packageName || authority == "$packageName.provider") {
             Log.w("Security", "Blocked URI with internal authority: $authority")
-            false
-        } else {
-            true
+            return false
         }
-    }
-
-    private fun isValidFileUri(uri: Uri): Boolean {
-        val path = uri.path
-        if (path.isNullOrEmpty()) return false
-
         return try {
-            val file = java.io.File(path)
-            if (file.canonicalPath != file.absolutePath) return false
-
-            val dataDir = applicationInfo.dataDir
-            val canonicalPath = file.canonicalPath
-
-            !canonicalPath.startsWith("$dataDir/") && canonicalPath != dataDir
-        } catch (e: java.io.IOException) {
-            Log.w("Security", "Invalid file path", e)
+            val type = contentResolver.getType(uri)
+            if (type != null && !type.startsWith("video/") && !type.startsWith("audio/")) {
+                Log.w("Security", "Blocked non-media content URI from authority: $authority")
+                return false
+            }
+            contentResolver.openFileDescriptor(uri, "r")?.use { true } == true
+        } catch (e: java.io.FileNotFoundException) {
+            Log.w("Security", "Content URI is not readable from authority: $authority", e)
             false
-        } catch (e: IllegalArgumentException) {
-            Log.w("Security", "Invalid file arguments", e)
+        } catch (e: SecurityException) {
+            Log.w("Security", "No read permission for content URI from authority: $authority", e)
             false
         }
     }
@@ -186,7 +172,7 @@ class MainActivity : BaseActivity() {
     }
 
     private fun navigateToEditingScreen(mediaUris: List<Uri>) {
-        Log.d("Navigation", "Navigating to editing screen with URIs: $mediaUris, mode: $pendingLaunchMode")
+        Log.d("Navigation", "Navigating ${mediaUris.size} media item(s), mode: $pendingLaunchMode")
         val intent = Intent(this, VideoEditingActivity::class.java).apply {
             setPackage(packageName)
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
@@ -204,8 +190,4 @@ class MainActivity : BaseActivity() {
         startActivity(intent)
     }
 
-    private fun showToast(message: String) {
-        Log.d("ToastMessage", "Showing toast: $message")
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
 }

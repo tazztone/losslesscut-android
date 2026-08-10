@@ -43,7 +43,9 @@ public data class PipelineTrackInfo(
     public val audioRate: Int,
     public val videoFps: Float,
     public val vMime: String?,
-    public val aMime: String?
+    public val aMime: String?,
+    public val videoFormat: MediaFormat? = null,
+    public val audioFormat: MediaFormat? = null
 )
 
 @Singleton
@@ -76,7 +78,7 @@ public class MuxingPipeline @Inject constructor(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught", "ReturnCount")
+    @Suppress("LongMethod", "TooGenericExceptionCaught", "ReturnCount")
     public suspend fun executeCut(request: MuxingCutRequest): Result<String> {
         if (request.endMs <= request.startMs) {
             return Result.failure(IllegalArgumentException("endMs <= startMs"))
@@ -116,6 +118,14 @@ public class MuxingPipeline @Inject constructor(
                 val copier = ExtractorSampleCopier(extractor, muxerWriter, timeMapper)
                 copier.copy(plan, request.startMs * MS_TO_US, endUs, ByteBuffer.allocateDirect(plan.bufferSize))
 
+                if (!muxerWriter.stopAndReleaseSafely()) {
+                    muxerWriter = null
+                    throw IOException("Failed to finalize muxer")
+                }
+                muxerWriter = null
+                pfd.close()
+                pfd = null
+
                 if (plan.hasVideoTrack) {
                     mediaFinalizer.finalizeVideo(request.outputUri)
                 } else {
@@ -136,7 +146,7 @@ public class MuxingPipeline @Inject constructor(
                 try {
                     context.contentResolver.delete(outUriParsed, null, null)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete corrupted file ${request.outputUri}", e)
+                    Log.e(TAG, "Failed to delete corrupted output from authority: ${outUriParsed.authority}", e)
                 }
             }
         }
@@ -173,6 +183,14 @@ public class MuxingPipeline @Inject constructor(
                 )
                 processClipsForMerge(mParams)
 
+                if (!muxerWriter.stopAndReleaseSafely()) {
+                    muxerWriter = null
+                    throw IOException("Failed to finalize muxer")
+                }
+                muxerWriter = null
+                pfd.close()
+                pfd = null
+
                 if (init.plan.hasVideoTrack) {
                     mediaFinalizer.finalizeVideo(request.outputUri)
                 } else {
@@ -192,7 +210,7 @@ public class MuxingPipeline @Inject constructor(
                 try {
                     context.contentResolver.delete(outUriParsed, null, null)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete corrupted file ${request.outputUri}", e)
+                    Log.e(TAG, "Failed to delete corrupted output from authority: ${outUriParsed.authority}", e)
                 }
             }
         }
@@ -212,7 +230,13 @@ public class MuxingPipeline @Inject constructor(
             val plan = inspector.inspect(ex, mux, keepA, keepV, sel)
             val trackInfo = readTracksForInitialPlan(ex)
             LosslessEngineHelper.MergeInitialPlan(
-                plan, trackInfo.audioRate, trackInfo.videoFps, trackInfo.vMime, trackInfo.aMime
+                plan,
+                trackInfo.audioRate,
+                trackInfo.videoFps,
+                trackInfo.vMime,
+                trackInfo.aMime,
+                trackInfo.videoFormat,
+                trackInfo.audioFormat
             )
         } finally {
             ex.release()
@@ -224,6 +248,8 @@ public class MuxingPipeline @Inject constructor(
         var videoFps = DEFAULT_FPS
         var vMime: String? = null
         var aMime: String? = null
+        var videoFormat: MediaFormat? = null
+        var audioFormat: MediaFormat? = null
 
         for (i in 0 until ex.trackCount) {
             val format = ex.getTrackFormat(i)
@@ -231,14 +257,16 @@ public class MuxingPipeline @Inject constructor(
             if (mime.startsWith("video/") && vMime == null) {
                 vMime = mime
                 videoFps = getVideoFps(format)
+                videoFormat = format
             } else if (mime.startsWith("audio/") && aMime == null) {
                 aMime = mime
+                audioFormat = format
                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                     audioRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
                 }
             }
         }
-        return PipelineTrackInfo(audioRate, videoFps, vMime, aMime)
+        return PipelineTrackInfo(audioRate, videoFps, vMime, aMime, videoFormat, audioFormat)
     }
 
     private suspend fun processClipsForMerge(params: LosslessEngineHelper.MergeParams) {
@@ -255,8 +283,20 @@ public class MuxingPipeline @Inject constructor(
                 dataSource.setExtractorSource(ex, clip.uri)
                 val cPlan = inspector.inspectClipForMerge(ex, init, params.keepAudio, params.keepVideo, params.selectedTracks)
                 val trackInfo = readTracksForInitialPlan(ex)
-                mergeValidator.validateCodec(clip.uri, trackInfo.vMime, init.expectedVideoMime, "video")
-                mergeValidator.validateCodec(clip.uri, trackInfo.aMime, init.expectedAudioMime, "audio")
+                mergeValidator.validateTrack(
+                    clip.uri,
+                    trackInfo.videoFormat,
+                    init.expectedVideoFormat,
+                    "video",
+                    params.keepVideo
+                )
+                mergeValidator.validateTrack(
+                    clip.uri,
+                    trackInfo.audioFormat,
+                    init.expectedAudioFormat,
+                    "audio",
+                    params.keepAudio
+                )
                 if (cPlan.bufferSize > maxBuf) {
                     maxBuf = cPlan.bufferSize
                     buffer = ByteBuffer.allocateDirect(maxBuf)

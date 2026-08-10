@@ -29,9 +29,12 @@ android {
     signingConfigs {
         create("release") {
             storeFile = project.findProperty("storeFile")?.toString()?.takeIf { it.isNotEmpty() }?.let { file(it) }
-            storePassword = project.findProperty("storePassword")?.toString()
-            keyAlias = project.findProperty("keyAlias")?.toString()
-            keyPassword = project.findProperty("keyPassword")?.toString()
+            storePassword = (project.findProperty("storePassword")?.toString()
+                ?: System.getenv("ANDROID_KEYSTORE_PASSWORD"))
+            keyAlias = (project.findProperty("keyAlias")?.toString()
+                ?: System.getenv("ANDROID_KEY_ALIAS"))
+            keyPassword = (project.findProperty("keyPassword")?.toString()
+                ?: System.getenv("ANDROID_KEY_PASSWORD"))
         }
     }
 

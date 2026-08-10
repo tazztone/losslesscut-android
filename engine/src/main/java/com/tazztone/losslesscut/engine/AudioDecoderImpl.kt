@@ -4,21 +4,25 @@ import android.media.AudioFormat
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import com.tazztone.losslesscut.domain.engine.AudioDecoder
+import com.tazztone.losslesscut.domain.di.EngineDispatcher
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AudioDecoderImpl @Inject constructor(
-    private val dataSource: MediaDataSource
+    private val dataSource: MediaDataSource,
+    @param:EngineDispatcher private val engineDispatcher: kotlinx.coroutines.CoroutineDispatcher
 ) : AudioDecoder {
 
     override suspend fun decode(uri: String): Flow<AudioDecoder.PcmData> = flow {
@@ -33,11 +37,11 @@ class AudioDecoderImpl @Inject constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-            Log.e(TAG, "Error decoding audio from $uri", e)
+            Log.e(TAG, "Error decoding audio from authority: ${Uri.parse(uri).authority}", e)
         } finally {
             cleanupResources(extractor, codec)
         }
-    }
+    }.flowOn(engineDispatcher)
 
     private fun setupExtractor(extractor: MediaExtractor, uri: String): TrackInfo? {
         dataSource.setExtractorSource(extractor, uri)
@@ -83,7 +87,8 @@ class AudioDecoderImpl @Inject constructor(
             DEFAULT_CHANNEL_COUNT
         }
 
-        while (!sawOutputEOS && currentCoroutineContext().isActive) {
+        while (!sawOutputEOS) {
+            currentCoroutineContext().ensureActive()
             if (!sawInputEOS) {
                 sawInputEOS = processInput(extractor, codec)
             }
@@ -132,6 +137,7 @@ class AudioDecoderImpl @Inject constructor(
         var outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
         var sawOutputEOS = false
         while (outIdx >= 0) {
+            currentCoroutineContext().ensureActive()
             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                 sawOutputEOS = true
             }

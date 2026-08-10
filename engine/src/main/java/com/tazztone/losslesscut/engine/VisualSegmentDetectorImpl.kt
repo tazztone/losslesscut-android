@@ -7,13 +7,17 @@ import android.media.MediaFormat
 import android.util.Log
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
 import com.tazztone.losslesscut.domain.model.VisualStrategy
+import com.tazztone.losslesscut.domain.di.EngineDispatcher
 import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class VisualSegmentDetectorImpl @Inject constructor(
-    private val dataSource: MediaDataSource
+    private val dataSource: MediaDataSource,
+    @param:EngineDispatcher private val engineDispatcher: CoroutineDispatcher
 ) : IVisualSegmentDetector {
 
     private class DetectionContext(
@@ -39,7 +43,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
         sampleIntervalFrames: Int,
         strategy: VisualStrategy,
         onProgress: (Int, Int) -> Unit
-    ): List<FrameAnalysis> {
+    ): List<FrameAnalysis> = withContext(engineDispatcher) {
+        require(sampleIntervalFrames > 0) { "sampleIntervalFrames must be positive" }
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         var context: DetectionContext? = null
@@ -49,12 +54,12 @@ class VisualSegmentDetectorImpl @Inject constructor(
             val trackIndex = selectVideoTrack(extractor)
             if (trackIndex == -1) {
                 Log.e(TAG, "No video track found")
-                return emptyList()
+                return@withContext emptyList()
             }
 
             val format = extractor.getTrackFormat(trackIndex)
             val durationUs = format.getLong(MediaFormat.KEY_DURATION)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return emptyList()
+            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@withContext emptyList()
 
             codec = MediaCodec.createDecoderByType(mime)
             format.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
@@ -79,7 +84,7 @@ class VisualSegmentDetectorImpl @Inject constructor(
             cleanup(codec, extractor)
         }
 
-        return context?.analyses ?: emptyList()
+        context?.analyses ?: emptyList()
     }
 
     private fun cleanup(codec: MediaCodec?, extractor: MediaExtractor) {

@@ -4,8 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.domain.cache.IAnalysisCache
+import com.tazztone.losslesscut.domain.di.IoDispatcher
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,7 +34,8 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val preferences: AppPreferences,
-    private val analysisCache: IAnalysisCache?
+    private val analysisCache: IAnalysisCache?,
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -85,76 +87,76 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun refreshCacheUsage() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             val usage = analysisCache?.getCacheUsageBytes() ?: 0L
             _uiState.update { it.copy(cacheUsageBytes = usage) }
         }
     }
 
     fun setLanguage(language: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setLanguage(language)
         }
     }
 
     fun setUndoLimit(limit: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setUndoLimit(limit)
         }
     }
 
     fun setSnapshotFormat(isJpeg: Boolean) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setSnapshotFormat(if (isJpeg) "JPEG" else "PNG")
         }
     }
 
     fun setJpgQuality(quality: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setJpgQuality(quality)
         }
     }
 
     fun setCustomOutputUri(uri: String?) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setCustomOutputUri(uri)
         }
     }
 
     fun setAccentColor(color: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setAccentColor(color)
         }
     }
 
     fun setAutoExtractWaveforms(enabled: Boolean) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setAutoExtractWaveforms(enabled)
         }
     }
 
     fun setVisualFrameStep(step: Int) {
-        viewModelScope.launch {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setDefaultVisualFrameStep(step)
         }
     }
 
     fun setCacheCapacityMB(capacityMB: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setCacheCapacityMB(capacityMB)
             refreshCacheUsage()
         }
     }
 
     fun setCacheRetentionDays(days: Int) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             preferences.setCacheRetentionDays(days)
             refreshCacheUsage()
         }
     }
 
     fun clearCache() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             _uiState.update { it.copy(isClearingCache = true) }
             analysisCache?.clearCache()
             val usage = analysisCache?.getCacheUsageBytes() ?: 0L

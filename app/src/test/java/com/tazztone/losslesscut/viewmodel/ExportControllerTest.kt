@@ -63,7 +63,6 @@ class ExportControllerTest {
         val clips = listOf(clip)
         val selectedIndex = 0
         val settings = ExportSettings(
-            isLossless = true,
             keepAudio = true,
             keepVideo = false,
             rotationOverride = 90,
@@ -79,7 +78,6 @@ class ExportControllerTest {
         val capturedParams = paramsSlot.captured
         assertEquals(clips, capturedParams.clips)
         assertEquals(selectedIndex, capturedParams.selectedClipIndex)
-        assertEquals(settings.isLossless, capturedParams.isLossless)
         assertEquals(settings.keepAudio, capturedParams.keepAudio)
         assertEquals(settings.keepVideo, capturedParams.keepVideo)
         assertEquals(settings.rotationOverride, capturedParams.rotationOverride)

@@ -5,6 +5,7 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import io.mockk.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -27,7 +28,7 @@ class VisualSegmentDetectorImplTest {
     fun setUp() {
         mockkConstructor(MediaExtractor::class)
         mockkStatic(MediaCodec::class)
-        detector = VisualSegmentDetectorImpl(dataSource)
+        detector = VisualSegmentDetectorImpl(dataSource, Dispatchers.Unconfined)
     }
 
     @After

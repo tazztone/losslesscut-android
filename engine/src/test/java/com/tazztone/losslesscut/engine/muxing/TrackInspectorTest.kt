@@ -13,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -198,7 +199,7 @@ class TrackInspectorTest {
         assertTrue(capturedFormat.isCaptured)
     }
 
-    @Test
+    @Test(expected = IOException::class)
     fun `inspect handles generic metadata data tracks safely`() {
         val extractor = mockk<MediaExtractor>()
         val muxerWriter = mockk<MuxerWriter>()
@@ -209,15 +210,8 @@ class TrackInspectorTest {
         every { extractor.trackCount } returns 1
         every { extractor.getTrackFormat(0) } returns metaFormat
         
-        val capturedFormat = io.mockk.slot<MediaFormat>()
-        every { muxerWriter.addTrack(capture(capturedFormat)) } returns 0
-
         val inspector = TrackInspector()
         inspector.inspect(extractor, muxerWriter, keepAudio = true, keepVideo = true, selectedTracks = listOf(0))
-
-        assertTrue(capturedFormat.isCaptured)
-        val clean = capturedFormat.captured
-        assertEquals("application/x-quicktime-metadata", clean.getString(MediaFormat.KEY_MIME))
     }
 
     @Test

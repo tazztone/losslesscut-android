@@ -17,7 +17,6 @@ import com.tazztone.losslesscut.domain.usecase.ClipManagementUseCase
 import com.tazztone.losslesscut.domain.usecase.ExportUseCase
 import com.tazztone.losslesscut.domain.usecase.ExtractSnapshotUseCase
 import com.tazztone.losslesscut.domain.model.FrameAnalysis
-import com.tazztone.losslesscut.domain.usecase.IVisualSegmentDetector
 import com.tazztone.losslesscut.domain.model.VisualDetectionConfig
 import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.usecase.VisualSegmentFilter
@@ -87,15 +86,14 @@ class VideoEditingViewModel @Inject constructor(
     private var currentPlaybackSpeed = 1.0f
     private var isPitchCorrectionEnabled = false
 
-    private val editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
-        com.tazztone.losslesscut.domain.session.EditingSession(historyLimit = 30)
+    private var editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
+        com.tazztone.losslesscut.domain.session.EditingSession()
 
     private val currentClips get() = editingSession.currentSnapshot.clips
     private val selectedClipIndex get() = editingSession.currentSnapshot.selectedClipIndex
     private val selectedSegmentId get() = editingSession.currentSnapshot.selectedSegmentId
     private var currentKeyframes: List<Long> = emptyList()
     
-    private val sessionController = SessionController(useCases.sessionUseCase, ioDispatcher)
     private val exportController = ExportController(
         useCases.exportUseCase, useCases.snapshotUseCase, preferences
     )
@@ -152,10 +150,12 @@ class VideoEditingViewModel @Inject constructor(
     fun initialize(uris: List<Uri>) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                resetInternal()
-                preferences.applyAnalysisCachePolicy()
-                _uiState.value = VideoEditingUiState.Loading()
                 try {
+                    val undoLimit = preferences.undoLimitFlow.first()
+                    editingSession = com.tazztone.losslesscut.domain.session.EditingSession(undoLimit)
+                    resetInternal()
+                    preferences.applyAnalysisCachePolicy()
+                    _uiState.value = VideoEditingUiState.Loading()
                     val result = useCases.clipManagementUseCase.createClips(uris.map { it.toString() })
                     result.fold(
                         onSuccess = { clips ->
@@ -642,13 +642,13 @@ class VideoEditingViewModel @Inject constructor(
     fun saveSession() {
         viewModelScope.launch(ioDispatcher) {
             val clips = stateMutex.withLock { currentClips }
-            sessionController.saveSession(clips)
+            useCases.sessionUseCase.saveSession(clips)
         }
     }
 
     fun checkSessionExists(uri: Uri) {
         viewModelScope.launch(ioDispatcher) {
-            val exists = sessionController.checkSessionExists(uri.toString())
+            val exists = useCases.sessionUseCase.hasSavedSession(uri.toString())
             stateMutex.withLock {
                 _sessionExists.value = exists
             }
@@ -659,7 +659,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             try {
                 _uiState.value = VideoEditingUiState.Loading()
-                val validClips = sessionController.restoreSession(uri.toString())
+                val validClips = useCases.sessionUseCase.restoreSession(uri.toString())
 
                 if (validClips.isNullOrEmpty()) {
                     _uiEvents.send(VideoEditingEvent.ShowToast(
@@ -696,12 +696,10 @@ data class VideoEditingUseCases @Inject constructor(
     val snapshotUseCase: ExtractSnapshotUseCase,
     val silenceDetectionUseCase: SilenceDetectionUseCase,
     val sessionUseCase: SessionUseCase,
-    val visualSegmentDetector: IVisualSegmentDetector,
     val segmentDetector: SegmentDetectorUseCase
 )
 
 data class ExportSettings(
-    val isLossless: Boolean,
     val keepAudio: Boolean,
     val keepVideo: Boolean,
     val rotationOverride: Int?,

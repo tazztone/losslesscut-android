@@ -47,7 +47,7 @@ class SettingsViewModelTest {
         coEvery { mockPrefs.languageFlow } returns flowOf("system")
         coEvery { mockCache.getCacheUsageBytes() } returns 1024L * 1024L * 10L
 
-        viewModel = SettingsViewModel(mockPrefs, mockCache)
+        viewModel = SettingsViewModel(mockPrefs, mockCache, testDispatcher)
     }
 
     @After

@@ -20,12 +20,12 @@ class MediaDataSource @Inject constructor(@param:ApplicationContext private val 
         try {
             extractor.setDataSource(context, uri, null)
         } catch (e: IOException) {
-            Log.e(TAG, "MediaExtractor failed for $uri, trying FileDescriptor", e)
+            Log.e(TAG, "MediaExtractor failed for authority: ${uri.authority}, trying FileDescriptor", e)
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 extractor.setDataSource(pfd.fileDescriptor)
-            } ?: throw IOException("Could not open FileDescriptor for $uri", e)
+            } ?: throw IOException("Could not open FileDescriptor", e)
         } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "Invalid URI for MediaExtractor: $uri", e)
+            Log.e(TAG, "Invalid URI for MediaExtractor from authority: ${uri.authority}", e)
             throw e
         }
     }
@@ -35,10 +35,10 @@ class MediaDataSource @Inject constructor(@param:ApplicationContext private val 
         try {
             retriever.setDataSource(context, uri)
         } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "MediaMetadataRetriever failed for $uri, trying FileDescriptor", e)
+            Log.e(TAG, "MediaMetadataRetriever failed for authority: ${uri.authority}, trying FileDescriptor", e)
             context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                 retriever.setDataSource(pfd.fileDescriptor)
-            } ?: throw IOException("Could not open FileDescriptor for $uri", e)
+            } ?: throw IOException("Could not open FileDescriptor", e)
         }
     }
 

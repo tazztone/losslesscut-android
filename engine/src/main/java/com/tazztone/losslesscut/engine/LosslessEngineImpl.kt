@@ -6,13 +6,14 @@ import android.media.MediaExtractor
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.util.Log
-import com.tazztone.losslesscut.domain.di.IoDispatcher
+import com.tazztone.losslesscut.domain.di.EngineDispatcher
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.engine.MediaMetadata
 import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.engine.muxing.MuxingCutRequest
 import com.tazztone.losslesscut.engine.muxing.MuxingMergeRequest
 import com.tazztone.losslesscut.engine.muxing.MuxingPipeline
+import com.tazztone.losslesscut.engine.muxing.MediaDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
@@ -24,31 +25,30 @@ import javax.inject.Singleton
 
 @Singleton
 class LosslessEngineImpl @Inject constructor(
-    @param:ApplicationContext context: Context,
-    private val collaborators: EngineCollaborators,
+    @ApplicationContext context: Context,
+    private val dataSource: MediaDataSource,
     private val muxingPipeline: MuxingPipeline,
-    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:EngineDispatcher private val engineDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
     
     private val appContext: Context = context
-    private val dataSource get() = collaborators.dataSource
-
     public companion object {
         private const val TAG = "LosslessEngine"
         private const val MS_TO_US = 1000L
         private const val JPEG_QUALITY = 80
     }
 
-    override suspend fun getMediaMetadata(uriString: String): Result<MediaMetadata> = withContext(ioDispatcher) {
-        val uri = Uri.parse(uriString)
+    override suspend fun getMediaMetadata(uri: String): Result<MediaMetadata> = withContext(engineDispatcher) {
+        val parsedUri = Uri.parse(uri)
+        val authority = parsedUri.authority
         val retriever = MediaMetadataRetriever()
         val extractor = MediaExtractor()
 
         try {
-            retriever.setDataSource(appContext, uri)
-            dataSource.setExtractorSource(extractor, uriString)
+            retriever.setDataSource(appContext, parsedUri)
+            dataSource.setExtractorSource(extractor, uri)
 
-            val basic = LosslessEngineHelper.readBasicMetadata(retriever, uriString)
+            val basic = LosslessEngineHelper.readBasicMetadata(retriever, uri)
             val trackData = LosslessEngineHelper.readTrackMetadata(extractor)
 
             Result.success(MediaMetadata(
@@ -66,7 +66,7 @@ class LosslessEngineImpl @Inject constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to read metadata for $uriString", e)
+            Log.e(TAG, "Failed to read metadata from authority: $authority", e)
             Result.failure(e)
         } finally {
             try {
@@ -78,10 +78,10 @@ class LosslessEngineImpl @Inject constructor(
         }
     }
 
-    override suspend fun getKeyframes(uriString: String): Result<List<Long>> = withContext(ioDispatcher) {
+    override suspend fun getKeyframes(videoUri: String): Result<List<Long>> = withContext(engineDispatcher) {
         val extractor = MediaExtractor()
         try {
-            dataSource.setExtractorSource(extractor, uriString)
+            dataSource.setExtractorSource(extractor, videoUri)
             val trackData = LosslessEngineHelper.readTrackMetadata(extractor)
             val videoTrackIndex = trackData.tracks.firstOrNull { it.isVideo }?.id
                 ?: return@withContext Result.failure(IllegalStateException("No video track found"))
@@ -105,7 +105,7 @@ class LosslessEngineImpl @Inject constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to extract keyframes from $uriString", e)
+            Log.e(TAG, "Failed to extract keyframes from authority: ${Uri.parse(videoUri).authority}", e)
             Result.failure(e)
         } finally {
             extractor.release()
@@ -113,7 +113,7 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray? = withContext(ioDispatcher) {
+    override suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray? = withContext(engineDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(appContext, Uri.parse(uri))
@@ -129,7 +129,7 @@ class LosslessEngineImpl @Inject constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to capture frame at $positionMs for $uri", e)
+            Log.e(TAG, "Failed to capture frame at $positionMs from authority: ${Uri.parse(uri).authority}", e)
             null
         } finally {
             try {
@@ -149,7 +149,7 @@ class LosslessEngineImpl @Inject constructor(
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ): Result<String> = withContext(ioDispatcher) {
+    ): Result<String> = withContext(engineDispatcher) {
         val request = MuxingCutRequest(
             inputUri = inputUri,
             outputUri = outputUri,
@@ -170,7 +170,7 @@ class LosslessEngineImpl @Inject constructor(
         keepVideo: Boolean,
         rotationOverride: Int?,
         selectedTracks: List<Int>?
-    ): Result<String> = withContext(ioDispatcher) {
+    ): Result<String> = withContext(engineDispatcher) {
         val request = MuxingMergeRequest(
             outputUri = outputUri,
             clips = clips,

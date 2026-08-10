@@ -2,7 +2,6 @@ package com.tazztone.losslesscut.ui
 
 import android.net.Uri
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,9 +24,9 @@ class MainActivitySecurityTest {
     }
 
     @Test
-    fun testIsValidUri_ContentScheme_ReturnsTrue() {
+    fun testIsValidUri_ContentScheme_RequiresReadableMedia() {
         val uri = Uri.parse("content://media/external/video/media/1")
-        assertTrue(invokeIsValidUri(uri))
+        assertFalse(invokeIsValidUri(uri))
     }
 
     @Test
@@ -41,16 +40,13 @@ class MainActivitySecurityTest {
     }
 
     @Test
-    fun testIsValidUri_FileScheme_Validation() {
-        // Safe external file should be true
+    fun testIsValidUri_FileScheme_IsBlocked() {
         val uri = Uri.parse("file:///storage/emulated/0/Download/video.mp4")
-        assertTrue(invokeIsValidUri(uri))
+        assertFalse(invokeIsValidUri(uri))
 
-        // Path traversal should be false
         val uri2 = Uri.parse("file:///storage/emulated/0/../../../../etc/passwd")
         assertFalse(invokeIsValidUri(uri2))
 
-        // Private app data should be false
         val dataDir = activity.applicationInfo.dataDir
         val uri3 = Uri.parse("file://$dataDir/shared_prefs/prefs.xml")
         assertFalse(invokeIsValidUri(uri3))

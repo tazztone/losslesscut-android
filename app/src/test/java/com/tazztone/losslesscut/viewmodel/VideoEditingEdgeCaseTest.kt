@@ -12,6 +12,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.*
 import org.junit.After
 import org.junit.Assert.*
@@ -30,7 +31,6 @@ public class VideoEditingEdgeCaseTest {
     private val mockRepo = mockk<IVideoEditingRepository>(relaxed = true)
     private val mockPrefs = mockk<AppPreferences>(relaxed = true)
     private val mockExportUseCase = mockk<ExportUseCase>()
-    private val mockVisualDetector = mockk<IVisualSegmentDetector>(relaxed = true)
     private val mockSegmentDetector = mockk<SegmentDetectorUseCase>(relaxed = true)
     
     private lateinit var viewModel: VideoEditingViewModel
@@ -38,6 +38,7 @@ public class VideoEditingEdgeCaseTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        every { mockPrefs.undoLimitFlow } returns flowOf(30)
         
         // Explicitly stub common repository calls to avoid MockK/Coroutine ClassCastException
         coEvery { mockRepo.getWaveform(any(), any()) } returns null
@@ -49,7 +50,6 @@ public class VideoEditingEdgeCaseTest {
             ExtractSnapshotUseCase(mockRepo, testDispatcher),
             SilenceDetectionUseCase(mockRepo, testDispatcher),
             SessionUseCase(mockRepo, testDispatcher),
-            mockVisualDetector,
             mockSegmentDetector
         )
         
@@ -224,7 +224,7 @@ public class VideoEditingEdgeCaseTest {
         advanceUntilIdle()
 
         val settings = ExportSettings(
-            isLossless = true, keepAudio = true, keepVideo = true,
+            keepAudio = true, keepVideo = true,
             rotationOverride = null, mergeSegments = false
         )
         

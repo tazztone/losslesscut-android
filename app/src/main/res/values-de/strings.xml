@@ -46,6 +46,7 @@
     <string name="error_waveform_not_ready">Wellenform wird noch geladen</string>
     <string name="error_no_segments_export">Keine Segmente zum Exportieren</string>
     <string name="error_create_file">Ausgabedatei konnte nicht erstellt werden</string>
+    <string name="error_output_folder_access">Der ausgewählte Ausgabeordner ist nicht verfügbar.</string>
     <string name="error_segment_failed">Segment %1$d fehlgeschlagen: %2$s</string>
     <string name="error_cannot_delete_last">Das letzte verbleibende Medium kann nicht gelöscht werden</string>
     <string name="error_export_failed">Export fehlgeschlagen: %1$s</string>
