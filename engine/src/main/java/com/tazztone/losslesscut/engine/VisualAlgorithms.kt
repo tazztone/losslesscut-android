@@ -28,6 +28,21 @@ internal object VisualAlgorithms {
         }
     }
 
+    private val DCT_C = DoubleArray(DOWNSCALE_SIZE).apply {
+        this[0] = 1.0 / sqrt(2.0)
+        for (i in 1 until DOWNSCALE_SIZE) this[i] = 1.0
+    }
+
+    private class PHashContext {
+        val rowTransformed = Array(DOWNSCALE_SIZE) { DoubleArray(DCT_SIZE) }
+        val finalDct = DoubleArray(PHASH_SIZE)
+        val acValues = DoubleArray(PHASH_SIZE - 1)
+    }
+
+    private val pHashContext = object : ThreadLocal<PHashContext>() {
+        override fun initialValue() = PHashContext()
+    }
+
     fun calculateMeanLuma(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
@@ -105,10 +120,10 @@ internal object VisualAlgorithms {
     fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
         val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
 
-        val rowTransformed = Array(DOWNSCALE_SIZE) { DoubleArray(DCT_SIZE) }
-        val c = DoubleArray(DOWNSCALE_SIZE)
-        c[0] = 1.0 / sqrt(2.0)
-        for (i in 1 until DOWNSCALE_SIZE) c[i] = 1.0
+        val ctx = pHashContext.get()!!
+        val rowTransformed = ctx.rowTransformed
+        val finalDct = ctx.finalDct
+        val acValues = ctx.acValues
 
         for (y in 0 until DOWNSCALE_SIZE) {
             for (u in 0 until DCT_SIZE) {
@@ -117,24 +132,22 @@ internal object VisualAlgorithms {
                      val pixelVal = (small[y * DOWNSCALE_SIZE + x].toInt() and PIXEL_MASK).toDouble()
                      sum += pixelVal * DCT_COSINE_TABLE[x][u]
                 }
-                rowTransformed[y][u] = DCT_SCALE * c[u] * sum
+                rowTransformed[y][u] = DCT_SCALE * DCT_C[u] * sum
             }
         }
 
-        val finalDct = DoubleArray(PHASH_SIZE)
         for (u in 0 until DCT_SIZE) {
             for (v in 0 until DCT_SIZE) {
                 var sum = 0.0
                 for (y in 0 until DOWNSCALE_SIZE) {
                     sum += rowTransformed[y][u] * DCT_COSINE_TABLE[y][v]
                 }
-                finalDct[v * DCT_SIZE + u] = DCT_SCALE * c[v] * sum
+                finalDct[v * DCT_SIZE + u] = DCT_SCALE * DCT_C[v] * sum
             }
         }
 
-        val acValues = mutableListOf<Double>()
         for (i in 1 until PHASH_SIZE) {
-            acValues.add(finalDct[i])
+            acValues[i - 1] = finalDct[i]
         }
         acValues.sort()
         val median = acValues[acValues.size / 2]
