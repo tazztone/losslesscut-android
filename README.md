@@ -99,7 +99,7 @@ For detailed technical specifications, architecture blueprints, domain model glo
 
 - 🏗️ **[Architecture & Technical Reference](docs/architecture.md)**: System architecture, multi-module structure, component blueprints, reactive state flow, risk tiers, and format matrix.
 - 📖 **[Domain Model & Glossary](CONTEXT.md)**: Ubiquitous domain language, aggregate boundaries (`EditingSession`), and smart cut entities.
-- 🛠️ **[Contributing Guide](CONTRIBUTING.md)**: Development setup, script automation suite, and CI verification pipeline.
+- 🛠️ **[Contributing Guide](CONTRIBUTING.md)**: Development setup, script automation suite, CI verification pipeline, and GitHub Actions release secrets management (`gh cli`).
 - ⚙️ **[Build Tooling Matrix](docs/build-tooling.md)**: Toolchain versions (AGP, Gradle, Kotlin, KSP), flags, and modernization roadmap.
 - 🔒 **[Privacy Policy](docs/privacy.html)**: Storage Access Framework (SAF) privacy model.
 

@@ -69,3 +69,38 @@ Execute the full suite locally prior to pushing:
 ./scripts/dev-scripts/project-verify.sh
 ```
 
+---
+
+## 🚀 Release Pipeline & Keystore Secrets
+
+Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-debug.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store.
+
+### Required GitHub Secrets
+
+| Secret Name | Description |
+| :--- | :--- |
+| **`ANDROID_KEYSTORE_BASE64`** | Base64-encoded string of the `.jks`/`.keystore` release signing key (`base64 -w 0 app/release.keystore`). |
+| **`ANDROID_KEYSTORE_PASSWORD`** | Password for the Java Keystore store. |
+| **`ANDROID_KEY_ALIAS`** | Alias name of the release key inside the keystore. |
+| **`ANDROID_KEY_PASSWORD`** | Password for the key alias. |
+| **`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`** | Service Account JSON credentials for Google Play Store publishing. |
+
+### Configuring Secrets via GitHub CLI (`gh`)
+
+You can set or update all repository release secrets directly from your terminal using `gh cli`:
+
+```bash
+# 1. Base64 Keystore Secret
+base64 -w 0 app/release.keystore | gh secret set ANDROID_KEYSTORE_BASE64
+
+# 2. Keystore Passwords & Key Alias
+gh secret set ANDROID_KEYSTORE_PASSWORD -b"YOUR_STORE_PASSWORD"
+gh secret set ANDROID_KEY_ALIAS -b"YOUR_KEY_ALIAS"
+gh secret set ANDROID_KEY_PASSWORD -b"YOUR_KEY_PASSWORD"
+
+# 3. Google Play Service Account JSON
+gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON < /path/to/service_account.json
+```
+
+---
+
