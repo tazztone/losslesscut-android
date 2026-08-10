@@ -127,7 +127,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
                     consecutiveEosTimeouts = 0
                     if (processOutputBufferResult(ctx, outputBufferIndex)) {
                         processedCount++
-                        onProgress(processedCount, estimatedTotal)
+                        // ponytail: dynamic lower-bound total avoids a second full decode; exact totals require pre-scanning the stream.
+                        onProgress(processedCount, maxOf(estimatedTotal, processedCount))
                     }
                 }
                 outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER -> {

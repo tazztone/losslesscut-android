@@ -79,13 +79,14 @@ class VisualSegmentDetectorImplTest {
         every { mockCodec.getOutputBuffer(any()) } returns ByteBuffer.allocate(1920 * 1080 * 3 / 2)
         every { mockCodec.getOutputFormat(any()) } returns format
 
-        var progressCount = 0
+        val progress = mutableListOf<Pair<Int, Int>>()
         val result = detector.analyze("test_uri", 1) { current, total -> 
-            progressCount++
+            progress += current to total
         }
 
         assertTrue("Results should not be empty", result.isNotEmpty())
-        assertEquals(2, progressCount)
+        assertEquals(2, progress.size)
+        assertTrue("Progress must not exceed its total: $progress", progress.all { (current, total) -> current <= total })
         verify { mockCodec.start() }
         verify { mockCodec.release() }
     }
