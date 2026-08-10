@@ -16,6 +16,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.util.UUID
+import com.tazztone.losslesscut.domain.testutil.MediaClipTestFixture.createDummyClip
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [33])
@@ -27,24 +28,6 @@ class MediaClipAdapterTest {
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
         context.setTheme(com.google.android.material.R.style.Theme_Material3_DayNight)
-    }
-
-    private fun createDummyClip(fileName: String = "test.mp4"): MediaClip {
-        return MediaClip(
-            id = UUID.randomUUID(),
-            uri = "content://media/external/video/media/1",
-            fileName = fileName,
-            durationMs = 10000L,
-            width = 1920,
-            height = 1080,
-            videoMime = "video/mp4",
-            audioMime = "audio/mp4",
-            sampleRate = 44100,
-            channelCount = 2,
-            fps = 30f,
-            rotation = 0,
-            isAudioOnly = false
-        )
     }
 
     @Test
@@ -74,8 +57,8 @@ class MediaClipAdapterTest {
         val adapter = MediaClipAdapter({}, {_,_->}, {}, {}, {})
         assertEquals(1, adapter.itemCount) // Only Add button
 
-        val clip1 = createDummyClip()
-        val clip2 = createDummyClip()
+        val clip1 = createDummyClip(durationMs = 10000L)
+        val clip2 = createDummyClip(durationMs = 10000L)
         adapter.submitList(listOf(clip1, clip2))
 
         assertEquals(3, adapter.itemCount) // 2 clips + 1 add button
@@ -92,7 +75,7 @@ class MediaClipAdapterTest {
     @Test
     fun testClipViewHolderBinding() {
         val adapter = MediaClipAdapter({}, {_,_->}, {}, {}, {})
-        val clip = createDummyClip("my_video.mp4")
+        val clip = createDummyClip(fileName = "my_video.mp4", durationMs = 10000L)
         adapter.submitList(listOf(clip))
 
         val parent = FrameLayout(context)
@@ -127,7 +110,7 @@ class MediaClipAdapterTest {
             onStartDrag = { dragStarted = true },
             onAddClicked = {}
         )
-        val clip = createDummyClip()
+        val clip = createDummyClip(durationMs = 10000L)
         adapter.submitList(listOf(clip))
 
         val parent = FrameLayout(context)
@@ -182,9 +165,9 @@ class MediaClipAdapterTest {
             onAddClicked = {}
         )
 
-        val clip1 = createDummyClip()
-        val clip2 = createDummyClip()
-        val clip3 = createDummyClip()
+        val clip1 = createDummyClip(durationMs = 10000L)
+        val clip2 = createDummyClip(durationMs = 10000L)
+        val clip3 = createDummyClip(durationMs = 10000L)
         adapter.submitList(listOf(clip1, clip2, clip3))
 
         adapter.startDrag(0)
@@ -216,7 +199,7 @@ class MediaClipAdapterTest {
         assertEquals(1, adapter.getItemViewType(0))
 
         // With 1 item, position 0 should be VIEW_TYPE_CLIP (0), position 1 should be VIEW_TYPE_ADD (1)
-        val clip = createDummyClip("dummy.mp4")
+        val clip = createDummyClip(fileName = "dummy.mp4", durationMs = 10000L)
         adapter.submitList(listOf(clip))
         assertEquals(0, adapter.getItemViewType(0))
         assertEquals(1, adapter.getItemViewType(1))
