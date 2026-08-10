@@ -130,7 +130,31 @@ class MainActivity : BaseActivity() {
         val scheme = uri.scheme
 
         if (scheme == "content") {
+            val authority = uri.authority
+            if (authority == packageName || authority == "$packageName.provider") {
+                Log.w("Security", "Blocked URI with internal authority: $authority")
+                return false
+            }
             return true
+        }
+
+        if (scheme == "file") {
+            val path = uri.path
+            if (path.isNullOrEmpty()) return false
+            try {
+                val file = java.io.File(path)
+                if (file.canonicalPath != file.absolutePath) return false
+                val dataDir = applicationInfo.dataDir
+                val canonicalPath = file.canonicalPath
+                if (canonicalPath.startsWith("$dataDir/") || canonicalPath == dataDir) {
+                    return false
+                }
+                return true
+            } catch (e: java.io.IOException) {
+                return false
+            } catch (e: IllegalArgumentException) {
+                return false
+            }
         }
 
         Log.w("Security", "Blocked non-SAF URI with scheme: $scheme")
