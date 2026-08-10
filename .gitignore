@@ -123,3 +123,5 @@ kotlin-ide/
 .test-federation.*
 .kilo/
 assets/example_files/
+kotlinc/
+kotlin-compiler.zip

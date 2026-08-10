@@ -244,16 +244,18 @@ public class SilenceDetectionUseCase @Inject constructor(
         if (segments.isEmpty()) return emptyList()
         val result = mutableListOf<TrimSegment>()
         var current = segments[0]
+        var currentEndMs = current.endMs
         for (i in 1 until segments.size) {
             val next = segments[i]
             if (next.action == current.action) {
-                current = current.copy(endMs = next.endMs)
+                currentEndMs = next.endMs
             } else {
-                result.add(current)
+                result.add(if (current.endMs == currentEndMs) current else current.copy(endMs = currentEndMs))
                 current = next
+                currentEndMs = next.endMs
             }
         }
-        result.add(current)
+        result.add(if (current.endMs == currentEndMs) current else current.copy(endMs = currentEndMs))
         return result
     }
 
