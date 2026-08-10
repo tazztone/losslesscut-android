@@ -18,7 +18,30 @@ class DashboardAdapter(
     private val onActionClick: (DashboardAction) -> Unit
 ) : RecyclerView.Adapter<DashboardAdapter.ViewHolder>() {
 
-    class ViewHolder(val binding: ItemDashboardActionBinding) : RecyclerView.ViewHolder(binding.root)
+    class ViewHolder(val binding: ItemDashboardActionBinding) : RecyclerView.ViewHolder(binding.root) {
+        val primaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorPrimaryContainer
+        )
+        val colorOnPrimaryContainer: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnPrimaryContainer
+        )
+        val colorSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorSurfaceVariant
+        )
+        val colorOnSurfaceVariant: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnSurfaceVariant
+        )
+        val colorOnSurface: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnSurface
+        )
+        val colorPrimary: Int = com.google.android.material.color.MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorPrimary
+        )
+
+        val colorStateListOnPrimaryContainer = android.content.res.ColorStateList.valueOf(colorOnPrimaryContainer)
+        val colorStateListPrimary = android.content.res.ColorStateList.valueOf(colorPrimary)
+        val colorStateListOnSurfaceVariant = android.content.res.ColorStateList.valueOf(colorOnSurfaceVariant)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemDashboardActionBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -27,32 +50,23 @@ class DashboardAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val action = actions[position]
-        val context = holder.itemView.context
         
         holder.binding.tvActionTitle.text = action.title
         holder.binding.tvActionDesc.text = action.description
         holder.binding.ivActionIcon.setImageResource(action.iconResId)
         
         if (action.isPrimary) {
-            val primaryContainer = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimaryContainer)
-            val colorOnPrimaryContainer = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnPrimaryContainer)
-            
-            holder.binding.cardAction.setCardBackgroundColor(primaryContainer)
-            holder.binding.tvActionTitle.setTextColor(colorOnPrimaryContainer)
-            holder.binding.tvActionDesc.setTextColor(colorOnPrimaryContainer)
-            holder.binding.ivActionIcon.imageTintList = android.content.res.ColorStateList.valueOf(colorOnPrimaryContainer)
-            holder.binding.ivArrow.imageTintList = android.content.res.ColorStateList.valueOf(colorOnPrimaryContainer)
+            holder.binding.cardAction.setCardBackgroundColor(holder.primaryContainer)
+            holder.binding.tvActionTitle.setTextColor(holder.colorOnPrimaryContainer)
+            holder.binding.tvActionDesc.setTextColor(holder.colorOnPrimaryContainer)
+            holder.binding.ivActionIcon.imageTintList = holder.colorStateListOnPrimaryContainer
+            holder.binding.ivArrow.imageTintList = holder.colorStateListOnPrimaryContainer
         } else {
-            val colorSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorSurfaceVariant)
-            val colorOnSurfaceVariant = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurfaceVariant)
-            val colorOnSurface = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorOnSurface)
-            val colorPrimary = com.google.android.material.color.MaterialColors.getColor(holder.itemView, com.google.android.material.R.attr.colorPrimary)
-            
-            holder.binding.cardAction.setCardBackgroundColor(colorSurfaceVariant)
-            holder.binding.tvActionTitle.setTextColor(colorOnSurface)
-            holder.binding.tvActionDesc.setTextColor(colorOnSurfaceVariant)
-            holder.binding.ivActionIcon.imageTintList = android.content.res.ColorStateList.valueOf(colorPrimary)
-            holder.binding.ivArrow.imageTintList = android.content.res.ColorStateList.valueOf(colorOnSurfaceVariant)
+            holder.binding.cardAction.setCardBackgroundColor(holder.colorSurfaceVariant)
+            holder.binding.tvActionTitle.setTextColor(holder.colorOnSurface)
+            holder.binding.tvActionDesc.setTextColor(holder.colorOnSurfaceVariant)
+            holder.binding.ivActionIcon.imageTintList = holder.colorStateListPrimary
+            holder.binding.ivArrow.imageTintList = holder.colorStateListOnSurfaceVariant
         }
         
         holder.binding.root.setOnClickListener { onActionClick(action) }
