@@ -1,10 +1,13 @@
 package com.tazztone.losslesscut.utils
 
+import android.app.RecoverableSecurityException
 import android.content.ContentValues
 import android.content.Context
+import android.content.IntentSender
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
 import androidx.documentfile.provider.DocumentFile
@@ -14,8 +17,15 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
+
+sealed class MediaDeletionResult {
+    object Success : MediaDeletionResult()
+    data class RequiresPermissionPrompt(val intentSender: IntentSender) : MediaDeletionResult()
+    data class Failed(val exception: Throwable) : MediaDeletionResult()
+}
 
 @Singleton
 class StorageUtils @Inject constructor(
@@ -159,6 +169,42 @@ class StorageUtils @Inject constructor(
             } catch (e: SecurityException) {
                 Log.w("StorageUtils", "No permission to finalize URI from ${uri.authority}", e)
             }
+        }
+    }
+
+    suspend fun deleteOriginalMedia(uri: Uri): MediaDeletionResult = withContext(ioDispatcher) {
+        val resolver = context.contentResolver
+        try {
+            if (DocumentsContract.isDocumentUri(context, uri)) {
+                val deleted = DocumentsContract.deleteDocument(resolver, uri)
+                if (deleted) {
+                    MediaDeletionResult.Success
+                } else {
+                    MediaDeletionResult.Failed(IOException("Failed to delete document URI: $uri"))
+                }
+            } else {
+                val rowsDeleted = resolver.delete(uri, null, null)
+                if (rowsDeleted > 0) {
+                    MediaDeletionResult.Success
+                } else {
+                    MediaDeletionResult.Failed(IOException("No rows deleted for URI: $uri"))
+                }
+            }
+        } catch (e: SecurityException) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    val intentSender = MediaStore.createTrashRequest(resolver, listOf(uri), true).intentSender
+                    MediaDeletionResult.RequiresPermissionPrompt(intentSender)
+                } catch (createReqEx: Exception) {
+                    MediaDeletionResult.Failed(createReqEx)
+                }
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && e is RecoverableSecurityException) {
+                MediaDeletionResult.RequiresPermissionPrompt(e.userAction.actionIntent.intentSender)
+            } else {
+                MediaDeletionResult.Failed(e)
+            }
+        } catch (e: Exception) {
+            MediaDeletionResult.Failed(e)
         }
     }
 }

@@ -746,7 +746,14 @@ class VideoEditingViewModel @Inject constructor(
                                     )
                                 )
                             )
-                            _uiEvents.send(VideoEditingEvent.ExportComplete(true, result.count))
+                            _uiEvents.send(
+                                VideoEditingEvent.ExportComplete(
+                                    success = true,
+                                    count = result.count,
+                                    deleteOriginalAfterExport = result.deleteOriginalAfterExport,
+                                    sourceUris = result.sourceUris
+                                )
+                            )
                             _isDirty.value = false
                             clips.firstOrNull()?.uri?.let { useCases.sessionUseCase.deleteSession(it) }
                             stateMutex.withLock { updateStateInternal() }
@@ -883,5 +890,6 @@ data class ExportSettings(
     val keepVideo: Boolean,
     val rotationOverride: Int?,
     val mergeSegments: Boolean,
-    val selectedTracks: List<Int>? = null
+    val selectedTracks: List<Int>? = null,
+    val deleteOriginalAfterExport: Boolean = false
 )

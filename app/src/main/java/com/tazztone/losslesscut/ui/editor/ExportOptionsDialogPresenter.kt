@@ -23,7 +23,8 @@ class ExportOptionsDialogPresenter(
         keepAudio: Boolean,
         keepVideo: Boolean,
         mergeSegments: Boolean,
-        selectedTracks: List<Int>?
+        selectedTracks: List<Int>?,
+        deleteOriginalAfterExport: Boolean
     ) -> Unit,
     private val onRepackage: (VideoEditingUiState.Success) -> Unit,
     private val onEditRotation: (VideoEditingUiState.Success, Int?) -> Unit
@@ -39,7 +40,7 @@ class ExportOptionsDialogPresenter(
 
         dialogView.findViewById<MaterialButton>(R.id.btnExportEdited).setOnClickListener {
             dialog.dismiss()
-            onExport(state.hasAudioTrack, !state.isAudioOnly, true, null)
+            onExport(state.hasAudioTrack, !state.isAudioOnly, true, null, false)
         }
         dialogView.findViewById<MaterialButton>(R.id.btnRepackage).setOnClickListener {
             dialog.dismiss()
@@ -59,6 +60,7 @@ class ExportOptionsDialogPresenter(
     private fun showAdvancedOptions(state: VideoEditingUiState.Success) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
         val cbExportIndividualClips = dialogView.findViewById<CheckBox>(R.id.cbExportIndividualClips)
+        val cbDeleteOriginalAfterExport = dialogView.findViewById<CheckBox>(R.id.cbDeleteOriginalAfterExport)
         
         setupMergeVisibility(cbExportIndividualClips, state)
         val selectedTracks = setupTrackList(dialogView, state)
@@ -67,7 +69,7 @@ class ExportOptionsDialogPresenter(
             .setTitle(context.getString(R.string.export_options))
             .setView(dialogView)
             .setPositiveButton(context.getString(R.string.export)) { _, _ ->
-                handleExportClick(cbExportIndividualClips, state, selectedTracks)
+                handleExportClick(cbExportIndividualClips, cbDeleteOriginalAfterExport, state, selectedTracks)
             }
             .setNegativeButton(context.getString(R.string.cancel), null)
             .show()
@@ -147,6 +149,7 @@ class ExportOptionsDialogPresenter(
 
     private fun handleExportClick(
         cbExportIndividualClips: CheckBox,
+        cbDeleteOriginalAfterExport: CheckBox,
         state: VideoEditingUiState.Success,
         selectedTracks: Set<Int>
     ) {
@@ -173,6 +176,7 @@ class ExportOptionsDialogPresenter(
         }
 
         val mergeSegments = !cbExportIndividualClips.isChecked
-        onExport(keepAudio, keepVideo, mergeSegments, trackList)
+        val deleteOriginal = cbDeleteOriginalAfterExport.isChecked
+        onExport(keepAudio, keepVideo, mergeSegments, trackList, deleteOriginal)
     }
 }

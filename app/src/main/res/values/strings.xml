@@ -53,6 +53,11 @@
     <string name="snapshot_failed">Failed to capture snapshot</string>
     <string name="select_track_export">Select at least one track to export</string>
     <string name="export_options">Export Options</string>
+    <string name="delete_original_after_export">Delete original clip after export</string>
+    <string name="delete_original_after_export_desc">Permanently removes input media after successful export</string>
+    <string name="original_clip_deleted">Original clip moved to Trash</string>
+    <string name="original_clip_retained">Export succeeded, but original clip was retained.</string>
+    <string name="failed_to_delete_original">Failed to delete original clip: %1$s</string>
     <string name="export_actions_title">Export media</string>
     <string name="export_actions_description">Choose a quick action or open advanced export options.</string>
     <string name="export_edited_media">Export edited media</string>

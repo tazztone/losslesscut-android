@@ -14,6 +14,15 @@
         android:checked="false"
         android:textSize="16sp"/>
 
+    <CheckBox
+        android:id="@+id/cbDeleteOriginalAfterExport"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/delete_original_after_export"
+        android:checked="false"
+        android:textSize="16sp"/>
+
     <TextView
         android:id="@+id/tvTracksHeader"
         android:layout_width="wrap_content"

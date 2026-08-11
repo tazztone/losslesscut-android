@@ -35,7 +35,8 @@ class ExportController(
             keepVideo = settings.keepVideo,
             rotationOverride = settings.rotationOverride,
             mergeSegments = settings.mergeSegments,
-            selectedTracks = settings.selectedTracks
+            selectedTracks = settings.selectedTracks,
+            deleteOriginalAfterExport = settings.deleteOriginalAfterExport
         )
         return exportUseCase.execute(params)
     }

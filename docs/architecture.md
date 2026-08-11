@@ -96,7 +96,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### Unified launch and session lifecycle
 - `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
 - Dirty editing state is serialized to app-private cache storage when the editor stops. The dashboard maintains the five most recent sessions, validates source URI access before resume, and removes unavailable, discarded, or successfully exported sessions.
-- Export actions are grouped in `ExportOptionsDialogPresenter`: quick edited export, repackage current selection, rotation metadata export, and advanced track/segment configuration.
+- Export actions are grouped in `ExportOptionsDialogPresenter`: quick edited export, repackage current selection, rotation metadata export, and advanced track/segment configuration (including optional post-export move to System Trash / SAF document deletion).
 
 ```mermaid
 flowchart TD

@@ -35,7 +35,12 @@ public sealed class VideoEditingUiState {
 
 public sealed class VideoEditingEvent {
     public data class ShowToast(val message: UiText) : VideoEditingEvent()
-    public data class ExportComplete(val success: Boolean, val count: Int = 0) : VideoEditingEvent()
+    public data class ExportComplete(
+        val success: Boolean,
+        val count: Int = 0,
+        val deleteOriginalAfterExport: Boolean = false,
+        val sourceUris: List<String> = emptyList()
+    ) : VideoEditingEvent()
     public object SessionRestored : VideoEditingEvent()
     public object DismissHints : VideoEditingEvent()
     public data class SeekToPosition(val positionMs: Long) : VideoEditingEvent()

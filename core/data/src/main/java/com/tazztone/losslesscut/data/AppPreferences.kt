@@ -40,6 +40,7 @@ class AppPreferences @Inject constructor(
         val CACHE_CAPACITY_MB = intPreferencesKey("cache_capacity_mb")
         val CACHE_RETENTION_DAYS = intPreferencesKey("cache_retention_days")
         val LANGUAGE = stringPreferencesKey("language")
+        val DELETE_ORIGINAL_AFTER_EXPORT = booleanPreferencesKey("delete_original_after_export")
     }
 
     private val sharedPrefs = context.getSharedPreferences("theme_prefs", Context.MODE_PRIVATE)
@@ -220,6 +221,24 @@ class AppPreferences @Inject constructor(
         .map { preferences ->
             preferences[PreferencesKeys.LANGUAGE] ?: "system"
         }
+
+    val deleteOriginalAfterExportFlow: Flow<Boolean> = context.dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[PreferencesKeys.DELETE_ORIGINAL_AFTER_EXPORT] ?: false
+        }
+
+    suspend fun setDeleteOriginalAfterExport(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DELETE_ORIGINAL_AFTER_EXPORT] = enabled
+        }
+    }
 
     suspend fun setLanguage(language: String) {
         context.dataStore.edit { preferences ->

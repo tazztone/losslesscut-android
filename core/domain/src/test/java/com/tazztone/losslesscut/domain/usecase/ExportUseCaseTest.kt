@@ -207,4 +207,28 @@ internal class ExportUseCaseTest {
 
         assertEquals(ExportUseCase.Result.Failure("Selected clip index is invalid"), results.single())
     }
+
+    @Test
+    internal fun `execute passes deleteOriginalAfterExport and sourceUris on success`() = runTest {
+        val clip = createDummyClip(uri = "content://test/video.mp4", segments = listOf(
+            TrimSegment(startMs = 0, endMs = 500, action = SegmentAction.KEEP)
+        ))
+        val params = ExportUseCase.Params(
+            clips = listOf(clip),
+            selectedClipIndex = 0,
+            keepAudio = true,
+            keepVideo = true,
+            rotationOverride = null,
+            mergeSegments = false,
+            deleteOriginalAfterExport = true
+        )
+
+        coEvery { repository.createMediaOutputUri(any(), any()) } returns "output_uri"
+        coEvery { repository.executeLosslessCut(any(), any(), any(), any(), any(), any(), any(), any()) } returns Result.success("path")
+
+        val results = useCase.execute(params).toList()
+        val success = results.last() as ExportUseCase.Result.Success
+        assertTrue(success.deleteOriginalAfterExport)
+        assertEquals(listOf("content://test/video.mp4"), success.sourceUris)
+    }
 }

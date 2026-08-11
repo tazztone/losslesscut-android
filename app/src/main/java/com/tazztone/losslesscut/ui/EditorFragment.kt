@@ -1,10 +1,12 @@
 package com.tazztone.losslesscut.ui
 
+import android.app.Activity
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.TooltipCompat
 import androidx.lifecycle.lifecycleScope
@@ -12,6 +14,8 @@ import androidx.media3.common.Player
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.util.asString
+import com.tazztone.losslesscut.utils.MediaDeletionResult
+import com.tazztone.losslesscut.utils.StorageUtils
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingEvent
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
@@ -23,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
 import java.util.UUID
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBottomSheetDialogFragment.SettingsListener {
@@ -45,6 +50,22 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private var isDraggingTimeline = false
     private var isLosslessMode = true
     private var lastLoadedClipId: UUID? = null
+
+    @Inject
+    lateinit var storageUtils: StorageUtils
+
+    private var pendingDeleteUri: Uri? = null
+
+    private val deletePermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(requireContext(), R.string.original_clip_retained, Toast.LENGTH_SHORT).show()
+        }
+        pendingDeleteUri = null
+    }
 
     private val addClipsLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         addClipsDelegate.onClipsReceived(uris)
@@ -114,10 +135,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
             context = requireContext(),
             layoutInflater = layoutInflater,
-            onExport = { keepAudio, keepVideo, mergeSegments, selectedTracks ->
+            onExport = { keepAudio, keepVideo, mergeSegments, selectedTracks, deleteOriginalAfterExport ->
                 val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
                 val settings = ExportSettings(
-                    keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+                    keepAudio, keepVideo, rot, mergeSegments, selectedTracks, deleteOriginalAfterExport
                 )
                 viewModel.exportSegments(settings)
             },
@@ -336,7 +357,30 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         val msg = event.message.asString(requireContext())
                         Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
                     }
-                    is VideoEditingEvent.ExportComplete -> { /* keep playing or show results */ }
+                    is VideoEditingEvent.ExportComplete -> {
+                        if (event.success && event.deleteOriginalAfterExport && event.sourceUris.isNotEmpty()) {
+                            lifecycleScope.launch {
+                                for (sourceUriStr in event.sourceUris) {
+                                    val uri = Uri.parse(sourceUriStr)
+                                    when (val result = storageUtils.deleteOriginalMedia(uri)) {
+                                        is MediaDeletionResult.Success -> {
+                                            Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
+                                        }
+                                        is MediaDeletionResult.RequiresPermissionPrompt -> {
+                                            pendingDeleteUri = uri
+                                            deletePermissionLauncher.launch(
+                                                IntentSenderRequest.Builder(result.intentSender).build()
+                                            )
+                                        }
+                                        is MediaDeletionResult.Failed -> {
+                                            val msg = getString(R.string.failed_to_delete_original, result.exception.message ?: "")
+                                            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     is VideoEditingEvent.DismissHints -> binding.seekerContainer.customVideoSeeker.dismissHints()
                     is VideoEditingEvent.SeekToPosition -> playerManager.seekTo(event.positionMs)
                     else -> {}

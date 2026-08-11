@@ -16,7 +16,11 @@ public class ExportUseCase @Inject constructor(
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     public sealed class Result {
-        public data class Success(val count: Int) : Result()
+        public data class Success(
+            val count: Int,
+            val deleteOriginalAfterExport: Boolean = false,
+            val sourceUris: List<String> = emptyList()
+        ) : Result()
         public data class Failure(val error: String) : Result()
         public data class Progress(val percentage: Int, val message: String) : Result()
     }
@@ -28,7 +32,8 @@ public class ExportUseCase @Inject constructor(
         val keepVideo: Boolean,
         val rotationOverride: Int?,
         val mergeSegments: Boolean,
-        val selectedTracks: List<Int>? = null
+        val selectedTracks: List<Int>? = null,
+        val deleteOriginalAfterExport: Boolean = false
     )
 
     public fun execute(params: Params): Flow<Result> = flow {
@@ -81,8 +86,17 @@ public class ExportUseCase @Inject constructor(
             params.rotationOverride, params.selectedTracks
         )
 
+        val sourceUris = params.clips.map { it.uri }.distinct()
         result.fold(
-            onSuccess = { emit(Result.Success(1)) },
+            onSuccess = {
+                emit(
+                    Result.Success(
+                        count = 1,
+                        deleteOriginalAfterExport = params.deleteOriginalAfterExport,
+                        sourceUris = sourceUris
+                    )
+                )
+            },
             onFailure = { emit(Result.Failure(it.message ?: "Unknown merge error")) }
         )
     }
@@ -127,7 +141,13 @@ public class ExportUseCase @Inject constructor(
         }
 
         if (errors.isEmpty() && successCount > 0) {
-            emit(Result.Success(successCount))
+            emit(
+                Result.Success(
+                    count = successCount,
+                    deleteOriginalAfterExport = params.deleteOriginalAfterExport,
+                    sourceUris = listOf(selectedClip.uri)
+                )
+            )
         } else if (errors.isNotEmpty()) {
             emit(Result.Failure(errors.joinToString("\n")))
         }
