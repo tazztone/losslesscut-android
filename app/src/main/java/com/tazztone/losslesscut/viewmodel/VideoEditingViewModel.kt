@@ -385,22 +385,61 @@ class VideoEditingViewModel @Inject constructor(
     fun setOutPoint(positionMs: Long, isLosslessMode: Boolean = true) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
-                val state = editingSession.currentSnapshot
-                val selectedId = state.selectedSegmentId ?: return@withLock
-                val currentSeg = state.selectedSegment ?: return@withLock
+                val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
                 val effectivePos = if (isLosslessMode && currentKeyframes.isNotEmpty()) {
                     currentKeyframes.minByOrNull { kotlin.math.abs(it - positionMs) } ?: positionMs
                 } else {
                     positionMs
                 }
-                editingSession.updateSegmentBounds(selectedId, currentSeg.startMs, effectivePos)
-                editingSession.finishSegmentBoundsEdit()
-                _isDirty.value = true
-                updateStateInternal()
-                _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
+
+                val containingSeg = clip.segments.find { effectivePos > it.startMs && effectivePos <= it.endMs }
+                if (containingSeg != null) {
+                    editingSession.selectSegment(containingSeg.id)
+                    editingSession.updateSegmentBounds(containingSeg.id, containingSeg.startMs, effectivePos)
+                    editingSession.finishSegmentBoundsEdit()
+                    _isDirty.value = true
+                    updateStateInternal()
+                    _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
+                } else {
+                    val prevSeg = clip.segments.filter { it.endMs < effectivePos }.maxByOrNull { it.endMs }
+                    if (prevSeg != null) {
+                        editingSession.selectSegment(prevSeg.id)
+                        editingSession.updateSegmentBounds(prevSeg.id, prevSeg.startMs, effectivePos)
+                        editingSession.finishSegmentBoundsEdit()
+                        _isDirty.value = true
+                        updateStateInternal()
+                        _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
+                    } else {
+                        val pastKeyframes = currentKeyframes.filter { it < effectivePos }
+                        val targetStartMs = when {
+                            pastKeyframes.size >= NEW_SEGMENT_KEYFRAME_COUNT ->
+                                pastKeyframes[pastKeyframes.size - NEW_SEGMENT_KEYFRAME_COUNT]
+                            pastKeyframes.isNotEmpty() -> pastKeyframes.first()
+                            else -> effectivePos - DEFAULT_NEW_SEGMENT_DURATION_MS
+                        }
+                        val minDur = com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS
+                        val startMs = targetStartMs.coerceIn(
+                            0L,
+                            (effectivePos - minDur).coerceAtLeast(0L)
+                        )
+                        val newSegId = editingSession.addSegment(startMs, effectivePos)
+                        if (newSegId != null) {
+                            _isDirty.value = true
+                            updateStateInternal()
+                            _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
+                        } else {
+                            _uiEvents.send(
+                                VideoEditingEvent.ShowToast(
+                                    UiText.StringResource(R.string.error_segment_too_small_split)
+                                )
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+
 
 
     fun updateSegmentBounds(

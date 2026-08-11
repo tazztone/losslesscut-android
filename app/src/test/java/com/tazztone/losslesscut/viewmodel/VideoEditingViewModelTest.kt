@@ -292,6 +292,46 @@ public class VideoEditingViewModelTest {
         assertEquals(6000L, state.segments[0].endMs) // Snapped to 6000ms!
     }
 
+    @Test
+    public fun testSetOutPoint_afterExistingSegment_extendsSegmentEndRightward() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 3000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        viewModel.setOutPoint(7000L, isLosslessMode = false)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.segments.size)
+        assertEquals(0L, state.segments[0].startMs)
+        assertEquals(7000L, state.segments[0].endMs)
+    }
+
+    @Test
+    public fun testSetOutPoint_beforeAllSegments_createsNewSegmentBackward() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 10000L, endMs = 15000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        coEvery { mockRepo.getKeyframes(any()) } returns listOf(0L, 2000L, 4000L, 6000L, 8000L, 10000L, 12000L)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        // OUT point set at 6000ms (before all segments 10000..15000)
+        viewModel.setOutPoint(6000L, isLosslessMode = true)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, state.segments.size)
+        val newSeg = state.segments[0]
+        assertEquals(0L, newSeg.startMs) // 3 keyframes backward from 6000 (4000, 2000, 0)
+        assertEquals(6000L, newSeg.endMs)
+        assertEquals(newSeg.id, state.selectedSegmentId)
+    }
+
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(
         id = UUID.randomUUID(),
         uri = uri,
