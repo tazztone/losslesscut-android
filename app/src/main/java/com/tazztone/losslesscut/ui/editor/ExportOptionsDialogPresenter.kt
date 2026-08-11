@@ -48,8 +48,11 @@ class ExportOptionsDialogPresenter(
         val separateRadio = dialogView.findViewById<RadioButton>(R.id.separateOutputRadio)
         val rotationSection = dialogView.findViewById<View>(R.id.rotationSection)
         val rotationSpinner = dialogView.findViewById<Spinner>(R.id.rotationSpinner)
+        val deleteOriginalCard = dialogView.findViewById<View>(R.id.deleteOriginalCard)
         val deleteOriginal = dialogView.findViewById<CheckBox>(R.id.deleteOriginalAfterExport)
         val tracksContainer = dialogView.findViewById<LinearLayout>(R.id.tracksContainer)
+
+        deleteOriginalCard?.setOnClickListener { deleteOriginal.toggle() }
 
         summary.text = context.getString(R.string.export_media_summary, state.clips.size, keepRangeCount(state))
         rotationSection.visibility = if (state.isAudioOnly) View.GONE else View.VISIBLE
@@ -209,8 +212,16 @@ class ExportOptionsDialogPresenter(
     ): View {
         val card = MaterialCardView(context).apply {
             layoutParams = LinearLayout.LayoutParams(-1, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = dp(8)
+                bottomMargin = dp(4)
             }
+            radius = dp(10).toFloat()
+            setCardBackgroundColor(
+                com.google.android.material.color.MaterialColors.getColor(
+                    context,
+                    com.google.android.material.R.attr.colorSurfaceVariant,
+                    Color.TRANSPARENT
+                )
+            )
             isClickable = true
             isFocusable = true
             contentDescription = trackDescription(track, state)
@@ -218,12 +229,12 @@ class ExportOptionsDialogPresenter(
         val row = LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(dp(8), dp(4), dp(12), dp(4))
+            setPadding(dp(6), dp(2), dp(10), dp(2))
         }
         val checkbox = MaterialCheckBox(context).apply {
             tag = track.id
             isChecked = true
-            layoutParams = LinearLayout.LayoutParams(dp(48), dp(48))
+            layoutParams = LinearLayout.LayoutParams(dp(36), dp(36))
             contentDescription = trackDescription(track, state)
         }
         val details = LinearLayout(context).apply {
@@ -231,8 +242,8 @@ class ExportOptionsDialogPresenter(
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         }
         val icon = ImageView(context).apply {
-            layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)).apply {
-                marginEnd = dp(12)
+            layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply {
+                marginEnd = dp(8)
             }
             setImageResource(if (track.isAudio) R.drawable.ic_audio_24 else R.drawable.ic_metadata_24)
             imageTintList = context.getColorStateList(R.color.colorAccent)
@@ -241,12 +252,12 @@ class ExportOptionsDialogPresenter(
         val title = TextView(context).apply {
             text = context.getString(trackType(track))
             setTextColor(context.getColorStateList(com.tazztone.losslesscut.R.color.colorOnSurface))
-            textSize = 16f
+            textSize = 14f
         }
         val subtitle = TextView(context).apply {
             text = trackDescription(track, state, includeType = false)
             setTextColor(context.getColorStateList(com.tazztone.losslesscut.R.color.colorOnSurfaceVariant))
-            textSize = 13f
+            textSize = 12f
         }
         details.addView(title)
         details.addView(subtitle)
