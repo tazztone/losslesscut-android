@@ -55,7 +55,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ## 3. Project Structure & Module Breakdown
 
 - **`:app`**: Android UI & presentation.
-  - `ui/`: Fragments (`EditorFragment`, `RemuxFragment`, `MetadataFragment`), `PlayerManager`, `ShortcutHandler`.
+  - `ui/`: `MainActivity` dashboard, `EditorFragment`, recent-session UI, `PlayerManager`, and `ShortcutHandler`.
   - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `TimelineViewport`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
   - `ui/compose/`: Isolated Compose dialogs and sheets.
   - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and delegating state to `EditingSession`.
@@ -92,6 +92,11 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### State Management & Navigation
 - **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.
 - **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds, `S` split, `LEFT`/`RIGHT` keyframe seek).
+
+### Unified launch and session lifecycle
+- `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
+- Dirty editing state is serialized to app-private cache storage when the editor stops. The dashboard maintains the five most recent sessions, validates source URI access before resume, and removes unavailable, discarded, or successfully exported sessions.
+- Export actions are grouped in `ExportOptionsDialogPresenter`: quick edited export, repackage current selection, rotation metadata export, and advanced track/segment configuration.
 
 ```mermaid
 flowchart TD
@@ -137,6 +142,9 @@ Derived analysis data is separate from user media and is stored under the app's 
 - Cache keys include the source URI, media metadata, and analysis parameters so a changed clip or configuration does not reuse stale results.
 - Reads refresh access time. Expired entries are removed by age, then least-recently-used entries are removed until the configured byte cap is met.
 - Settings persist the maximum size (50–1000 MiB) and retention age (1–90 days). Users can inspect current usage or clear all derived analysis data; clearing does not affect source media or editing sessions.
+
+### Editing session persistence
+Editing sessions are separate from source media and analysis data. `VideoEditingRepositoryImpl` stores serialized clip state and a small recency index under the app-private `cacheDir`; source files remain user-owned SAF/`ContentResolver` URIs. The index is capped at five sessions and is treated as recoverable convenience state rather than a backup. A session is removed when the user discards it or an export completes, and stale entries are removed when their source URI is no longer readable.
 
 ---
 
@@ -204,6 +212,8 @@ LosslessCut operates strictly at the **container & bitstream level** using Andro
 | **Video Codecs** | **H.264 (AVC)**, **H.265 (HEVC)** | H.263, MPEG-4 Visual supported where container allows. |
 | **Audio Codecs** | **AAC (LC, HE)** | AMR-NB, AMR-WB supported natively. |
 | **Input Containers** | `.mp4`, `.m4a`, `.mov`, `.mkv`* | \*Remuxable to MP4 without re-encoding if internal audio/video codecs match target limits. |
+
+Rotation metadata is exposed as a lossless export action for the current MP4/M4A output path. Generic title, artist, and creation-date tag writing is not implemented yet; see the Advanced Tags roadmap item in `README.md`.
 
 ---
 
