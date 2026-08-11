@@ -91,7 +91,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 
 ### State Management & Navigation
 - **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.
-- **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds, `S` split, `LEFT`/`RIGHT` keyframe seek).
+- **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds with keyframe snapping and smart segment creation/adjustment, `S` split, `LEFT`/`RIGHT` keyframe seek).
 
 ### Unified launch and session lifecycle
 - `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.

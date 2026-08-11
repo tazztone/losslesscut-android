@@ -240,7 +240,7 @@ public class VideoEditingViewModelTest {
         val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
-        viewModel.setInPoint(8500L)
+        viewModel.setInPoint(8500L, isLosslessMode = false)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
@@ -248,6 +248,48 @@ public class VideoEditingViewModelTest {
         assertEquals(8500L, newSeg.startMs)
         assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 8500 (10000, 12000, 14000)
         assertEquals(newSeg.id, state.selectedSegmentId)
+    }
+
+    @Test
+    public fun testSetInPoint_withLosslessMode_snapsToNearestKeyframe() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 3000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        coEvery { mockRepo.getKeyframes(any()) } returns listOf(0L, 2000L, 4000L, 6000L, 8000L, 10000L, 12000L, 14000L)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        // 8547ms is closest to keyframe at 8000ms
+        viewModel.setInPoint(8547L, isLosslessMode = true)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, state.segments.size)
+        val newSeg = state.segments[1]
+        assertEquals(8000L, newSeg.startMs) // Snapped to 8000ms!
+        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 8000ms (10000, 12000, 14000)
+        assertEquals(newSeg.id, state.selectedSegmentId)
+    }
+
+    @Test
+    public fun testSetOutPoint_withLosslessMode_snapsToNearestKeyframe() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 10000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        coEvery { mockRepo.getKeyframes(any()) } returns listOf(0L, 2000L, 4000L, 6000L, 8000L, 10000L)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        // 5800ms is closest to keyframe at 6000ms
+        viewModel.setOutPoint(5800L, isLosslessMode = true)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.segments.size)
+        assertEquals(0L, state.segments[0].startMs)
+        assertEquals(6000L, state.segments[0].endMs) // Snapped to 6000ms!
     }
 
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(

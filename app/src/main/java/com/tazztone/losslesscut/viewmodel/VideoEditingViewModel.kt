@@ -326,40 +326,49 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun setInPoint(positionMs: Long) {
+    fun setInPoint(positionMs: Long, isLosslessMode: Boolean = true) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
-                val containingSeg = clip.segments.find { positionMs >= it.startMs && positionMs < it.endMs }
+                val effectivePos = if (isLosslessMode && currentKeyframes.isNotEmpty()) {
+                    currentKeyframes.minByOrNull { kotlin.math.abs(it - positionMs) } ?: positionMs
+                } else {
+                    positionMs
+                }
+
+                val containingSeg = clip.segments.find { effectivePos >= it.startMs && effectivePos < it.endMs }
                 if (containingSeg != null) {
                     editingSession.selectSegment(containingSeg.id)
-                    editingSession.updateSegmentBounds(containingSeg.id, positionMs, containingSeg.endMs)
+                    editingSession.updateSegmentBounds(containingSeg.id, effectivePos, containingSeg.endMs)
                     editingSession.finishSegmentBoundsEdit()
                     _isDirty.value = true
                     updateStateInternal()
+                    _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                 } else {
-                    val nextSeg = clip.segments.find { it.startMs > positionMs }
+                    val nextSeg = clip.segments.find { it.startMs > effectivePos }
                     if (nextSeg != null) {
                         editingSession.selectSegment(nextSeg.id)
-                        editingSession.updateSegmentBounds(nextSeg.id, positionMs, nextSeg.endMs)
+                        editingSession.updateSegmentBounds(nextSeg.id, effectivePos, nextSeg.endMs)
                         editingSession.finishSegmentBoundsEdit()
                         _isDirty.value = true
                         updateStateInternal()
+                        _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                     } else {
-                        val futureKeyframes = currentKeyframes.filter { it > positionMs }
+                        val futureKeyframes = currentKeyframes.filter { it > effectivePos }
                         val targetEndMs = when {
                             futureKeyframes.size >= NEW_SEGMENT_KEYFRAME_COUNT -> futureKeyframes[NEW_SEGMENT_KEYFRAME_INDEX]
                             futureKeyframes.isNotEmpty() -> futureKeyframes.last()
-                            else -> positionMs + DEFAULT_NEW_SEGMENT_DURATION_MS
+                            else -> effectivePos + DEFAULT_NEW_SEGMENT_DURATION_MS
                         }
                         val endMs = targetEndMs.coerceIn(
-                            positionMs + com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS,
+                            effectivePos + com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS,
                             clip.durationMs
                         )
-                        val newSegId = editingSession.addSegment(positionMs, endMs)
+                        val newSegId = editingSession.addSegment(effectivePos, endMs)
                         if (newSegId != null) {
                             _isDirty.value = true
                             updateStateInternal()
+                            _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                         } else {
                             _uiEvents.send(
                                 VideoEditingEvent.ShowToast(
@@ -372,6 +381,27 @@ class VideoEditingViewModel @Inject constructor(
             }
         }
     }
+
+    fun setOutPoint(positionMs: Long, isLosslessMode: Boolean = true) {
+        viewModelScope.launch(ioDispatcher) {
+            stateMutex.withLock {
+                val state = editingSession.currentSnapshot
+                val selectedId = state.selectedSegmentId ?: return@withLock
+                val currentSeg = state.selectedSegment ?: return@withLock
+                val effectivePos = if (isLosslessMode && currentKeyframes.isNotEmpty()) {
+                    currentKeyframes.minByOrNull { kotlin.math.abs(it - positionMs) } ?: positionMs
+                } else {
+                    positionMs
+                }
+                editingSession.updateSegmentBounds(selectedId, currentSeg.startMs, effectivePos)
+                editingSession.finishSegmentBoundsEdit()
+                _isDirty.value = true
+                updateStateInternal()
+                _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
+            }
+        }
+    }
+
 
     fun updateSegmentBounds(
         id: UUID,

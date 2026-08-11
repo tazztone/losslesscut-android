@@ -38,4 +38,6 @@ public sealed class VideoEditingEvent {
     public data class ExportComplete(val success: Boolean, val count: Int = 0) : VideoEditingEvent()
     public object SessionRestored : VideoEditingEvent()
     public object DismissHints : VideoEditingEvent()
+    public data class SeekToPosition(val positionMs: Long) : VideoEditingEvent()
 }
+

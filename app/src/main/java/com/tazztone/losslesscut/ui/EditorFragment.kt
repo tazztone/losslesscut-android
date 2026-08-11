@@ -338,6 +338,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                     }
                     is VideoEditingEvent.ExportComplete -> { /* keep playing or show results */ }
                     is VideoEditingEvent.DismissHints -> binding.seekerContainer.customVideoSeeker.dismissHints()
+                    is VideoEditingEvent.SeekToPosition -> playerManager.seekTo(event.positionMs)
                     else -> {}
                 }
             }
@@ -464,16 +465,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun setInPoint() {
         val currentPos = playerManager.currentPosition
-        viewModel.setInPoint(currentPos)
+        viewModel.setInPoint(currentPos, isLosslessMode)
     }
 
-
     private fun setOutPoint() {
-        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        val currentSeg = state.segments.find { it.id == state.selectedSegmentId } ?: return
         val currentPos = playerManager.currentPosition
-        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentSeg.startMs, currentPos)
-        viewModel.commitSegmentBounds()
+        viewModel.setOutPoint(currentPos, isLosslessMode)
     }
 
     override fun onLosslessModeToggled(isChecked: Boolean) {
