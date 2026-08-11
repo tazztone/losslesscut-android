@@ -135,35 +135,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
             context = requireContext(),
             layoutInflater = layoutInflater,
-            onExport = { keepAudio, keepVideo, mergeSegments, selectedTracks, deleteOriginalAfterExport ->
-                val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-                val settings = ExportSettings(
-                    keepAudio, keepVideo, rot, mergeSegments, selectedTracks, deleteOriginalAfterExport
-                )
-                viewModel.exportSegments(settings)
-            },
-            onRepackage = { state ->
-                viewModel.exportSegments(
-                    ExportSettings(
-                        keepAudio = state.hasAudioTrack,
-                        keepVideo = !state.isAudioOnly,
-                        rotationOverride = null,
-                        mergeSegments = false,
-                        selectedTracks = null
-                    )
-                )
-            },
-            onEditRotation = { state, rotation ->
-                viewModel.exportSegments(
-                    ExportSettings(
-                        keepAudio = state.hasAudioTrack,
-                        keepVideo = !state.isAudioOnly,
-                        rotationOverride = rotation,
-                        mergeSegments = true,
-                        selectedTracks = null
-                    )
-                )
-            }
+            onExport = viewModel::exportSegments
         )
 
         backPressDelegate = com.tazztone.losslesscut.ui.editor.BackPressDelegate(
@@ -243,7 +215,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
             val state = viewModel.uiState.value as? VideoEditingUiState.Success
             if (state != null) {
                 playerManager.pause()
-                exportOptionsController.show(state)
+                exportOptionsController.show(state, rotationManager.currentRotation)
             }
         }
         binding.navBar.btnUndo.setOnClickListener { viewModel.undo() }

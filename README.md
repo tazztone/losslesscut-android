@@ -15,12 +15,12 @@
 - 🚀 **Direct Muxing**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer` with zero transcoding.
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
 - 🎼 **Smart Audio Extraction**: Automatically routes audio-only exports to lossless `.m4a` files in the `Music` folder.
-- 🔄 **Repackage & Quick Fix**: Repackage compatible selections into MP4/M4A and apply orientation/rotation flag repairs without re-encoding.
+- 🔄 **Rotation Metadata & Quick Fixes**: Apply orientation/rotation flag repairs without re-encoding.
 
 ### 🧰 Unified Editor Workflow
-- 📥 **One Entry Point**: Load video or audio from the redesigned dashboard and use the same editor for trimming, splitting, repackaging, rotation, and export.
+- 📥 **One Entry Point**: Load video or audio from the redesigned dashboard and use the same editor for trimming, splitting, rotation, and export.
 - 🕘 **Recent Sessions**: Dirty editing sessions can be resumed from the dashboard while source access remains available through Android's Storage Access Framework.
-- 🎛️ **Export Actions**: Quick export, repackage current selections, rotation metadata, and advanced track/segment options are grouped under one export surface.
+- 🎛️ **Export media surface**: Choose combined or separate output, rotation metadata, and tracks from one full-screen modal.
 
 ### 🎞️ Pro NLE Timeline & Ergonomics
 - 🔍 **Precision Timeline**: Zoom up to 20x for frame-accurate edits with mandatory keyframe snapping and haptic feedback.
@@ -58,7 +58,7 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 ### Using the app
 1. Tap **Load media** and choose one or more compatible video or audio files.
 2. Edit the loaded media in the timeline using trim, split, rotate, Smart Cut, and undo/redo actions.
-3. Tap **Export** to export the edited media, repackage the current selection, adjust the rotation flag, or open advanced track options.
+3. Tap **Export** to choose combined or separate output, adjust rotation metadata, select tracks, and export the edited media.
 4. Leave the editor with unsaved changes to keep a recent session card on the dashboard; completed exports and discarded sessions are removed from recents.
 
 ### Prerequisites

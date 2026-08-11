@@ -96,7 +96,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### Unified launch and session lifecycle
 - `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
 - Dirty editing state is serialized to app-private cache storage when the editor stops. The dashboard maintains the five most recent sessions, validates source URI access before resume, and removes unavailable, discarded, or successfully exported sessions.
-- Export actions are grouped in `ExportOptionsDialogPresenter`: quick edited export, repackage current selection, rotation metadata export, and advanced track/segment configuration (including optional post-export move to System Trash / SAF document deletion).
+- Export choices are grouped in one full-screen `ExportOptionsDialogPresenter` surface: combined or separate output, inline rotation metadata, track selection, and optional post-export move to System Trash / SAF document deletion.
 
 ```mermaid
 flowchart TD
@@ -213,7 +213,7 @@ LosslessCut operates strictly at the **container & bitstream level** using Andro
 | **Audio Codecs** | **AAC (LC, HE)** | AMR-NB, AMR-WB supported natively. |
 | **Input Containers** | `.mp4`, `.m4a`, `.mov`, `.mkv`* | \*Remuxable to MP4 without re-encoding if internal audio/video codecs match target limits. |
 
-Rotation metadata is exposed as a lossless export action for the current MP4/M4A output path. Generic title, artist, and creation-date tag writing is not implemented yet; see the Advanced Tags roadmap item in `README.md`.
+Rotation metadata is configured inline on the unified lossless export surface for the current MP4/M4A output path. Generic title, artist, and creation-date tag writing is not implemented yet; see the Advanced Tags roadmap item in `README.md`.
 
 ---
 
