@@ -155,7 +155,8 @@ class AnalysisCacheImplTest {
 
     @Test
     fun clearCache_doesNotTouchSessionFiles() {
-        val sessionFile = File(context.cacheDir, "session_test.json")
+        val sessionFile = File(context.noBackupFilesDir, "editing_sessions/session_test.json")
+        sessionFile.parentFile?.mkdirs()
         sessionFile.writeText("{}")
 
         cache.saveWaveform(

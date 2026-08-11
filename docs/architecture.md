@@ -144,7 +144,7 @@ Derived analysis data is separate from user media and is stored under the app's 
 - Settings persist the maximum size (50–1000 MiB) and retention age (1–90 days). Users can inspect current usage or clear all derived analysis data; clearing does not affect source media or editing sessions.
 
 ### Editing session persistence
-Editing sessions are separate from source media and analysis data. `VideoEditingRepositoryImpl` stores serialized clip state and a small recency index under the app-private `cacheDir`; source files remain user-owned SAF/`ContentResolver` URIs. The index is capped at five sessions and is treated as recoverable convenience state rather than a backup. A session is removed when the user discards it or an export completes, and stale entries are removed when their source URI is no longer readable.
+Editing sessions are separate from source media and analysis data. `VideoEditingRepositoryImpl` stores serialized clip state and a small recency index under the app-private `noBackupFilesDir/editing_sessions`; source files remain user-owned SAF/`ContentResolver` URIs. The index is capped at five sessions and is treated as recoverable convenience state rather than a backup. A session is removed when the user discards it or an export completes, and stale entries are removed when their source URI is no longer readable. During development, the old cache-based location is intentionally not migrated.
 
 ---
 

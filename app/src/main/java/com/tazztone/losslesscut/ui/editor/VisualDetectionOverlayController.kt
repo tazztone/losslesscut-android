@@ -30,12 +30,12 @@ class VisualDetectionOverlayController(
     private val onDismiss: () -> Unit
 ) {
     private var sliderSensitivity: Slider = root.findViewById(R.id.sliderSensitivity)
-    private var sliderMinSegment: Slider = root.findViewById(R.id.sliderMinSegment)
+    private var sliderMinSegment: Slider = root.findViewById(R.id.sliderVisualMinSegment)
     private var sliderInterval: Slider = root.findViewById(R.id.sliderInterval)
     
     private var tvSensitivityLabel: TextView = root.findViewById(R.id.tvSensitivityLabel)
     private var tvSensitivityValue: TextView = root.findViewById(R.id.tvSensitivityValue)
-    private var tvMinSegmentValue: TextView = root.findViewById(R.id.tvMinSegmentValue)
+    private var tvMinSegmentValue: TextView = root.findViewById(R.id.tvVisualMinSegmentValue)
     private var tvIntervalValue: TextView = root.findViewById(R.id.tvIntervalValue)
     
     private val btnSceneChange: View = root.findViewById(R.id.btnSceneChange)

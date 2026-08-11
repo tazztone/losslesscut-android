@@ -69,13 +69,13 @@ class SilenceDetectionOverlayController(
     private fun initializeViews(overlay: View) {
         sliderThreshold = overlay.findViewById(R.id.sliderThreshold)
         sliderDuration = overlay.findViewById(R.id.sliderDuration)
-        sliderMinSegment = overlay.findViewById(R.id.sliderMinSegment)
+        sliderMinSegment = overlay.findViewById(R.id.sliderSilenceMinSegment)
         sliderPaddingPrefix = overlay.findViewById(R.id.sliderPaddingPrefix)
         sliderPaddingPostfix = overlay.findViewById(R.id.sliderPaddingPostfix)
         
         tvThresholdValue = overlay.findViewById(R.id.tvThresholdValue)
         tvDurationValue = overlay.findViewById(R.id.tvDurationValue)
-        tvMinSegmentValue = overlay.findViewById(R.id.tvMinSegmentValue)
+        tvMinSegmentValue = overlay.findViewById(R.id.tvSilenceMinSegmentValue)
         tvPaddingPrefixValue = overlay.findViewById(R.id.tvPaddingPrefixValue)
         tvPaddingPostfixValue = overlay.findViewById(R.id.tvPaddingPostfixValue)
     }

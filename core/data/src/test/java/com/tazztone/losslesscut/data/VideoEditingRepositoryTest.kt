@@ -63,8 +63,9 @@ class VideoEditingRepositoryTest {
         repository.saveSession(clips)
         
         val sessionId = HashUtils.sha256(clip.uri)
-        val sessionFile = File(context.cacheDir, "session_$sessionId.json")
+        val sessionFile = File(context.noBackupFilesDir, "editing_sessions/session_$sessionId.json")
         assertTrue("Session file should exist", sessionFile.exists())
+        assertFalse("Session must not be stored in evictable cacheDir", File(context.cacheDir, sessionFile.name).exists())
 
         val recentSessions = repository.listSavedSessions()
         assertEquals(clip.uri, recentSessions.first { it.uri == clip.uri }.uri)
@@ -98,6 +99,59 @@ class VideoEditingRepositoryTest {
         assertNotEquals(HashUtils.sha256("Aa"), HashUtils.sha256("BB"))
         assertTrue(repository.hasSavedSession("Aa"))
         assertTrue(repository.hasSavedSession("BB"))
+    }
+
+    @Test
+    fun recentSessions_areCappedAtFive() = runTest {
+        val clips = (1..6).map { index ->
+            MediaClip(
+                uri = "content://mock/session-$index.mp4",
+                fileName = "session-$index.mp4",
+                durationMs = 1000L,
+                width = 1920,
+                height = 1080,
+                videoMime = "video/mp4",
+                audioMime = "audio/aac",
+                sampleRate = 44100,
+                channelCount = 2,
+                fps = 30f,
+                rotation = 0,
+                isAudioOnly = false
+            )
+        }
+
+        clips.forEach { repository.saveSession(listOf(it)) }
+
+        val sessions = repository.listSavedSessions()
+        assertEquals(5, sessions.size)
+        assertFalse(sessions.any { it.uri == clips.first().uri })
+        assertTrue(sessions.any { it.uri == clips.last().uri })
+    }
+
+    @Test
+    fun corruptRecentSessionIndex_isRecoveredOnNextSave() = runTest {
+        val sessionsDir = File(context.noBackupFilesDir, "editing_sessions")
+        sessionsDir.mkdirs()
+        File(sessionsDir, "sessions_index.json").writeText("not valid json")
+
+        val clip = MediaClip(
+            uri = "content://mock/recovered.mp4",
+            fileName = "recovered.mp4",
+            durationMs = 1000L,
+            width = 1920,
+            height = 1080,
+            videoMime = "video/mp4",
+            audioMime = "audio/aac",
+            sampleRate = 44100,
+            channelCount = 2,
+            fps = 30f,
+            rotation = 0,
+            isAudioOnly = false
+        )
+
+        repository.saveSession(listOf(clip))
+
+        assertEquals(listOf(clip.uri), repository.listSavedSessions().map { it.uri })
     }
 
     @Test

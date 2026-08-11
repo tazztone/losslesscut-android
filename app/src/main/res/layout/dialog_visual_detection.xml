@@ -405,7 +405,7 @@
                 app:tint="#88FFFFFF"
                 android:contentDescription="Decrease segment duration"/>
             <com.google.android.material.slider.Slider
-                android:id="@+id/sliderMinSegment"
+                android:id="@+id/sliderVisualMinSegment"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -428,7 +428,7 @@
                 app:tint="#88FFFFFF"
                 android:contentDescription="Increase segment duration"/>
             <TextView
-                android:id="@+id/tvMinSegmentValue"
+                android:id="@+id/tvVisualMinSegmentValue"
                 android:layout_width="45dp"
                 android:layout_height="wrap_content"
                 android:gravity="end"

@@ -43,6 +43,9 @@ class VideoEditingRepositoryImpl @Inject constructor(
         encodeDefaults = true
     }
     private val sessionIndexMutex = Mutex()
+    private val sessionsDir: File by lazy {
+        File(context.noBackupFilesDir, "editing_sessions").also { it.mkdirs() }
+    }
 
     override suspend fun createClipFromUri(uri: String): Result<MediaClip> = withContext(ioDispatcher) {
         val uriParsed = Uri.parse(uri)
@@ -135,8 +138,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
         if (clips.isEmpty()) return@withContext
         try {
             val sessionId = getSessionId(clips.first().uri.toString())
-            val sessionFile = File(context.cacheDir, "session_$sessionId.json")
-            val temporaryFile = File(context.cacheDir, "session_$sessionId.json.tmp")
+            val sessionFile = File(sessionsDir, "session_$sessionId.json")
+            val temporaryFile = File(sessionsDir, "session_$sessionId.json.tmp")
             try {
                 temporaryFile.writeText(json.encodeToString(clips))
                 Files.move(temporaryFile.toPath(), sessionFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
@@ -163,7 +166,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
     override suspend fun restoreSession(uri: String): List<MediaClip>? = withContext(ioDispatcher) {
         try {
             val sessionId = getSessionId(uri)
-            val sessionFile = File(context.cacheDir, "session_$sessionId.json")
+            val sessionFile = File(sessionsDir, "session_$sessionId.json")
             if (!sessionFile.exists()) return@withContext null
             
             val jsonText = sessionFile.readText()
@@ -195,21 +198,21 @@ class VideoEditingRepositoryImpl @Inject constructor(
     }
 
     override suspend fun hasSavedSession(uri: String): Boolean = withContext(ioDispatcher) {
-        val sessionFile = File(context.cacheDir, "session_${getSessionId(uri)}.json")
+        val sessionFile = File(sessionsDir, "session_${getSessionId(uri)}.json")
         sessionFile.exists()
     }
 
     override suspend fun listSavedSessions(): List<SessionSummary> = withContext(ioDispatcher) {
         sessionIndexMutex.withLock {
             readSessionIndex()
-                .filter { File(context.cacheDir, "session_${getSessionId(it.uri)}.json").exists() }
+                .filter { File(sessionsDir, "session_${getSessionId(it.uri)}.json").exists() }
                 .sortedByDescending { it.updatedAtEpochMs }
         }
     }
 
     override suspend fun deleteSession(uri: String): Unit = withContext(ioDispatcher) {
         sessionIndexMutex.withLock {
-            File(context.cacheDir, "session_${getSessionId(uri)}.json").delete()
+            File(sessionsDir, "session_${getSessionId(uri)}.json").delete()
             writeSessionIndex(readSessionIndex().filterNot { it.uri == uri })
         }
     }
@@ -260,7 +263,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
     }
 
     private fun readSessionIndex(): List<SessionSummary> {
-        val indexFile = File(context.cacheDir, SESSION_INDEX_FILE)
+        val indexFile = File(sessionsDir, SESSION_INDEX_FILE)
         if (!indexFile.exists()) return emptyList()
         return runCatching {
             json.decodeFromString<List<SessionSummary>>(indexFile.readText())
@@ -271,8 +274,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
     }
 
     private fun writeSessionIndex(sessions: List<SessionSummary>) {
-        val indexFile = File(context.cacheDir, SESSION_INDEX_FILE)
-        val temporaryFile = File(context.cacheDir, "$SESSION_INDEX_FILE.tmp")
+        val indexFile = File(sessionsDir, SESSION_INDEX_FILE)
+        val temporaryFile = File(sessionsDir, "$SESSION_INDEX_FILE.tmp")
         runCatching {
             temporaryFile.writeText(json.encodeToString(sessions))
             Files.move(temporaryFile.toPath(), indexFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
