@@ -15,14 +15,13 @@ import org.junit.runner.RunWith
 class VideoEditingNavigationTest {
 
     @Test
-    fun cutModeSelectsEditorDestination() {
+    fun unifiedModeSelectsEditorDestination() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val intent = Intent(context, VideoEditingActivity::class.java).apply {
             putParcelableArrayListExtra(
                 VideoEditingActivity.EXTRA_VIDEO_URIS,
                 arrayListOf(Uri.parse("content://test.invalid/video.mp4"))
             )
-            putExtra(VideoEditingActivity.EXTRA_LAUNCH_MODE, VideoEditingActivity.MODE_CUT)
         }
 
         ActivityScenario.launch<VideoEditingActivity>(intent).use { scenario ->

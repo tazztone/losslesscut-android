@@ -7,21 +7,27 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.databinding.ActivityMainBinding
+import com.tazztone.losslesscut.domain.model.SessionSummary
+import com.tazztone.losslesscut.domain.usecase.SessionUseCase
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @OptIn(UnstableApi::class)
 @AndroidEntryPoint
 class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var requestPermissionsLauncher: ActivityResultLauncher<Array<String>>
-    private var pendingLaunchMode = VideoEditingActivity.MODE_CUT
+    private lateinit var recentSessionAdapter: RecentSessionAdapter
+
+    @Inject
+    lateinit var sessionUseCase: SessionUseCase
 
     private val selectMediaLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
@@ -40,44 +46,28 @@ class MainActivity : BaseActivity() {
         setContentView(binding.root)
 
         setupDashboard()
+        loadRecentSessions()
 
         binding.btnInfo.setOnClickListener {
             showAboutDialog()
         }
 
+        binding.btnLoadMedia.setOnClickListener { selectMedia() }
+
         handleIncomingIntent(intent)
     }
 
     private fun setupDashboard() {
-        val actions = listOf(
-            DashboardAction(
-                id = "cut",
-                title = getString(R.string.dashboard_cut_title),
-                description = getString(R.string.dashboard_cut_desc),
-                iconResId = R.drawable.ic_add_24,
-                isPrimary = true
-            ),
-            DashboardAction(
-                id = "remux",
-                title = getString(R.string.dashboard_remux_title),
-                description = getString(R.string.dashboard_remux_desc),
-                iconResId = R.drawable.ic_save_24
-            ),
-            DashboardAction(
-                id = "metadata",
-                title = getString(R.string.dashboard_metadata_title),
-                description = getString(R.string.dashboard_metadata_desc),
-                iconResId = R.drawable.ic_settings_24
-            )
+        recentSessionAdapter = RecentSessionAdapter(
+            onResume = ::resumeSession,
+            onRemove = ::removeSession
         )
+        binding.rvRecentSessions.adapter = recentSessionAdapter
+    }
 
-        binding.rvDashboard.adapter = DashboardAdapter(actions) { action ->
-            when (action.id) {
-                "cut"      -> selectMedia(VideoEditingActivity.MODE_CUT)
-                "remux"    -> selectMedia(VideoEditingActivity.MODE_REMUX)
-                "metadata" -> selectMedia(VideoEditingActivity.MODE_METADATA)
-            }
-        }
+    override fun onResume() {
+        super.onResume()
+        if (::recentSessionAdapter.isInitialized) loadRecentSessions()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -90,7 +80,6 @@ class MainActivity : BaseActivity() {
         val type = intent.type
 
         if (Intent.ACTION_SEND_MULTIPLE == action && type != null) {
-            pendingLaunchMode = VideoEditingActivity.MODE_CUT // sensible default for share
             val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
@@ -165,18 +154,18 @@ class MainActivity : BaseActivity() {
             .show()
     }
 
-    private fun selectMedia(mode: String) {
-        pendingLaunchMode = mode
-        Log.d("MediaSelection", "Launching media selector in mode: $mode")
+    private fun selectMedia() {
+        Log.d("MediaSelection", "Launching unified media selector")
         selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
     }
 
-    private fun navigateToEditingScreen(mediaUris: List<Uri>) {
-        Log.d("Navigation", "Navigating ${mediaUris.size} media item(s), mode: $pendingLaunchMode")
+    private fun navigateToEditingScreen(mediaUris: List<Uri>, resumeSession: Boolean = false) {
+        mediaUris.forEach(::persistReadPermission)
+        Log.d("Navigation", "Navigating ${mediaUris.size} media item(s) to unified editor")
         val intent = Intent(this, VideoEditingActivity::class.java).apply {
             setPackage(packageName)
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
-            putExtra(VideoEditingActivity.EXTRA_LAUNCH_MODE, pendingLaunchMode)
+            putExtra(VideoEditingActivity.EXTRA_RESUME_SESSION, resumeSession)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             
             // For multiple URIs, ClipData is the standard way to grant permissions to all of them
@@ -188,6 +177,45 @@ class MainActivity : BaseActivity() {
             }
         }
         startActivity(intent)
+    }
+
+    private fun persistReadPermission(uri: Uri) {
+        try {
+            contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: SecurityException) {
+            // Some providers grant only a temporary read permission; resume will validate it later.
+        }
+    }
+
+    private fun loadRecentSessions() {
+        lifecycleScope.launch {
+            val sessions = sessionUseCase.listSavedSessions()
+            recentSessionAdapter.submitList(sessions)
+            binding.tvRecentSessionsTitle.visibility = if (sessions.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+            binding.rvRecentSessions.visibility = if (sessions.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+            binding.tvNoRecentSessions.visibility = if (sessions.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+        }
+    }
+
+    private fun resumeSession(session: SessionSummary) {
+        val uri = Uri.parse(session.uri)
+        if (isValidUri(uri)) {
+            persistReadPermission(uri)
+            navigateToEditingScreen(listOf(uri), resumeSession = true)
+        } else {
+            lifecycleScope.launch {
+                sessionUseCase.deleteSession(session.uri)
+                loadRecentSessions()
+            }
+            android.widget.Toast.makeText(this, R.string.session_unavailable, android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun removeSession(session: SessionSummary) {
+        lifecycleScope.launch {
+            sessionUseCase.deleteSession(session.uri)
+            loadRecentSessions()
+        }
     }
 
 }

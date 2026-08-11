@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.domain.usecase
 
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -41,5 +42,15 @@ public class SessionUseCaseTest {
         
         val result = sessionUseCase.hasSavedSession(uri)
         assertTrue(result)
+    }
+
+    @Test
+    public fun testListAndDeleteSessions(): Unit = runBlocking {
+        val sessions = listOf(SessionSummary("file:///test.mp4", "test.mp4", 1, 1L))
+        coEvery { repository.listSavedSessions() } returns sessions
+
+        assertEquals(sessions, sessionUseCase.listSavedSessions())
+        sessionUseCase.deleteSession(sessions.single().uri)
+        coVerify { repository.deleteSession(sessions.single().uri) }
     }
 }

@@ -65,6 +65,14 @@ class VideoEditingRepositoryTest {
         val sessionId = HashUtils.sha256(clip.uri)
         val sessionFile = File(context.cacheDir, "session_$sessionId.json")
         assertTrue("Session file should exist", sessionFile.exists())
+
+        val recentSessions = repository.listSavedSessions()
+        assertEquals(clip.uri, recentSessions.first { it.uri == clip.uri }.uri)
+        assertEquals(1, recentSessions.first { it.uri == clip.uri }.clipCount)
+
+        repository.deleteSession(clip.uri)
+        assertFalse(repository.hasSavedSession(clip.uri))
+        assertFalse(repository.listSavedSessions().any { it.uri == clip.uri })
     }
 
     @Test

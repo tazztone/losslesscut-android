@@ -7,10 +7,11 @@ import android.widget.CheckBox
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 /**
  * Builds and presents the export options dialog.
@@ -23,10 +24,39 @@ class ExportOptionsDialogPresenter(
         keepVideo: Boolean,
         mergeSegments: Boolean,
         selectedTracks: List<Int>?
-    ) -> Unit
+    ) -> Unit,
+    private val onRepackage: (VideoEditingUiState.Success) -> Unit,
+    private val onEditRotation: (VideoEditingUiState.Success, Int?) -> Unit
 ) {
 
     fun show(state: VideoEditingUiState.Success) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_export_actions, null)
+        val dialog = MaterialAlertDialogBuilder(context)
+            .setTitle(context.getString(R.string.export_actions_title))
+            .setView(dialogView)
+            .setNegativeButton(context.getString(R.string.cancel), null)
+            .create()
+
+        dialogView.findViewById<MaterialButton>(R.id.btnExportEdited).setOnClickListener {
+            dialog.dismiss()
+            onExport(state.hasAudioTrack, !state.isAudioOnly, true, null)
+        }
+        dialogView.findViewById<MaterialButton>(R.id.btnRepackage).setOnClickListener {
+            dialog.dismiss()
+            onRepackage(state)
+        }
+        dialogView.findViewById<MaterialButton>(R.id.btnEditRotation).setOnClickListener {
+            dialog.dismiss()
+            showRotationOptions(state)
+        }
+        dialogView.findViewById<MaterialButton>(R.id.btnAdvancedExport).setOnClickListener {
+            dialog.dismiss()
+            showAdvancedOptions(state)
+        }
+        dialog.show()
+    }
+
+    private fun showAdvancedOptions(state: VideoEditingUiState.Success) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_export_options, null)
         val cbExportIndividualClips = dialogView.findViewById<CheckBox>(R.id.cbExportIndividualClips)
         
@@ -38,6 +68,27 @@ class ExportOptionsDialogPresenter(
             .setView(dialogView)
             .setPositiveButton(context.getString(R.string.export)) { _, _ ->
                 handleExportClick(cbExportIndividualClips, state, selectedTracks)
+            }
+            .setNegativeButton(context.getString(R.string.cancel), null)
+            .show()
+    }
+
+    private fun showRotationOptions(state: VideoEditingUiState.Success) {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_metadata_editor, null)
+        val spinnerRotation = dialogView.findViewById<android.widget.Spinner>(R.id.spinnerRotation)
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle(context.getString(R.string.edit_rotation_metadata))
+            .setView(dialogView)
+            .setPositiveButton(context.getString(R.string.apply)) { _, _ ->
+                val rotation = when (spinnerRotation.selectedItemPosition) {
+                    1 -> 0
+                    2 -> 90
+                    3 -> 180
+                    4 -> 270
+                    else -> null
+                }
+                onEditRotation(state, rotation)
             }
             .setNegativeButton(context.getString(R.string.cancel), null)
             .show()

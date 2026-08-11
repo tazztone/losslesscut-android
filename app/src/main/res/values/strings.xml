@@ -2,6 +2,18 @@
 <resources>
     <string name="app_name">LosslessCut</string>
     <string name="add_video">Add Media</string>
+    <string name="load_media">Load media</string>
+    <string name="load_media_title">Edit media without re-encoding</string>
+    <string name="load_media_description">Trim, repackage, rotate, and export on-device.</string>
+    <string name="recent_sessions">Recent sessions</string>
+    <string name="no_recent_sessions">Unfinished editing sessions will appear here.</string>
+    <string name="remove_session">Remove session</string>
+    <string name="resume_session_description">Resume editing %1$s</string>
+    <plurals name="recent_session_meta">
+        <item quantity="one">%1$d clip · %2$s</item>
+        <item quantity="other">%1$d clips · %2$s</item>
+    </plurals>
+    <string name="session_unavailable">This session’s media is no longer available.</string>
     <string name="create_engaging_videos">Fast. Lossless. On-device.</string>
     <string name="home">Home</string>
     <string name="trim">Trim</string>
@@ -41,6 +53,13 @@
     <string name="snapshot_failed">Failed to capture snapshot</string>
     <string name="select_track_export">Select at least one track to export</string>
     <string name="export_options">Export Options</string>
+    <string name="export_actions_title">Export media</string>
+    <string name="export_actions_description">Choose a quick action or open advanced export options.</string>
+    <string name="export_edited_media">Export edited media</string>
+    <string name="repackage_media">Repackage current selection</string>
+    <string name="edit_rotation_metadata">Edit rotation metadata</string>
+    <string name="advanced_export_options">Advanced export options</string>
+    <string name="rotation_metadata_description">Changes the MP4/M4A orientation flag without re-encoding audio or video.</string>
     <string name="precise_mode_coming_soon">Precise mode coming in v2.0</string>
     <string name="error_load_video">Failed to load video: %1$s</string>
     <string name="error_waveform_not_ready">Waveform is still loading, please wait</string>
@@ -110,12 +129,6 @@
     <string name="skip">Skip</string>
     <string name="speed_format">%.1fx</string>
     <string name="playback_speed">Playback Speed</string>
-    <string name="dashboard_cut_title">Cut &amp; Trim</string>
-    <string name="dashboard_cut_desc">Lossless cutting for video and audio</string>
-    <string name="dashboard_remux_title">Remux &amp; Convert</string>
-    <string name="dashboard_remux_desc">Change container format without re-encoding</string>
-    <string name="dashboard_metadata_title">Edit Metadata</string>
-    <string name="dashboard_metadata_desc">Fix video orientation and rotation</string>
     <string name="export_folder">Export Folder</string>
     <string name="session_restored">Previous session restored</string>
     <string name="restore_session_title">Restore Session</string>
@@ -133,10 +146,7 @@
     <string name="error_export_failed_msg">Export failed: %1$s</string>
     <string name="error_restore_failed_files_missing">Could not restore session: files are missing or inaccessible.</string>
     <string name="error_restore_failed">Failed to restore session: %1$s</string>
-    <string name="metadata_title_hint">Title</string>
-    <string name="metadata_artist_hint">Artist (stub)</string>
     <string name="metadata_rotation_label">Rotation Override</string>
-    <string name="remux_dialog_message">Repackage this file into a new container without re-encoding. All original tracks will be preserved.</string>
     <string name="apply">Apply</string>
     <string name="error_cannot_discard_last">Cannot discard the last remaining keep segment</string>
     <string name="pitch_correction_on">Audio pitch correction ON</string>

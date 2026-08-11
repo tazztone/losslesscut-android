@@ -22,11 +22,7 @@ class VideoEditingActivity : BaseActivity() {
 
     companion object {
         const val EXTRA_VIDEO_URIS = "com.tazztone.losslesscut.EXTRA_VIDEO_URIS"
-        const val EXTRA_LAUNCH_MODE = "com.tazztone.losslesscut.EXTRA_LAUNCH_MODE"
-
-        const val MODE_CUT      = "cut"
-        const val MODE_REMUX    = "remux"
-        const val MODE_METADATA = "metadata"
+        const val EXTRA_RESUME_SESSION = "com.tazztone.losslesscut.EXTRA_RESUME_SESSION"
     }
 
     private val viewModel: VideoEditingViewModel by viewModels()
@@ -53,12 +49,14 @@ class VideoEditingActivity : BaseActivity() {
         hideSystemUI()
 
         if (savedInstanceState == null || viewModel.uiState.value is VideoEditingUiState.Initial) {
-            viewModel.initialize(videoUris)
+            if (intent.getBooleanExtra(EXTRA_RESUME_SESSION, false)) {
+                viewModel.restoreSession(videoUris.first())
+            } else {
+                viewModel.initialize(videoUris)
+            }
         }
 
-        if (savedInstanceState == null) {
-            setupNavigation()
-        }
+        if (savedInstanceState == null) setupNavigation()
     }
 
     override fun onUserInteraction() {
@@ -66,19 +64,16 @@ class VideoEditingActivity : BaseActivity() {
         viewModel.onUserInteraction()
     }
 
+    override fun onStop() {
+        viewModel.saveSessionIfDirty()
+        super.onStop()
+    }
+
     private fun setupNavigation() {
-        val launchMode = intent.getStringExtra(EXTRA_LAUNCH_MODE) ?: MODE_CUT
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         val navController = navHostFragment.navController
-        
         val navGraph = navController.navInflater.inflate(R.navigation.nav_graph)
-        navGraph.setStartDestination(
-            when (launchMode) {
-                MODE_REMUX -> R.id.remuxFragment
-                MODE_METADATA -> R.id.metadataFragment
-                else -> R.id.editorFragment
-            }
-        )
+        navGraph.setStartDestination(R.id.editorFragment)
         navController.graph = navGraph
     }
 

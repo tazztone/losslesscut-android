@@ -17,6 +17,8 @@ import kotlinx.coroutines.withContext
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
@@ -40,6 +42,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
         ignoreUnknownKeys = true
         encodeDefaults = true
     }
+    private val sessionIndexMutex = Mutex()
 
     override suspend fun createClipFromUri(uri: String): Result<MediaClip> = withContext(ioDispatcher) {
         val uriParsed = Uri.parse(uri)
@@ -142,6 +145,14 @@ class VideoEditingRepositoryImpl @Inject constructor(
             } finally {
                 if (temporaryFile.exists()) temporaryFile.delete()
             }
+            updateSessionIndex(
+                SessionSummary(
+                    uri = clips.first().uri,
+                    fileName = clips.first().fileName,
+                    clipCount = clips.size,
+                    updatedAtEpochMs = System.currentTimeMillis()
+                )
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -188,6 +199,21 @@ class VideoEditingRepositoryImpl @Inject constructor(
         sessionFile.exists()
     }
 
+    override suspend fun listSavedSessions(): List<SessionSummary> = withContext(ioDispatcher) {
+        sessionIndexMutex.withLock {
+            readSessionIndex()
+                .filter { File(context.cacheDir, "session_${getSessionId(it.uri)}.json").exists() }
+                .sortedByDescending { it.updatedAtEpochMs }
+        }
+    }
+
+    override suspend fun deleteSession(uri: String): Unit = withContext(ioDispatcher) {
+        sessionIndexMutex.withLock {
+            File(context.cacheDir, "session_${getSessionId(uri)}.json").delete()
+            writeSessionIndex(readSessionIndex().filterNot { it.uri == uri })
+        }
+    }
+
     override suspend fun getWaveform(
         clip: MediaClip,
         onProgress: ((WaveformResult) -> Unit)?
@@ -223,6 +249,42 @@ class VideoEditingRepositoryImpl @Inject constructor(
         return HashUtils.sha256(uriString)
     }
 
+    private suspend fun updateSessionIndex(summary: SessionSummary) {
+        sessionIndexMutex.withLock {
+            val updated = buildList {
+                add(summary)
+                addAll(readSessionIndex().filterNot { it.uri == summary.uri })
+            }.take(MAX_RECENT_SESSIONS)
+            writeSessionIndex(updated)
+        }
+    }
+
+    private fun readSessionIndex(): List<SessionSummary> {
+        val indexFile = File(context.cacheDir, SESSION_INDEX_FILE)
+        if (!indexFile.exists()) return emptyList()
+        return runCatching {
+            json.decodeFromString<List<SessionSummary>>(indexFile.readText())
+        }.getOrElse {
+            Log.w("VideoEditingRepositoryImpl", "Failed to read recent session index", it)
+            emptyList()
+        }
+    }
+
+    private fun writeSessionIndex(sessions: List<SessionSummary>) {
+        val indexFile = File(context.cacheDir, SESSION_INDEX_FILE)
+        val temporaryFile = File(context.cacheDir, "$SESSION_INDEX_FILE.tmp")
+        runCatching {
+            temporaryFile.writeText(json.encodeToString(sessions))
+            Files.move(temporaryFile.toPath(), indexFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+        }.recoverCatching {
+            Files.move(temporaryFile.toPath(), indexFile.toPath(), REPLACE_EXISTING)
+        }.onFailure {
+            Log.e("VideoEditingRepositoryImpl", "Failed to write recent session index", it)
+        }.also {
+            if (temporaryFile.exists()) temporaryFile.delete()
+        }
+    }
+
     private fun validateMimeCompatibility(videoMime: String?, audioMime: String?) {
         val unsupportedAudio = setOf("audio/mpeg", "audio/flac", "audio/vorbis", "audio/ac3", "audio/eac3", "audio/opus")
         val isAudioUnsupported = audioMime != null && unsupportedAudio.contains(audioMime.lowercase())
@@ -241,5 +303,10 @@ class VideoEditingRepositoryImpl @Inject constructor(
         require(!isVideoUnsupported) {
             "Unsupported video format: $videoMime. Lossless remuxing requires H.264 or H.265."
         }
+    }
+
+    private companion object {
+        const val SESSION_INDEX_FILE = "sessions_index.json"
+        const val MAX_RECENT_SESSIONS = 5
     }
 }

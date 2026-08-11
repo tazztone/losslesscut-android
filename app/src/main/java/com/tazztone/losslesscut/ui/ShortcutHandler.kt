@@ -9,7 +9,6 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 class ShortcutHandler(
     private val viewModel: VideoEditingViewModel,
     private val playerManager: PlayerManager,
-    private val launchMode: String,
     private val onSplit: () -> Unit,
     private val onSetIn: () -> Unit,
     private val onSetOut: () -> Unit,
@@ -39,19 +38,19 @@ class ShortcutHandler(
                     return true
                 }
                 KeyEvent.KEYCODE_S -> {
-                    if (launchMode == VideoEditingActivity.MODE_CUT) onSplit()
+                    onSplit()
                     return true
                 }
                 KeyEvent.KEYCODE_I -> {
-                    if (launchMode == VideoEditingActivity.MODE_CUT) onSetIn()
+                    onSetIn()
                     return true
                 }
                 KeyEvent.KEYCODE_O -> {
-                    if (launchMode == VideoEditingActivity.MODE_CUT) onSetOut()
+                    onSetOut()
                     return true
                 }
                 KeyEvent.KEYCODE_R -> {
-                    if (launchMode == VideoEditingActivity.MODE_CUT) onRestore()
+                    onRestore()
                     return true
                 }
             }

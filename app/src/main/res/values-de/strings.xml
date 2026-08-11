@@ -2,6 +2,18 @@
 <resources>
     <string name="app_name">LosslessCut</string>
     <string name="add_video">Medien hinzufügen</string>
+    <string name="load_media">Medien laden</string>
+    <string name="load_media_title">Medien ohne Neucodierung bearbeiten</string>
+    <string name="load_media_description">Auf dem Gerät schneiden, verpacken, drehen und exportieren.</string>
+    <string name="recent_sessions">Letzte Sitzungen</string>
+    <string name="no_recent_sessions">Unfertige Bearbeitungssitzungen erscheinen hier.</string>
+    <string name="remove_session">Sitzung entfernen</string>
+    <string name="resume_session_description">Bearbeitung von %1$s fortsetzen</string>
+    <plurals name="recent_session_meta">
+        <item quantity="one">%1$d Clip · %2$s</item>
+        <item quantity="other">%1$d Clips · %2$s</item>
+    </plurals>
+    <string name="session_unavailable">Die Medien dieser Sitzung sind nicht mehr verfügbar.</string>
     <string name="create_engaging_videos">Schnell. Verlustfrei. Auf dem Gerät.</string>
     <string name="home">Home</string>
     <string name="trim">Schneiden</string>
@@ -41,6 +53,13 @@
     <string name="snapshot_failed">Snapshot fehlgeschlagen</string>
     <string name="select_track_export">Mindestens eine Spur zum Exportieren wählen</string>
     <string name="export_options">Exportoptionen</string>
+    <string name="export_actions_title">Medien exportieren</string>
+    <string name="export_actions_description">Schnellaktion wählen oder erweiterte Exportoptionen öffnen.</string>
+    <string name="export_edited_media">Bearbeitete Medien exportieren</string>
+    <string name="repackage_media">Aktuelle Auswahl neu verpacken</string>
+    <string name="edit_rotation_metadata">Drehungsmetadaten bearbeiten</string>
+    <string name="advanced_export_options">Erweiterte Exportoptionen</string>
+    <string name="rotation_metadata_description">Ändert das MP4/M4A-Ausrichtungsflag, ohne Audio oder Video neu zu codieren.</string>
     <string name="precise_mode_coming_soon">Präzisionsmodus folgt in v2.0</string>
     <string name="error_load_video">Video konnte nicht geladen werden: %1$s</string>
     <string name="error_waveform_not_ready">Wellenform wird noch geladen</string>
@@ -110,12 +129,6 @@
     <string name="skip">Überspringen</string>
     <string name="speed_format">%.1fx</string>
     <string name="playback_speed">Wiedergabegeschwindigkeit</string>
-    <string name="dashboard_cut_title">Schneiden &amp; Trimmen</string>
-    <string name="dashboard_cut_desc">Verlustfreies Schneiden von Video und Audio</string>
-    <string name="dashboard_remux_title">Remux &amp; Konvertieren</string>
-    <string name="dashboard_remux_desc">Containerformat ohne Re-Encoding ändern</string>
-    <string name="dashboard_metadata_title">Metadaten bearbeiten</string>
-    <string name="dashboard_metadata_desc">Videoausrichtung und Drehung korrigieren</string>
     <string name="export_folder">Exportordner</string>
     <string name="session_restored">Vorherige Sitzung wiederhergestellt</string>
     <string name="restore_session_title">Sitzung wiederherstellen</string>
@@ -133,10 +146,7 @@
     <string name="error_export_failed_msg">Export fehlgeschlagen: %1$s</string>
     <string name="error_restore_failed_files_missing">Sitzung konnte nicht wiederhergestellt werden: Dateien fehlen.</string>
     <string name="error_restore_failed">Sitzung konnte nicht wiederhergestellt werden: %1$s</string>
-    <string name="metadata_title_hint">Titel</string>
-    <string name="metadata_artist_hint">Interpret (Platzhalter)</string>
     <string name="metadata_rotation_label">Drehung überschreiben</string>
-    <string name="remux_dialog_message">Datei ohne Re-Encoding in neuen Container umverpacken. Alle Originalspuren bleiben erhalten.</string>
     <string name="apply">Anwenden</string>
     <string name="error_cannot_discard_last">Das letzte verbleibende KEEP-Segment kann nicht gelöscht werden</string>
     <string name="pitch_correction_on">Tonhöhenkorrektur EIN</string>

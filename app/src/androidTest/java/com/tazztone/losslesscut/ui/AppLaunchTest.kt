@@ -20,6 +20,6 @@ class AppLaunchTest {
     @Test
     fun app_launches_without_crashing() {
         // If we reach this point and the view is displayed, the app didn't crash on launch
-        onView(withId(R.id.rvDashboard)).check(matches(isDisplayed()))
+        onView(withId(R.id.btnLoadMedia)).check(matches(isDisplayed()))
     }
 }

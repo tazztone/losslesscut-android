@@ -112,23 +112,46 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         }
 
         exportOptionsController = com.tazztone.losslesscut.ui.editor.ExportOptionsDialogPresenter(
-            requireContext(),
-            layoutInflater
-        ) { keepAudio, keepVideo, mergeSegments, selectedTracks ->
-            val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
-            val settings = ExportSettings(
-                keepAudio, keepVideo, rot, mergeSegments, selectedTracks
-            )
-            viewModel.exportSegments(settings)
-        }
+            context = requireContext(),
+            layoutInflater = layoutInflater,
+            onExport = { keepAudio, keepVideo, mergeSegments, selectedTracks ->
+                val rot = if (rotationManager.currentRotation != 0) rotationManager.currentRotation else null
+                val settings = ExportSettings(
+                    keepAudio, keepVideo, rot, mergeSegments, selectedTracks
+                )
+                viewModel.exportSegments(settings)
+            },
+            onRepackage = { state ->
+                viewModel.exportSegments(
+                    ExportSettings(
+                        keepAudio = state.hasAudioTrack,
+                        keepVideo = !state.isAudioOnly,
+                        rotationOverride = null,
+                        mergeSegments = false,
+                        selectedTracks = null
+                    )
+                )
+            },
+            onEditRotation = { state, rotation ->
+                viewModel.exportSegments(
+                    ExportSettings(
+                        keepAudio = state.hasAudioTrack,
+                        keepVideo = !state.isAudioOnly,
+                        rotationOverride = rotation,
+                        mergeSegments = true,
+                        selectedTracks = null
+                    )
+                )
+            }
+        )
 
         backPressDelegate = com.tazztone.losslesscut.ui.editor.BackPressDelegate(
             context = requireContext(),
             isDirty = viewModel.isDirty,
             onConfirmExit = {
-                // Disable dirty check and exit
-                viewModel.clearDirty()
-                activity?.onBackPressedDispatcher?.onBackPressed()
+                viewModel.discardSession {
+                    activity?.onBackPressedDispatcher?.onBackPressed()
+                }
             }
         )
 
@@ -143,7 +166,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         shortcutHandler = ShortcutHandler(
             viewModel = viewModel,
             playerManager = playerManager,
-            launchMode = VideoEditingActivity.MODE_CUT,
             onSplit = { splitCurrentSegment() },
             onSetIn = { setInPoint() },
             onSetOut = { setOutPoint() },

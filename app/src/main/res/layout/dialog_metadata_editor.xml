@@ -5,36 +5,17 @@
     android:orientation="vertical"
     android:padding="24dp">
 
-    <com.google.android.material.textfield.TextInputLayout
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/metadata_title_hint">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etTitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:hint="@string/metadata_artist_hint"
-        android:enabled="false">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/etArtist"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text" />
-    </com.google.android.material.textfield.TextInputLayout>
+        android:text="@string/rotation_metadata_description"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="20dp"
         android:text="@string/metadata_rotation_label"
         android:textAppearance="?attr/textAppearanceSubtitle1" />
 

@@ -632,6 +632,7 @@ class VideoEditingViewModel @Inject constructor(
                             )
                             _uiEvents.send(VideoEditingEvent.ExportComplete(true, result.count))
                             _isDirty.value = false
+                            clips.firstOrNull()?.uri?.let { useCases.sessionUseCase.deleteSession(it) }
                             stateMutex.withLock { updateStateInternal() }
                         }
                         is ExportUseCase.Result.Failure -> {
@@ -683,6 +684,21 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             val clips = stateMutex.withLock { currentClips }
             useCases.sessionUseCase.saveSession(clips)
+        }
+    }
+
+    fun saveSessionIfDirty() {
+        if (_isDirty.value) saveSession()
+    }
+
+    fun discardSession(onComplete: () -> Unit) {
+        viewModelScope.launch(ioDispatcher) {
+            val uri = stateMutex.withLock { currentClips.firstOrNull()?.uri }
+            if (uri != null) useCases.sessionUseCase.deleteSession(uri)
+            withContext(Dispatchers.Main.immediate) {
+                clearDirty()
+                onComplete()
+            }
         }
     }
 

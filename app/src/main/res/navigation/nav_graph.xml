@@ -11,16 +11,4 @@
         android:label="Editor"
         tools:layout="@layout/fragment_editor" />
 
-    <fragment
-        android:id="@+id/remuxFragment"
-        android:name="com.tazztone.losslesscut.ui.RemuxFragment"
-        android:label="Remux"
-        tools:layout="@layout/fragment_remux" />
-
-    <fragment
-        android:id="@+id/metadataFragment"
-        android:name="com.tazztone.losslesscut.ui.MetadataFragment"
-        android:label="Metadata"
-        tools:layout="@layout/fragment_remux" />
-
 </navigation>

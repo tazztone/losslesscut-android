@@ -2,6 +2,7 @@ package com.tazztone.losslesscut.domain.usecase
 
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -21,5 +22,13 @@ public class SessionUseCase @Inject constructor(
 
     public suspend fun hasSavedSession(uri: String): Boolean = withContext(ioDispatcher) {
         repository.hasSavedSession(uri)
+    }
+
+    public suspend fun listSavedSessions(): List<SessionSummary> = withContext(ioDispatcher) {
+        repository.listSavedSessions()
+    }
+
+    public suspend fun deleteSession(uri: String): Unit = withContext(ioDispatcher) {
+        repository.deleteSession(uri)
     }
 }

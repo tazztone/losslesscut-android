@@ -43,9 +43,9 @@ class MainActivityTest {
 
     @Test
     fun testUIElementsVisible() {
-        onView(withId(R.id.rvDashboard)).check(matches(isDisplayed()))
+        onView(withId(R.id.btnLoadMedia)).check(matches(isDisplayed()))
         onView(withId(R.id.btnInfo)).check(matches(isDisplayed()))
-        onView(withId(R.id.instructionText)).check(matches(isDisplayed()))
+        onView(withId(R.id.tvNoRecentSessions)).check(matches(isDisplayed()))
     }
 
     @Test

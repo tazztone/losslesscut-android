@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.domain.repository
 
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.model.WaveformResult
 
 public interface IVideoEditingRepository {
@@ -37,6 +38,8 @@ public interface IVideoEditingRepository {
     public suspend fun saveSession(clips: List<MediaClip>)
     public suspend fun restoreSession(uri: String): List<MediaClip>?
     public suspend fun hasSavedSession(uri: String): Boolean
+    public suspend fun listSavedSessions(): List<SessionSummary>
+    public suspend fun deleteSession(uri: String)
     public suspend fun getWaveform(
         clip: MediaClip,
         onProgress: ((WaveformResult) -> Unit)? = null
