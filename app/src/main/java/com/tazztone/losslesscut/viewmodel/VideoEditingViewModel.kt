@@ -326,6 +326,53 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    fun setInPoint(positionMs: Long) {
+        viewModelScope.launch(ioDispatcher) {
+            stateMutex.withLock {
+                val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
+                val containingSeg = clip.segments.find { positionMs >= it.startMs && positionMs < it.endMs }
+                if (containingSeg != null) {
+                    editingSession.selectSegment(containingSeg.id)
+                    editingSession.updateSegmentBounds(containingSeg.id, positionMs, containingSeg.endMs)
+                    editingSession.finishSegmentBoundsEdit()
+                    _isDirty.value = true
+                    updateStateInternal()
+                } else {
+                    val nextSeg = clip.segments.find { it.startMs > positionMs }
+                    if (nextSeg != null) {
+                        editingSession.selectSegment(nextSeg.id)
+                        editingSession.updateSegmentBounds(nextSeg.id, positionMs, nextSeg.endMs)
+                        editingSession.finishSegmentBoundsEdit()
+                        _isDirty.value = true
+                        updateStateInternal()
+                    } else {
+                        val futureKeyframes = currentKeyframes.filter { it > positionMs }
+                        val targetEndMs = when {
+                            futureKeyframes.size >= NEW_SEGMENT_KEYFRAME_COUNT -> futureKeyframes[NEW_SEGMENT_KEYFRAME_INDEX]
+                            futureKeyframes.isNotEmpty() -> futureKeyframes.last()
+                            else -> positionMs + DEFAULT_NEW_SEGMENT_DURATION_MS
+                        }
+                        val endMs = targetEndMs.coerceIn(
+                            positionMs + com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS,
+                            clip.durationMs
+                        )
+                        val newSegId = editingSession.addSegment(positionMs, endMs)
+                        if (newSegId != null) {
+                            _isDirty.value = true
+                            updateStateInternal()
+                        } else {
+                            _uiEvents.send(
+                                VideoEditingEvent.ShowToast(
+                                    UiText.StringResource(R.string.error_segment_too_small_split)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun updateSegmentBounds(
         id: UUID,
         start: Long,
@@ -744,6 +791,13 @@ class VideoEditingViewModel @Inject constructor(
             }
         }
     }
+
+    private companion object {
+        private const val NEW_SEGMENT_KEYFRAME_COUNT = 3
+        private const val NEW_SEGMENT_KEYFRAME_INDEX = 2
+        private const val DEFAULT_NEW_SEGMENT_DURATION_MS = 3000L
+    }
+
 }
 
 data class VideoEditingUseCases @Inject constructor(

@@ -393,4 +393,36 @@ public class EditingSessionTest {
 
         assertFalse(session.resetClipSegments())
     }
+
+    @Test
+    public fun addSegment_validRange_addsSegmentAndSelectsIt() {
+        val session = EditingSession()
+        val seg1 = TrimSegment(startMs = 0L, endMs = 3000L)
+        val clip = createTestClip(durationMs = 15000L, segments = listOf(seg1))
+        session.setClips(listOf(clip))
+
+        val newSegId = session.addSegment(5000L, 8000L)
+        assertNotNull(newSegId)
+        val snapshot = session.currentSnapshot
+        assertEquals(2, snapshot.selectedClip!!.segments.size)
+        assertEquals(newSegId, snapshot.selectedSegmentId)
+        assertEquals(5000L, snapshot.selectedSegment!!.startMs)
+        assertEquals(8000L, snapshot.selectedSegment!!.endMs)
+        assertTrue(snapshot.canUndo)
+
+        assertTrue(session.undo())
+        assertEquals(1, session.currentSnapshot.selectedClip!!.segments.size)
+    }
+
+    @Test
+    public fun addSegment_overlappingRange_returnsNull() {
+        val session = EditingSession()
+        val seg1 = TrimSegment(startMs = 0L, endMs = 3000L)
+        val clip = createTestClip(durationMs = 15000L, segments = listOf(seg1))
+        session.setClips(listOf(clip))
+
+        val result = session.addSegment(2000L, 5000L)
+        assertNull(result)
+    }
 }
+

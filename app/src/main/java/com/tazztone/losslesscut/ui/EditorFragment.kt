@@ -463,12 +463,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     private fun setInPoint() {
-        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
-        val currentSeg = state.segments.find { it.id == state.selectedSegmentId } ?: return
         val currentPos = playerManager.currentPosition
-        viewModel.updateSegmentBounds(state.selectedSegmentId ?: return, currentPos, currentSeg.endMs)
-        viewModel.commitSegmentBounds()
+        viewModel.setInPoint(currentPos)
     }
+
 
     private fun setOutPoint() {
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return

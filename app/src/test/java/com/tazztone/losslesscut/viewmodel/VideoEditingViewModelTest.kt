@@ -4,6 +4,7 @@ import android.net.Uri
 import com.tazztone.losslesscut.data.AppPreferences
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.TrimSegment
 import com.tazztone.losslesscut.domain.usecase.*
 import io.mockk.*
 import kotlinx.coroutines.Dispatchers
@@ -188,6 +189,67 @@ public class VideoEditingViewModelTest {
         assertTrue(viewModel.detectionPreviewRanges.value.isEmpty())
     }
 
+    @Test
+    public fun testSetInPoint_insideSegment_updatesStartMs() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 15000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 4000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        viewModel.setInPoint(1500L)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.segments.size)
+        assertEquals(1500L, state.segments[0].startMs)
+        assertEquals(4000L, state.segments[0].endMs)
+    }
+
+    @Test
+    public fun testSetInPoint_beforeNextSegment_pullsNextSegmentStartMs() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 15000L).copy(
+            segments = listOf(
+                TrimSegment(startMs = 0L, endMs = 3000L),
+                TrimSegment(startMs = 10000L, endMs = 14000L)
+            )
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        viewModel.setInPoint(5000L)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, state.segments.size)
+        assertEquals(5000L, state.segments[1].startMs)
+        assertEquals(14000L, state.segments[1].endMs)
+        assertEquals(state.segments[1].id, state.selectedSegmentId)
+    }
+
+    @Test
+    public fun testSetInPoint_afterAllSegments_createsNewSegment() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 3000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+        coEvery { mockRepo.getKeyframes(any()) } returns listOf(0L, 2000L, 4000L, 6000L, 8000L, 10000L, 12000L, 14000L)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        viewModel.setInPoint(8500L)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, state.segments.size)
+        val newSeg = state.segments[1]
+        assertEquals(8500L, newSeg.startMs)
+        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 8500 (10000, 12000, 14000)
+        assertEquals(newSeg.id, state.selectedSegmentId)
+    }
+
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(
         id = UUID.randomUUID(),
         uri = uri,
@@ -204,3 +266,4 @@ public class VideoEditingViewModelTest {
         isAudioOnly = false
     )
 }
+

@@ -238,6 +238,44 @@ public class EditingSession(
         activeBoundsEditSegmentId = null
     }
 
+    public fun addSegment(
+        startMs: Long,
+        endMs: Long,
+        minDurationMs: Long = MIN_SEGMENT_DURATION_MS
+    ): UUID? {
+        val current = _state.value
+        val clip = current.selectedClip ?: return null
+
+        val minimum = minDurationMs.coerceAtLeast(0L)
+        if (startMs < 0L || endMs > clip.durationMs || endMs - startMs < minimum) {
+            return null
+        }
+
+        val overlaps = clip.segments.any { seg ->
+            !(endMs <= seg.startMs || startMs >= seg.endMs)
+        }
+        if (overlaps) return null
+
+        pushHistory()
+
+        val newSegmentId = UUID.randomUUID()
+        val newSegment = TrimSegment(id = newSegmentId, startMs = startMs, endMs = endMs, action = SegmentAction.KEEP)
+        val updatedSegments = (clip.segments + newSegment).sortedBy { it.startMs }
+        val updatedClip = clip.copy(segments = updatedSegments)
+        val updatedClips = current.clips.toMutableList().apply {
+            this[current.selectedClipIndex] = updatedClip
+        }
+
+        _state.value = current.copy(
+            clips = updatedClips,
+            selectedSegmentId = newSegmentId,
+            isDirty = true,
+            canUndo = undoStack.isNotEmpty(),
+            canRedo = false
+        )
+        return newSegmentId
+    }
+
     public fun applySegments(updatedSegments: List<TrimSegment>) {
         val current = _state.value
         val clip = current.selectedClip ?: return

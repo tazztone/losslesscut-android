@@ -1,17 +1,19 @@
-# LosslessCut Android — Agent Rules
+## Verification
 
-## Build & Verification Commands
-- Run verification: `./scripts/dev-scripts/project-verify.sh`
-- Run module test: `./scripts/dev-scripts/gradle-test.sh <module> "*"` (Must use wildcard `"*"` to prevent shell glob errors; applies `:test` for `:core:domain`, `:testDebugUnitTest` for Android modules).
-- Gradle verification requires a writable `GRADLE_USER_HOME`. If the wrapper fails with a read-only filesystem error for a `.zip.lck` file, use approved escalation or a writable task-local cache such as `GRADLE_USER_HOME=/tmp/lossless-cut-gradle`.
+- Run `GRADLE_USER_HOME=/tmp/lossless-cut-gradle ./scripts/dev-scripts/project-verify.sh`; if Gradle reports a read-only cache/lock or unusable wildcard IP, rerun with approved escalation.
+- Run `GRADLE_USER_HOME=/tmp/lossless-cut-gradle ./scripts/dev-scripts/gradle-test.sh <module> "*"`; keep the quoted wildcard (`:core:domain` uses `:test`, Android modules use `:testDebugUnitTest`).
 
-## Architectural Guardrails
-- **External Storage**: SAF / `ContentResolver` ONLY for user media. `java.io.File` is strictly forbidden for shared storage.
-- **Module Isolation**: Do NOT import `:engine` directly in `:app` (`runtimeOnly(:engine)`). Route via Hilt and `:core:domain` interfaces. `:core:domain` must remain a pure JVM library (no `androidx.*` or Hilt).
-- **UI Policy**: Jetpack Compose allowed ONLY under `:app/ui/compose/**`. NO Compose in `customviews/**` or timeline rendering.
-- **Coroutine Cancellation**: Always rethrow `CancellationException` (`catch (e: CancellationException) { throw e }`) before catching generic `Exception` in engine/domain coroutines, and include `ensureActive()` in loop iterations.
-- **Native Thread Safety**: `MediaMuxer` and `MediaExtractor` operations in `:engine` MUST be confined to sequential execution on a dedicated single-threaded dispatcher. Concurrent calls cause native C++ SIGSEGV crashes.
+## Architecture and Storage
 
-## Runtime Gotchas
-- **Engine Instrumented Tests**: Engine instrumented tests MUST reside in `:engine/src/androidTest` (not `:app`).
-- **Non-MediaStore URIs**: Catch `UnsupportedOperationException` when invoking `resolver.update(uri, IS_PENDING=0)` on SAF or FileProvider URIs. (For extended test harness details, see docs/architecture.md#7-testing-architecture).
+- Access user/shared media only through SAF or `ContentResolver`; `java.io.File` is allowed only for app-private storage such as cache data.
+- Keep `:engine` behind Hilt and `:core:domain` interfaces (`:app` uses `runtimeOnly(:engine)`); keep `:core:domain` pure JVM with no AndroidX or Hilt imports.
+- Keep Compose under `:app/ui/compose/**`; do not use Compose for custom views or timeline rendering.
+
+## Runtime and Tests
+
+- Serialize `MediaExtractor`/`MediaMuxer` work on the dedicated single-threaded engine dispatcher; rethrow `CancellationException` before generic catches and call `ensureActive()` in loops.
+- Put native engine instrumented tests under `:engine/src/androidTest`; catch `UnsupportedOperationException` when finalizing `IS_PENDING=0` for SAF or FileProvider URIs.
+
+## Environment and Changes
+
+- Verify actual files under `com/tazztone/losslesscut` with `rg` before editing; inspect `git status` before staging, and rerun `git add`/`git commit` with approved escalation if `.git/index.lock` is read-only.
