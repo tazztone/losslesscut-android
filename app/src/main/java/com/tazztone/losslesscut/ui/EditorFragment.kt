@@ -54,18 +54,20 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     @Inject
     lateinit var storageUtils: StorageUtils
 
-    private var pendingDeleteUri: Uri? = null
+    private var pendingDeleteUris: List<Uri> = emptyList()
 
     private val deletePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
+            viewModel.onOriginalClipsDeleted(pendingDeleteUris)
         } else {
             Toast.makeText(requireContext(), R.string.original_clip_retained, Toast.LENGTH_SHORT).show()
         }
-        pendingDeleteUri = null
+        pendingDeleteUris = emptyList()
     }
+
 
     private val addClipsLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         addClipsDelegate.onClipsReceived(uris)
@@ -332,27 +334,27 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                     is VideoEditingEvent.ExportComplete -> {
                         if (event.success && event.deleteOriginalAfterExport && event.sourceUris.isNotEmpty()) {
                             lifecycleScope.launch {
-                                for (sourceUriStr in event.sourceUris) {
-                                    val uri = Uri.parse(sourceUriStr)
-                                    when (val result = storageUtils.deleteOriginalMedia(uri)) {
-                                        is MediaDeletionResult.Success -> {
-                                            Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
-                                        }
-                                        is MediaDeletionResult.RequiresPermissionPrompt -> {
-                                            pendingDeleteUri = uri
-                                            deletePermissionLauncher.launch(
-                                                IntentSenderRequest.Builder(result.intentSender).build()
-                                            )
-                                        }
-                                        is MediaDeletionResult.Failed -> {
-                                            val msg = getString(R.string.failed_to_delete_original, result.exception.message ?: "")
-                                            Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
-                                        }
+                                val uris = event.sourceUris.map { Uri.parse(it) }
+                                when (val result = storageUtils.deleteOriginalMedia(uris)) {
+                                    is MediaDeletionResult.Success -> {
+                                        Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
+                                        viewModel.onOriginalClipsDeleted(uris)
+                                    }
+                                    is MediaDeletionResult.RequiresPermissionPrompt -> {
+                                        pendingDeleteUris = uris
+                                        deletePermissionLauncher.launch(
+                                            IntentSenderRequest.Builder(result.intentSender).build()
+                                        )
+                                    }
+                                    is MediaDeletionResult.Failed -> {
+                                        val msg = getString(R.string.failed_to_delete_original, result.exception.message ?: "")
+                                        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
                         }
                     }
+
                     is VideoEditingEvent.DismissHints -> binding.seekerContainer.customVideoSeeker.dismissHints()
                     is VideoEditingEvent.SeekToPosition -> playerManager.seekTo(event.positionMs)
                     else -> {}

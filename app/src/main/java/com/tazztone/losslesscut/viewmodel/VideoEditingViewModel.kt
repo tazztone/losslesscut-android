@@ -273,6 +273,30 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
+    fun onOriginalClipsDeleted(deletedUris: List<Uri>) {
+        if (deletedUris.isEmpty()) return
+        val deletedUriStrings = deletedUris.map { it.toString() }.toSet()
+        viewModelScope.launch(ioDispatcher) {
+            stateMutex.withLock {
+                val remainingClips = currentClips.filterNot { it.uri in deletedUriStrings }
+                if (remainingClips.isEmpty()) {
+                    invalidateVisualDetection()
+                    editingSession = com.tazztone.losslesscut.domain.session.EditingSession()
+                    _uiState.value = VideoEditingUiState.Initial
+                    _isDirty.value = false
+                    _waveformData.value = null
+                } else {
+                    invalidateVisualDetection()
+                    val newIndex = if (selectedClipIndex >= remainingClips.size) remainingClips.size - 1 else selectedClipIndex
+                    editingSession.updateClipsList(remainingClips, newIndex)
+                    _isDirty.value = true
+                    loadClipDataInternal(newIndex)
+                }
+            }
+        }
+    }
+
+
     fun reorderClips(from: Int, to: Int) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {

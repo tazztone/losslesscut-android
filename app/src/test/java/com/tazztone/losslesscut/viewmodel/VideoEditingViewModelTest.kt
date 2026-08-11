@@ -332,7 +332,42 @@ public class VideoEditingViewModelTest {
         assertEquals(newSeg.id, state.selectedSegmentId)
     }
 
+    @Test
+    public fun testOnOriginalClipsDeleted_allClipsDeleted_resetsToInitialState() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 10000L)
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+        assertTrue(viewModel.uiState.value is VideoEditingUiState.Success)
+
+        viewModel.onOriginalClipsDeleted(listOf(Uri.parse(clip.uri)))
+
+        assertTrue(viewModel.uiState.value is VideoEditingUiState.Initial)
+        assertFalse(viewModel.isDirty.value)
+    }
+
+    @Test
+    public fun testOnOriginalClipsDeleted_subsetDeleted_updatesRemainingClips() = runTest {
+        val clip1 = createMockClip("content://mock/video1.mp4", 10000L)
+        val clip2 = createMockClip("content://mock/video2.mp4", 10000L)
+        coEvery { mockRepo.createClipFromUri(eq("content://mock/video1.mp4")) } returns Result.success(clip1)
+        coEvery { mockRepo.createClipFromUri(eq("content://mock/video2.mp4")) } returns Result.success(clip2)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip1.uri), Uri.parse(clip2.uri)))
+        val initialState = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(2, initialState.clips.size)
+
+        viewModel.onOriginalClipsDeleted(listOf(Uri.parse(clip1.uri)))
+
+        val updatedState = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, updatedState.clips.size)
+        assertEquals("content://mock/video2.mp4", updatedState.clips[0].uri)
+    }
+
     private fun createMockClip(uri: String, durationMs: Long) = MediaClip(
+
         id = UUID.randomUUID(),
         uri = uri,
         fileName = "test.mp4",

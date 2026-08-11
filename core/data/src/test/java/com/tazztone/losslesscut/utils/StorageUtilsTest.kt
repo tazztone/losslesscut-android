@@ -65,4 +65,43 @@ class StorageUtilsTest {
         val name = storageUtils.getFileName(uri)
         assertEquals("video.mp4", name)
     }
+
+    @Test
+    fun testDeleteOriginalMedia_emptyList_returnsSuccess() = runTest {
+        val result = storageUtils.deleteOriginalMedia(emptyList())
+        assertEquals(MediaDeletionResult.Success, result)
+    }
+
+    @Test
+    @Config(sdk = [28])
+    fun testDeleteOriginalMedia_api28_callsResolverDelete() = runTest {
+        val uri = Uri.parse("content://media/external/video/media/100")
+        every { contentResolver.delete(uri, null, null) } returns 1
+
+        val result = storageUtils.deleteOriginalMedia(listOf(uri))
+        assertEquals(MediaDeletionResult.Success, result)
+    }
+
+    @Test
+    fun testDeleteOriginalMedia_mediaStoreUriApi30_handlesRobolectricStub() = runTest {
+        val uri = Uri.parse("content://media/external/video/media/100")
+        val result = storageUtils.deleteOriginalMedia(listOf(uri))
+        // Robolectric stubs MediaStore.createTrashRequest by throwing UnsupportedOperationException
+        assert(result is MediaDeletionResult.Failed)
+    }
+
+    @Test
+    fun testDeleteOriginalMedia_documentUri_deletesDocument() = runTest {
+        val uri = Uri.parse("content://com.android.providers.downloads.documents/document/1")
+        mockkStatic(android.provider.DocumentsContract::class) {
+            every { android.provider.DocumentsContract.isDocumentUri(context, uri) } returns true
+            every { android.provider.DocumentsContract.deleteDocument(contentResolver, uri) } returns true
+
+            val result = storageUtils.deleteOriginalMedia(listOf(uri))
+            assertEquals(MediaDeletionResult.Success, result)
+        }
+    }
 }
+
+
+
