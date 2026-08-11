@@ -38,6 +38,7 @@ All developer automation scripts reside under `./scripts/dev-scripts/`:
 | **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
 | **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
 | **Logcat Stream** | `./scripts/dev-scripts/adb-logcat.sh` | Streams filtered logcat logs for `com.tazztone.losslesscut`. |
+| **Push Release APK** | `./scripts/dev-scripts/gh-push-apk.sh` | Builds and publishes a manual release APK to GitHub Releases. |
 | **Clean Caches** | `./scripts/dev-scripts/project-clean.sh` | Cleans Gradle build caches and temporary build artifacts. |
 
 ---
@@ -73,7 +74,7 @@ Execute the full suite locally prior to pushing:
 
 ## 🚀 Release Pipeline & Keystore Secrets
 
-Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-debug.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
+Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-apk.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
 
 ### Required GitHub Secrets
 
