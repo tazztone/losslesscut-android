@@ -95,18 +95,20 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
             return
         }
         val contentX = x + seeker.scrollOffsetX
-        val timeMs = seeker.xToTime(contentX)
+        val rawTimeMs = seeker.xToTime(contentX)
+        val timeMs = applySnap(rawTimeMs)
         if (!seeker.isRemuxMode) {
             val segment = seeker.segments.find {
-                it.action == SegmentAction.KEEP && timeMs in it.startMs..it.endMs
+                it.action == SegmentAction.KEEP && rawTimeMs in it.startMs..it.endMs
             }
             if (segment != null) {
+                val clampedTimeMs = timeMs.coerceIn(segment.startMs, segment.endMs)
                 seeker.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 seeker.selectedSegmentId = segment.id
-                seeker.splitPreviewTimeMs = timeMs
+                seeker.splitPreviewTimeMs = clampedTimeMs
                 seeker.onSegmentSelected?.invoke(segment.id)
                 seeker.onSegmentLongPress?.invoke(
-                    SegmentLongPressEvent(segment = segment, timeMs = timeMs, x = x, y = y)
+                    SegmentLongPressEvent(segment = segment, timeMs = clampedTimeMs, x = x, y = y)
                 )
                 seeker.invalidate()
             }
@@ -332,12 +334,10 @@ internal class SeekerTouchHandler(private val seeker: CustomVideoSeeker) {
     }
 
     private fun applySnap(touchTimeMs: Long): Long {
-        if (!seeker.isLosslessMode) return touchTimeMs
+        if (!seeker.isLosslessMode || seeker.keyframes.isEmpty()) return touchTimeMs
         
         val candidates = mutableListOf<Long>()
-        if (seeker.keyframes.isNotEmpty()) {
-            candidates.addAll(seeker.keyframes)
-        }
+        candidates.addAll(seeker.keyframes)
         candidates.add(0L)
         candidates.add(seeker.videoDurationMs)
         

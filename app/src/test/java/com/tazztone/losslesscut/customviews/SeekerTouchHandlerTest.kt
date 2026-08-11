@@ -287,6 +287,28 @@ class SeekerTouchHandlerTest {
     }
 
     @Test
+    fun `longPressOnKeptSegmentWithLosslessMode snapsToNearestKeyframe`() {
+        val segmentId = UUID.randomUUID()
+        seeker.isLosslessMode = true
+        seeker.setKeyframes(listOf(0L, 2000L, 4000L, 6000L))
+        seeker.setSegments(listOf(
+            TrimSegment(segmentId, 1000L, 7000L, SegmentAction.KEEP)
+        ), null)
+
+        var capturedTimeMs = -1L
+        seeker.onSegmentLongPress = { event ->
+            capturedTimeMs = event.timeMs
+        }
+
+        // Long press at x corresponding to 3500ms (closest to keyframe 4000L)
+        // x(3500) = 50 + (3500/10000)*900 = 365
+        touchHandler.onLongPress(365f, 50f)
+
+        assertEquals(4000L, capturedTimeMs)
+        assertEquals(4000L, seeker.splitPreviewTimeMs)
+    }
+
+    @Test
     fun `longPressOnPlayheadOverKeptSegment firesCallback`() {
         val segmentId = UUID.randomUUID()
         seeker.setSegments(listOf(

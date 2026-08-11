@@ -12,13 +12,13 @@ class SegmentActionPopupPositionTest {
         val position = SegmentActionPopupPosition.calculate(
             anchorX = 500,
             anchorY = 300,
-            popupWidth = 96,
-            popupHeight = 48,
+            popupWidth = 48,
+            popupHeight = 96,
             visibleFrame = visibleFrame
         )
 
-        assertEquals(452, position.left)
-        assertEquals(276, position.top)
+        assertEquals(476, position.left)
+        assertEquals(252, position.top)
     }
 
     @Test
@@ -26,21 +26,22 @@ class SegmentActionPopupPositionTest {
         val leftTop = SegmentActionPopupPosition.calculate(
             anchorX = 4,
             anchorY = 8,
-            popupWidth = 96,
-            popupHeight = 48,
+            popupWidth = 48,
+            popupHeight = 96,
             visibleFrame = visibleFrame
         )
         val rightBottom = SegmentActionPopupPosition.calculate(
             anchorX = 998,
             anchorY = 598,
-            popupWidth = 96,
-            popupHeight = 48,
+            popupWidth = 48,
+            popupHeight = 96,
             visibleFrame = visibleFrame
         )
 
         assertEquals(0, leftTop.left)
         assertEquals(0, leftTop.top)
-        assertEquals(904, rightBottom.left)
-        assertEquals(552, rightBottom.top)
+        assertEquals(952, rightBottom.left)
+        assertEquals(504, rightBottom.top)
     }
+
 }

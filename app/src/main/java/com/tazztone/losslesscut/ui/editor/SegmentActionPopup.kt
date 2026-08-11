@@ -57,8 +57,8 @@ internal class SegmentActionPopup(private val context: Context) {
 
         popupWindow = PopupWindow(
             content,
-            buttonSize * ACTION_COUNT,
             buttonSize,
+            buttonSize * ACTION_COUNT,
             true
         ).apply {
             setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
@@ -83,25 +83,32 @@ internal class SegmentActionPopup(private val context: Context) {
         onDelete: () -> Unit,
         onSplit: () -> Unit
     ) = LinearLayout(context).apply {
-        orientation = LinearLayout.HORIZONTAL
-        background = GradientDrawable().apply {
-            cornerRadius = CORNER_RADIUS_DP * density
-            setColor(MaterialColors.getColor(context, com.google.android.material.R.attr.colorSurface, Color.DKGRAY))
-        }
+        orientation = LinearLayout.VERTICAL
+        background = Color.TRANSPARENT.toDrawable()
         elevation = ELEVATION_DP * density
+
+        // Top button: Delete / Trash (Red tint & red border)
         addView(createActionButton(
             iconRes = R.drawable.ic_delete_24,
             descriptionRes = R.string.discard_segment,
             buttonSize = buttonSize,
+            iconTint = Color.parseColor("#FF3B30"),
+            borderColor = Color.parseColor("#FF3B30"),
+            rotationDegrees = 0f,
             onClick = {
                 dismiss()
                 onDelete()
             }
         ))
+
+        // Bottom button: Split / Scissor (White tint, blades downward rotation & white border)
         addView(createActionButton(
             iconRes = R.drawable.ic_split_24,
             descriptionRes = R.string.split,
             buttonSize = buttonSize,
+            iconTint = Color.WHITE,
+            borderColor = Color.WHITE,
+            rotationDegrees = 180f,
             onClick = {
                 dismiss()
                 onSplit()
@@ -120,8 +127,8 @@ internal class SegmentActionPopup(private val context: Context) {
         return SegmentActionPopupPosition.calculate(
             anchorX = location[0] + x.roundToInt(),
             anchorY = location[1] + y.roundToInt(),
-            popupWidth = buttonSize * ACTION_COUNT,
-            popupHeight = buttonSize,
+            popupWidth = buttonSize,
+            popupHeight = buttonSize * ACTION_COUNT,
             visibleFrame = SegmentActionPopupPosition.Bounds(
                 left = visibleFrame.left,
                 top = visibleFrame.top,
@@ -131,36 +138,36 @@ internal class SegmentActionPopup(private val context: Context) {
         )
     }
 
+    @Suppress("LongParameterList")
     private fun createActionButton(
         iconRes: Int,
         descriptionRes: Int,
         buttonSize: Int,
+        iconTint: Int,
+        borderColor: Int,
+        rotationDegrees: Float,
         onClick: () -> Unit
     ): ImageButton = ImageButton(context).apply {
-        layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize)
+        layoutParams = LinearLayout.LayoutParams(buttonSize, buttonSize).apply {
+            setMargins(0, (2 * density).roundToInt(), 0, (2 * density).roundToInt())
+        }
         setImageResource(iconRes)
-        imageTintList = ColorStateList.valueOf(
-            MaterialColors.getColor(context, com.google.android.material.R.attr.colorOnSurface, Color.WHITE)
-        )
-        background = selectableItemBackground()
+        imageTintList = ColorStateList.valueOf(iconTint)
+        rotation = rotationDegrees
+        background = GradientDrawable().apply {
+            shape = GradientDrawable.OVAL
+            setColor(Color.parseColor("#CC1A1A1A"))
+            setStroke((2 * density).roundToInt(), borderColor)
+        }
         contentDescription = context.getString(descriptionRes)
         tooltipText = context.getString(descriptionRes)
         setOnClickListener { onClick() }
     }
 
-    private fun selectableItemBackground() = context.obtainStyledAttributes(
-        intArrayOf(android.R.attr.selectableItemBackgroundBorderless)
-    ).let { attributes ->
-        val resourceId = attributes.getResourceId(0, 0)
-        val drawable = if (resourceId != 0) ContextCompat.getDrawable(context, resourceId) else null
-        attributes.recycle()
-        drawable
-    }
-
     companion object {
         private const val ACTION_COUNT = 2
-        private const val BUTTON_SIZE_DP = 48f
-        private const val CORNER_RADIUS_DP = 16f
+        private const val BUTTON_SIZE_DP = 44f
         private const val ELEVATION_DP = 6f
     }
 }
+
