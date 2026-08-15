@@ -92,7 +92,7 @@ We follow **MVVM + Clean Architecture** with strict layer separation between UI,
 
 - **Multi-Module**: Core logic belongs in `:core:domain`, `:core:data`, or `:engine`.
 - **Use Cases**: All business logic MUST reside in Use Cases within `:core:domain`.
-- **Verification**: Run `./scripts/dev-scripts/project-verify.sh` before submitting PRs.
+- **Verification**: Run `./scripts/dev-scripts/project-verify.sh` before submitting PRs; it also verifies the 80% minimum domain coverage threshold.
 
 ## 🛡️ Security Policy
 

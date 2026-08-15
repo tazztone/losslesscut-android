@@ -56,13 +56,19 @@ public class ExtractSnapshotUseCase @Inject constructor(
         } finally {
             val failedOutputUri = outputUri
             if (failedOutputUri != null && !committed) {
-                withContext(NonCancellable) {
-                    try {
-                        repository.deleteOutput(failedOutputUri)
-                    } catch (_: Exception) {
-                        // Preserve the original extraction/write result if cleanup fails.
-                    }
-                }
+                cleanupFailedOutput(failedOutputUri)
+            }
+        }
+    }
+
+    private suspend fun cleanupFailedOutput(uri: String) {
+        withContext(NonCancellable) {
+            try {
+                repository.deleteOutput(uri)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // Preserve the original extraction/write result if cleanup fails.
             }
         }
     }

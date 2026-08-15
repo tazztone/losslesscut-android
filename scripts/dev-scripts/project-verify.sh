@@ -6,4 +6,5 @@ echo "🔍 Running Lint, Unit Tests, and Coverage Report..."
 ./gradlew testDebugUnitTest
 ./gradlew lint
 ./gradlew koverHtmlReport
+./gradlew :core:domain:koverVerify
 echo "✅ All checks passed successfully."

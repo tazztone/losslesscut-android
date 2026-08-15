@@ -217,7 +217,7 @@ public class MuxingPipeline @Inject constructor(
         return mergeResult
     }
 
-    private fun initializeMuxerForMerge(
+    private suspend fun initializeMuxerForMerge(
         firstClip: MediaClip,
         mux: MuxerWriter,
         keepA: Boolean,
@@ -228,7 +228,7 @@ public class MuxingPipeline @Inject constructor(
         return try {
             dataSource.setExtractorSource(ex, firstClip.uri)
             val plan = inspector.inspect(ex, mux, keepA, keepV, sel)
-            val trackInfo = readTracksForInitialPlan(ex)
+            val trackInfo = readTracksForInitialPlan(ex, sel)
             LosslessEngineHelper.MergeInitialPlan(
                 plan,
                 trackInfo.audioRate,
@@ -244,7 +244,10 @@ public class MuxingPipeline @Inject constructor(
         }
     }
 
-    private fun readTracksForInitialPlan(ex: MediaExtractor): PipelineTrackInfo {
+    private suspend fun readTracksForInitialPlan(
+        ex: MediaExtractor,
+        selectedTracks: List<Int>? = null
+    ): PipelineTrackInfo {
         var audioRate = AUDIO_SAMPLE_RATE_44100
         var videoFps = DEFAULT_FPS
         var vMime: String? = null
@@ -252,54 +255,72 @@ public class MuxingPipeline @Inject constructor(
         var videoFormat: MediaFormat? = null
         var audioFormat: MediaFormat? = null
 
+        val selected = selectedTracks?.toSet()
         for (i in 0 until ex.trackCount) {
+            currentCoroutineContext().ensureActive()
+            if (selected != null && i !in selected) continue
             val format = ex.getTrackFormat(i)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith("video/") && vMime == null) {
-                vMime = mime
-                videoFps = getVideoFps(format)
-                videoFormat = format
-            } else if (mime.startsWith("audio/") && aMime == null) {
-                aMime = mime
-                audioFormat = format
-                if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                    audioRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+            val mime = format.getString(MediaFormat.KEY_MIME)
+            when {
+                mime?.startsWith("video/") == true && vMime == null -> {
+                    vMime = mime
+                    videoFps = getVideoFps(format)
+                    videoFormat = format
+                }
+                mime?.startsWith("audio/") == true && aMime == null -> {
+                    aMime = mime
+                    audioFormat = format
+                    audioRate = if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
+                        format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                    } else {
+                        audioRate
+                    }
                 }
             }
         }
         return PipelineTrackInfo(audioRate, videoFps, vMime, aMime, videoFormat, audioFormat)
     }
 
-    private fun readSelectedTrackLayout(
+    private suspend fun readSelectedTrackLayout(
         ex: MediaExtractor,
         keepAudio: Boolean,
         keepVideo: Boolean,
         selectedTracks: List<Int>?
     ): List<String> {
         val selected = selectedTracks?.toSet()
-        return (0 until ex.trackCount).mapNotNull { index ->
-            val format = ex.getTrackFormat(index)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: return@mapNotNull null
-            val isVideo = mime.startsWith("video/")
-            val isAudio = mime.startsWith("audio/")
-            val keepType = when {
-                isVideo -> keepVideo
-                isAudio -> keepAudio
-                else -> false
-            }
-            if (!keepType) {
-                return@mapNotNull null
-            }
-            if (selected != null && index !in selected) return@mapNotNull null
-
-            val language = runCatching { format.getString(MediaFormat.KEY_LANGUAGE) }.getOrNull().orEmpty()
-            val title = runCatching { format.getString("title") }.getOrNull().orEmpty()
-            val width = runCatching { format.getInteger(MediaFormat.KEY_WIDTH) }.getOrNull() ?: 0
-            val height = runCatching { format.getInteger(MediaFormat.KEY_HEIGHT) }.getOrNull() ?: 0
-            val sampleRate = runCatching { format.getInteger(MediaFormat.KEY_SAMPLE_RATE) }.getOrNull() ?: 0
-            val channels = runCatching { format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) }.getOrNull() ?: 0
-            "$index|$mime|$language|$title|$width|$height|$sampleRate|$channels"
+        val layout = mutableListOf<String>()
+        for (index in 0 until ex.trackCount) {
+            currentCoroutineContext().ensureActive()
+            readTrackLayoutEntry(ex, index, keepAudio, keepVideo, selected)?.let(layout::add)
         }
+        return layout
+    }
+
+    private fun readTrackLayoutEntry(
+        ex: MediaExtractor,
+        index: Int,
+        keepAudio: Boolean,
+        keepVideo: Boolean,
+        selected: Set<Int>?
+    ): String? {
+        if (selected != null && index !in selected) return null
+
+        val format = ex.getTrackFormat(index)
+        val mime = format.getString(MediaFormat.KEY_MIME) ?: return null
+        val keepType = when {
+            mime.startsWith("video/") -> keepVideo
+            mime.startsWith("audio/") -> keepAudio
+            else -> false
+        }
+        if (!keepType) return null
+
+        val language = runCatching { format.getString(MediaFormat.KEY_LANGUAGE) }.getOrNull().orEmpty()
+        val title = runCatching { format.getString("title") }.getOrNull().orEmpty()
+        val width = runCatching { format.getInteger(MediaFormat.KEY_WIDTH) }.getOrNull() ?: 0
+        val height = runCatching { format.getInteger(MediaFormat.KEY_HEIGHT) }.getOrNull() ?: 0
+        val sampleRate = runCatching { format.getInteger(MediaFormat.KEY_SAMPLE_RATE) }.getOrNull() ?: 0
+        val channels = runCatching { format.getInteger(MediaFormat.KEY_CHANNEL_COUNT) }.getOrNull() ?: 0
+        return "$index|$mime|$language|$title|$width|$height|$sampleRate|$channels"
     }
 
     private suspend fun processClipsForMerge(params: LosslessEngineHelper.MergeParams) {
@@ -328,7 +349,7 @@ public class MuxingPipeline @Inject constructor(
                     throw IOException("Selected track layout differs between clips")
                 }
                 val cPlan = inspector.inspectClipForMerge(ex, init, params.keepAudio, params.keepVideo, params.selectedTracks)
-                val trackInfo = readTracksForInitialPlan(ex)
+                val trackInfo = readTracksForInitialPlan(ex, params.selectedTracks)
                 mergeValidator.validateTrack(
                     clip.uri,
                     trackInfo.videoFormat,

@@ -350,7 +350,7 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun setInPoint(positionMs: Long, @Suppress("UNUSED_PARAMETER") isLosslessMode: Boolean = true) {
+    fun setInPoint(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
@@ -404,7 +404,7 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun setOutPoint(positionMs: Long, @Suppress("UNUSED_PARAMETER") isLosslessMode: Boolean = true) {
+    fun setOutPoint(positionMs: Long) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock

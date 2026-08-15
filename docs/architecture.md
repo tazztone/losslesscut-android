@@ -131,7 +131,7 @@ LosslessCut writes output media directly to destination URIs without requiring f
 
 - **SAF Fallback**: If a custom directory is selected in preferences, `StorageUtils` creates the output file via `DocumentFile.fromTreeUri()`.
 - **MediaStore Lifecycle**: On Android 10+ (API 29+), output files in public MediaStore collections are marked `IS_PENDING = 1` during writing and updated to `0` upon completion.
-- **Non-MediaStore URIs**: `MediaFinalizerImpl` catches `UnsupportedOperationException` when invoking `IS_PENDING = 0` on SAF or FileProvider URIs.
+- **Non-MediaStore URIs**: `MediaFinalizerImpl` catches `UnsupportedOperationException` when invoking `IS_PENDING = 0` on SAF or other provider-backed URIs.
 - **Finalization Order**: The muxer is stopped and released, and the output descriptor is closed, before `IMediaFinalizer` publishes the URI. Failed exports remove their incomplete output where the provider permits it.
 
 ### Analysis cache
@@ -164,8 +164,8 @@ sequenceDiagram
 
     UI->>UC: exportSegments(uri, segments)
     UC->>Engine: executeLosslessCut(uri, startMs, endMs)
-    Engine->>Copier: Seek to sync keyframe <= startMs
-    Copier->>Muxer: Copy encoded samples (PTS >= startMs & <= endMs)
+    Engine->>Copier: Seek to next sync keyframe at/after startMs
+    Copier->>Muxer: Copy encoded samples (startMs <= PTS <= endMs)
     Engine->>Fin: finalizeVideo(outputUri)
     Fin-->>UC: Finalized Output URI
     UC-->>UI: Export Complete (output URIs)
@@ -196,9 +196,9 @@ sequenceDiagram
 ## 7. Testing Architecture & Harness Setup
 
 - **Module Test Command**: `./scripts/dev-scripts/gradle-test.sh <module> <pattern>`
-- **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, JVM unit tests, Lint, and Kover sequentially to avoid generated-source races.)
+- **Project Verification**: `./scripts/dev-scripts/project-verify.sh` (Runs Detekt, JVM unit tests, Lint, Kover reporting, and the domain coverage threshold sequentially to avoid generated-source races.)
 - **Konsist Architectural Tests**: `ArchitectureTest.kt` automatically enforces all 4 architectural guardrails in CI (preventing `:engine` imports in `:app`, Android/Hilt imports in `:core:domain`, `java.io.File` for shared storage, and Compose in custom views).
-- **Kover Code Coverage Targets**: Core domain aggregate `EditingSession` (98.3%) and media processing engine `MuxingPipeline` (93.8%) maintain coverage well above the repository >80% threshold.
+- **Kover Code Coverage Target**: CI and `project-verify.sh` enforce at least 80% line coverage for `:core:domain`; reports for all modules are generated for trend tracking.
 - **Engine Instrumented Tests**: Engine tests relying on native Android codecs MUST reside in `:engine/src/androidTest` (not `:app`).
 - **FileProvider Mocking**: Instrumented tests use local storage / mocked `FileProvider` authorities (`:engine:connectedDebugAndroidTest`).
 - **TargetSdk 33+ Test Asset Staging**: TargetSdk 33+ instrumented tests requiring media assets copy files to `cacheDir` via `UiAutomation.executeShellCommand()`.

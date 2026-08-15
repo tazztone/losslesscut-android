@@ -33,12 +33,11 @@ All developer automation scripts reside under `./scripts/dev-scripts/`:
 
 | Script | Command | Purpose |
 | :--- | :--- | :--- |
-| **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes the full CI verification suite sequentially: Detekt, unit tests, Lint, and Kover coverage. |
+| **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes Detekt, unit tests, Lint, Kover reports, and the domain coverage threshold sequentially. |
 | **Targeted Testing** | `./scripts/dev-scripts/gradle-test.sh <module> "*"` | Runs unit tests for specific modules (`:core:domain`, `:engine`, `:app`). |
 | **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
 | **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
 | **Logcat Stream** | `./scripts/dev-scripts/adb-logcat.sh` | Streams filtered logcat logs for `com.tazztone.losslesscut`. |
-| **Push Release APK** | `./scripts/dev-scripts/gh-push-apk.sh` | Builds and publishes a manual release APK to GitHub Releases. |
 | **Clean Caches** | `./scripts/dev-scripts/project-clean.sh` | Cleans Gradle build caches and temporary build artifacts. |
 
 ---
@@ -63,7 +62,7 @@ Before opening or merging a Pull Request, every change must pass the 4-gate veri
 1. **Gate 1: Static Analysis & Formatting** — Detekt rules (`./gradlew detekt`) pass cleanly.
 2. **Gate 2: Unit Tests** — All JVM unit tests pass in `:core:domain`, `:engine`, and `:app`.
 3. **Gate 3: Android Lint** — Zero severe lint issues across all modules (`./gradlew lint`).
-4. **Gate 4: Code Coverage Target** — Kover HTML coverage report meets repository target (>80% domain coverage).
+4. **Gate 4: Code Coverage Target** — Kover generates reports and verifies the repository target (at least 80% domain coverage).
 
 Execute the full suite locally prior to pushing:
 ```bash
@@ -74,7 +73,7 @@ Execute the full suite locally prior to pushing:
 
 ## 🚀 Release Pipeline & Keystore Secrets
 
-Production release tags and manual release dispatches use `.github/workflows/release.yml` and require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
+Production release tags and manual release dispatches use `.github/workflows/release.yml` and require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Manual dispatches require a semantic `version_name` such as `1.2.3`; tag pushes use the version in the `v*` tag. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
 
 ### Required GitHub Secrets
 

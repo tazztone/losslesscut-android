@@ -240,7 +240,7 @@ public class VideoEditingViewModelTest {
         val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
-        viewModel.setInPoint(8500L, isLosslessMode = false)
+        viewModel.setInPoint(8500L)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
@@ -262,7 +262,7 @@ public class VideoEditingViewModelTest {
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
         // 8547ms is safely rounded forward to keyframe at 10000ms.
-        viewModel.setInPoint(8547L, isLosslessMode = true)
+        viewModel.setInPoint(8547L)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
@@ -284,7 +284,7 @@ public class VideoEditingViewModelTest {
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
         // 5800ms is safely rounded backward to keyframe at 4000ms.
-        viewModel.setOutPoint(5800L, isLosslessMode = true)
+        viewModel.setOutPoint(5800L)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(1, state.segments.size)
@@ -302,7 +302,7 @@ public class VideoEditingViewModelTest {
         val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
-        viewModel.setOutPoint(7000L, isLosslessMode = false)
+        viewModel.setOutPoint(7000L)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(1, state.segments.size)
@@ -322,7 +322,7 @@ public class VideoEditingViewModelTest {
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
         // OUT point set at 6000ms (before all segments 10000..15000)
-        viewModel.setOutPoint(6000L, isLosslessMode = true)
+        viewModel.setOutPoint(6000L)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
