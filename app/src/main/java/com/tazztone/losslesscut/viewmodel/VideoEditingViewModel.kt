@@ -774,6 +774,8 @@ class VideoEditingViewModel @Inject constructor(
                                 VideoEditingEvent.ExportComplete(
                                     success = true,
                                     count = result.count,
+                                    outputUris = result.outputUris,
+                                    isAudioOnly = !settings.keepVideo,
                                     deleteOriginalAfterExport = result.deleteOriginalAfterExport,
                                     sourceUris = result.sourceUris
                                 )

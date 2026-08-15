@@ -119,9 +119,18 @@ class VideoEditingStateTest {
         val defaultEvent = VideoEditingEvent.ExportComplete(success = true)
         assertTrue(defaultEvent.success)
         assertEquals(0, defaultEvent.count)
+        assertTrue(defaultEvent.outputUris.isEmpty())
+        assertFalse(defaultEvent.isAudioOnly)
 
-        val explicitEvent = VideoEditingEvent.ExportComplete(success = false, count = 5)
+        val explicitEvent = VideoEditingEvent.ExportComplete(
+            success = false,
+            count = 5,
+            outputUris = listOf("uri1", "uri2"),
+            isAudioOnly = true
+        )
         assertFalse(explicitEvent.success)
         assertEquals(5, explicitEvent.count)
+        assertEquals(listOf("uri1", "uri2"), explicitEvent.outputUris)
+        assertTrue(explicitEvent.isAudioOnly)
     }
 }

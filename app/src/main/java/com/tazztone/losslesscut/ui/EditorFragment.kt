@@ -332,6 +332,13 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                         Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
                     }
                     is VideoEditingEvent.ExportComplete -> {
+                        if (event.success && event.outputUris.isNotEmpty()) {
+                            val bottomSheet = com.tazztone.losslesscut.ui.compose.export.ExportSuccessBottomSheetDialogFragment.newInstance(
+                                outputUris = event.outputUris,
+                                isAudioOnly = event.isAudioOnly
+                            )
+                            bottomSheet.show(childFragmentManager, "ExportSuccessBottomSheet")
+                        }
                         if (event.success && event.deleteOriginalAfterExport && event.sourceUris.isNotEmpty()) {
                             lifecycleScope.launch {
                                 val uris = event.sourceUris.map { Uri.parse(it) }

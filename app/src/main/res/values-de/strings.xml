@@ -239,4 +239,15 @@
     <string name="language_en">English</string>
     <string name="language_de">Deutsch</string>
     <string name="cache_cleared_success">Analyse-Cache erfolgreich geleert.</string>
+    <string name="export_complete_title">Export abgeschlossen</string>
+    <string name="export_complete_message">%1$d Clip(s) erfolgreich exportiert</string>
+    <string name="share_media">Teilen</string>
+    <string name="share_video">Video teilen</string>
+    <string name="share_audio">Audio teilen</string>
+    <string name="share_all_media">Alle teilen (%1$d Clips)</string>
+    <string name="open_media">Öffnen / Abspielen</string>
+    <string name="back_to_home">Zurück zur Übersicht</string>
+    <string name="continue_editing">Weiter bearbeiten</string>
+    <string name="share_media_chooser">Exportierte Medien teilen</string>
+    <string name="error_open_file">Keine passende App zum Öffnen gefunden</string>
 </resources>

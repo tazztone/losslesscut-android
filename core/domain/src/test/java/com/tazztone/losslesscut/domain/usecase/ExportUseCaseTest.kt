@@ -47,7 +47,9 @@ internal class ExportUseCaseTest {
 
         assertTrue(results.any { it is ExportUseCase.Result.Progress })
         assertTrue(results.last() is ExportUseCase.Result.Success)
-        assertEquals(2, (results.last() as ExportUseCase.Result.Success).count)
+        val success = results.last() as ExportUseCase.Result.Success
+        assertEquals(2, success.count)
+        assertEquals(listOf("output_uri", "output_uri"), success.outputUris)
     }
 
     @Test
@@ -94,7 +96,9 @@ internal class ExportUseCaseTest {
 
         assertTrue(results.any { it is ExportUseCase.Result.Progress })
         assertTrue(results.last() is ExportUseCase.Result.Success)
-        assertEquals(1, (results.last() as ExportUseCase.Result.Success).count)
+        val success = results.last() as ExportUseCase.Result.Success
+        assertEquals(1, success.count)
+        assertEquals(listOf("output_uri"), success.outputUris)
     }
     
     @Test

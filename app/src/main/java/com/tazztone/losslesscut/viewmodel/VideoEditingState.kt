@@ -38,6 +38,8 @@ public sealed class VideoEditingEvent {
     public data class ExportComplete(
         val success: Boolean,
         val count: Int = 0,
+        val outputUris: List<String> = emptyList(),
+        val isAudioOnly: Boolean = false,
         val deleteOriginalAfterExport: Boolean = false,
         val sourceUris: List<String> = emptyList()
     ) : VideoEditingEvent()

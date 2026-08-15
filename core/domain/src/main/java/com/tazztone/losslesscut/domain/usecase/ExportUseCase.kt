@@ -18,6 +18,7 @@ public class ExportUseCase @Inject constructor(
     public sealed class Result {
         public data class Success(
             val count: Int,
+            val outputUris: List<String> = emptyList(),
             val deleteOriginalAfterExport: Boolean = false,
             val sourceUris: List<String> = emptyList()
         ) : Result()
@@ -92,6 +93,7 @@ public class ExportUseCase @Inject constructor(
                 emit(
                     Result.Success(
                         count = 1,
+                        outputUris = listOf(outputUri),
                         deleteOriginalAfterExport = params.deleteOriginalAfterExport,
                         sourceUris = sourceUris
                     )
@@ -111,6 +113,7 @@ public class ExportUseCase @Inject constructor(
         }
 
         var successCount = 0
+        val outputUris = mutableListOf<String>()
         val errors = mutableListOf<String>()
 
         for ((index, segment) in segments.withIndex()) {
@@ -135,7 +138,10 @@ public class ExportUseCase @Inject constructor(
                 params.rotationOverride ?: selectedClip.rotation, params.selectedTracks
             )
             result.fold(
-                onSuccess = { successCount++ },
+                onSuccess = {
+                    outputUris.add(outputUri)
+                    successCount++
+                },
                 onFailure = { errors.add("Segment ${index + 1} failed: ${it.message}") }
             )
         }
@@ -144,6 +150,7 @@ public class ExportUseCase @Inject constructor(
             emit(
                 Result.Success(
                     count = successCount,
+                    outputUris = outputUris,
                     deleteOriginalAfterExport = params.deleteOriginalAfterExport,
                     sourceUris = listOf(selectedClip.uri)
                 )

@@ -239,4 +239,15 @@
     <string name="language_en">English</string>
     <string name="language_de">Deutsch</string>
     <string name="cache_cleared_success">Analysis cache cleared successfully.</string>
+    <string name="export_complete_title">Export Complete</string>
+    <string name="export_complete_message">%1$d clip(s) exported successfully</string>
+    <string name="share_media">Share</string>
+    <string name="share_video">Share Video</string>
+    <string name="share_audio">Share Audio</string>
+    <string name="share_all_media">Share All (%1$d clips)</string>
+    <string name="open_media">Open / Play</string>
+    <string name="back_to_home">Back to Home</string>
+    <string name="continue_editing">Continue Editing</string>
+    <string name="share_media_chooser">Share exported media</string>
+    <string name="error_open_file">No app found to open this file</string>
 </resources>
