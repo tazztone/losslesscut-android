@@ -14,6 +14,7 @@
 ### ⚡ Zero-Loss Direct Bitstream Engine
 - 🚀 **Direct Muxing**: Trims and merges video (`.mp4`) and audio (`.m4a`) using native `MediaExtractor` and `MediaMuxer` with zero transcoding.
 - 📦 **Batch Export & Merge**: Export multiple "KEEP" regions as individual clips or merge them into a single seamless file in one pass.
+- 📤 **Direct Media Sharing**: Instantly share exported video or audio clips to other apps, play them directly, or return home right from the post-export completion sheet.
 - 🎼 **Smart Audio Extraction**: Automatically routes audio-only exports to lossless `.m4a` files in the `Music` folder.
 - 🔄 **Rotation Metadata & Quick Fixes**: Apply orientation/rotation flag repairs without re-encoding.
 
@@ -59,7 +60,8 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 1. Tap **Load media** and choose one or more compatible video or audio files.
 2. Edit the loaded media in the timeline using trim, split, rotate, Smart Cut, and undo/redo actions.
 3. Tap **Export** to choose combined or separate output, adjust rotation metadata, select tracks, and export the edited media.
-4. Leave the editor with unsaved changes to keep a recent session card on the dashboard; completed exports and discarded sessions are removed from recents.
+4. Use the post-export completion sheet to directly share the exported clip(s) with other apps, preview the media, or return to the dashboard.
+5. Leave the editor with unsaved changes to keep a recent session card on the dashboard; completed exports and discarded sessions are removed from recents.
 
 ### Prerequisites
 - **JDK 17 or 21**

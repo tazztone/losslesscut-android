@@ -96,7 +96,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### Unified launch and session lifecycle
 - `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
 - Dirty editing state is serialized to app-private cache storage when the editor stops. The dashboard maintains the five most recent sessions, validates source URI access before resume, and removes unavailable, discarded, or successfully exported sessions.
-- Export choices are grouped in one full-screen `ExportOptionsDialogPresenter` surface: combined or separate output, inline rotation metadata, track selection, and optional post-export move to System Trash / SAF document deletion.
+- Export choices are grouped in one full-screen `ExportOptionsDialogPresenter` surface: combined or separate output, inline rotation metadata, track selection, and optional post-export move to System Trash / SAF document deletion. On completion, `ExportSuccessBottomSheetDialogFragment` presents preview cards with thumbnail, duration, and file size along with direct system share and open actions.
 
 ```mermaid
 flowchart TD
@@ -160,13 +160,16 @@ sequenceDiagram
     participant Copier as ExtractorSampleCopier
     participant Muxer as MuxerWriter
     participant Fin as IMediaFinalizer
+    participant Share as ExportSuccessBottomSheet
 
     UI->>UC: exportSegments(uri, segments)
     UC->>Engine: executeLosslessCut(uri, startMs, endMs)
     Engine->>Copier: Seek to sync keyframe <= startMs
     Copier->>Muxer: Copy encoded samples (PTS >= startMs & <= endMs)
     Engine->>Fin: finalizeVideo(outputUri)
-    Fin-->>UI: Export Complete (MediaStore URI)
+    Fin-->>UC: Finalized Output URI
+    UC-->>UI: Export Complete (output URIs)
+    UI->>Share: Present Share / Open Sheet
 ```
 
 ### Multi-Clip Merging Flow
