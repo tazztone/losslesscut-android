@@ -23,6 +23,8 @@ import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import com.tazztone.losslesscut.viewmodel.ExportSettings
 import com.tazztone.losslesscut.ui.editor.SegmentActionPopup
 import com.tazztone.losslesscut.ui.compose.settings.SettingsBottomSheetDialogFragment
+import com.tazztone.losslesscut.ui.compose.loading.LoadingOverlay
+import androidx.compose.ui.platform.ViewCompositionStrategy
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import java.util.Locale
@@ -191,6 +193,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     }
 
     private fun initializeViews() {
+        binding.loadingScreen.composeLoadingView.setViewCompositionStrategy(
+            ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed
+        )
+
         val addClipsAction = {
             playerManager.player?.pause()
             addClipsLauncher.launch(arrayOf("video/*", "audio/*"))
@@ -308,15 +314,22 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
                 when (state) {
                     is VideoEditingUiState.Loading -> {
                         binding.loadingScreen.root.visibility = View.VISIBLE
-                        binding.loadingScreen.loadingProgress.visibility = if (state.progress > 0) View.VISIBLE else View.GONE
-                        binding.loadingScreen.loadingProgress.progress = state.progress
-                        binding.loadingScreen.tvLoadingStatus.text = state.message?.asString(requireContext())
+                        binding.loadingScreen.composeLoadingView.setContent {
+                            LoadingOverlay(
+                                progress = state.progress,
+                                message = state.message?.asString(requireContext()),
+                                isVisible = true
+                            )
+                        }
                     }
                     is VideoEditingUiState.Success -> {
+                        binding.loadingScreen.root.visibility = View.GONE
+                        binding.loadingScreen.composeLoadingView.setContent {}
                         handleSuccessState(state)
                     }
                     is VideoEditingUiState.Error -> {
                         binding.loadingScreen.root.visibility = View.GONE
+                        binding.loadingScreen.composeLoadingView.setContent {}
                         showErrorDialog(state.error.asString(requireContext()))
                     }
                     else -> {}
@@ -377,6 +390,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun handleSuccessState(state: VideoEditingUiState.Success) {
         binding.loadingScreen.root.visibility = View.GONE
+        binding.loadingScreen.composeLoadingView.setContent {}
         val selectedClip = state.clips.getOrNull(state.selectedClipIndex) ?: return
 
         val newStateUris = state.clips.map { Uri.parse(it.uri) }

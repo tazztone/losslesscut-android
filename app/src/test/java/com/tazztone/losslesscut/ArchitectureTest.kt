@@ -68,11 +68,17 @@ class ArchitectureTest {
 
     @Test
     fun `Compose is confined to the compose package`() {
+        val allowedHostInterop = setOf(
+            "androidx.compose.ui.platform.ComposeView",
+            "androidx.compose.ui.platform.ViewCompositionStrategy"
+        )
         Konsist.scopeFromModule(":app")
             .files
             .filter { it.path.contains("/src/main/") && !it.path.contains("/ui/compose/") }
             .assertTrue { file ->
-                file.imports.none { it.name.startsWith("androidx.compose.") }
+                file.imports.none { import ->
+                    import.name.startsWith("androidx.compose.") && import.name !in allowedHostInterop
+                }
             }
     }
 

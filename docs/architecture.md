@@ -48,7 +48,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 > 1. **Module Isolation**: `:app` includes `:engine` strictly via `runtimeOnly(:engine)`. Direct code imports of engine classes inside `:app` are forbidden; all invocation flows through Hilt and `:core:domain` interfaces (`ILosslessEngine`).
 > 2. **Pure JVM Domain**: `:core:domain` must remain a pure JVM Kotlin library. Zero `android.*`, `androidx.*`, or Hilt dependencies allowed.
 > 3. **Storage Access Policy**: Shared user media must be accessed exclusively through SAF (`DocumentFile`) or `ContentResolver` / `MediaStore`. Direct `java.io.File` access on external storage is strictly forbidden.
-> 4. **UI Framework Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**` for modular dialogs/sheets. NLE timeline scrubbing and video player UI rely on custom Android `View` components.
+> 4. **UI Framework Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**` for modular dialogs, bottom sheets, and overlays. NLE timeline scrubbing and video player UI rely on custom Android `View` components.
 
 ---
 
@@ -57,7 +57,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 - **`:app`**: Android UI & presentation.
   - `ui/`: `MainActivity` dashboard, `EditorFragment`, recent-session UI, `PlayerManager`, and `ShortcutHandler`.
   - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `TimelineViewport`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
-  - `ui/compose/`: Isolated Compose dialogs and sheets.
+  - `ui/compose/`: Isolated Compose dialogs, bottom sheets, and loading overlays.
   - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and delegating state to `EditingSession`.
 - **`:core:domain`**: Core business domain (Pure JVM).
   - `session/`: `EditingSession` domain aggregate managing segment boundaries, undo/redo stacks, and dirty state.

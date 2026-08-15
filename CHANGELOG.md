@@ -1,5 +1,12 @@
 # Changelog
 
+### August 2026: Modern Laser Waveform Loading Overlay & Architecture Refinement
+* **Laser Waveform & Keyframe Slicer Animation**: Completely redesigned the loading screen with an ultra-sleek procedural Jetpack Compose canvas animation featuring oscillating dual-gradient audio/video waveforms, keyframe diamond markers, precision electric cutting laser beam, dynamic particle sparks, and ambient breathing glow.
+* **Minimalist Studio Telemetry**: Introduced dynamic percentage indicators with spring-animated number transitions, glowing neon progress bars, and animated status message transitions with TalkBack accessibility announcements.
+* **Responsive Layout Matrix**: Implemented automatic layout adaptation between portrait (centered stack) and landscape (balanced two-column split), eliminating vertical crowding on mobile landscape screens.
+* **Zero-CPU Idle Optimization**: Bound animation clocks to `AnimatedVisibility`, guaranteeing zero background CPU/GPU and battery consumption when inactive.
+* **Asset Cleanup & Bug Fixes**: Removed ~400 KB of unused Lottie JSON assets (`film.json`, `process.json`), resolved the permanently hidden status message bug, and refined Konsist architecture tests for clean Compose host interop.
+
 ### Late July 2026: Settings Modal Overhaul & Localization Support
 * **App Localization**: Added in-app language selection (System Default, English, Deutsch) using `AppCompatDelegate.setApplicationLocales()` for runtime language switching.
 * **MVVM Settings Architecture**: Introduced `SettingsViewModel` with reactive state management, decoupling preferences and cache operations from Compose UI components.
