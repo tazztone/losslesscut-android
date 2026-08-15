@@ -86,7 +86,6 @@ dependencies {
     implementation(project(":core:domain"))
     
     implementation(libs.google.material)
-    implementation(libs.lottie)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.ktx)
     implementation(libs.androidx.fragment.ktx)

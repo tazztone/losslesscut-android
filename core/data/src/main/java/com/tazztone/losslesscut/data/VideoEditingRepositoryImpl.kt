@@ -67,7 +67,16 @@ class VideoEditingRepositoryImpl @Inject constructor(
                 isAudioOnly = meta.videoMime == null,
                 segments = listOf(TrimSegment(startMs = 0, endMs = meta.durationMs)),
                 availableTracks = meta.tracks.map { 
-                    MediaTrack(it.id, it.mimeType, it.isVideo, it.isAudio, it.language, it.title)
+                    MediaTrack(
+                        id = it.id,
+                        mimeType = it.mimeType,
+                        isVideo = it.isVideo,
+                        isAudio = it.isAudio,
+                        language = it.language,
+                        title = it.title,
+                        channelCount = it.channelCount,
+                        sampleRate = it.sampleRate
+                    )
                 }
             )
         }

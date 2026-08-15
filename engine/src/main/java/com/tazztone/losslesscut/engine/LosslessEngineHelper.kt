@@ -37,24 +37,37 @@ internal object LosslessEngineHelper {
 
         for (i in 0 until extractor.trackCount) {
             val format = extractor.getTrackFormat(i)
-            val mime = format.getString(MediaFormat.KEY_MIME) ?: continue
-            val isVideo = mime.startsWith("video/")
-            val isAudio = mime.startsWith("audio/")
+            val mime = format.getString(MediaFormat.KEY_MIME)
+            val isVideo = mime?.startsWith("video/") == true
+            val isAudio = mime?.startsWith("audio/") == true
+            if (mime == null || (!isVideo && !isAudio)) continue
+
+            var trackChannels = 0
+            var trackSampleRate = 0
+
             if (isVideo) {
                 videoMime = mime
                 fps = com.tazztone.losslesscut.engine.muxing.MuxingPipeline.getVideoFps(format)
             } else if (isAudio) {
                 audioMime = mime
                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
-                    sampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                    trackSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
+                    sampleRate = trackSampleRate
                 }
                 if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
-                    channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                    trackChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                    channelCount = trackChannels
                 }
             }
             tracks.add(TrackMetadata(
-                i, mime, format.getString(MediaFormat.KEY_LANGUAGE),
-                if (format.containsKey("title")) format.getString("title") else null, isVideo, isAudio
+                id = i,
+                mimeType = mime,
+                language = format.getString(MediaFormat.KEY_LANGUAGE),
+                title = if (format.containsKey("title")) format.getString("title") else null,
+                isVideo = isVideo,
+                isAudio = isAudio,
+                channelCount = trackChannels,
+                sampleRate = trackSampleRate
             ))
         }
         return TrackData(videoMime, audioMime, sampleRate, channelCount, fps, tracks)

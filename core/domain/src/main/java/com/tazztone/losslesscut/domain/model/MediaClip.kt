@@ -34,7 +34,9 @@ public data class MediaTrack(
     public val isVideo: Boolean,
     public val isAudio: Boolean,
     public val language: String? = null,
-    public val title: String? = null
+    public val title: String? = null,
+    public val channelCount: Int = 0,
+    public val sampleRate: Int = 0
 )
 
 @Serializable

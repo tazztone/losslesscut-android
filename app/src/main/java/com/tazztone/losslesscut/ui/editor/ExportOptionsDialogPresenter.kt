@@ -245,12 +245,12 @@ class ExportOptionsDialogPresenter(
             layoutParams = LinearLayout.LayoutParams(dp(20), dp(20)).apply {
                 marginEnd = dp(8)
             }
-            setImageResource(if (track.isAudio) R.drawable.ic_audio_24 else R.drawable.ic_metadata_24)
+            setImageResource(trackIcon(track))
             imageTintList = context.getColorStateList(R.color.colorAccent)
             contentDescription = null
         }
         val title = TextView(context).apply {
-            text = context.getString(trackType(track))
+            text = trackTitle(track, state)
             setTextColor(context.getColorStateList(com.tazztone.losslesscut.R.color.colorOnSurface))
             textSize = 14f
         }
@@ -269,10 +269,27 @@ class ExportOptionsDialogPresenter(
         return card
     }
 
-    private fun trackType(track: MediaTrack): Int = when {
-        track.isVideo -> R.string.track_video
-        track.isAudio -> R.string.track_audio
-        else -> R.string.track_other
+    private fun trackIcon(track: MediaTrack): Int = when {
+        track.isAudio -> R.drawable.ic_audio_24
+        track.isVideo -> R.drawable.ic_camera_24
+        else -> R.drawable.ic_metadata_24
+    }
+
+    private fun trackTitle(track: MediaTrack, state: VideoEditingUiState.Success): String {
+        track.title?.takeIf { it.isNotBlank() }?.let { return it }
+        return when {
+            track.isVideo -> context.getString(R.string.track_video)
+            track.isAudio -> {
+                val audioTracks = state.availableTracks.filter { it.isAudio }
+                if (audioTracks.size > 1) {
+                    val index = audioTracks.indexOfFirst { it.id == track.id } + 1
+                    context.getString(R.string.track_audio_numbered, index)
+                } else {
+                    context.getString(R.string.track_audio)
+                }
+            }
+            else -> context.getString(R.string.track_other)
+        }
     }
 
     private fun trackDescription(
@@ -282,16 +299,37 @@ class ExportOptionsDialogPresenter(
     ): String {
         val selectedClip = state.clips.getOrNull(state.selectedClipIndex)
         val values = mutableListOf<String>()
-        if (includeType) values += context.getString(trackType(track))
+        if (includeType) values += trackTitle(track, state)
         values += codecName(track.mimeType)
         if (track.isVideo) {
             selectedClip?.takeIf { it.width > 0 && it.height > 0 }?.let {
                 values += "${it.width}×${it.height}"
             }
         }
+        if (track.isAudio) {
+            when (track.channelCount) {
+                1 -> values += context.getString(R.string.track_audio_mono)
+                2 -> values += context.getString(R.string.track_audio_stereo)
+                in 3..Int.MAX_VALUE -> values += context.getString(
+                    R.string.track_audio_channels,
+                    track.channelCount
+                )
+            }
+            if (track.sampleRate > 0) {
+                values += formatSampleRate(track.sampleRate)
+            }
+        }
         track.language?.takeIf { it.isNotBlank() }?.let { values += it }
-        track.title?.takeIf { it.isNotBlank() }?.let { values += it }
         return values.joinToString(" • ")
+    }
+
+    private fun formatSampleRate(sampleRate: Int): String {
+        return if (sampleRate % 1000 == 0) {
+            "${sampleRate / 1000} kHz"
+        } else {
+            val khz = sampleRate / 1000.0
+            String.format(java.util.Locale.US, "%.1f kHz", khz)
+        }
     }
 
     private fun codecName(mimeType: String): String = when {

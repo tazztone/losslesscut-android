@@ -46,5 +46,7 @@ public data class TrackMetadata(
     val language: String?,
     val title: String?,
     val isVideo: Boolean,
-    val isAudio: Boolean
+    val isAudio: Boolean,
+    val channelCount: Int = 0,
+    val sampleRate: Int = 0
 )

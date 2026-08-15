@@ -103,6 +103,58 @@ class ExportOptionsDialogPresenterTest {
         assertNotNull(dialog.findViewById<View>(R.id.combinedOutputCard))
     }
 
+    @Test
+    fun `multiple untitled audio tracks display numbered titles and channel details`() {
+        val audioTrack1 = MediaTrack(
+            id = 1,
+            mimeType = "audio/mp4a-latm",
+            isVideo = false,
+            isAudio = true,
+            channelCount = 2,
+            sampleRate = 48000
+        )
+        val audioTrack2 = MediaTrack(
+            id = 2,
+            mimeType = "audio/mp4a-latm",
+            isVideo = false,
+            isAudio = true,
+            channelCount = 1,
+            sampleRate = 48000
+        )
+        val tracks = listOf(audioTrack1, audioTrack2)
+        val dialog = show(state(audioOnly = true, tracks = tracks))
+
+        val container = dialog.findViewById<android.widget.LinearLayout>(R.id.tracksContainer)
+        assertEquals(2, container.childCount)
+
+        val card1 = container.getChildAt(0) as com.google.android.material.card.MaterialCardView
+        val card2 = container.getChildAt(1) as com.google.android.material.card.MaterialCardView
+
+        assertTrue(card1.contentDescription.toString().contains("Audio #1"))
+        assertTrue(card1.contentDescription.toString().contains("Stereo"))
+        assertTrue(card1.contentDescription.toString().contains("48 kHz"))
+
+        assertTrue(card2.contentDescription.toString().contains("Audio #2"))
+        assertTrue(card2.contentDescription.toString().contains("Mono"))
+        assertTrue(card2.contentDescription.toString().contains("48 kHz"))
+    }
+
+    @Test
+    fun `selectively toggling multi-track audio passes exact chosen track indices`() {
+        val video = videoTrack()
+        val sysAudio = MediaTrack(id = 2, mimeType = "audio/mp4a-latm", isVideo = false, isAudio = true, channelCount = 2)
+        val micAudio = MediaTrack(id = 3, mimeType = "audio/mp4a-latm", isVideo = false, isAudio = true, channelCount = 1)
+        val dialog = show(state(tracks = listOf(video, sysAudio, micAudio)))
+
+        // Deselect mic audio (track 3)
+        trackCheckbox(dialog, 3).performClick()
+
+        val settings = dialog.export()
+        assertEquals(listOf(1, 2), settings.selectedTracks)
+        assertTrue(settings.keepVideo)
+        assertTrue(settings.keepAudio)
+    }
+
     private fun show(
         state: VideoEditingUiState.Success,
         initialRotation: Int = 0

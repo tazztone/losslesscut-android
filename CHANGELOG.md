@@ -1,5 +1,10 @@
 # Changelog
 
+### August 2026: Lottie Dependency Stripping & Multi-Track Audio Stream Selector
+* **Lottie Dependency Removal**: Completely removed `com.airbnb.android:lottie` dependency, version catalog declarations, and license references following the migration to the zero-CPU procedural canvas.
+* **Multi-Track Audio Stream Selector**: Added track-level audio inspection (`channelCount`, `sampleRate`) and numbered stream identification (`Audio #1`, `Audio #2` with Stereo/Mono/channels and sample rate) in the export modal, allowing selective inclusion/exclusion of audio streams (e.g. system vs mic audio).
+* **Non-Muxable Track Filtering**: Automatically filtered out unsupported non-audio/video streams (subtitles, telemetry) during track inspection to protect native `MediaMuxer` lifecycle.
+
 ### August 2026: Modern Laser Waveform Loading Overlay & Architecture Refinement
 * **Laser Waveform & Keyframe Slicer Animation**: Completely redesigned the loading screen with an ultra-sleek procedural Jetpack Compose canvas animation featuring oscillating dual-gradient audio/video waveforms, keyframe diamond markers, precision electric cutting laser beam, dynamic particle sparks, and ambient breathing glow.
 * **Minimalist Studio Telemetry**: Introduced dynamic percentage indicators with spring-animated number transitions, glowing neon progress bars, and animated status message transitions with TalkBack accessibility announcements.

@@ -73,6 +73,10 @@
     <string name="export_format_m4a">M4A</string>
     <string name="track_video">Video</string>
     <string name="track_audio">Audio</string>
+    <string name="track_audio_numbered">Audio #%1$d</string>
+    <string name="track_audio_mono">Mono</string>
+    <string name="track_audio_stereo">Stereo</string>
+    <string name="track_audio_channels">%1$d Kanäle</string>
     <string name="track_other">Andere</string>
     <string name="precise_mode_coming_soon">Präzisionsmodus folgt in v2.0</string>
     <string name="error_load_video">Video konnte nicht geladen werden: %1$s</string>
@@ -88,7 +92,7 @@
     <string name="set_in_point">In-Punkt setzen</string>
     <string name="set_out_point">Out-Punkt setzen</string>
     <string name="about_title">Über</string>
-    <string name="about_message"><![CDATA[<b>LosslessCut v%1$s</b><br><br>Schnelles, verlustfreies Videoschneiden mit nativen Android-APIs.<br><br><b>Open-Source-Lizenzen:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br>- Lottie (Apache 2.0)<br><br><b>Datenschutz:</b><br>Diese App sammelt keine personenbezogenen Daten. Die Verarbeitung erfolgt vollständig auf dem Gerät.<br><a href="https://example.com/privacy">Vollständige Richtlinie lesen</a>]]></string>
+    <string name="about_message"><![CDATA[<b>LosslessCut v%1$s</b><br><br>Schnelles, verlustfreies Videoschneiden mit nativen Android-APIs.<br><br><b>Open-Source-Lizenzen:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br><br><b>Datenschutz:</b><br>Diese App sammelt keine personenbezogenen Daten. Die Verarbeitung erfolgt vollständig auf dem Gerät.<br><a href="https://example.com/privacy">Vollständige Richtlinie lesen</a>]]></string>
     <string name="permissions_required_title">Berechtigungen erforderlich</string>
     <string name="permissions_required_message">Diese App benötigt Zugriff auf Mediendateien und Benachrichtigungen.</string>
     <string name="grant_permission">Erteilen</string>
