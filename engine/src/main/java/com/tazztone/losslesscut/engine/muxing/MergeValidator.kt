@@ -118,11 +118,6 @@ class MergeValidator @Inject constructor() {
     }
 
     private fun areMimeTypesCompatible(mime1: String?, mime2: String?): Boolean {
-        if (mime1.equals(mime2, ignoreCase = true)) return true
-        if (mime1 == null || mime2 == null) return false
-        val m1 = mime1.lowercase()
-        val m2 = mime2.lowercase()
-        return (m1 == "video/hevc" && m2 == "video/dolby-vision") ||
-               (m1 == "video/dolby-vision" && m2 == "video/hevc")
+        return mime1 != null && mime1.equals(mime2, ignoreCase = true)
     }
 }

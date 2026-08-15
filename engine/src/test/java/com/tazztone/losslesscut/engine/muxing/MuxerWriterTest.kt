@@ -152,17 +152,15 @@ class MuxerWriterTest {
     }
 
     @Test
-    fun `addTrack falls back to video-hevc when video-dolby-vision fails`() {
+    fun `addTrack propagates dolby-vision incompatibility`() {
         val format = mockk<MediaFormat>(relaxed = true)
         every { format.getString(MediaFormat.KEY_MIME) } returns "video/dolby-vision"
 
-        every { mockMuxer.addTrack(format) } throws IllegalArgumentException("Unsupported mime type") andThen 1
+        every { mockMuxer.addTrack(format) } throws IllegalArgumentException("Unsupported mime type")
 
-        val trackIndex = muxerWriter.addTrack(format)
-
-        assertEquals(1, trackIndex)
-        verify(exactly = 2) { mockMuxer.addTrack(format) }
-        verify { format.setString(MediaFormat.KEY_MIME, "video/hevc") }
+        assertThrows(IllegalArgumentException::class.java) { muxerWriter.addTrack(format) }
+        verify(exactly = 1) { mockMuxer.addTrack(format) }
+        verify(exactly = 0) { format.setString(MediaFormat.KEY_MIME, any()) }
     }
 
     @Test

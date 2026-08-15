@@ -31,6 +31,9 @@ jobs:
       - name: Run Tests
         run: ./gradlew test koverXmlReport
 
+      - name: Verify domain coverage
+        run: ./gradlew :core:domain:koverVerify
+
       - name: Run Lint
         run: ./gradlew lintDebug
 

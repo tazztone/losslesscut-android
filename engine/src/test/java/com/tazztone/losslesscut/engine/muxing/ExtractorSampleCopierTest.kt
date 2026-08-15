@@ -244,4 +244,34 @@ class ExtractorSampleCopierTest {
         // Relative last sample time for video track (track 0, mapped to muxer 0):
         assertEquals(13667L, results[0])
     }
+
+    @Test
+    fun `copy does not write samples before an unsnapped start`() = runTest {
+        val extractor = mockk<MediaExtractor>()
+        val muxerWriter = mockk<MuxerWriter>(relaxed = true)
+        val copier = ExtractorSampleCopier(extractor, muxerWriter, SampleTimeMapper())
+        val plan = SelectedTrackPlan(
+            trackMap = mapOf(0 to 0),
+            isVideoTrackMap = mapOf(0 to true),
+            bufferSize = 1024,
+            durationUs = 2000L,
+            hasVideoTrack = true
+        )
+        val format = mockk<android.media.MediaFormat>()
+        every { format.getString(android.media.MediaFormat.KEY_MIME) } returns "video/avc"
+        every { extractor.getTrackFormat(0) } returns format
+        every { extractor.selectTrack(any()) } returns Unit
+        every { extractor.seekTo(any(), any()) } returns Unit
+        every { extractor.readSampleData(any(), any()) } returnsMany listOf(10, 10)
+        every { extractor.sampleTime } returnsMany listOf(500L, 1000L)
+        every { extractor.sampleTrackIndex } returns 0
+        every { extractor.sampleFlags } returnsMany listOf(0, MediaExtractor.SAMPLE_FLAG_SYNC)
+        every { extractor.advance() } returnsMany listOf(true, false)
+
+        val result = copier.copy(plan, startUs = 750L, endUs = 1500L, ByteBuffer.allocateDirect(1024))
+
+        verify { extractor.seekTo(750L, MediaExtractor.SEEK_TO_NEXT_SYNC) }
+        verify(exactly = 1) { muxerWriter.writeSampleData(0, any(), any()) }
+        assertEquals(0L, result[0])
+    }
 }

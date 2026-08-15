@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.engine
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaExtractor
 import android.media.MediaMetadataRetriever
@@ -14,7 +13,6 @@ import com.tazztone.losslesscut.engine.muxing.MuxingCutRequest
 import com.tazztone.losslesscut.engine.muxing.MuxingMergeRequest
 import com.tazztone.losslesscut.engine.muxing.MuxingPipeline
 import com.tazztone.losslesscut.engine.muxing.MediaDataSource
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -25,27 +23,23 @@ import javax.inject.Singleton
 
 @Singleton
 class LosslessEngineImpl @Inject constructor(
-    @ApplicationContext context: Context,
     private val dataSource: MediaDataSource,
     private val muxingPipeline: MuxingPipeline,
     @param:EngineDispatcher private val engineDispatcher: CoroutineDispatcher
 ) : ILosslessEngine {
-    
-    private val appContext: Context = context
     public companion object {
         private const val TAG = "LosslessEngine"
         private const val MS_TO_US = 1000L
-        private const val JPEG_QUALITY = 80
+        private const val MAX_QUALITY = 100
     }
 
     override suspend fun getMediaMetadata(uri: String): Result<MediaMetadata> = withContext(engineDispatcher) {
-        val parsedUri = Uri.parse(uri)
-        val authority = parsedUri.authority
+        val authority = Uri.parse(uri).authority
         val retriever = MediaMetadataRetriever()
         val extractor = MediaExtractor()
 
         try {
-            retriever.setDataSource(appContext, parsedUri)
+            dataSource.setRetrieverSource(retriever, uri)
             dataSource.setExtractorSource(extractor, uri)
 
             val basic = LosslessEngineHelper.readBasicMetadata(retriever, uri)
@@ -113,16 +107,26 @@ class LosslessEngineImpl @Inject constructor(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray? = withContext(engineDispatcher) {
+    override suspend fun getFrameAt(
+        uri: String,
+        positionMs: Long,
+        format: String,
+        quality: Int
+    ): ByteArray? = withContext(engineDispatcher) {
         val retriever = MediaMetadataRetriever()
         try {
-            retriever.setDataSource(appContext, Uri.parse(uri))
+            dataSource.setRetrieverSource(retriever, uri)
             val bitmap = retriever.getFrameAtTime(positionMs * MS_TO_US, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
             if (bitmap != null) {
                 val stream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+                val compressFormat = if (format.equals("PNG", ignoreCase = true)) {
+                    Bitmap.CompressFormat.PNG
+                } else {
+                    Bitmap.CompressFormat.JPEG
+                }
+                val compressed = bitmap.compress(compressFormat, quality.coerceIn(0, MAX_QUALITY), stream)
                 bitmap.recycle()
-                stream.toByteArray()
+                if (compressed) stream.toByteArray() else null
             } else {
                 null
             }

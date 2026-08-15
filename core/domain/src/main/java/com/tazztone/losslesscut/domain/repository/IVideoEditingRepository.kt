@@ -10,9 +10,15 @@ public interface IVideoEditingRepository {
     public suspend fun extractWaveform(
         uri: String, onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
-    public suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
+    public suspend fun getFrameAt(
+        uri: String,
+        positionMs: Long,
+        format: String = "JPEG",
+        quality: Int = 80
+    ): ByteArray?
     public suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String?
     public suspend fun createImageOutputUri(fileName: String): String?
+    public suspend fun deleteOutput(uri: String): Boolean
     public fun finalizeImage(uri: String)
     public fun finalizeVideo(uri: String)
     public fun finalizeAudio(uri: String)
@@ -44,5 +50,5 @@ public interface IVideoEditingRepository {
         clip: MediaClip,
         onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
-    public suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean
+    public suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String): Boolean
 }

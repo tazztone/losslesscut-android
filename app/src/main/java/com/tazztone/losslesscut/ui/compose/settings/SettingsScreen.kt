@@ -61,8 +61,6 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     uiState: SettingsUiState,
-    initialLosslessState: Boolean,
-    onLosslessModeToggled: (Boolean) -> Unit,
     onChangePath: () -> Unit,
     onResetPath: () -> Unit,
     onLanguageChanged: (String) -> Unit,
@@ -151,10 +149,7 @@ fun SettingsScreen(
         // ✂️ 3. General & Editing Category
         SettingsCategoryHeader(title = stringResource(R.string.category_editing))
 
-        LosslessModeSetting(
-            isLossless = initialLosslessState,
-            onToggled = onLosslessModeToggled
-        )
+        LosslessModeSetting()
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -485,10 +480,7 @@ fun VisualFrameStepSetting(
 }
 
 @Composable
-fun LosslessModeSetting(
-    isLossless: Boolean,
-    onToggled: (Boolean) -> Unit
-) {
+fun LosslessModeSetting() {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -500,8 +492,9 @@ fun LosslessModeSetting(
             fontSize = 16.sp
         )
         Switch(
-            checked = isLossless,
-            onCheckedChange = onToggled
+            checked = true,
+            onCheckedChange = null,
+            enabled = false
         )
     }
 

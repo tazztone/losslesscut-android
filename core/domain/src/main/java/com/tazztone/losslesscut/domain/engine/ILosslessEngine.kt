@@ -5,7 +5,12 @@ import com.tazztone.losslesscut.domain.model.MediaClip
 public interface ILosslessEngine {
     public suspend fun getKeyframes(videoUri: String): Result<List<Long>>
     public suspend fun getMediaMetadata(uri: String): Result<MediaMetadata>
-    public suspend fun getFrameAt(uri: String, positionMs: Long): ByteArray?
+    public suspend fun getFrameAt(
+        uri: String,
+        positionMs: Long,
+        format: String = "JPEG",
+        quality: Int = 80
+    ): ByteArray?
     public suspend fun executeLosslessCut(
         inputUri: String,
         outputUri: String,

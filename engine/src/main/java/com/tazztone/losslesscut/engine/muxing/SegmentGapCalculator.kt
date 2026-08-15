@@ -8,16 +8,23 @@ object SegmentGapCalculator {
     private const val MICROSECONDS_IN_SECOND = 1_000_000.0
     private const val VIDEO_FRAME_DURATION_DEFAULT_US = 33333L
 
-    fun calculateGapUs(audioSampleRate: Int, videoFps: Float): Long {
-        val audioFrameDurationUs = if (audioSampleRate > 0) {
+    fun calculateGapUs(
+        audioSampleRate: Int,
+        videoFps: Float,
+        hasAudio: Boolean = true,
+        hasVideo: Boolean = true
+    ): Long {
+        val audioFrameDurationUs = if (hasAudio && audioSampleRate > 0) {
             (AUDIO_FRAME_SIZE * MICROSECONDS_IN_SECOND / audioSampleRate).toLong()
         } else {
             0L
         }
-        val videoFrameDurationUs = if (videoFps > 0) {
+        val videoFrameDurationUs = if (hasVideo && videoFps > 0) {
             (MICROSECONDS_IN_SECOND / videoFps).toLong()
-        } else {
+        } else if (hasVideo) {
             VIDEO_FRAME_DURATION_DEFAULT_US
+        } else {
+            0L
         }
         return maxOf(audioFrameDurationUs, videoFrameDurationUs)
     }

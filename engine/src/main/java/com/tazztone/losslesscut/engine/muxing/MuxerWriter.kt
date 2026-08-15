@@ -15,18 +15,7 @@ class MuxerWriter(private val muxer: MediaMuxer) {
 
     fun addTrack(format: MediaFormat): Int {
         check(!isStarted) { "Cannot add track after muxer started" }
-        return try {
-            muxer.addTrack(format)
-        } catch (e: IllegalArgumentException) {
-            val mime = format.getString(MediaFormat.KEY_MIME)
-            if (mime == "video/dolby-vision") {
-                Log.w(TAG, "Muxer failed to add video/dolby-vision track, falling back to video/hevc", e)
-                format.setString(MediaFormat.KEY_MIME, "video/hevc")
-                muxer.addTrack(format)
-            } else {
-                throw e
-            }
-        }
+        return muxer.addTrack(format)
     }
 
     fun setOrientationHint(degrees: Int) {

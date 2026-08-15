@@ -45,7 +45,7 @@ class LosslessEngineImplTest {
     fun setUp() {
         every { context.contentResolver } returns contentResolver
         engine = LosslessEngineImpl(
-            context, dataSource, muxingPipeline, Dispatchers.Unconfined
+            dataSource, muxingPipeline, Dispatchers.Unconfined
         )
         
         mockkConstructor(MediaExtractor::class)

@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
+      version_name:
+        description: 'Semantic version to publish (for example 1.2.3)'
+        required: true
+        type: string
       publish_to_play_store:
         description: 'Publish to Play Store'
         type: boolean
@@ -29,8 +33,8 @@ jobs:
         uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
       - name: Grant Execute Permission
         run: chmod +x gradlew
-      - name: Run Unit Tests
-        run: ./gradlew test
+      - name: Run Verification
+        run: ./gradlew detekt test :core:domain:koverVerify
       - name: Run Lint (Release)
         run: ./gradlew lintRelease
 
@@ -44,6 +48,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
       
       # 1. Setup Environment
       - name: Setup Java
@@ -73,17 +79,28 @@ jobs:
       # 3. Determine Build Metadata
       - name: Determine Build Metadata
         id: meta
+        env:
+          MANUAL_VERSION_NAME: ${{ inputs.version_name }}
         run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            VERSION_NAME=${GITHUB_REF#refs/tags/v}
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            VERSION_NAME="${GITHUB_REF_NAME#v}"
+            TAG_NAME="$GITHUB_REF_NAME"
           else
-            VERSION_NAME="manual-main"
+            VERSION_NAME="${MANUAL_VERSION_NAME#v}"
+            TAG_NAME="v$VERSION_NAME"
           fi
-          # Monotonic versionCode from git history
+
+          if [[ ! "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::version_name must be a semantic version such as 1.2.3"
+            exit 1
+          fi
+
+          # Full history is checked out above so commit count remains monotonic.
           VERSION_CODE=$(git rev-list --count HEAD)
           
           echo "versionName=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "versionCode=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "tagName=$TAG_NAME" >> $GITHUB_OUTPUT
 
       # 4. Build Artifacts
       - name: Build App Bundle & APK
@@ -100,7 +117,7 @@ jobs:
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ steps.meta.outputs.tagName }}
           name: "Production Release v${{ steps.meta.outputs.versionName }} (Build ${{ steps.meta.outputs.versionCode }})"
           generate_release_notes: true
           draft: false
@@ -108,6 +125,7 @@ jobs:
           files: |
             app/build/outputs/bundle/release/app-release.aab
             app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/mapping/release/mapping.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

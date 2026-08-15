@@ -1,6 +1,5 @@
 package com.tazztone.losslesscut.ui.compose.settings
 
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -45,26 +44,6 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
-    interface SettingsListener {
-        fun onLosslessModeToggled(isChecked: Boolean)
-    }
-
-    private var listener: SettingsListener? = null
-    private var initialLosslessState: Boolean = true
-
-    fun setSettingsListener(listener: SettingsListener) {
-        this.listener = listener
-    }
-
-    fun setInitialState(isLossless: Boolean) {
-        initialLosslessState = isLossless
-    }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        if (listener == null && context is SettingsListener) listener = context
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -85,8 +64,6 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
             LosslessCutTheme {
                 SettingsScreen(
                     uiState = uiState,
-                    initialLosslessState = initialLosslessState,
-                    onLosslessModeToggled = { listener?.onLosslessModeToggled(it) },
                     onChangePath = { selectFolderLauncher.launch(null) },
                     onResetPath = { viewModel.setCustomOutputUri(null) },
                     onLanguageChanged = { langCode ->

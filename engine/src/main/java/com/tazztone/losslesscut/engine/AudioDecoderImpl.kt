@@ -70,6 +70,7 @@ class AudioDecoderImpl @Inject constructor(
         val info = MediaCodec.BufferInfo()
         var sawInputEOS = false
         var sawOutputEOS = false
+        var eosTimeouts = 0
 
         val durationUs = if (format.containsKey(MediaFormat.KEY_DURATION)) {
             format.getLong(MediaFormat.KEY_DURATION)
@@ -94,7 +95,15 @@ class AudioDecoderImpl @Inject constructor(
             }
             val metadata = DecoderMetadata(durationUs, sampleRate, channelCount)
             val bufferHolder = BufferHolder()
-            sawOutputEOS = processOutput(codec, info, metadata, bufferHolder)
+            val output = processOutput(codec, info, metadata, bufferHolder)
+            sawOutputEOS = output.sawOutputEOS
+            if (sawInputEOS && !sawOutputEOS) {
+                eosTimeouts = if (output.hadOutput) 0 else eosTimeouts + 1
+                if (eosTimeouts >= MAX_EOS_TIMEOUTS) {
+                    Log.w(TAG, "Decoder did not signal EOS after input EOS; force terminating decode loop")
+                    break
+                }
+            }
             kotlinx.coroutines.yield()
         }
     }
@@ -128,16 +137,20 @@ class AudioDecoderImpl @Inject constructor(
         return sawInputEOS
     }
 
+    private data class OutputResult(val sawOutputEOS: Boolean, val hadOutput: Boolean)
+
     private suspend fun FlowCollector<AudioDecoder.PcmData>.processOutput(
         codec: MediaCodec,
         info: MediaCodec.BufferInfo,
         metadata: DecoderMetadata,
         bufferHolder: BufferHolder
-    ): Boolean {
+    ): OutputResult {
         var outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_US)
         var sawOutputEOS = false
+        var hadOutput = false
         while (outIdx >= 0) {
             currentCoroutineContext().ensureActive()
+            hadOutput = true
             if (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0) {
                 sawOutputEOS = true
             }
@@ -150,7 +163,7 @@ class AudioDecoderImpl @Inject constructor(
             if (sawOutputEOS) break
             outIdx = codec.dequeueOutputBuffer(info, TIMEOUT_NONE)
         }
-        return sawOutputEOS
+        return OutputResult(sawOutputEOS, hadOutput)
     }
 
     private data class OutputFrame(
@@ -221,6 +234,7 @@ class AudioDecoderImpl @Inject constructor(
         private const val TAG = "AudioDecoderImpl"
         private const val TIMEOUT_US = 5000L
         private const val TIMEOUT_NONE = 0L
+        private const val MAX_EOS_TIMEOUTS = 50
         private const val DEFAULT_SAMPLE_RATE = 44100
         private const val DEFAULT_CHANNEL_COUNT = 2
     }

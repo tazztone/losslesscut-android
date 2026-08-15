@@ -350,15 +350,13 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun setInPoint(positionMs: Long, isLosslessMode: Boolean = true) {
+    fun setInPoint(positionMs: Long, @Suppress("UNUSED_PARAMETER") isLosslessMode: Boolean = true) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
-                val effectivePos = if (isLosslessMode && currentKeyframes.isNotEmpty()) {
-                    currentKeyframes.minByOrNull { kotlin.math.abs(it - positionMs) } ?: positionMs
-                } else {
-                    positionMs
-                }
+                // The export engine is lossless in every mode, so never allow a
+                // boundary before the requested content to reintroduce pre-roll.
+                val effectivePos = snapLosslessStart(positionMs)
 
                 val containingSeg = clip.segments.find { effectivePos >= it.startMs && effectivePos < it.endMs }
                 if (containingSeg != null) {
@@ -406,15 +404,11 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun setOutPoint(positionMs: Long, isLosslessMode: Boolean = true) {
+    fun setOutPoint(positionMs: Long, @Suppress("UNUSED_PARAMETER") isLosslessMode: Boolean = true) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
-                val effectivePos = if (isLosslessMode && currentKeyframes.isNotEmpty()) {
-                    currentKeyframes.minByOrNull { kotlin.math.abs(it - positionMs) } ?: positionMs
-                } else {
-                    positionMs
-                }
+                val effectivePos = snapLosslessEnd(positionMs)
 
                 val containingSeg = clip.segments.find { effectivePos > it.startMs && effectivePos <= it.endMs }
                 if (containingSeg != null) {
@@ -728,7 +722,7 @@ class VideoEditingViewModel @Inject constructor(
                     ?: return@withLock
                 
                 val updatedClip = useCases.silenceDetectionUseCase.applyDetectionRanges(
-                    clip, ranges, minKeepSegmentDurationMs, mode
+                    clip, snapDetectionRanges(ranges), minKeepSegmentDurationMs, mode
                 )
                 
                 editingSession.applySegments(updatedClip.segments)
@@ -740,6 +734,23 @@ class VideoEditingViewModel @Inject constructor(
                 _isDirty.value = true
                 updateStateInternal()
             }
+        }
+    }
+
+    private fun snapLosslessStart(positionMs: Long): Long {
+        return currentKeyframes.firstOrNull { it >= positionMs } ?: positionMs
+    }
+
+    private fun snapLosslessEnd(positionMs: Long): Long {
+        return currentKeyframes.lastOrNull { it <= positionMs } ?: positionMs
+    }
+
+    private fun snapDetectionRanges(ranges: List<LongRange>): List<LongRange> {
+        if (currentKeyframes.isEmpty()) return ranges
+        return ranges.mapNotNull { range ->
+            val start = snapLosslessStart(range.first)
+            val end = snapLosslessEnd(range.last)
+            start.takeIf { it < end }?.rangeTo(end)
         }
     }
 

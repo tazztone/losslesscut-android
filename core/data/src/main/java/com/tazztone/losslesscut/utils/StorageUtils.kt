@@ -14,6 +14,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
 import com.tazztone.losslesscut.domain.di.IoDispatcher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.first
@@ -156,6 +157,18 @@ class StorageUtils @Inject constructor(
         return resolver.insert(imageCollection, newImageDetails)
     }
 
+    @Suppress("TooGenericExceptionCaught")
+    suspend fun deleteOutput(uri: Uri): Boolean = withContext(ioDispatcher) {
+        try {
+            context.contentResolver.delete(uri, null, null) > 0
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("StorageUtils", "Failed to delete output URI from ${uri.authority}", e)
+            false
+        }
+    }
+
     fun finalizeImage(uri: Uri) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val resolver = context.contentResolver
@@ -265,7 +278,5 @@ class StorageUtils @Inject constructor(
         }
     }
 }
-
-
 
 

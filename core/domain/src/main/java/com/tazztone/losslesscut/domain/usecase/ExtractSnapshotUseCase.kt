@@ -2,7 +2,9 @@ package com.tazztone.losslesscut.domain.usecase
 
 import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
@@ -22,17 +24,21 @@ public class ExtractSnapshotUseCase @Inject constructor(
         format: String, 
         quality: Int
     ): Result = withContext(ioDispatcher) {
+        var outputUri: String? = null
+        var committed = false
         try {
-            val bitmapBytes = repository.getFrameAt(uri, positionMs)
+            val bitmapBytes = repository.getFrameAt(uri, positionMs, format, quality)
             if (bitmapBytes != null) {
-                val ext = if (format == "PNG") "png" else "jpg"
+                val ext = if (format.equals("PNG", ignoreCase = true)) "png" else "jpg"
                 val fileName = "snapshot_${System.currentTimeMillis()}.$ext"
-                val outputUri = repository.createImageOutputUri(fileName)
+                val createdOutputUri = repository.createImageOutputUri(fileName)
+                outputUri = createdOutputUri
 
-                if (outputUri != null) {
-                    val success = repository.writeSnapshot(bitmapBytes, outputUri, format, quality)
+                if (createdOutputUri != null) {
+                    val success = repository.writeSnapshot(bitmapBytes, createdOutputUri)
                     if (success) {
-                        repository.finalizeImage(outputUri)
+                        repository.finalizeImage(createdOutputUri)
+                        committed = true
                         Result.Success(fileName)
                     } else {
                         Result.Failure("Failed to write snapshot")
@@ -43,10 +49,21 @@ public class ExtractSnapshotUseCase @Inject constructor(
             } else {
                 Result.Failure("Failed to extract frame")
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Result.Failure(e.message ?: "Unknown snapshot error")
+        } finally {
+            val failedOutputUri = outputUri
+            if (failedOutputUri != null && !committed) {
+                withContext(NonCancellable) {
+                    try {
+                        repository.deleteOutput(failedOutputUri)
+                    } catch (_: Exception) {
+                        // Preserve the original extraction/write result if cleanup fails.
+                    }
+                }
+            }
         }
     }
 }

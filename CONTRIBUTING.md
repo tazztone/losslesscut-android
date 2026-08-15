@@ -8,15 +8,15 @@ Thank you for your interest in contributing! This guide outlines local environme
 
 ### Prerequisites
 - **JDK 17 or 21**
-- **Android SDK 36** (Target) / **26** (Min)
+- **Android SDK 36** (Target) / **29** (Min)
 - **AGP 9.0+ / Gradle 9.2+**
 - **ADB** (in system `PATH`)
 
 ### Building & Running
 ```bash
 # Clone the repository
-git clone https://github.com/tazztone/losslesscut-android.git
-cd losslesscut-android
+git clone https://github.com/tazztone/lossless-video-cut.git
+cd lossless-video-cut
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -74,7 +74,7 @@ Execute the full suite locally prior to pushing:
 
 ## 🚀 Release Pipeline & Keystore Secrets
 
-Both production release tags (`.github/workflows/release.yml`) and manual release dispatches (`.github/workflows/build-apk.yml`) require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
+Production release tags and manual release dispatches use `.github/workflows/release.yml` and require GitHub Repository Secrets to sign release APKs/AABs and publish to GitHub Releases and Google Play Store. Signing passwords and aliases are provided to Gradle through environment variables; they are not placed in command-line `-P` arguments.
 
 ### Required GitHub Secrets
 

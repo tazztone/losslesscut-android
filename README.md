@@ -1,7 +1,7 @@
 # LosslessCut (MP4)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=26)
+[![API](https://img.shields.io/badge/API-29%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=29)
 
 **LosslessCut (MP4)** is a high-performance, open-source Android application for **instant, lossless media trimming and merging**. By manipulating compatible codecs (**H.264, H.265, AAC**) directly, it preserves original quality and processes files at lightning speed, remuxing them into standard `.mp4` and `.m4a` containers without re-encoding.
 
@@ -65,14 +65,14 @@ Unlike traditional video editors that decode and re-encode every frame, Lossless
 
 ### Prerequisites
 - **JDK 17 or 21**
-- **Android SDK 36** (Target) / **26** (Min)
+- **Android SDK 36** (Target) / **29** (Min)
 - **AGP 9.0+ / Gradle 9.2+**
 
 ### Development & Build
 ```bash
 # Clone the repository
-git clone https://github.com/tazztone/losslesscut-android.git
-cd losslesscut-android
+git clone https://github.com/tazztone/lossless-video-cut.git
+cd lossless-video-cut
 
 # Build debug APK
 ./gradlew assembleDebug
@@ -84,7 +84,7 @@ cd losslesscut-android
 ### Downloads
 
 Prebuilt APK and AAB artifacts are published with tagged releases on
-[GitHub Releases](https://github.com/tazztone/losslesscut-android/releases/latest).
+[GitHub Releases](https://github.com/tazztone/lossless-video-cut/releases/latest).
 
 ## 🤝 Contributing
 
@@ -96,7 +96,7 @@ We follow **MVVM + Clean Architecture** with strict layer separation between UI,
 
 ## 🛡️ Security Policy
 
-If you discover a security vulnerability, please report it privately to the maintainers rather than opening a public issue.
+If you discover a security vulnerability, please [report it privately](https://github.com/tazztone/lossless-video-cut/security/advisories/new) rather than opening a public issue. See [SECURITY.md](SECURITY.md).
 
 ## 🗺️ Roadmap
 

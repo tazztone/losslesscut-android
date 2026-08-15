@@ -114,7 +114,8 @@ internal object LosslessEngineHelper {
         val plan: SelectedTrackPlan, val audioSampleRate: Int, val videoFps: Float, 
         val expectedVideoMime: String?, val expectedAudioMime: String?,
         val expectedVideoFormat: MediaFormat? = null,
-        val expectedAudioFormat: MediaFormat? = null
+        val expectedAudioFormat: MediaFormat? = null,
+        val expectedTrackLayout: List<String> = emptyList()
     )
     data class ClipTrackInfo(val trackMap: Map<Int, Int>, val isVideoTrackMap: Map<Int, Boolean>, val maxInputSize: Int)
     data class MergeParams(

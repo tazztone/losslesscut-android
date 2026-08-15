@@ -20,20 +20,21 @@ public class ExtractSnapshotUseCaseTest {
     public fun executeSuccessShouldReturnSuccessResult(): Unit = runBlocking {
         val uri = "file:///test.mp4"
         val bytes = ByteArray(10)
-        coEvery { repository.getFrameAt(uri, 1000L) } returns bytes
+        coEvery { repository.getFrameAt(uri, 1000L, "JPEG", 90) } returns bytes
         coEvery { repository.createImageOutputUri(any()) } returns "file:///out.jpg"
-        coEvery { repository.writeSnapshot(any(), any(), any(), any()) } returns true
+        coEvery { repository.writeSnapshot(any(), any()) } returns true
 
         val result = extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
         
         assertTrue(result is ExtractSnapshotUseCase.Result.Success)
         coVerify { repository.finalizeImage("file:///out.jpg") }
+        coVerify { repository.getFrameAt(uri, 1000L, "JPEG", 90) }
     }
 
     @Test
     public fun executeFailureFrameExtractionShouldReturnFailure(): Unit = runBlocking {
         val uri = "file:///test.mp4"
-        coEvery { repository.getFrameAt(uri, 1000L) } returns null
+        coEvery { repository.getFrameAt(uri, 1000L, "JPEG", 90) } returns null
 
         val result = extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
         
@@ -44,7 +45,7 @@ public class ExtractSnapshotUseCaseTest {
     @Test
     public fun executeFailureOutputCreationShouldReturnFailure(): Unit = runBlocking {
         val uri = "file:///test.mp4"
-        coEvery { repository.getFrameAt(uri, 1000L) } returns ByteArray(10)
+        coEvery { repository.getFrameAt(uri, 1000L, "JPEG", 90) } returns ByteArray(10)
         coEvery { repository.createImageOutputUri(any()) } returns null
 
         val result = extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
@@ -56,20 +57,21 @@ public class ExtractSnapshotUseCaseTest {
     @Test
     public fun executeFailureWriteShouldReturnFailure(): Unit = runBlocking {
         val uri = "file:///test.mp4"
-        coEvery { repository.getFrameAt(uri, 1000L) } returns ByteArray(10)
+        coEvery { repository.getFrameAt(uri, 1000L, "JPEG", 90) } returns ByteArray(10)
         coEvery { repository.createImageOutputUri(any()) } returns "file:///out.jpg"
-        coEvery { repository.writeSnapshot(any(), any(), any(), any()) } returns false
+        coEvery { repository.writeSnapshot(any(), any()) } returns false
 
         val result = extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
         
         assertTrue(result is ExtractSnapshotUseCase.Result.Failure)
         assertEquals("Failed to write snapshot", (result as ExtractSnapshotUseCase.Result.Failure).error)
+        coVerify { repository.deleteOutput("file:///out.jpg") }
     }
 
     @Test(expected = kotlinx.coroutines.CancellationException::class)
     public fun executeRethrowsCancellationException(): Unit = runBlocking {
         val uri = "file:///test.mp4"
-        coEvery { repository.getFrameAt(uri, 1000L) } throws kotlinx.coroutines.CancellationException("Cancelled")
+        coEvery { repository.getFrameAt(uri, 1000L, "JPEG", 90) } throws kotlinx.coroutines.CancellationException("Cancelled")
 
         extractSnapshotUseCase.execute(uri, 1000L, "JPEG", 90)
     }

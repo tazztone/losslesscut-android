@@ -34,7 +34,7 @@ LosslessCut follows **MVVM + Clean Architecture** with strict layer boundaries, 
 - **Languages**: Kotlin 2.2+, Gradle Kotlin DSL (`.gradle.kts`)
 - **Media Processing**: Native `MediaExtractor`, `MediaMuxer` (in `:engine`), Media3 / ExoPlayer (Playback UI in `:app`)
 - **Dependency Inversion & Injection**: Domain-level interfaces (`ILosslessEngine`, `IVideoEditingRepository`, `IMediaFinalizer`) resolved via Hilt (`:app`, `:engine`, `:core:data`)
-- **SDK Targets**: Min SDK 26 (Android 8.0), Target SDK 36 (Android 15 / "Baklava")
+- **SDK Targets**: Min SDK 29 (Android 10), Target SDK 36 (Android 15 / "Baklava")
 - **Build System**: AGP 9.0+, JDK 17/21 Toolchain
 - **Native Threading**: All `MediaExtractor`, `MediaCodec`, and `MediaMuxer` work is serialized through a dedicated single-threaded engine dispatcher to avoid unsafe concurrent native calls.
 

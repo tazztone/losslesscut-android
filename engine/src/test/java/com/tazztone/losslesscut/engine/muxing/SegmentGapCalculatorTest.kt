@@ -60,4 +60,11 @@ class SegmentGapCalculatorTest {
         val result = SegmentGapCalculator.calculateGapUs(0, 0f)
         assertEquals(33333L, result)
     }
+
+    @Test
+    fun `calculateGapUs ignores absent audio or video tracks`() {
+        assertEquals(33333L, SegmentGapCalculator.calculateGapUs(44100, 30f, hasAudio = false))
+        assertEquals(23219L, SegmentGapCalculator.calculateGapUs(44100, 30f, hasVideo = false))
+        assertEquals(0L, SegmentGapCalculator.calculateGapUs(44100, 30f, hasAudio = false, hasVideo = false))
+    }
 }

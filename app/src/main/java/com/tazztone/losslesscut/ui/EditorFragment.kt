@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.ui
 
 import android.app.Activity
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
@@ -32,7 +33,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBottomSheetDialogFragment.SettingsListener {
+class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
 
     private var _binding: FragmentEditorBinding? = null
     private val binding get() = _binding!!
@@ -50,7 +51,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
     private lateinit var segmentActionPopup: SegmentActionPopup
     
     private var isDraggingTimeline = false
-    private var isLosslessMode = true
     private var lastLoadedClipId: UUID? = null
 
     @Inject
@@ -72,7 +72,16 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
 
     private val addClipsLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+        uris.forEach(::persistReadPermission)
         addClipsDelegate.onClipsReceived(uris)
+    }
+
+    private fun persistReadPermission(uri: Uri) {
+        try {
+            requireContext().contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } catch (_: SecurityException) {
+            // Some providers grant only a temporary read permission.
+        }
     }
 
     override fun getPlayerView() = binding.playerSection.playerView
@@ -186,10 +195,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         observeViewModel()
         setupBackPressed()
 
-        savedInstanceState?.let {
-            isLosslessMode = it.getBoolean("lossless_mode", true)
-            binding.seekerContainer.customVideoSeeker.isLosslessMode = isLosslessMode
-        }
+        binding.seekerContainer.customVideoSeeker.isLosslessMode = true
     }
 
     private fun initializeViews() {
@@ -232,8 +238,6 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
         binding.navBar.btnSettings.setOnClickListener {
             playerManager.pause()
             val bottomSheet = SettingsBottomSheetDialogFragment()
-            bottomSheet.setInitialState(isLosslessMode)
-            bottomSheet.setSettingsListener(this)
             bottomSheet.show(childFragmentManager, "SettingsBottomSheet")
         }
 
@@ -504,18 +508,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor), SettingsBo
 
     private fun setInPoint() {
         val currentPos = playerManager.currentPosition
-        viewModel.setInPoint(currentPos, isLosslessMode)
+        viewModel.setInPoint(currentPos)
     }
 
     private fun setOutPoint() {
         val currentPos = playerManager.currentPosition
-        viewModel.setOutPoint(currentPos, isLosslessMode)
-    }
-
-    override fun onLosslessModeToggled(isChecked: Boolean) {
-        isLosslessMode = isChecked
-        binding.seekerContainer.customVideoSeeker.isLosslessMode = isChecked
-        binding.seekerContainer.customVideoSeeker.invalidate()
+        viewModel.setOutPoint(currentPos)
     }
 
     override fun onDestroyView() {

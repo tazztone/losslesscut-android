@@ -10,6 +10,8 @@ import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
 import dagger.hilt.android.testing.HiltTestApplication
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +38,9 @@ class EditorFragmentTest {
     @Before
     fun init() {
         hiltRule.inject()
+        io.mockk.every { viewModel.uiState } returns MutableStateFlow(com.tazztone.losslesscut.viewmodel.VideoEditingUiState.Initial)
+        io.mockk.every { viewModel.uiEvents } returns emptyFlow()
+        io.mockk.every { viewModel.waveformData } returns MutableStateFlow<FloatArray?>(null)
     }
 
     private fun getBinding(fragment: EditorFragment): FragmentEditorBinding {

@@ -23,13 +23,13 @@ class MergeValidatorTest {
         validator.validateCodec("uri", "video/hevc", "video/avc", "video")
     }
 
-    @Test
-    fun `validateCodec succeeds when expected is hevc and current is dolby-vision`() {
+    @Test(expected = IOException::class)
+    fun `validateCodec rejects dolby-vision when expected is hevc`() {
         validator.validateCodec("uri", "video/dolby-vision", "video/hevc", "video")
     }
 
-    @Test
-    fun `validateCodec succeeds when expected is dolby-vision and current is hevc`() {
+    @Test(expected = IOException::class)
+    fun `validateCodec rejects hevc when expected is dolby-vision`() {
         validator.validateCodec("uri", "video/hevc", "video/dolby-vision", "video")
     }
 

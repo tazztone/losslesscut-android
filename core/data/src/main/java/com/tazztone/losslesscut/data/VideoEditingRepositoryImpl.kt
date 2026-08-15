@@ -93,8 +93,8 @@ class VideoEditingRepositoryImpl @Inject constructor(
         return waveformExtractor.extract(uri, onProgress = onProgress)
     }
 
-    override suspend fun getFrameAt(uri: String, positionMs: Long) = withContext(ioDispatcher) {
-        engine.getFrameAt(uri, positionMs)
+    override suspend fun getFrameAt(uri: String, positionMs: Long, format: String, quality: Int) = withContext(ioDispatcher) {
+        engine.getFrameAt(uri, positionMs, format, quality)
     }
 
     override suspend fun createMediaOutputUri(fileName: String, isAudio: Boolean): String? {
@@ -103,6 +103,10 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     override suspend fun createImageOutputUri(fileName: String): String? {
         return storageUtils.createImageOutputUri(fileName)?.toString()
+    }
+
+    override suspend fun deleteOutput(uri: String): Boolean {
+        return storageUtils.deleteOutput(Uri.parse(uri))
     }
 
     override fun finalizeImage(uri: String) {
@@ -242,7 +246,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
         extracted
     }
 
-    override suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String, format: String, quality: Int): Boolean = withContext(ioDispatcher) {
+    override suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String): Boolean = withContext(ioDispatcher) {
         try {
             val uriParsed = Uri.parse(outputUri)
             context.contentResolver.openOutputStream(uriParsed)?.use { outputStream ->

@@ -245,8 +245,8 @@ public class VideoEditingViewModelTest {
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
         val newSeg = state.segments[1]
-        assertEquals(8500L, newSeg.startMs)
-        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 8500 (10000, 12000, 14000)
+        assertEquals(10000L, newSeg.startMs) // Lossless exports start at the next keyframe.
+        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 10000 (10000, 12000, 14000)
         assertEquals(newSeg.id, state.selectedSegmentId)
     }
 
@@ -261,14 +261,14 @@ public class VideoEditingViewModelTest {
         val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
-        // 8547ms is closest to keyframe at 8000ms
+        // 8547ms is safely rounded forward to keyframe at 10000ms.
         viewModel.setInPoint(8547L, isLosslessMode = true)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(2, state.segments.size)
         val newSeg = state.segments[1]
-        assertEquals(8000L, newSeg.startMs) // Snapped to 8000ms!
-        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 8000ms (10000, 12000, 14000)
+        assertEquals(10000L, newSeg.startMs) // Snapped forward to 10000ms.
+        assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 10000ms (10000, 12000, 14000)
         assertEquals(newSeg.id, state.selectedSegmentId)
     }
 
@@ -283,13 +283,13 @@ public class VideoEditingViewModelTest {
         val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
         viewModel.initialize(listOf(Uri.parse(clip.uri)))
 
-        // 5800ms is closest to keyframe at 6000ms
+        // 5800ms is safely rounded backward to keyframe at 4000ms.
         viewModel.setOutPoint(5800L, isLosslessMode = true)
 
         val state = viewModel.uiState.value as VideoEditingUiState.Success
         assertEquals(1, state.segments.size)
         assertEquals(0L, state.segments[0].startMs)
-        assertEquals(6000L, state.segments[0].endMs) // Snapped to 6000ms!
+        assertEquals(4000L, state.segments[0].endMs) // Snapped backward to 4000ms.
     }
 
     @Test
@@ -383,4 +383,3 @@ public class VideoEditingViewModelTest {
         isAudioOnly = false
     )
 }
-

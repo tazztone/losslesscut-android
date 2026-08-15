@@ -43,7 +43,10 @@ class ExtractorSampleCopier(
             extractor.selectTrack(extractorTrackIdx)
         }
 
-        extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        // A previous-sync seek includes the keyframe before an unsnapped cut and
+        // silently restores media the timeline discarded. Start at the next
+        // sync point and ignore any provider pre-roll that still slips through.
+        extractor.seekTo(startUs, MediaExtractor.SEEK_TO_NEXT_SYNC)
 
         var hasMore = true
         while (hasMore) {
@@ -53,6 +56,8 @@ class ExtractorSampleCopier(
             
             if (sampleSize < 0 || sampleTime > endUs) {
                 hasMore = false
+            } else if (sampleTime < startUs) {
+                hasMore = extractor.advance()
             } else {
                 val params = SampleParams(
                     plan = plan,

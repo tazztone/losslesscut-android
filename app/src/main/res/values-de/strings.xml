@@ -92,9 +92,9 @@
     <string name="set_in_point">In-Punkt setzen</string>
     <string name="set_out_point">Out-Punkt setzen</string>
     <string name="about_title">Über</string>
-    <string name="about_message"><![CDATA[<b>LosslessCut v%1$s</b><br><br>Schnelles, verlustfreies Videoschneiden mit nativen Android-APIs.<br><br><b>Open-Source-Lizenzen:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br><br><b>Datenschutz:</b><br>Diese App sammelt keine personenbezogenen Daten. Die Verarbeitung erfolgt vollständig auf dem Gerät.<br><a href="https://example.com/privacy">Vollständige Richtlinie lesen</a>]]></string>
+    <string name="about_message"><![CDATA[<b>LosslessCut v%1$s</b><br><br>Schnelles, verlustfreies Videoschneiden mit nativen Android-APIs.<br><br><b>Open-Source-Lizenzen:</b><br>- AndroidX Media3 (Apache 2.0)<br>- Material Components (Apache 2.0)<br><br><b>Datenschutz:</b><br>Diese App sammelt keine personenbezogenen Daten. Die Verarbeitung erfolgt vollständig auf dem Gerät.<br><a href="https://github.com/tazztone/lossless-video-cut/blob/main/docs/privacy.html">Vollständige Richtlinie lesen</a>]]></string>
     <string name="permissions_required_title">Berechtigungen erforderlich</string>
-    <string name="permissions_required_message">Diese App benötigt Zugriff auf Mediendateien und Benachrichtigungen.</string>
+    <string name="permissions_required_message">Wählen Sie Medien über die Systemauswahl aus. Die App erhält nur Zugriff auf ausgewählte Dateien und Ordner.</string>
     <string name="grant_permission">Erteilen</string>
     <string name="permissions_granted">Berechtigungen erteilt</string>
     <string name="permissions_denied">Einige Berechtigungen wurden verweigert</string>

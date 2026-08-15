@@ -124,7 +124,7 @@ class MainActivity : BaseActivity() {
 
     private fun isValidContentUri(uri: Uri): Boolean {
         val authority = uri.authority
-        if (authority == packageName || authority == "$packageName.provider") {
+        if (authority == packageName) {
             Log.w("Security", "Blocked URI with internal authority: $authority")
             return false
         }

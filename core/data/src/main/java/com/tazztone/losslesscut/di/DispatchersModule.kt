@@ -11,6 +11,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.util.concurrent.Executors
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -29,6 +30,7 @@ object DispatchersModule {
     fun provideDefaultDispatcher(): CoroutineDispatcher = Dispatchers.Default
 
     @Provides
+    @Singleton
     @com.tazztone.losslesscut.domain.di.EngineDispatcher
     fun provideEngineDispatcher(): CoroutineDispatcher =
         Executors.newSingleThreadExecutor { runnable ->
