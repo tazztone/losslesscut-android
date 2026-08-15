@@ -48,16 +48,16 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 > 1. **Module Isolation**: `:app` includes `:engine` strictly via `runtimeOnly(:engine)`. Direct code imports of engine classes inside `:app` are forbidden; all invocation flows through Hilt and `:core:domain` interfaces (`ILosslessEngine`).
 > 2. **Pure JVM Domain**: `:core:domain` must remain a pure JVM Kotlin library. Zero `android.*`, `androidx.*`, or Hilt dependencies allowed.
 > 3. **Storage Access Policy**: Shared user media must be accessed exclusively through SAF (`DocumentFile`) or `ContentResolver` / `MediaStore`. Direct `java.io.File` access on external storage is strictly forbidden.
-> 4. **UI Framework Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**` for modular dialogs, bottom sheets, and overlays. NLE timeline scrubbing and video player UI rely on custom Android `View` components.
+> 4. **UI Framework Scoping**: Jetpack Compose is restricted to `:app/ui/compose/**` for modular dialogs, bottom sheets, loading overlays, and the main launch dashboard. NLE timeline scrubbing and video player UI rely on custom Android `View` components.
 
 ---
 
 ## 3. Project Structure & Module Breakdown
 
 - **`:app`**: Android UI & presentation.
-  - `ui/`: `MainActivity` dashboard, `EditorFragment`, recent-session UI, `PlayerManager`, and `ShortcutHandler`.
+  - `ui/`: `MainActivity` host, `EditorFragment`, `PlayerManager`, and `ShortcutHandler`.
   - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `TimelineViewport`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
-  - `ui/compose/`: Isolated Compose dialogs, bottom sheets, and loading overlays.
+  - `ui/compose/`: Isolated Compose dialogs, bottom sheets, loading overlays, and `MainDashboardScreen`.
   - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and delegating state to `EditingSession`.
 - **`:core:domain`**: Core business domain (Pure JVM).
   - `session/`: `EditingSession` domain aggregate managing segment boundaries, undo/redo stacks, and dirty state.
@@ -94,7 +94,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 - **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds with keyframe snapping and smart segment creation/adjustment, `S` split, `LEFT`/`RIGHT` keyframe seek).
 
 ### Unified launch and session lifecycle
-- `MainActivity` exposes one **Load media** action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
+- `MainActivity` hosts a Compose-driven dashboard (`MainDashboardScreen`) with Android 12+ SplashScreen integration, edge-to-edge layout, quick Settings access, and a primary **Load media** hero action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.
 - Dirty editing state is serialized to app-private cache storage when the editor stops. The dashboard maintains the five most recent sessions, validates source URI access before resume, and removes unavailable, discarded, or successfully exported sessions.
 - Export choices are grouped in one full-screen `ExportOptionsDialogPresenter` surface: combined or separate output, inline rotation metadata, track selection, and optional post-export move to System Trash / SAF document deletion. On completion, `ExportSuccessBottomSheetDialogFragment` presents preview cards with thumbnail, duration, and file size along with direct system share and open actions.
 

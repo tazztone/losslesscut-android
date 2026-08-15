@@ -4,6 +4,7 @@ compileSdk = "36"
 targetSdk = "36"
 kotlin = "2.2.10"
 coreKtx = "1.17.0"
+coreSplashscreen = "1.0.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 testCore = "1.6.1"
@@ -35,6 +36,7 @@ konsist = "0.17.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-test-core = { group = "androidx.test", name = "core", version.ref = "testCore" }

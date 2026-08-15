@@ -1,12 +1,13 @@
 <resources>
-    <color name="colorPrimary">#121212</color>
-    <color name="colorPrimaryVariant">#1E1E1E</color>
+    <color name="colorPrimary">#00C8FF</color>
+    <color name="colorPrimaryVariant">#0099CC</color>
     <color name="colorAccent">#00C8FF</color>       <!-- cyan accent, video-editor feel -->
-    <color name="colorOnPrimary">#FFFFFF</color>
+    <color name="colorOnPrimary">#000000</color>
     <color name="colorSecondary">#1E1E2E</color>     <!-- deep blue-tinted dark -->
     <color name="colorSecondaryVariant">#2E2E3E</color>
     <color name="colorOnSecondary">#FFFFFF</color>
     <color name="colorSurface">#121212</color>
+    <color name="colorSurfaceVariant">#1E1E1E</color>
     <color name="colorOnSurface">#F0F0F0</color>
     <color name="colorOnSurfaceVariant">#AAAAAA</color>
     <color name="background">#0D0D0D</color>

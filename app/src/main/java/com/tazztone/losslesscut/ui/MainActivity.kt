@@ -1,21 +1,34 @@
 package com.tazztone.losslesscut.ui
 
-import com.tazztone.losslesscut.R
-
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.tazztone.losslesscut.databinding.ActivityMainBinding
+import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.usecase.SessionUseCase
+import com.tazztone.losslesscut.ui.compose.dashboard.MainDashboardScreen
+import com.tazztone.losslesscut.ui.compose.settings.SettingsBottomSheetDialogFragment
+import com.tazztone.losslesscut.ui.compose.theme.LosslessCutTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -23,11 +36,12 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : BaseActivity() {
 
-    private lateinit var binding: ActivityMainBinding
-    private lateinit var recentSessionAdapter: RecentSessionAdapter
-
     @Inject
     lateinit var sessionUseCase: SessionUseCase
+
+    private var recentSessions by mutableStateOf<List<SessionSummary>>(emptyList())
+    private val snackbarHostState = SnackbarHostState()
+    private var pendingDeleteJob: Job? = null
 
     private val selectMediaLauncher =
         registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri> ->
@@ -41,33 +55,33 @@ class MainActivity : BaseActivity() {
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
-        setupDashboard()
-        loadRecentSessions()
+        val accentColorName = preferences.getAccentColorSync()
 
-        binding.btnInfo.setOnClickListener {
-            showAboutDialog()
+        setContent {
+            LosslessCutTheme(accentColorName = accentColorName) {
+                MainDashboardScreen(
+                    recentSessions = recentSessions,
+                    snackbarHostState = snackbarHostState,
+                    onLoadMedia = ::selectMedia,
+                    onOpenSettings = ::showSettingsDialog,
+                    onOpenAbout = ::showAboutDialog,
+                    onResumeSession = ::resumeSession,
+                    onRemoveSession = ::removeSession
+                )
+            }
         }
 
-        binding.btnLoadMedia.setOnClickListener { selectMedia() }
-
+        loadRecentSessions()
         handleIncomingIntent(intent)
-    }
-
-    private fun setupDashboard() {
-        recentSessionAdapter = RecentSessionAdapter(
-            onResume = ::resumeSession,
-            onRemove = ::removeSession
-        )
-        binding.rvRecentSessions.adapter = recentSessionAdapter
     }
 
     override fun onResume() {
         super.onResume()
-        if (::recentSessionAdapter.isInitialized) loadRecentSessions()
+        loadRecentSessions()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -154,6 +168,10 @@ class MainActivity : BaseActivity() {
             .show()
     }
 
+    private fun showSettingsDialog() {
+        SettingsBottomSheetDialogFragment().show(supportFragmentManager, "settings_bottom_sheet")
+    }
+
     private fun selectMedia() {
         Log.d("MediaSelection", "Launching unified media selector")
         selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
@@ -167,8 +185,7 @@ class MainActivity : BaseActivity() {
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
             putExtra(VideoEditingActivity.EXTRA_RESUME_SESSION, resumeSession)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            
-            // For multiple URIs, ClipData is the standard way to grant permissions to all of them
+
             if (mediaUris.isNotEmpty()) {
                 clipData = android.content.ClipData.newRawUri("Media", mediaUris[0])
                 for (i in 1 until mediaUris.size) {
@@ -189,11 +206,7 @@ class MainActivity : BaseActivity() {
 
     private fun loadRecentSessions() {
         lifecycleScope.launch {
-            val sessions = sessionUseCase.listSavedSessions()
-            recentSessionAdapter.submitList(sessions)
-            binding.tvRecentSessionsTitle.visibility = if (sessions.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-            binding.rvRecentSessions.visibility = if (sessions.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE
-            binding.tvNoRecentSessions.visibility = if (sessions.isEmpty()) android.view.View.VISIBLE else android.view.View.GONE
+            recentSessions = sessionUseCase.listSavedSessions()
         }
     }
 
@@ -207,15 +220,30 @@ class MainActivity : BaseActivity() {
                 sessionUseCase.deleteSession(session.uri)
                 loadRecentSessions()
             }
-            android.widget.Toast.makeText(this, R.string.session_unavailable, android.widget.Toast.LENGTH_LONG).show()
+            Toast.makeText(this, R.string.session_unavailable, Toast.LENGTH_LONG).show()
         }
     }
 
     private fun removeSession(session: SessionSummary) {
-        lifecycleScope.launch {
-            sessionUseCase.deleteSession(session.uri)
-            loadRecentSessions()
+        // Optimistically remove from state and offer undo via Snackbar
+        val previousList = recentSessions
+        recentSessions = recentSessions.filterNot { it.uri == session.uri }
+
+        pendingDeleteJob?.cancel()
+        pendingDeleteJob = lifecycleScope.launch {
+            val result = snackbarHostState.showSnackbar(
+                message = getString(R.string.session_removed),
+                actionLabel = getString(R.string.undo),
+                duration = SnackbarDuration.Short
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                // User pressed Undo
+                recentSessions = previousList
+            } else {
+                // Actually delete from persistence
+                sessionUseCase.deleteSession(session.uri)
+                loadRecentSessions()
+            }
         }
     }
-
 }
