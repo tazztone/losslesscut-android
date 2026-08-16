@@ -11,6 +11,7 @@
     <string name="remove_session">Sitzung entfernen</string>
     <string name="session_removed">Sitzung entfernt</string>
     <string name="supported_formats_title">Unterstützte Formate</string>
+    <string name="supported_formats_explanation">Verlustfreies Direct-Stream-Copy funktioniert mit .mp4- und .m4a-Containern (H.264, HEVC, AAC) für verlustfreien Export ohne Neucodierung.</string>
     <string name="resume_session_description">Bearbeitung von %1$s fortsetzen</string>
     <plurals name="recent_session_meta">
         <item quantity="one">%1$d Clip · %2$s</item>

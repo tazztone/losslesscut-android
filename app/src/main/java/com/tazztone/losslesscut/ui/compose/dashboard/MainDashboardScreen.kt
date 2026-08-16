@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,7 +48,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -61,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tazztone.losslesscut.BuildConfig
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.SessionSummary
 
@@ -103,13 +101,21 @@ fun MainDashboardScreen(
                             ),
                             color = MaterialTheme.colorScheme.onSurface
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(7.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = Color(0xFF181E2C),
+                            border = BorderStroke(1.dp, Color(0xFF263045))
+                        ) {
+                            Text(
+                                text = "v${BuildConfig.VERSION_NAME}",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
                     }
                 },
                 actions = {
@@ -173,7 +179,7 @@ fun MainDashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(20.dp)
                     ) {
                         HeroActionCard(onLoadMedia = onLoadMedia)
-                        SupportedFormatsSection()
+                        SupportedFormatsFooter()
                     }
 
                     Column(
@@ -181,14 +187,16 @@ fun MainDashboardScreen(
                             .weight(1f)
                             .fillMaxSize()
                     ) {
-                        RecentSessionsHeader(count = recentSessions.size)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        RecentSessionsList(
-                            recentSessions = recentSessions,
-                            onResumeSession = onResumeSession,
-                            onRemoveSession = onRemoveSession,
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (recentSessions.isNotEmpty()) {
+                            RecentSessionsHeader(count = recentSessions.size)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            RecentSessionsList(
+                                recentSessions = recentSessions,
+                                onResumeSession = onResumeSession,
+                                onRemoveSession = onRemoveSession,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             } else {
@@ -197,25 +205,22 @@ fun MainDashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
                     item(key = "hero_card") {
                         HeroActionCard(onLoadMedia = onLoadMedia)
                     }
 
-                    item(key = "formats_row") {
-                        SupportedFormatsSection()
+                    item(key = "formats_explanation") {
+                        SupportedFormatsFooter()
                     }
 
-                    item(key = "recent_sessions_header") {
-                        RecentSessionsHeader(count = recentSessions.size)
-                    }
-
-                    if (recentSessions.isEmpty()) {
-                        item(key = "empty_sessions") {
-                            EmptySessionsCard()
+                    // Only show recent sessions if there is at least one session
+                    if (recentSessions.isNotEmpty()) {
+                        item(key = "recent_sessions_header") {
+                            RecentSessionsHeader(count = recentSessions.size)
                         }
-                    } else {
+
                         items(
                             items = recentSessions,
                             key = { it.uri }
@@ -246,8 +251,8 @@ private fun HeroActionCard(
     val cardBackground = Color(0xFF131722).copy(alpha = 0.9f)
     val borderBrush = Brush.linearGradient(
         colors = listOf(
-            primaryColor.copy(alpha = 0.45f),
-            primaryColor.copy(alpha = 0.1f),
+            primaryColor.copy(alpha = 0.4f),
+            primaryColor.copy(alpha = 0.08f),
             Color(0xFF222838)
         )
     )
@@ -255,7 +260,7 @@ private fun HeroActionCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(22.dp), spotColor = primaryColor.copy(alpha = 0.18f)),
+            .shadow(12.dp, RoundedCornerShape(22.dp), spotColor = primaryColor.copy(alpha = 0.15f)),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = cardBackground),
         border = BorderStroke(1.dp, borderBrush)
@@ -263,46 +268,21 @@ private fun HeroActionCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp, vertical = 26.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Stylized Hero Icon Badge
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                primaryColor.copy(alpha = 0.25f),
-                                Color(0xFF161A26),
-                                Color(0xFF0F121C)
-                            )
-                        )
-                    )
-                    .padding(4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                androidx.compose.foundation.Image(
-                    painter = painterResource(id = R.drawable.ic_splash_icon),
-                    contentDescription = null,
-                    modifier = Modifier.size(72.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
             Text(
                 text = stringResource(R.string.load_media_title),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp
+                    fontSize = 21.sp,
+                    letterSpacing = 0.3.sp
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = stringResource(R.string.load_media_description),
@@ -311,7 +291,7 @@ private fun HeroActionCard(
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = onLoadMedia,
@@ -345,48 +325,46 @@ private fun HeroActionCard(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SupportedFormatsSection(
+private fun SupportedFormatsFooter(
     modifier: Modifier = Modifier
 ) {
-    val formats = listOf("MP4", "M4A", "H.264", "HEVC (H.265)", "AAC")
-
-    Column(
-        modifier = modifier.fillMaxWidth()
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF111520).copy(alpha = 0.8f),
+        border = BorderStroke(1.dp, Color(0xFF1E2536))
     ) {
-        Text(
-            text = stringResource(R.string.supported_formats_title),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.5.sp
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            formats.forEach { format ->
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFF141824),
-                    border = BorderStroke(1.dp, Color(0xFF232A3B)),
-                    modifier = Modifier.padding(0.dp)
-                ) {
-                    Text(
-                        text = format,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = Color(0xFFD3D9E6),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_info_24),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                text = stringResource(R.string.supported_formats_explanation),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    lineHeight = 18.sp
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -413,20 +391,18 @@ private fun RecentSessionsHeader(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            if (count > 0) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = count.toString(),
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                    )
-                }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            ) {
+                Text(
+                    text = count.toString(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                )
             }
         }
     }
@@ -439,23 +415,19 @@ private fun RecentSessionsList(
     onRemoveSession: (SessionSummary) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (recentSessions.isEmpty()) {
-        EmptySessionsCard(modifier = modifier)
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(
-                items = recentSessions,
-                key = { it.uri }
-            ) { session ->
-                RecentSessionItem(
-                    session = session,
-                    onResume = { onResumeSession(session) },
-                    onRemove = { onRemoveSession(session) }
-                )
-            }
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(
+            items = recentSessions,
+            key = { it.uri }
+        ) { session ->
+            RecentSessionItem(
+                session = session,
+                onResume = { onResumeSession(session) },
+                onRemove = { onRemoveSession(session) }
+            )
         }
     }
 }
@@ -554,51 +526,6 @@ private fun RecentSessionItem(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun EmptySessionsCard(
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = Color(0xFF11141D),
-        border = BorderStroke(1.dp, Color(0xFF1E2330))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_play_24),
-                contentDescription = null,
-                modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Text(
-                text = stringResource(R.string.no_recent_sessions),
-                style = MaterialTheme.typography.titleSmall.copy(
-                    fontWeight = FontWeight.SemiBold
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Text(
-                text = stringResource(R.string.no_recent_sessions_desc),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                textAlign = TextAlign.Center
-            )
         }
     }
 }

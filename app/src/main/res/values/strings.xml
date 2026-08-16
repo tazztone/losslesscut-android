@@ -11,6 +11,7 @@
     <string name="remove_session">Remove session</string>
     <string name="session_removed">Session removed</string>
     <string name="supported_formats_title">Supported Formats</string>
+    <string name="supported_formats_explanation">Direct stream copy works with .mp4 and .m4a containers (H.264, HEVC, AAC) for zero-loss export without re-encoding.</string>
     <string name="resume_session_description">Resume editing %1$s</string>
     <plurals name="recent_session_meta">
         <item quantity="one">%1$d clip · %2$s</item>
