@@ -1,26 +1,12 @@
 package com.tazztone.losslesscut.ui
-import com.tazztone.losslesscut.di.*
-import com.tazztone.losslesscut.customviews.*
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.ui.*
-import com.tazztone.losslesscut.viewmodel.*
-import com.tazztone.losslesscut.engine.*
-import com.tazztone.losslesscut.data.*
-import com.tazztone.losslesscut.utils.*
 
-import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.assertion.ViewAssertions.matches
-import androidx.test.espresso.intent.Intents
-import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
-import androidx.test.espresso.intent.matcher.IntentMatchers.hasType
-import androidx.test.espresso.matcher.ViewMatchers.*
-import androidx.test.ext.junit.rules.ActivityScenarioRule
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import android.content.Intent
-import org.hamcrest.Matchers.allOf
-import org.junit.After
-import org.junit.Before
+import com.tazztone.losslesscut.R
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,29 +15,23 @@ import org.junit.runner.RunWith
 class MainActivityTest {
 
     @get:Rule
-    val activityRule = ActivityScenarioRule(MainActivity::class.java)
-
-    @Before
-    fun setUp() {
-        Intents.init()
-    }
-
-    @After
-    fun tearDown() {
-        Intents.release()
-    }
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     @Test
     fun testUIElementsVisible() {
-        onView(withId(R.id.btnLoadMedia)).check(matches(isDisplayed()))
-        onView(withId(R.id.btnInfo)).check(matches(isDisplayed()))
-        onView(withId(R.id.tvNoRecentSessions)).check(matches(isDisplayed()))
+        val loadMediaText = composeTestRule.activity.getString(R.string.load_media)
+        composeTestRule.onNodeWithText(loadMediaText).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("About LosslessCut").assertIsDisplayed()
     }
 
     @Test
-    fun testInfoDialogShows() {
-        onView(withId(R.id.btnInfo)).perform(click())
-        onView(withText("About")).check(matches(isDisplayed()))
-        onView(withText("OK")).perform(click())
+    fun testAboutDialogShows() {
+        composeTestRule.onNodeWithContentDescription("About LosslessCut").performClick()
+        val okText = composeTestRule.activity.getString(R.string.ok)
+        androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText(okText))
+            .check(androidx.test.espresso.assertion.ViewAssertions.matches(androidx.test.espresso.matcher.ViewMatchers.isDisplayed()))
+        androidx.test.espresso.Espresso.onView(androidx.test.espresso.matcher.ViewMatchers.withText(okText))
+            .perform(androidx.test.espresso.action.ViewActions.click())
     }
 }

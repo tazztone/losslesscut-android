@@ -44,9 +44,22 @@
 
 ## 📸 Screenshots
 
+### Editor & Timeline
 <p align="center">
-  <img src="docs/images/screenshot_landscape.webp" width="64%" alt="Main Editor UI">
+  <img src="docs/images/screenshot_landscape.webp" width="64%" alt="Main Editor Landscape">
   <img src="docs/images/screenshot_portrait.webp" width="28%" alt="Portrait Mode">
+</p>
+
+### Smart Cut & Automation
+<p align="center">
+  <img src="docs/images/screenshot_smart_cut_silence.webp" width="46%" alt="Silence Detection">
+  <img src="docs/images/screenshot_smart_cut_visual.webp" width="46%" alt="Visual Detection">
+</p>
+
+### Dashboard & Settings
+<p align="center">
+  <img src="docs/images/screenshot_dashboard.webp" width="46%" alt="Dashboard Screen">
+  <img src="docs/images/screenshot_settings.webp" width="46%" alt="Settings Screen">
 </p>
 
 ## 🛠️ How it Works
