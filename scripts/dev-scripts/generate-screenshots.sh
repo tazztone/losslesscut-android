@@ -235,6 +235,10 @@ for name in "${EXPECTED_SCREENSHOTS[@]}"; do
     echo "  ✅ Generated $dest_webp ($webp_size bytes)"
 done
 
+# Ensure the latest debug app build remains installed and usable on the device
+echo "📲 Keeping latest debug app installed on device..."
+./gradlew :app:installDebug >/dev/null 2>&1 || true
+
 if [ ${#MISSING_SCREENSHOTS[@]} -gt 0 ]; then
     echo "❌ Screenshot pipeline completed with ${#MISSING_SCREENSHOTS[@]} error(s)."
     exit 1

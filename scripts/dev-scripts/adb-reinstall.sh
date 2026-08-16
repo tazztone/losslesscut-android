@@ -13,15 +13,16 @@ GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "dev")
 BUILD_TIME=$(date +'%m%d.%H%M')
 VERSION_NAME="dev-${GIT_SHA}-${BUILD_TIME}"
 
-echo "⚠️ Uninstalling existing app to resolve signature/version conflicts..."
-$ADB uninstall $PACKAGE_NAME
-
-echo "🚀 Building and installing clean debug APK (version: $VERSION_NAME)..."
-./gradlew installDebug -PversionName="$VERSION_NAME"
+echo "🚀 Installing debug APK (version: $VERSION_NAME)..."
+if ! ./gradlew installDebug -PversionName="$VERSION_NAME"; then
+    echo "⚠️ Direct install failed (likely signature or version conflict). Performing clean reinstall..."
+    $ADB uninstall "$PACKAGE_NAME" || true
+    ./gradlew installDebug -PversionName="$VERSION_NAME"
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ Install successful ($VERSION_NAME). Launching $PACKAGE_NAME..."
-    $ADB shell am start -n $PACKAGE_NAME/$MAIN_ACTIVITY
+    $ADB shell am start -n "$PACKAGE_NAME/$MAIN_ACTIVITY"
 else
     echo "❌ Build or Install failed."
     exit 1
