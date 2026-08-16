@@ -67,12 +67,12 @@
     <string name="combined_output_description">Alle behaltenen Bereiche aus geladenen Clips zu einer MP4/M4A-Datei zusammenführen.</string>
     <string name="separate_output">Separate Dateien</string>
     <string name="separate_output_description">Jeden behaltenen Bereich des ausgewählten Clips als einzelne MP4/M4A-Datei exportieren.</string>
-    <string name="rotation_metadata_section">DREHUNGSMETADATEN</string>
-    <string name="rotation_metadata_label">Original beibehalten</string>
-    <string name="rotation_metadata_description">Ändert das MP4/M4A-Ausrichtungsflag, ohne Audio oder Video neu zu codieren.</string>
+    <string name="rotation_metadata_section">AUSRICHTUNG</string>
+    <string name="rotation_metadata_label">Ausrichtung festlegen</string>
+    <string name="rotation_metadata_description">Legt die Ausrichtung des exportierten Videos fest.</string>
     <string name="tracks_to_include_section">EINZUSCHLIESSENDE SPUREN</string>
     <string name="export_media_summary">%1$d Clips • %2$d behaltene Bereiche</string>
-    <string name="export_summary">Kein Re-Encoding • %1$s • %2$d Dateien</string>
+    <string name="export_summary">%1$s • %2$d Dateien</string>
     <string name="export_format_mp4">MP4</string>
     <string name="export_format_m4a">M4A</string>
     <string name="track_video">Video</string>

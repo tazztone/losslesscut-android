@@ -67,12 +67,12 @@
     <string name="combined_output_description">Merge all kept ranges across loaded clips into one MP4/M4A file.</string>
     <string name="separate_output">Separate files</string>
     <string name="separate_output_description">Export each kept range from the selected clip as an individual MP4/M4A file.</string>
-    <string name="rotation_metadata_section">ROTATION METADATA</string>
-    <string name="rotation_metadata_label">Keep original</string>
-    <string name="rotation_metadata_description">Changes the MP4/M4A orientation flag without re-encoding audio or video.</string>
+    <string name="rotation_metadata_section">ORIENTATION</string>
+    <string name="rotation_metadata_label">Set orientation</string>
+    <string name="rotation_metadata_description">Sets the exported video orientation.</string>
     <string name="tracks_to_include_section">TRACKS TO INCLUDE</string>
     <string name="export_media_summary">%1$d clips • %2$d kept ranges</string>
-    <string name="export_summary">No re-encoding • %1$s • %2$d files</string>
+    <string name="export_summary">%1$s • %2$d files</string>
     <string name="export_format_mp4">MP4</string>
     <string name="export_format_m4a">M4A</string>
     <string name="track_video">Video</string>
