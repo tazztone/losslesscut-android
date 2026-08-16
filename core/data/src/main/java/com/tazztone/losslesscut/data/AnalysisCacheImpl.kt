@@ -56,9 +56,9 @@ class AnalysisCacheImpl @Inject constructor(
         return HashUtils.sha256(input)
     }
 
-    override fun getWaveform(clip: MediaClip): WaveformResult? = synchronized(lock) {
+    override fun getWaveform(clip: MediaClip, trackIndex: Int?): WaveformResult? = synchronized(lock) {
         val clipHash = getClipIdentityHash(clip)
-        val file = File(cacheDir, "waveform_${clipHash}_v2.bin")
+        val file = File(cacheDir, "waveform_${clipHash}_t${trackIndex ?: 0}_v2.bin")
         if (!file.exists()) return null
 
         try {
@@ -96,13 +96,13 @@ class AnalysisCacheImpl @Inject constructor(
         }
     }
 
-    override fun saveWaveform(clip: MediaClip, waveform: WaveformResult): Unit = synchronized(lock) {
+    override fun saveWaveform(clip: MediaClip, waveform: WaveformResult, trackIndex: Int?): Unit = synchronized(lock) {
         if (waveform.rawAmplitudes.isEmpty() || waveform.rawAmplitudes.size > MAX_WAVEFORM_SAMPLES) {
             return
         }
         val clipHash = getClipIdentityHash(clip)
-        val targetFile = File(cacheDir, "waveform_${clipHash}_v2.bin")
-        val tmpFile = File(cacheDir, "waveform_${clipHash}_v2.bin.tmp")
+        val targetFile = File(cacheDir, "waveform_${clipHash}_t${trackIndex ?: 0}_v2.bin")
+        val tmpFile = File(cacheDir, "waveform_${clipHash}_t${trackIndex ?: 0}_v2.bin.tmp")
 
         try {
             DataOutputStream(FileOutputStream(tmpFile)).use { out ->

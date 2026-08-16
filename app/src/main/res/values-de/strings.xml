@@ -271,4 +271,9 @@
     <string name="continue_editing">Weiter bearbeiten</string>
     <string name="share_media_chooser">Exportierte Medien teilen</string>
     <string name="error_open_file">Keine passende App zum Öffnen gefunden</string>
+    <string name="previous_frame">Vorheriger Frame</string>
+    <string name="next_frame">Nächster Frame</string>
+    <string name="previous_match">Vorheriger Treffer</string>
+    <string name="next_match">Nächster Treffer</string>
+    <string name="select_audio_track">Tonspur auswählen</string>
 </resources>

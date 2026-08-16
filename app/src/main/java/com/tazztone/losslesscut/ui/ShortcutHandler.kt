@@ -21,9 +21,19 @@ class ShortcutHandler(
                     playerManager.togglePlayback()
                     return true
                 }
+                KeyEvent.KEYCODE_COMMA -> {
+                    playerManager.seekToFrame(-1)
+                    return true
+                }
+                KeyEvent.KEYCODE_PERIOD -> {
+                    playerManager.seekToFrame(1)
+                    return true
+                }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (event.isAltPressed) {
                         playerManager.performNudge(-1)
+                    } else if (event.isShiftPressed) {
+                        playerManager.seekToFrame(-1)
                     } else {
                         playerManager.seekToKeyframe(-1)
                     }
@@ -32,6 +42,8 @@ class ShortcutHandler(
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (event.isAltPressed) {
                         playerManager.performNudge(1)
+                    } else if (event.isShiftPressed) {
+                        playerManager.seekToFrame(1)
                     } else {
                         playerManager.seekToKeyframe(1)
                     }

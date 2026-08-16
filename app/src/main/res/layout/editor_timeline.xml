@@ -18,5 +18,25 @@
             android:id="@+id/customVideoSeeker"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
+
+        <Button
+            android:id="@+id/btnAudioTrackBadge"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="24dp"
+            android:layout_gravity="top|start"
+            android:layout_marginTop="2dp"
+            android:layout_marginStart="2dp"
+            android:minHeight="0dp"
+            android:minWidth="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:text="A1 ▾"
+            android:textSize="10sp"
+            android:visibility="gone"
+            android:contentDescription="@string/select_audio_track"
+            android:tooltipText="@string/select_audio_track"/>
     </FrameLayout>
 </LinearLayout>

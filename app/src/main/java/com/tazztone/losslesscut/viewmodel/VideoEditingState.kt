@@ -24,6 +24,7 @@ public sealed class VideoEditingUiState {
         val isSnapshotInProgress: Boolean = false,
         val detectionPreviewRanges: List<LongRange> = emptyList(),
         val availableTracks: List<MediaTrack> = emptyList(),
+        val selectedAudioTrackIndex: Int = 0,
         val playbackSpeed: Float = 1.0f,
         val isPitchCorrectionEnabled: Boolean = false
     ) : VideoEditingUiState() {

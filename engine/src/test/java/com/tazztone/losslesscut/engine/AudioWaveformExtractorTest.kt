@@ -41,9 +41,9 @@ class AudioWaveformExtractorTest {
             isEndOfStream = true
         )
 
-        coEvery { decoder.decode(uri) } returns flowOf(pcmData)
+        coEvery { decoder.decode(uri, any()) } returns flowOf(pcmData)
 
-        val result = extractor.extract(uri, onProgress = null)
+        val result = extractor.extract(uri, trackIndex = 1, onProgress = null)
 
         assertNotNull(result)
         assertEquals(1000000L, result?.durationUs)
@@ -54,7 +54,7 @@ class AudioWaveformExtractorTest {
     fun extract_handlesExceptionCorrectly() = runBlocking {
         val uri = "content://mock/audio.wav"
         val exception = RuntimeException("Test exception")
-        coEvery { decoder.decode(uri) } throws exception
+        coEvery { decoder.decode(uri, any()) } throws exception
 
         mockkStatic(Log::class)
         every { Log.e(any(), any(), any()) } returns 0

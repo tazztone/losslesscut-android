@@ -20,6 +20,7 @@ public class VideoEditingStateMapperTest {
                 canRedo = false,
                 isSnapshotInProgress = false,
                 detectionPreviewRanges = emptyList(),
+                selectedAudioTrackIndex = 0,
                 playbackSpeed = 1.0f,
                 isPitchCorrectionEnabled = false,
                 currentState = VideoEditingUiState.Success(emptyList(), keyframes = emptyList(), segments = emptyList())
@@ -42,6 +43,7 @@ public class VideoEditingStateMapperTest {
                 canRedo = false,
                 isSnapshotInProgress = false,
                 detectionPreviewRanges = emptyList(),
+                selectedAudioTrackIndex = 0,
                 playbackSpeed = 1.0f,
                 isPitchCorrectionEnabled = false,
                 currentState = currentState
@@ -84,6 +86,7 @@ public class VideoEditingStateMapperTest {
                 canRedo = false,
                 isSnapshotInProgress = true,
                 detectionPreviewRanges = previewRanges,
+                selectedAudioTrackIndex = 1,
                 playbackSpeed = 1.5f,
                 isPitchCorrectionEnabled = true,
                 currentState = VideoEditingUiState.Initial
@@ -106,6 +109,7 @@ public class VideoEditingStateMapperTest {
         assertEquals(true, successState.isSnapshotInProgress)
         assertEquals(previewRanges, successState.detectionPreviewRanges)
         assertEquals(clip.availableTracks, successState.availableTracks)
+        assertEquals(1, successState.selectedAudioTrackIndex)
         assertEquals(1.5f, successState.playbackSpeed)
         assertEquals(true, successState.isPitchCorrectionEnabled)
     }

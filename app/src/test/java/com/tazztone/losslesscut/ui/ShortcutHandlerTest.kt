@@ -41,11 +41,17 @@ class ShortcutHandlerTest {
         onRestore = onRestore
     )
 
-    private fun mockKeyEvent(action: Int, keyCode: Int, isAltPressed: Boolean = false): KeyEvent {
+    private fun mockKeyEvent(
+        action: Int,
+        keyCode: Int,
+        isAltPressed: Boolean = false,
+        isShiftPressed: Boolean = false
+    ): KeyEvent {
         val event = mockk<KeyEvent>()
         every { event.action } returns action
         every { event.keyCode } returns keyCode
         every { event.isAltPressed } returns isAltPressed
+        every { event.isShiftPressed } returns isShiftPressed
         return event
     }
 
@@ -113,6 +119,38 @@ class ShortcutHandlerTest {
     fun `handleKeyEvent O calls onSetOut`() {
         assertTrue(createHandler().handleKeyEvent(mockKeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_O)))
         verify { onSetOut() }
+    }
+
+    @Test
+    fun `handleKeyEvent COMMA seeks frame backward`() {
+        assertTrue(createHandler().handleKeyEvent(mockKeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_COMMA)))
+        verify { playerManager.seekToFrame(-1) }
+    }
+
+    @Test
+    fun `handleKeyEvent PERIOD seeks frame forward`() {
+        assertTrue(createHandler().handleKeyEvent(mockKeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_PERIOD)))
+        verify { playerManager.seekToFrame(1) }
+    }
+
+    @Test
+    fun `handleKeyEvent DPAD_LEFT with shift seeks frame backward`() {
+        assertTrue(
+            createHandler().handleKeyEvent(
+                mockKeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT, isShiftPressed = true)
+            )
+        )
+        verify { playerManager.seekToFrame(-1) }
+    }
+
+    @Test
+    fun `handleKeyEvent DPAD_RIGHT with shift seeks frame forward`() {
+        assertTrue(
+            createHandler().handleKeyEvent(
+                mockKeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_RIGHT, isShiftPressed = true)
+            )
+        )
+        verify { playerManager.seekToFrame(1) }
     }
 
     @Test

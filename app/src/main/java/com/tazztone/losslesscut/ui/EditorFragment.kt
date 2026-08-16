@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.TooltipCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.util.asString
@@ -296,6 +297,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
         binding.editingControls.containerReset.setOnClickListener { handleResetAction() }
 
         binding.playerSection.btnNudgeBack.setOnClickListener { playerManager.seekToKeyframe(-1) }
+        binding.playerSection.btnFrameBack.setOnClickListener { playerManager.seekToFrame(-1) }
+        binding.playerSection.btnFrameForward.setOnClickListener { playerManager.seekToFrame(1) }
         binding.playerSection.btnNudgeForward.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
@@ -397,6 +400,11 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
         binding.loadingScreen.composeLoadingView.setContent {}
         val selectedClip = state.clips.getOrNull(state.selectedClipIndex) ?: return
 
+        syncPlayerAndSeeker(state, selectedClip)
+        updateControlsAndBadgesUI(state)
+    }
+
+    private fun syncPlayerAndSeeker(state: VideoEditingUiState.Success, selectedClip: MediaClip) {
         val newStateUris = state.clips.map { Uri.parse(it.uri) }
         val currentUris = playerManager.player?.mediaItemCount?.let { count ->
             (0 until count).map { i -> playerManager.player?.getMediaItemAt(i)?.localConfiguration?.uri }
@@ -412,8 +420,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
             binding.seekerContainer.customVideoSeeker.resetView()
             lastLoadedClipId = selectedClip.id
         }
-
         binding.seekerContainer.customVideoSeeker.setVideoDuration(selectedClip.durationMs)
+        binding.seekerContainer.customVideoSeeker.setKeyframes(state.keyframes)
+        binding.seekerContainer.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
+        binding.seekerContainer.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
         playlistDelegate.submitList(state)
 
         if (state.isAudioOnly) {
@@ -425,14 +435,14 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
             binding.playerSection.audioPlaceholder.visibility = View.GONE
         }
 
-        if (playerManager.currentPlaybackSpeed != state.playbackSpeed || playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
+        if (playerManager.currentPlaybackSpeed != state.playbackSpeed ||
+            playerManager.isPitchCorrectionEnabled != state.isPitchCorrectionEnabled) {
             playerManager.updatePlaybackSpeed(state.playbackSpeed, state.isPitchCorrectionEnabled)
         }
         updatePlaybackSpeedUI(state.playbackSpeed)
+    }
 
-        binding.seekerContainer.customVideoSeeker.setKeyframes(state.keyframes)
-        binding.seekerContainer.customVideoSeeker.setSegments(state.segments, state.selectedSegmentId)
-        binding.seekerContainer.customVideoSeeker.detectionPreviewRanges = state.detectionPreviewRanges
+    private fun updateControlsAndBadgesUI(state: VideoEditingUiState.Success) {
         binding.navBar.btnUndo.isEnabled = state.canUndo
         binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
         binding.navBar.btnRedo.isEnabled = state.canRedo
@@ -449,6 +459,47 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
             R.drawable.ic_delete_24
         }
         binding.editingControls.btnDelete.setImageResource(deleteIcon)
+
+        val audioTracks = state.availableTracks.filter { it.isAudio }
+        if (audioTracks.size > 1) {
+            binding.seekerContainer.btnAudioTrackBadge.visibility = View.VISIBLE
+            binding.seekerContainer.btnAudioTrackBadge.text = "A${state.selectedAudioTrackIndex + 1} ▾"
+            binding.seekerContainer.btnAudioTrackBadge.setOnClickListener {
+                showAudioTrackPicker(state, audioTracks)
+            }
+        } else {
+            binding.seekerContainer.btnAudioTrackBadge.visibility = View.GONE
+        }
+    }
+
+    private fun showAudioTrackPicker(
+        state: VideoEditingUiState.Success,
+        audioTracks: List<com.tazztone.losslesscut.domain.model.MediaTrack>
+    ) {
+        val items = audioTracks.mapIndexed { index, track ->
+            val codec = track.mimeType.substringAfter('/').uppercase()
+            val channels = when (track.channelCount) {
+                1 -> "Mono"
+                2 -> "Stereo"
+                6 -> "5.1"
+                else -> if (track.channelCount > 0) "${track.channelCount}ch" else ""
+            }
+            val sampleRateKhz = if (track.sampleRate > 0) "${track.sampleRate / 1000} kHz" else ""
+            val details = listOf(codec, channels, sampleRateKhz, track.title, track.language)
+                .filter { !it.isNullOrBlank() }
+                .joinToString(" • ")
+            "Track ${index + 1}: $details"
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.select_audio_track)
+            .setSingleChoiceItems(items.toTypedArray(), state.selectedAudioTrackIndex) { dialog, which ->
+                viewModel.setSelectedAudioTrack(which)
+                playerManager.selectAudioTrack(which)
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun setupBackPressed() {

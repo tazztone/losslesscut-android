@@ -3,7 +3,7 @@ package com.tazztone.losslesscut.domain.engine
 import kotlinx.coroutines.flow.Flow
 
 public interface AudioDecoder {
-    public suspend fun decode(uri: String): Flow<PcmData>
+    public suspend fun decode(uri: String, trackIndex: Int? = null): Flow<PcmData>
 
     public data class PcmData(
         val buffer: ByteArray,

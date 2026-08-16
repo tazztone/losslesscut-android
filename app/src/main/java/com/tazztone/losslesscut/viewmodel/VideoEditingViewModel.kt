@@ -139,6 +139,12 @@ class VideoEditingViewModel @Inject constructor(
                     _rawSilencePreviewRanges.value = rawResult
                 }
         }
+        viewModelScope.launch {
+            waveformController.activeTrackIndex
+                .collect {
+                    updateStateInternal()
+                }
+        }
     }
 
     // MIN_SEGMENT_DURATION_MS moved to ClipController
@@ -567,11 +573,23 @@ class VideoEditingViewModel @Inject constructor(
                 canRedo = snapshot.canRedo,
                 isSnapshotInProgress = exportController.isSnapshotInProgress.value,
                 detectionPreviewRanges = _detectionPreviewRanges.value,
+                selectedAudioTrackIndex = waveformController.activeTrackIndex.value,
                 playbackSpeed = currentPlaybackSpeed,
                 isPitchCorrectionEnabled = isPitchCorrectionEnabled,
                 currentState = _uiState.value
             )
         )
+    }
+
+    fun setSelectedAudioTrack(index: Int) {
+        val clip = currentClips.getOrNull(selectedClipIndex) ?: return
+        waveformController.extractWaveform(viewModelScope, clip, index)
+    }
+
+    fun seekTo(positionMs: Long) {
+        viewModelScope.launch {
+            _uiEvents.send(VideoEditingEvent.SeekToPosition(positionMs))
+        }
     }
 
     fun previewSilenceSegments(

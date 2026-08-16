@@ -86,12 +86,15 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 ### Smart Cut Detection Engine
 - **Silence Detection**: Analyzes raw PCM amplitudes (`AudioWaveformExtractor`) to compute RMS energy levels without noise floor distortion.
 - **Visual Detection**: Refactored to operate on **exact frame-step logic** (`sampleIntervalFrames`, e.g. every 1st, 2nd, 5th, 10th frame) instead of millisecond intervals. Uses `MediaExtractor` frame stepping (`decodedFrameIndex % sampleIntervalFrames == 0`) with Kotlin-native perceptual hashing (pHash), normalized Sum of Absolute Differences rate (Luminance Delta/sec), and **contrast-normalized Laplacian variance** ($\frac{\text{Laplacian Variance}}{(\text{Mean Luma}/255.0)^2 + 0.05}$) with area-average box downsampling to eliminate spatial aliasing noise. Freeze frame ranges feature automatic start-timestamp backdating to frame $t_{i-1}$ to eliminate sampling lag. Includes post-input-EOS timeout protection (`MAX_EOS_TIMEOUTS`) to prevent hardware decoder drain hangs.
+- **Interactive Match Navigation**: Dedicated `btnPrevMatch` / `btnNextMatch` controls step the playhead sequentially across detected preview intervals on the timeline.
 - **Segment Application**: `SilenceDetectionUseCase.applyDetectionRanges()` intersects newly detected ranges with existing clip `TrimSegment` bounds to preserve prior user clip trims.
 - **Coroutine Cancellation Contract**: All low-level `MediaCodec` and `MediaExtractor` loops enforce cooperative cancellation via `coroutineContext.ensureActive()` and rethrow `CancellationException` to guarantee immediate resource release upon cancellation.
 
 ### State Management & Navigation
 - **`VideoEditingViewModel`**: Unidirectional data flow state machine emitting single-shot UI events via `Channel<VideoEditingEvent>` with undo/redo segment history stacks.
-- **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds with keyframe snapping and smart segment creation/adjustment, `S` split, `LEFT`/`RIGHT` keyframe seek).
+- **Multi-Track Audio Switching**: `WaveformController` and `VideoEditingViewModel` support dynamic audio track selection (`setSelectedAudioTrack`), switching ExoPlayer track routing while reloading/caching corresponding track waveforms.
+- **Frame-by-Frame Stepping**: `PlayerManager.seekToFrame(direction)` computes drift-free discrete frame indices ($\text{round}(pos \times fps / 1000) \pm 1$) to eliminate accumulated millisecond drift across repeated single-frame steps.
+- **Keyboard Shortcuts (`ShortcutHandler`)**: Desktop/hardware keyboard controls (`SPACE` toggle play, `I`/`O` segment bounds with keyframe snapping and smart segment creation/adjustment, `S` split, `,` / `.` single-frame step, `Shift + LEFT/RIGHT` single-frame step, `LEFT`/`RIGHT` keyframe seek).
 
 ### Unified launch and session lifecycle
 - `MainActivity` hosts a Compose-driven dashboard (`MainDashboardScreen`) with Android 12+ SplashScreen integration, edge-to-edge layout, quick Settings access, and a primary **Load media** hero action. File opens, share intents, and recent-session cards all navigate to `VideoEditingActivity` with the editor as the only navigation destination.

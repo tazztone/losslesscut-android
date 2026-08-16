@@ -46,6 +46,9 @@ class WaveformController @Inject constructor(
     private val _maxAmplitude = MutableStateFlow(1f)
     val maxAmplitude: StateFlow<Float> = _maxAmplitude.asStateFlow()
 
+    private val _activeTrackIndex = MutableStateFlow(0)
+    val activeTrackIndex: StateFlow<Int> = _activeTrackIndex.asStateFlow()
+
     private var waveformJob: Job? = null
     private var silencePreviewJob: Job? = null
 
@@ -53,14 +56,16 @@ class WaveformController @Inject constructor(
     @Volatile
     private var rawWaveformResult: WaveformResult? = null
 
-    fun extractWaveform(scope: CoroutineScope, clip: MediaClip) {
+    fun extractWaveform(scope: CoroutineScope, clip: MediaClip, trackIndex: Int? = null) {
+        val selectedTrack = trackIndex ?: _activeTrackIndex.value
+        _activeTrackIndex.value = selectedTrack
         waveformJob?.cancel()
         _silencePreviewRanges.value = emptyList()
         waveformJob = scope.launch(ioDispatcher) {
             _waveformData.value = null
             rawWaveformResult = null
             
-            repository.getWaveform(clip) { progressResult ->
+            repository.getWaveform(clip, selectedTrack) { progressResult ->
                 updateUiWaveform(progressResult, clip.durationMs)
             }?.let { finalResult ->
                 rawWaveformResult = finalResult

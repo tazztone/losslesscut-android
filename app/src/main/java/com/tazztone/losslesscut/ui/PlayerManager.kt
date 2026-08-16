@@ -82,6 +82,46 @@ class PlayerManager(
         }
     }
 
+    fun seekToFrame(direction: Int) {
+        val currentPos = currentPosition
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success
+        val fps = (state?.videoFps ?: 30f).takeIf { it > 0f } ?: 30f
+        val currentFrameIndex = Math.round(currentPos * fps / 1000.0)
+        val targetFrameIndex = (currentFrameIndex + direction).coerceAtLeast(0)
+        val targetMs = Math.round(targetFrameIndex * 1000.0 / fps)
+        seekTo(targetMs)
+    }
+
+    fun selectAudioTrack(trackIndex: Int) {
+        val player = player ?: return
+        val (trackGroup, subIndex) = findAudioTrackTarget(player, trackIndex) ?: return
+        player.trackSelectionParameters = player.trackSelectionParameters
+            .buildUpon()
+            .setOverrideForType(
+                androidx.media3.common.TrackSelectionOverride(
+                    trackGroup,
+                    listOf(subIndex)
+                )
+            )
+            .build()
+    }
+
+    private fun findAudioTrackTarget(
+        player: Player,
+        targetOrdinal: Int
+    ): Pair<androidx.media3.common.TrackGroup, Int>? {
+        var ordinal = 0
+        for (group in player.currentTracks.groups) {
+            if (group.type != androidx.media3.common.C.TRACK_TYPE_AUDIO) continue
+            for (i in 0 until group.length) {
+                if (ordinal++ == targetOrdinal) {
+                    return group.mediaTrackGroup to i
+                }
+            }
+        }
+        return null
+    }
+
     fun setMediaItems(uris: List<Uri>, initialIndex: Int = 0, initialPosition: Long = 0, playWhenReady: Boolean = false) {
         val mediaItems = uris.map { MediaItem.fromUri(it) }
         player?.apply {

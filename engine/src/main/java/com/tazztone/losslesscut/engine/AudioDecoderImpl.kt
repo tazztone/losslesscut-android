@@ -25,11 +25,11 @@ class AudioDecoderImpl @Inject constructor(
     @param:EngineDispatcher private val engineDispatcher: kotlinx.coroutines.CoroutineDispatcher
 ) : AudioDecoder {
 
-    override suspend fun decode(uri: String): Flow<AudioDecoder.PcmData> = flow {
+    override suspend fun decode(uri: String, trackIndex: Int?): Flow<AudioDecoder.PcmData> = flow {
         val extractor = MediaExtractor()
         var codec: MediaCodec? = null
         try {
-            val trackInfo = setupExtractor(extractor, uri) ?: return@flow
+            val trackInfo = setupExtractor(extractor, uri, trackIndex) ?: return@flow
             val format = trackInfo.format
             codec = createCodec(format)
 
@@ -43,9 +43,9 @@ class AudioDecoderImpl @Inject constructor(
         }
     }.flowOn(engineDispatcher)
 
-    private fun setupExtractor(extractor: MediaExtractor, uri: String): TrackInfo? {
+    private fun setupExtractor(extractor: MediaExtractor, uri: String, trackIndex: Int?): TrackInfo? {
         dataSource.setExtractorSource(extractor, uri)
-        val trackInfo = findAudioTrack(extractor) ?: return null
+        val trackInfo = findAudioTrack(extractor, trackIndex) ?: return null
         extractor.selectTrack(trackInfo.index)
         return trackInfo
     }
@@ -218,14 +218,17 @@ class AudioDecoderImpl @Inject constructor(
         }
     }
 
-    private fun findAudioTrack(extractor: MediaExtractor): TrackInfo? {
-        for (i in 0 until extractor.trackCount) {
-            val format = extractor.getTrackFormat(i)
-            if (format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
-                return TrackInfo(i, format)
-            }
-        }
-        return null
+    private fun findAudioTrack(extractor: MediaExtractor, targetTrackIndex: Int?): TrackInfo? {
+        val audioTracks = (0 until extractor.trackCount)
+            .map { TrackInfo(it, extractor.getTrackFormat(it)) }
+            .filter { it.format.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true }
+
+        if (audioTracks.isEmpty()) return null
+        if (targetTrackIndex == null) return audioTracks.first()
+
+        return audioTracks.firstOrNull { it.index == targetTrackIndex }
+            ?: audioTracks.getOrNull(targetTrackIndex)
+            ?: audioTracks.first()
     }
 
     private data class TrackInfo(val index: Int, val format: MediaFormat)

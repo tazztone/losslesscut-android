@@ -454,6 +454,35 @@
                 android:textSize="11sp"
                 android:textStyle="bold"/>
 
+            <LinearLayout
+                android:id="@+id/layoutMatchNavigationVisual"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:visibility="gone">
+
+                <ImageButton
+                    android:id="@+id/btnPrevMatchVisual"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_chevron_left_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/previous_match"
+                    android:tooltipText="@string/previous_match"
+                    app:tint="@android:color/white"/>
+
+                <ImageButton
+                    android:id="@+id/btnNextMatchVisual"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:src="@drawable/ic_chevron_right_24"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/next_match"
+                    android:tooltipText="@string/next_match"
+                    app:tint="@android:color/white"/>
+            </LinearLayout>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCancelVisual"
                 style="@style/Widget.Material3.Button.TextButton"

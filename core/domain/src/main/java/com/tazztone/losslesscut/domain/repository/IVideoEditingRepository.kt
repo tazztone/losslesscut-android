@@ -8,7 +8,9 @@ public interface IVideoEditingRepository {
     public suspend fun createClipFromUri(uri: String): Result<MediaClip>
     public suspend fun getKeyframes(uri: String): List<Long>
     public suspend fun extractWaveform(
-        uri: String, onProgress: ((WaveformResult) -> Unit)? = null
+        uri: String, 
+        trackIndex: Int? = null,
+        onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
     public suspend fun getFrameAt(
         uri: String,
@@ -48,6 +50,7 @@ public interface IVideoEditingRepository {
     public suspend fun deleteSession(uri: String)
     public suspend fun getWaveform(
         clip: MediaClip,
+        trackIndex: Int? = null,
         onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
     public suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String): Boolean

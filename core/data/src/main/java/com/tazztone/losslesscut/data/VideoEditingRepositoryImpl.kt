@@ -88,9 +88,10 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     override suspend fun extractWaveform(
         uri: String,
+        trackIndex: Int?,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? {
-        return waveformExtractor.extract(uri, onProgress = onProgress)
+        return waveformExtractor.extract(uri, trackIndex = trackIndex, onProgress = onProgress)
     }
 
     override suspend fun getFrameAt(uri: String, positionMs: Long, format: String, quality: Int) = withContext(ioDispatcher) {
@@ -232,16 +233,17 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     override suspend fun getWaveform(
         clip: MediaClip,
+        trackIndex: Int?,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(ioDispatcher) {
-        val cached = analysisCache.getWaveform(clip)
+        val cached = analysisCache.getWaveform(clip, trackIndex)
         if (cached != null) {
             return@withContext cached
         }
 
-        val extracted = extractWaveform(clip.uri, onProgress)
+        val extracted = extractWaveform(clip.uri, trackIndex, onProgress)
         if (extracted != null) {
-            analysisCache.saveWaveform(clip, extracted)
+            analysisCache.saveWaveform(clip, extracted, trackIndex)
         }
         extracted
     }

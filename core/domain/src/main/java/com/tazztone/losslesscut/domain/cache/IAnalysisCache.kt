@@ -6,8 +6,8 @@ import com.tazztone.losslesscut.domain.model.VisualStrategy
 import com.tazztone.losslesscut.domain.model.WaveformResult
 
 public interface IAnalysisCache {
-    public fun getWaveform(clip: MediaClip): WaveformResult?
-    public fun saveWaveform(clip: MediaClip, waveform: WaveformResult)
+    public fun getWaveform(clip: MediaClip, trackIndex: Int? = null): WaveformResult?
+    public fun saveWaveform(clip: MediaClip, waveform: WaveformResult, trackIndex: Int? = null)
 
     public fun getFrameAnalysis(
         clip: MediaClip,

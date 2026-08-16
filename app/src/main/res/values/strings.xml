@@ -271,4 +271,9 @@
     <string name="continue_editing">Continue Editing</string>
     <string name="share_media_chooser">Share exported media</string>
     <string name="error_open_file">No app found to open this file</string>
+    <string name="previous_frame">Previous Frame</string>
+    <string name="next_frame">Next Frame</string>
+    <string name="previous_match">Previous Match</string>
+    <string name="next_match">Next Match</string>
+    <string name="select_audio_track">Select Audio Track</string>
 </resources>

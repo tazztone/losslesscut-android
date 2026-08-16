@@ -84,6 +84,7 @@ class VideoEditingStateTest {
         assertFalse(state.isSnapshotInProgress)
         assertTrue(state.detectionPreviewRanges.isEmpty())
         assertTrue(state.availableTracks.isEmpty())
+        assertEquals(0, state.selectedAudioTrackIndex)
         assertEquals(1.0f, state.playbackSpeed)
         assertFalse(state.isPitchCorrectionEnabled)
     }

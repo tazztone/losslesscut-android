@@ -45,6 +45,10 @@ class SilenceDetectionOverlayController(
     private var tvPaddingPrefixValue: TextView? = null
     private var tvPaddingPostfixValue: TextView? = null
 
+    private var layoutMatchNavigationSilence: View? = null
+    private var btnPrevMatchSilence: View? = null
+    private var btnNextMatchSilence: View? = null
+
     companion object {
         private const val PERCENT_SCALE = 100
         private const val MS_TO_SEC = 1000f
@@ -78,6 +82,10 @@ class SilenceDetectionOverlayController(
         tvMinSegmentValue = overlay.findViewById(R.id.tvSilenceMinSegmentValue)
         tvPaddingPrefixValue = overlay.findViewById(R.id.tvPaddingPrefixValue)
         tvPaddingPostfixValue = overlay.findViewById(R.id.tvPaddingPostfixValue)
+
+        layoutMatchNavigationSilence = overlay.findViewById(R.id.layoutMatchNavigationSilence)
+        btnPrevMatchSilence = overlay.findViewById(R.id.btnPrevMatchSilence)
+        btnNextMatchSilence = overlay.findViewById(R.id.btnNextMatchSilence)
     }
 
     private fun setupListeners(overlay: View) {
@@ -86,11 +94,27 @@ class SilenceDetectionOverlayController(
         val btnApply = overlay.findViewById<android.widget.Button>(R.id.btnApply)
         val btnToggleModeSilence = overlay.findViewById<MaterialButtonToggleGroup>(R.id.btnToggleModeSilence)
 
+        btnPrevMatchSilence?.setOnClickListener { jumpToMatch(direction = -1) }
+        btnNextMatchSilence?.setOnClickListener { jumpToMatch(direction = 1) }
+
         setupModeListener(overlay, btnToggleModeSilence)
         setupPaddingLinkListener(btnLinkPadding)
         setupSliderListeners()
         setupSliderStepButtons(overlay)
         setupActionListeners(btnCancel, btnApply)
+    }
+
+    private fun jumpToMatch(direction: Int) {
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val ranges = state.detectionPreviewRanges.ifEmpty { return }
+        val currentPos = binding.seekerContainer.customVideoSeeker.seekPositionMs
+
+        val targetRange = if (direction > 0) {
+            ranges.firstOrNull { it.first > currentPos + 50L } ?: ranges.first()
+        } else {
+            ranges.lastOrNull { it.first < currentPos - 50L } ?: ranges.last()
+        }
+        viewModel.seekTo(targetRange.first)
     }
 
     private fun stepSlider(slider: Slider, direction: Int): Float {
@@ -282,10 +306,12 @@ class SilenceDetectionOverlayController(
                     TimeUtils.formatDuration(totalSilenceMs),
                     ranges.size
                 )
+                layoutMatchNavigationSilence?.visibility = View.VISIBLE
                 btnApply.isEnabled = true
                 return
             }
         }
+        layoutMatchNavigationSilence?.visibility = View.GONE
         tvEstimatedCut.text = context.getString(R.string.no_silence_detected)
         btnApply.isEnabled = false
     }

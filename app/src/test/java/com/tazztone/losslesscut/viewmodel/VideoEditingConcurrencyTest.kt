@@ -38,7 +38,7 @@ public class VideoEditingConcurrencyTest {
         Dispatchers.setMain(testDispatcher)
         every { mockPrefs.undoLimitFlow } returns flowOf(30)
         
-        coEvery { mockRepo.getWaveform(any(), any()) } returns null
+        coEvery { mockRepo.getWaveform(any(), any(), any()) } returns null
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
         
         val useCases = VideoEditingUseCases(
@@ -118,13 +118,13 @@ public class VideoEditingConcurrencyTest {
         }
         
         // Slow waveform extraction for clip 0
-        coEvery { mockRepo.getWaveform(match { it.uri == uri0 }, any()) } coAnswers {
+        coEvery { mockRepo.getWaveform(match { it.uri == uri0 }, any(), any()) } coAnswers {
             delay(1000)
             WaveformResult(floatArrayOf(0f, 0f, 0f), 0f, 10000L)
         }
         
         // Fast waveform extraction for clip 1
-        coEvery { mockRepo.getWaveform(match { it.uri == uri1 }, any()) } coAnswers {
+        coEvery { mockRepo.getWaveform(match { it.uri == uri1 }, any(), any()) } coAnswers {
             delay(100)
             WaveformResult(floatArrayOf(1f, 1f, 1f), 1f, 10000L)
         }
@@ -159,7 +159,7 @@ public class VideoEditingConcurrencyTest {
             Result.success(createMockClip(uriStr))
         }
         
-        coEvery { mockRepo.getWaveform(any(), any()) } answers {
+        coEvery { mockRepo.getWaveform(any(), any(), any()) } answers {
             WaveformResult(floatArrayOf(0.1f, 0.1f, 0.1f, 0.1f, 0.1f), 0.1f, 20000L)
         }
 

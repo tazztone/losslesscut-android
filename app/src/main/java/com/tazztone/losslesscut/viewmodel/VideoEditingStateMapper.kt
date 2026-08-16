@@ -12,6 +12,7 @@ public data class MapStateInput(
     val canRedo: Boolean,
     val isSnapshotInProgress: Boolean,
     val detectionPreviewRanges: List<LongRange>,
+    val selectedAudioTrackIndex: Int,
     val playbackSpeed: Float,
     val isPitchCorrectionEnabled: Boolean,
     val currentState: VideoEditingUiState
@@ -51,6 +52,7 @@ public object VideoEditingStateMapper {
             isSnapshotInProgress = input.isSnapshotInProgress,
             detectionPreviewRanges = input.detectionPreviewRanges,
             availableTracks = clip.availableTracks,
+            selectedAudioTrackIndex = input.selectedAudioTrackIndex,
             playbackSpeed = input.playbackSpeed,
             isPitchCorrectionEnabled = input.isPitchCorrectionEnabled
         )

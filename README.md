@@ -25,6 +25,8 @@
 
 ### 🎞️ Pro NLE Timeline & Ergonomics
 - 🔍 **Precision Timeline**: Zoom up to 20x for frame-accurate edits with mandatory keyframe snapping and haptic feedback.
+- 🎯 **Frame-by-Frame Transport**: Single-frame step buttons (`◄ 1f`, `1f ►`) with drift-free exact frame rounding and keyboard shortcuts (`,`, `.`, `Shift + Arrow`).
+- 🎵 **Multi-Track Audio Waveform**: Interactive `[A1 ▾]` badge to inspect stream metadata and toggle between audio waveforms and playback routing on multi-track media.
 - 👆 **Anchored Actions**: Long-press inside a segment to split or delete at the touch location; non-destructive Undo/Redo history stack.
 - 📱 **Adaptive Layout**: Responsive landscape sidebar, floating player overlay, and audio waveform display.
 - ♿ **Accessibility First**: Full screen-reader support via `ExploreByTouchHelper` virtual view hierarchies.
@@ -32,6 +34,7 @@
 ### 🤖 Smart Cut (v2.0) Automated Detection
 - 🔇 **Silence Cut**: Automated detection and removal of quiet sections with interactive ghost state preview and incremental +/- step slider controls.
 - 👁️ **Visual Detection**: pHash, SAD luminance delta, and contrast-normalized Laplacian variance for Scene, Black, Freeze, and Blur detection.
+- ⏭️ **Interactive Match Jumpers**: Prev/Next match navigation buttons to step the playhead directly through detected preview ranges on the timeline.
 - 🔀 **Invert Keep/Discard**: Instantly toggle between removing or preserving detected ranges.
 
 ### 🔒 Privacy, SAF & Performance Cache

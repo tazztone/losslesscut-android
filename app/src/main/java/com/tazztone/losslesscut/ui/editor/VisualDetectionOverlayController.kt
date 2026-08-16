@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
 
+@Suppress("TooManyFunctions")
 class VisualDetectionOverlayController(
     private val context: Context,
     private val scope: CoroutineScope,
@@ -60,6 +61,9 @@ class VisualDetectionOverlayController(
     private var btnSensitivityPlus: View? = root.findViewById(R.id.btnSensitivityPlus)
     private var btnMinSegmentVisualMinus: View? = root.findViewById(R.id.btnMinSegmentVisualMinus)
     private var btnMinSegmentVisualPlus: View? = root.findViewById(R.id.btnMinSegmentVisualPlus)
+    private var layoutMatchNavigationVisual: View? = root.findViewById(R.id.layoutMatchNavigationVisual)
+    private var btnPrevMatchVisual: View? = root.findViewById(R.id.btnPrevMatchVisual)
+    private var btnNextMatchVisual: View? = root.findViewById(R.id.btnNextMatchVisual)
 
     private var currentStrategy = VisualStrategy.SCENE_CHANGE
     private var currentMode = SilenceDetectionUseCase.DetectionMode.DISCARD_RANGES
@@ -106,7 +110,7 @@ class VisualDetectionOverlayController(
 
     private fun setupListeners() {
         setupStrategyListeners()
-        setupModeAndSliderListeners()
+        setupSliderListeners()
         setupActionListeners()
     }
 
@@ -138,7 +142,7 @@ class VisualDetectionOverlayController(
         btnBlurQuality.setOnClickListener(onStrategyClick)
     }
 
-    private fun setupModeAndSliderListeners() {
+    private fun setupSliderListeners() {
         btnToggleMode.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 currentMode = if (checkedId == R.id.btnModeKeep) {
@@ -152,11 +156,17 @@ class VisualDetectionOverlayController(
         }
 
         sliderSensitivity.addOnChangeListener { _, value, _ ->
-            updateValueText(tvSensitivityValue, value, getStrategyUnit())
+            val unit = when (currentStrategy) {
+                VisualStrategy.SCENE_CHANGE -> "bits"
+                VisualStrategy.BLACK_FRAMES -> "luma"
+                VisualStrategy.FREEZE_FRAME -> "diff"
+                VisualStrategy.BLUR_QUALITY -> "var"
+            }
+            tvSensitivityValue.text = String.format(Locale.getDefault(), "%.1f %s", value, unit)
             triggerFiltering()
         }
         sliderMinSegment.addOnChangeListener { _, value, _ ->
-            updateValueText(tvMinSegmentValue, value / 1000f, "s")
+            tvMinSegmentValue.text = String.format(Locale.getDefault(), "%.1f s", value / 1000f)
             triggerFiltering()
         }
         sliderInterval.addOnChangeListener { _, value, _ ->
@@ -184,6 +194,8 @@ class VisualDetectionOverlayController(
                 startDetection()
             }
         }
+        btnPrevMatchVisual?.setOnClickListener { jumpToMatch(direction = -1) }
+        btnNextMatchVisual?.setOnClickListener { jumpToMatch(direction = 1) }
         btnCancelVisual.setOnClickListener { onDismiss() }
         btnApplyVisual.setOnClickListener {
             val mode = if (currentStrategy == VisualStrategy.SCENE_CHANGE) {
@@ -194,6 +206,19 @@ class VisualDetectionOverlayController(
             viewModel.applyDetection(mode)
             onDismiss()
         }
+    }
+
+    private fun jumpToMatch(direction: Int) {
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
+        val ranges = state.detectionPreviewRanges.ifEmpty { return }
+        val currentPos = seeker.seekPositionMs
+
+        val targetRange = if (direction > 0) {
+            ranges.firstOrNull { it.first > currentPos + 50L } ?: ranges.first()
+        } else {
+            ranges.lastOrNull { it.first < currentPos - 50L } ?: ranges.last()
+        }
+        viewModel.seekTo(targetRange.first)
     }
 
     private fun stepSlider(slider: Slider, direction: Int): Float {
@@ -234,48 +259,23 @@ class VisualDetectionOverlayController(
     )
 
     private fun updateStrategyUI() {
-        when (currentStrategy) {
-            VisualStrategy.SCENE_CHANGE -> {
-                tvSensitivityLabel.text = context.getString(R.string.sensitivity)
-                applyConfig(SCENE_CHANGE_CONFIG)
-            }
-            VisualStrategy.BLACK_FRAMES -> {
-                tvSensitivityLabel.text = context.getString(R.string.luma_threshold)
-                applyConfig(BLACK_FRAMES_CONFIG)
-            }
-            VisualStrategy.FREEZE_FRAME -> {
-                tvSensitivityLabel.text = context.getString(R.string.diff_threshold)
-                applyConfig(FREEZE_FRAME_CONFIG)
-            }
-            VisualStrategy.BLUR_QUALITY -> {
-                tvSensitivityLabel.text = context.getString(R.string.blur_threshold)
-                applyConfig(BLUR_QUALITY_CONFIG)
-            }
+        val (config, labelRes, unit) = when (currentStrategy) {
+            VisualStrategy.SCENE_CHANGE -> Triple(SCENE_CHANGE_CONFIG, R.string.sensitivity, "bits")
+            VisualStrategy.BLACK_FRAMES -> Triple(BLACK_FRAMES_CONFIG, R.string.luma_threshold, "luma")
+            VisualStrategy.FREEZE_FRAME -> Triple(FREEZE_FRAME_CONFIG, R.string.diff_threshold, "diff")
+            VisualStrategy.BLUR_QUALITY -> Triple(BLUR_QUALITY_CONFIG, R.string.blur_threshold, "var")
         }
-        updateValueText(tvSensitivityValue, sliderSensitivity.value, getStrategyUnit())
+        tvSensitivityLabel.text = context.getString(labelRes)
+        sliderSensitivity.valueFrom = config.min
+        sliderSensitivity.valueTo = config.max
+        sliderSensitivity.stepSize = config.step
+        sliderSensitivity.value = config.default.coerceIn(config.min, config.max)
+        tvSensitivityValue.text = String.format(Locale.getDefault(), "%.1f %s", sliderSensitivity.value, unit)
         layoutVisualMode.visibility = if (currentStrategy == VisualStrategy.SCENE_CHANGE) {
             View.GONE
         } else {
             View.VISIBLE
         }
-    }
-
-    private fun applyConfig(config: StrategyConfig) {
-        sliderSensitivity.valueFrom = config.min
-        sliderSensitivity.valueTo = config.max
-        sliderSensitivity.stepSize = config.step
-        sliderSensitivity.value = config.default.coerceIn(config.min, config.max)
-    }
-
-    private fun getStrategyUnit(): String = when (currentStrategy) {
-        VisualStrategy.SCENE_CHANGE -> "bits"
-        VisualStrategy.BLACK_FRAMES -> "luma"
-        VisualStrategy.FREEZE_FRAME -> "diff"
-        VisualStrategy.BLUR_QUALITY -> "var"
-    }
-
-    private fun updateValueText(tv: TextView, value: Float, unit: String) {
-        tv.text = String.format(Locale.getDefault(), "%.1f %s", value, unit)
     }
 
     private fun updateIntervalText(frameStep: Int) {
@@ -380,10 +380,12 @@ class VisualDetectionOverlayController(
                     ranges.size,
                     TimeUtils.formatDuration(totalMs)
                 )
+                layoutMatchNavigationVisual?.visibility = View.VISIBLE
                 btnApplyVisual.isEnabled = true
                 return
             }
         }
+        layoutMatchNavigationVisual?.visibility = View.GONE
         tvDetectedStatus.text = context.getString(R.string.no_visual_detected)
         btnApplyVisual.isEnabled = false
     }
