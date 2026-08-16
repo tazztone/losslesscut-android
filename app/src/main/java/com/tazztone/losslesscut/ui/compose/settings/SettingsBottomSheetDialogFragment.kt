@@ -61,7 +61,7 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                 }
             }
 
-            LosslessCutTheme {
+            LosslessCutTheme(accentColorName = uiState.accentColor) {
                 SettingsScreen(
                     uiState = uiState,
                     onChangePath = { selectFolderLauncher.launch(null) },
@@ -77,16 +77,22 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                     },
                     onAccentColorChanged = { colorName ->
                         viewModel.setAccentColor(colorName)
-                        activity?.recreate()
                     },
                     onUndoLimitChanged = viewModel::setUndoLimit,
                     onSnapshotFormatChanged = viewModel::setSnapshotFormat,
                     onJpgQualityChanged = viewModel::setJpgQuality,
+                    onDeleteOriginalAfterExportChanged = viewModel::setDeleteOriginalAfterExport,
                     onAutoExtractWaveformsChanged = viewModel::setAutoExtractWaveforms,
                     onVisualFrameStepChanged = viewModel::setVisualFrameStep,
                     onCacheCapacityChanged = viewModel::setCacheCapacityMB,
                     onCacheRetentionChanged = viewModel::setCacheRetentionDays,
                     onClearCache = viewModel::clearCache,
+                    onClose = { dismiss() },
+                    onOpenUrl = { url ->
+                        runCatching {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        }
+                    },
                     onScrollChanged = { scrollValue ->
                         val bottomSheet = (dialog as? BottomSheetDialog)
                             ?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)

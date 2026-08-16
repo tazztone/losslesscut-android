@@ -27,6 +27,7 @@ data class SettingsUiState(
     val cacheRetentionDays: Int = 30,
     val cacheUsageBytes: Long = 0L,
     val language: String = "system",
+    val deleteOriginalAfterExport: Boolean = false,
     val isClearingCache: Boolean = false,
     val cacheClearSuccessMessage: Boolean = false
 )
@@ -53,7 +54,8 @@ class SettingsViewModel @Inject constructor(
                 preferences.defaultVisualFrameStepFlow,
                 preferences.cacheCapacityMBFlow,
                 preferences.cacheRetentionDaysFlow,
-                preferences.languageFlow
+                preferences.languageFlow,
+                preferences.deleteOriginalAfterExportFlow
             ) { args ->
                 val undoLimit = args[INDEX_UNDO_LIMIT] as Int
                 val snapshotFormat = args[INDEX_SNAPSHOT_FORMAT] as String
@@ -65,6 +67,7 @@ class SettingsViewModel @Inject constructor(
                 val cacheCapacityMB = args[INDEX_CACHE_CAPACITY_MB] as Int
                 val cacheRetentionDays = args[INDEX_CACHE_RETENTION_DAYS] as Int
                 val language = args[INDEX_LANGUAGE] as String
+                val deleteOriginalAfterExport = args[INDEX_DELETE_ORIGINAL_AFTER_EXPORT] as Boolean
 
                 _uiState.value.copy(
                     undoLimit = undoLimit,
@@ -76,7 +79,8 @@ class SettingsViewModel @Inject constructor(
                     visualFrameStep = visualFrameStep,
                     cacheCapacityMB = cacheCapacityMB,
                     cacheRetentionDays = cacheRetentionDays,
-                    language = language
+                    language = language,
+                    deleteOriginalAfterExport = deleteOriginalAfterExport
                 )
             }.collect { newState ->
                 _uiState.value = newState
@@ -96,6 +100,12 @@ class SettingsViewModel @Inject constructor(
     fun setLanguage(language: String) {
         viewModelScope.launch(ioDispatcher) {
             preferences.setLanguage(language)
+        }
+    }
+
+    fun setDeleteOriginalAfterExport(enabled: Boolean) {
+        viewModelScope.launch(ioDispatcher) {
+            preferences.setDeleteOriginalAfterExport(enabled)
         }
     }
 
@@ -185,5 +195,6 @@ class SettingsViewModel @Inject constructor(
         private const val INDEX_CACHE_CAPACITY_MB = 7
         private const val INDEX_CACHE_RETENTION_DAYS = 8
         private const val INDEX_LANGUAGE = 9
+        private const val INDEX_DELETE_ORIGINAL_AFTER_EXPORT = 10
     }
 }

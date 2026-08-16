@@ -18,6 +18,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -59,9 +60,11 @@ class MainActivity : BaseActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        val accentColorName = preferences.getAccentColorSync()
-
         setContent {
+            val accentColorName by preferences.accentColorFlow.collectAsStateWithLifecycle(
+                initialValue = preferences.getAccentColorSync()
+            )
+
             LosslessCutTheme(accentColorName = accentColorName) {
                 MainDashboardScreen(
                     recentSessions = recentSessions,

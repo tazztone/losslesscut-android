@@ -1,29 +1,44 @@
 package com.tazztone.losslesscut.ui.compose.settings
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.tazztone.losslesscut.BuildConfig
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.ui.compose.theme.CyanAccent
 import com.tazztone.losslesscut.ui.compose.theme.GreenAccent
@@ -57,6 +73,12 @@ import com.tazztone.losslesscut.ui.compose.theme.RedAccent
 import com.tazztone.losslesscut.ui.compose.theme.YellowAccent
 import com.tazztone.losslesscut.viewmodel.SettingsUiState
 import java.util.Locale
+
+private data class AccentColorOption(
+    val id: String,
+    val name: String,
+    val color: Color
+)
 
 @Composable
 fun SettingsScreen(
@@ -68,11 +90,14 @@ fun SettingsScreen(
     onUndoLimitChanged: (Int) -> Unit = {},
     onSnapshotFormatChanged: (Boolean) -> Unit = {},
     onJpgQualityChanged: (Int) -> Unit = {},
+    onDeleteOriginalAfterExportChanged: (Boolean) -> Unit = {},
     onAutoExtractWaveformsChanged: (Boolean) -> Unit = {},
     onVisualFrameStepChanged: (Int) -> Unit = {},
     onCacheCapacityChanged: (Int) -> Unit = {},
     onCacheRetentionChanged: (Int) -> Unit = {},
     onClearCache: () -> Unit = {},
+    onClose: () -> Unit = {},
+    onOpenUrl: (String) -> Unit = {},
     onScrollChanged: (Int) -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
@@ -84,148 +109,191 @@ fun SettingsScreen(
 
     val isJpeg = uiState.snapshotFormat == "JPEG"
 
-    Column(
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(24.dp)
-            .verticalScroll(scrollState)
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.TopCenter
     ) {
-        // Drag Handle
-        Box(
+        Column(
             modifier = Modifier
-                .width(32.dp)
-                .height(4.dp)
-                .align(Alignment.CenterHorizontally)
-                .background(MaterialTheme.colorScheme.onSurfaceVariant, CircleShape)
-        )
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Drag Handle for BottomSheet
+            Box(
+                modifier = Modifier
+                    .width(36.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .align(Alignment.CenterHorizontally)
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f))
+            )
 
-        Spacer(modifier = Modifier.height(16.dp))
+            // Header Bar with Title and Close Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.settings),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
 
-        Text(
-            text = stringResource(R.string.settings),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_remove_24),
+                        contentDescription = stringResource(R.string.close),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            // ✂️ 1. Workflow & Editing Card
+            SettingsSectionCard(
+                icon = R.drawable.ic_split_24,
+                title = stringResource(R.string.category_editing)
+            ) {
+                LosslessModeStatusCard()
 
-        // 🌐 1. Language & Region Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_language_region))
+                Spacer(modifier = Modifier.height(16.dp))
 
-        LanguageSetting(
-            currentLanguage = uiState.language,
-            onLanguageChanged = onLanguageChanged
-        )
+                SettingSliderWithPresets(
+                    title = stringResource(R.string.undo_limit),
+                    description = "Maximum undo/redo history steps preserved during editing.",
+                    currentValue = uiState.undoLimit,
+                    displayValue = "${uiState.undoLimit}",
+                    valueRange = 1f..100f,
+                    presets = listOf(10 to "10", 25 to "25", 50 to "50", 100 to "100"),
+                    onValueChanged = onUndoLimitChanged
+                )
+            }
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-        )
+            // 💾 2. Export & Storage Card
+            SettingsSectionCard(
+                icon = R.drawable.ic_export_24,
+                title = stringResource(R.string.category_export)
+            ) {
+                ExportFolderSetting(
+                    customOutputUri = uiState.customOutputUri,
+                    onChangePath = onChangePath,
+                    onResetPath = onResetPath
+                )
 
-        // ⚡ 2. Performance & Smart Cut Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_performance))
+                SettingsDivider()
 
-        AutoExtractWaveformsSetting(
-            autoExtract = uiState.autoExtractWaveforms,
-            onToggled = onAutoExtractWaveformsChanged
-        )
+                SnapshotFormatSetting(
+                    isJpeg = isJpeg,
+                    jpgQuality = uiState.jpgQuality,
+                    onFormatChanged = onSnapshotFormatChanged,
+                    onQualityChanged = onJpgQualityChanged
+                )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                SettingsDivider()
 
-        VisualFrameStepSetting(
-            frameStep = uiState.visualFrameStep,
-            onFrameStepChanged = onVisualFrameStepChanged
-        )
+                DeleteOriginalDefaultSetting(
+                    deleteOriginal = uiState.deleteOriginalAfterExport,
+                    onToggled = onDeleteOriginalAfterExportChanged
+                )
+            }
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-        )
+            // ⚡ 3. Performance & Analysis Cache Card
+            SettingsSectionCard(
+                icon = R.drawable.ic_smart_cut_24,
+                title = stringResource(R.string.category_performance)
+            ) {
+                AutoExtractWaveformsSetting(
+                    autoExtract = uiState.autoExtractWaveforms,
+                    onToggled = onAutoExtractWaveformsChanged
+                )
 
-        // ✂️ 3. General & Editing Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_editing))
+                SettingsDivider()
 
-        LosslessModeSetting()
+                SettingSliderWithPresets(
+                    title = stringResource(R.string.setting_visual_sample_interval),
+                    description = stringResource(R.string.setting_visual_sample_interval_desc),
+                    currentValue = uiState.visualFrameStep,
+                    displayValue = if (uiState.visualFrameStep == 1) "1 frame" else "${uiState.visualFrameStep} frames",
+                    valueRange = 1f..30f,
+                    presets = listOf(1 to "1f", 5 to "5f", 10 to "10f", 15 to "15f", 30 to "30f"),
+                    onValueChanged = onVisualFrameStepChanged
+                )
 
-        Spacer(modifier = Modifier.height(16.dp))
+                SettingsDivider()
 
-        UndoLimitSetting(
-            undoLimit = uiState.undoLimit,
-            onUndoLimitChanged = onUndoLimitChanged
-        )
+                SettingSliderWithPresets(
+                    title = stringResource(R.string.setting_cache_capacity),
+                    description = stringResource(R.string.setting_cache_capacity_desc),
+                    currentValue = uiState.cacheCapacityMB,
+                    displayValue = "${uiState.cacheCapacityMB} MiB",
+                    valueRange = 50f..1000f,
+                    presets = listOf(100 to "100 MB", 250 to "250 MB", 500 to "500 MB", 1000 to "1 GB"),
+                    onValueChanged = onCacheCapacityChanged
+                )
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-        )
+                SettingsDivider()
 
-        // 💾 4. Export & Snapshots Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_export))
+                SettingSliderWithPresets(
+                    title = stringResource(R.string.setting_cache_retention),
+                    description = stringResource(R.string.setting_cache_retention_desc),
+                    currentValue = uiState.cacheRetentionDays,
+                    displayValue = "${uiState.cacheRetentionDays} days",
+                    valueRange = 1f..90f,
+                    presets = listOf(7 to "7d", 14 to "14d", 30 to "30d", 90 to "90d"),
+                    onValueChanged = onCacheRetentionChanged
+                )
 
-        SnapshotFormatSetting(
-            isJpeg = isJpeg,
-            jpgQuality = uiState.jpgQuality,
-            onFormatChanged = onSnapshotFormatChanged,
-            onQualityChanged = onJpgQualityChanged
-        )
+                SettingsDivider()
 
-        Spacer(modifier = Modifier.height(16.dp))
+                CacheUsageAndClearSetting(
+                    usageBytes = uiState.cacheUsageBytes,
+                    isClearing = uiState.isClearingCache,
+                    onClearClicked = { showClearConfirmDialog = true }
+                )
+            }
 
-        ExportFolderSetting(
-            customOutputUri = uiState.customOutputUri,
-            onChangePath = onChangePath,
-            onResetPath = onResetPath
-        )
+            // 🎨 4. Appearance & Language Card
+            SettingsSectionCard(
+                icon = R.drawable.ic_save_color_24,
+                title = stringResource(R.string.category_appearance)
+            ) {
+                AccentColorSetting(
+                    currentAccentColor = uiState.accentColor,
+                    onAccentColorChanged = onAccentColorChanged
+                )
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-        )
+                SettingsDivider()
 
-        // 🎨 5. Appearance Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_appearance))
+                LanguageSetting(
+                    currentLanguage = uiState.language,
+                    onLanguageChanged = onLanguageChanged
+                )
+            }
 
-        AccentColorSetting(
-            currentAccentColor = uiState.accentColor,
-            onAccentColorChanged = onAccentColorChanged
-        )
+            // ℹ️ 5. About & System Card
+            SettingsSectionCard(
+                icon = R.drawable.ic_info_24,
+                title = stringResource(R.string.category_about)
+            ) {
+                AboutSystemContent(
+                    onOpenUrl = onOpenUrl
+                )
+            }
 
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 20.dp),
-            thickness = 1.dp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.15f)
-        )
-
-        // 💾 6. Analysis Cache Category
-        SettingsCategoryHeader(title = stringResource(R.string.category_cache))
-
-        CacheCapacitySetting(
-            capacityMB = uiState.cacheCapacityMB,
-            onCapacityChanged = onCacheCapacityChanged
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        CacheRetentionSetting(
-            retentionDays = uiState.cacheRetentionDays,
-            onRetentionChanged = onCacheRetentionChanged
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        CacheUsageAndClearSetting(
-            usageBytes = uiState.cacheUsageBytes,
-            isClearing = uiState.isClearingCache,
-            onClearClicked = { showClearConfirmDialog = true }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 
     if (showClearConfirmDialog) {
@@ -253,36 +321,103 @@ fun SettingsScreen(
 }
 
 @Composable
-fun LanguageSetting(
-    currentLanguage: String,
-    onLanguageChanged: (String) -> Unit
+fun SettingsSectionCard(
+    icon: Int,
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = stringResource(R.string.setting_language),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp
-        )
-        Text(
-            text = stringResource(R.string.setting_language_desc),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF131722).copy(alpha = 0.9f)),
+        border = BorderStroke(1.dp, Color(0xFF222838))
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp)
         ) {
-            listOf(
-                "system" to stringResource(R.string.language_system),
-                "en" to stringResource(R.string.language_en),
-                "de" to stringResource(R.string.language_de)
-            ).forEach { (code, label) ->
-                val isSelected = currentLanguage == code
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onLanguageChanged(code) },
-                    label = { Text(label) }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = icon),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+fun SettingsDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(vertical = 14.dp),
+        thickness = 1.dp,
+        color = Color(0xFF222838)
+    )
+}
+
+@Composable
+fun LosslessModeStatusCard() {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_check_circle_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .padding(top = 2.dp)
+            )
+            Column {
+                Text(
+                    text = stringResource(R.string.lossless_mode_status_title),
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = stringResource(R.string.lossless_mode_status_desc),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        lineHeight = 17.sp
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -290,73 +425,256 @@ fun LanguageSetting(
 }
 
 @Composable
-fun CacheCapacitySetting(
-    capacityMB: Int,
-    onCapacityChanged: (Int) -> Unit
+fun SettingSliderWithPresets(
+    title: String,
+    description: String,
+    currentValue: Int,
+    displayValue: String,
+    valueRange: ClosedFloatingPointRange<Float>,
+    presets: List<Pair<Int, String>>,
+    onValueChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var sliderValue by remember(capacityMB) { mutableStateOf(capacityMB.toFloat()) }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+    var sliderValue by remember(currentValue) { mutableStateOf(currentValue.toFloat()) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                text = stringResource(R.string.setting_cache_capacity),
-                modifier = Modifier.weight(1f),
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
+                modifier = Modifier.weight(1f, fill = false)
             )
-            Text(
-                text = "${sliderValue.toInt()} MiB",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))
+            ) {
+                Text(
+                    text = displayValue,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
-            text = stringResource(R.string.setting_cache_capacity_desc),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(4.dp))
+
         Slider(
             value = sliderValue,
-            onValueChange = { value -> sliderValue = value },
-            onValueChangeFinished = { onCapacityChanged(sliderValue.toInt().coerceIn(50, 1000)) },
-            valueRange = 50f..1000f,
-            steps = 18
+            onValueChange = { sliderValue = it },
+            onValueChangeFinished = { onValueChanged(sliderValue.toInt()) },
+            valueRange = valueRange,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            presets.forEach { (presetVal, label) ->
+                val isSelected = currentValue == presetVal
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF1B2232),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFF26324A)
+                    ),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            sliderValue = presetVal.toFloat()
+                            onValueChanged(presetVal)
+                        }
+                ) {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        ),
+                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExportFolderSetting(
+    customOutputUri: String?,
+    onChangePath: () -> Unit,
+    onResetPath: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.export_folder),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = if (customOutputUri != null) formatDisplayPath(customOutputUri) else stringResource(R.string.default_export_path),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            TextButton(onClick = onChangePath) {
+                Text(stringResource(R.string.change))
+            }
+
+            if (customOutputUri != null) {
+                IconButton(onClick = onResetPath) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_restore_24),
+                        contentDescription = stringResource(R.string.reset),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SnapshotFormatSetting(
+    isJpeg: Boolean,
+    jpgQuality: Int,
+    onFormatChanged: (Boolean) -> Unit,
+    onQualityChanged: (Int) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.save_snapshots_as_jpeg),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = !isJpeg,
+                onClick = { onFormatChanged(false) },
+                label = { Text(stringResource(R.string.format_png_lossless)) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+
+            FilterChip(
+                selected = isJpeg,
+                onClick = { onFormatChanged(true) },
+                label = { Text(stringResource(R.string.format_jpeg_compressed)) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        }
+
+        AnimatedVisibility(
+            visible = isJpeg,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(top = 12.dp)) {
+                SettingSliderWithPresets(
+                    title = stringResource(R.string.jpg_quality),
+                    description = "Compression quality for saved JPEG snapshots.",
+                    currentValue = jpgQuality,
+                    displayValue = "$jpgQuality%",
+                    valueRange = 1f..100f,
+                    presets = listOf(75 to "75%", 85 to "85%", 95 to "95%", 100 to "100%"),
+                    onValueChanged = onQualityChanged
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun DeleteOriginalDefaultSetting(
+    deleteOriginal: Boolean,
+    onToggled: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.setting_delete_original_default),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = stringResource(R.string.setting_delete_original_default_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(
+            checked = deleteOriginal,
+            onCheckedChange = onToggled
         )
     }
 }
 
 @Composable
-fun CacheRetentionSetting(
-    retentionDays: Int,
-    onRetentionChanged: (Int) -> Unit
+fun AutoExtractWaveformsSetting(
+    autoExtract: Boolean,
+    onToggled: (Boolean) -> Unit
 ) {
-    var sliderValue by remember(retentionDays) { mutableStateOf(retentionDays.toFloat()) }
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.setting_cache_retention),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
+                text = stringResource(R.string.setting_auto_extract_waveforms),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "${sliderValue.toInt()} days",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
+                text = stringResource(R.string.setting_auto_extract_waveforms_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Text(
-            text = stringResource(R.string.setting_cache_retention_desc),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Slider(
-            value = sliderValue,
-            onValueChange = { value -> sliderValue = value },
-            onValueChangeFinished = { onRetentionChanged(sliderValue.toInt().coerceIn(1, 90)) },
-            valueRange = 1f..90f,
-            steps = 88
+        Spacer(modifier = Modifier.width(8.dp))
+        Switch(
+            checked = autoExtract,
+            onCheckedChange = onToggled
         )
     }
 }
@@ -377,22 +695,33 @@ fun CacheUsageAndClearSetting(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = stringResource(R.string.setting_cache_usage),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = usageText,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
             )
         }
-        if (isClearing) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                strokeWidth = 2.dp
-            )
-        } else {
-            TextButton(onClick = onClearClicked) {
+
+        OutlinedButton(
+            onClick = onClearClicked,
+            enabled = !isClearing
+        ) {
+            if (isClearing) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.clearing_cache),
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
                 Text(
                     text = stringResource(R.string.clear_analysis_cache),
                     color = MaterialTheme.colorScheme.error
@@ -403,264 +732,151 @@ fun CacheUsageAndClearSetting(
 }
 
 @Composable
-fun SettingsCategoryHeader(title: String) {
-    Text(
-        text = title,
-        color = MaterialTheme.colorScheme.primary,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
-}
-
-@Composable
-fun AutoExtractWaveformsSetting(
-    autoExtract: Boolean,
-    onToggled: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(R.string.setting_auto_extract_waveforms),
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp
-        )
-        Switch(
-            checked = autoExtract,
-            onCheckedChange = onToggled
-        )
-    }
-
-    Text(
-        text = stringResource(R.string.setting_auto_extract_waveforms_desc),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontSize = 14.sp
-    )
-}
-
-@Composable
-fun VisualFrameStepSetting(
-    frameStep: Int,
-    onFrameStepChanged: (Int) -> Unit
-) {
-    var sliderValue by remember(frameStep) { mutableStateOf(frameStep.toFloat()) }
-    val currentStep = sliderValue.toInt().coerceIn(1, 30)
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.setting_visual_sample_interval),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-            Text(
-                text = if (currentStep == 1) "1 frame" else "$currentStep frames",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-        }
-        Text(
-            text = stringResource(R.string.setting_visual_sample_interval_desc),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Slider(
-            value = sliderValue,
-            onValueChange = { value -> sliderValue = value },
-            onValueChangeFinished = { onFrameStepChanged(sliderValue.toInt().coerceIn(1, 30)) },
-            valueRange = 1f..30f,
-            steps = 28
-        )
-    }
-}
-
-@Composable
-fun LosslessModeSetting() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(R.string.lossless_mode_snap),
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp
-        )
-        Switch(
-            checked = true,
-            onCheckedChange = null,
-            enabled = false
-        )
-    }
-
-    Text(
-        text = stringResource(R.string.lossless_mode_desc),
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        fontSize = 14.sp
-    )
-}
-
-@Composable
-fun SnapshotFormatSetting(
-    isJpeg: Boolean,
-    jpgQuality: Int,
-    onFormatChanged: (Boolean) -> Unit,
-    onQualityChanged: (Int) -> Unit
-) {
-    var qualitySliderValue by remember(jpgQuality) { mutableStateOf(jpgQuality.toFloat()) }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = stringResource(R.string.save_snapshots_as_jpeg),
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 16.sp
-        )
-        Switch(
-            checked = isJpeg,
-            onCheckedChange = onFormatChanged
-        )
-    }
-
-    if (isJpeg) {
-        Spacer(modifier = Modifier.height(8.dp))
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = stringResource(R.string.jpg_quality),
-                    modifier = Modifier.weight(1f),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
-                )
-                Text(
-                    text = "${qualitySliderValue.toInt()}",
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontSize = 16.sp
-                )
-            }
-            Slider(
-                value = qualitySliderValue,
-                onValueChange = { value -> qualitySliderValue = value },
-                onValueChangeFinished = { onQualityChanged(qualitySliderValue.toInt().coerceIn(1, 100)) },
-                valueRange = 1f..100f,
-                steps = 98
-            )
-        }
-    }
-}
-
-@Composable
-fun UndoLimitSetting(
-    undoLimit: Int,
-    onUndoLimitChanged: (Int) -> Unit
-) {
-    var sliderValue by remember(undoLimit) { mutableStateOf(undoLimit.toFloat()) }
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = stringResource(R.string.undo_limit),
-                modifier = Modifier.weight(1f),
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-            Text(
-                text = "${sliderValue.toInt()}",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 16.sp
-            )
-        }
-        Slider(
-            value = sliderValue,
-            onValueChange = { value -> sliderValue = value },
-            onValueChangeFinished = { onUndoLimitChanged(sliderValue.toInt().coerceAtLeast(1)) },
-            valueRange = 1f..100f,
-            steps = 98
-        )
-    }
-}
-
-@Composable
 fun AccentColorSetting(
     currentAccentColor: String,
     onAccentColorChanged: (String) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.theme_accent_color),
-        color = MaterialTheme.colorScheme.onSurface,
-        fontSize = 16.sp
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    val colorOptions = remember {
         listOf(
-            "cyan" to (CyanAccent to "Cyan"),
-            "purple" to (PurpleAccent to "Purple"),
-            "green" to (GreenAccent to "Green"),
-            "yellow" to (YellowAccent to "Yellow"),
-            "red" to (RedAccent to "Red"),
-            "orange" to (OrangeAccent to "Orange")
-        ).forEach { (name, pair) ->
-            val (color, colorName) = pair
-            ColorCircle(
-                colorName = colorName,
-                color = color,
-                isSelected = currentAccentColor == name,
-                onClick = { onAccentColorChanged(name) }
-            )
+            AccentColorOption("cyan", "Cyan", CyanAccent),
+            AccentColorOption("purple", "Purple", PurpleAccent),
+            AccentColorOption("green", "Green", GreenAccent),
+            AccentColorOption("yellow", "Yellow", YellowAccent),
+            AccentColorOption("red", "Red", RedAccent),
+            AccentColorOption("orange", "Orange", OrangeAccent)
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = stringResource(R.string.theme_accent_color),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            colorOptions.forEach { option ->
+                ColorCircle(
+                    colorName = option.name,
+                    color = option.color,
+                    isSelected = currentAccentColor == option.id,
+                    onClick = { onAccentColorChanged(option.id) }
+                )
+            }
         }
     }
 }
 
 @Composable
-fun ExportFolderSetting(
-    customOutputUri: String?,
-    onChangePath: () -> Unit,
-    onResetPath: () -> Unit
+fun LanguageSetting(
+    currentLanguage: String,
+    onLanguageChanged: (String) -> Unit
 ) {
-    Text(
-        text = stringResource(R.string.export_folder),
-        color = MaterialTheme.colorScheme.onSurface,
-        fontSize = 16.sp
-    )
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = if (customOutputUri != null) formatDisplayPath(customOutputUri) else stringResource(R.string.default_export_path),
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            text = stringResource(R.string.setting_language),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface
         )
-        TextButton(onClick = onChangePath) {
-            Text(stringResource(R.string.change))
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = stringResource(R.string.setting_language_desc),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                "system" to stringResource(R.string.language_system),
+                "en" to stringResource(R.string.language_en),
+                "de" to stringResource(R.string.language_de)
+            ).forEach { (code, label) ->
+                val isSelected = currentLanguage == code
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onLanguageChanged(code) },
+                    label = { Text(label) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
         }
-        if (customOutputUri != null) {
-            IconButton(onClick = onResetPath) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_restore_24),
-                    contentDescription = stringResource(R.string.reset),
-                    tint = MaterialTheme.colorScheme.error
+    }
+}
+
+@Composable
+fun AboutSystemContent(
+    onOpenUrl: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.app_name),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = Color(0xFF1E2538),
+                border = BorderStroke(1.dp, Color(0xFF2E3850))
+            ) {
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.about_engine_title),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = stringResource(R.string.about_engine_desc),
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        SettingsDivider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = { onOpenUrl("https://github.com/mifi/lossless-cut") },
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = stringResource(R.string.about_github),
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
@@ -686,25 +902,31 @@ fun ColorCircle(
 ) {
     Box(
         modifier = Modifier
-            .size(if (isSelected) 40.dp else 36.dp)
-            .clip(CircleShape)
-            .background(color)
+            .size(48.dp)
             .semantics {
                 role = Role.RadioButton
                 selected = isSelected
                 contentDescription = colorName
             }
-            .clickable(onClick = onClick)
-            .padding(4.dp),
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (isSelected) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .clip(CircleShape)
-                    .background(Color.White)
-            )
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(color),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
         }
     }
 }
+

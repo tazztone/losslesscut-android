@@ -17,13 +17,8 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [33])
 class SettingsViewModelTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -45,6 +40,7 @@ class SettingsViewModelTest {
         coEvery { mockPrefs.cacheCapacityMBFlow } returns flowOf(250)
         coEvery { mockPrefs.cacheRetentionDaysFlow } returns flowOf(30)
         coEvery { mockPrefs.languageFlow } returns flowOf("system")
+        coEvery { mockPrefs.deleteOriginalAfterExportFlow } returns flowOf(false)
         coEvery { mockCache.getCacheUsageBytes() } returns 1024L * 1024L * 10L
 
         viewModel = SettingsViewModel(mockPrefs, mockCache, testDispatcher)
@@ -62,12 +58,19 @@ class SettingsViewModelTest {
         assertEquals("JPEG", state.snapshotFormat)
         assertEquals("cyan", state.accentColor)
         assertEquals("system", state.language)
+        assertEquals(false, state.deleteOriginalAfterExport)
     }
 
     @Test
     fun testSetLanguage() = runTest {
         viewModel.setLanguage("de")
         coVerify { mockPrefs.setLanguage("de") }
+    }
+
+    @Test
+    fun testSetDeleteOriginalAfterExport() = runTest {
+        viewModel.setDeleteOriginalAfterExport(true)
+        coVerify { mockPrefs.setDeleteOriginalAfterExport(true) }
     }
 
     @Test
