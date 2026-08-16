@@ -35,8 +35,9 @@ All developer automation scripts reside under `./scripts/dev-scripts/`:
 | :--- | :--- | :--- |
 | **Verification Gate** | `./scripts/dev-scripts/project-verify.sh` | Executes Detekt, unit tests, Lint, Kover reports, and the domain coverage threshold sequentially. |
 | **Targeted Testing** | `./scripts/dev-scripts/gradle-test.sh <module> "*"` | Runs unit tests for specific modules (`:core:domain`, `:engine`, `:app`). |
+| **Screenshot Pipeline** | `./scripts/dev-scripts/generate-screenshots.sh [--verify-only]` | Runs instrumented test suite to capture, pull, and convert documentation screenshots to WebP. |
 | **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
-| **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
+| **Smart Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Installs latest debug APK preserving data, falling back to clean reinstall on signature/version conflicts. |
 | **Logcat Stream** | `./scripts/dev-scripts/adb-logcat.sh` | Streams filtered logcat logs for `com.tazztone.losslesscut`. |
 | **Clean Caches** | `./scripts/dev-scripts/project-clean.sh [--all]` | Cleans Gradle build outputs; `--all` / `--cache` also wipes persistent transform/build cache directories. |
 
