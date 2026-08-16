@@ -11,13 +11,11 @@ public interface IAnalysisCache {
 
     public fun getFrameAnalysis(
         clip: MediaClip,
-        strategy: VisualStrategy,
         sampleIntervalFrames: Int
     ): List<FrameAnalysis>?
 
     public fun saveFrameAnalysis(
         clip: MediaClip,
-        strategy: VisualStrategy,
         sampleIntervalFrames: Int,
         analysis: List<FrameAnalysis>
     )

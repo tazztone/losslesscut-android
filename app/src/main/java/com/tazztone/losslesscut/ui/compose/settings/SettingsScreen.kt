@@ -221,13 +221,18 @@ fun SettingsScreen(
 
                 SettingsDivider()
 
+                val displayStepText = when (uiState.visualFrameStep) {
+                    0 -> "Auto (Smart)"
+                    1 -> "1 frame"
+                    else -> "${uiState.visualFrameStep} frames"
+                }
                 SettingSliderWithPresets(
                     title = stringResource(R.string.setting_visual_sample_interval),
                     description = stringResource(R.string.setting_visual_sample_interval_desc),
                     currentValue = uiState.visualFrameStep,
-                    displayValue = if (uiState.visualFrameStep == 1) "1 frame" else "${uiState.visualFrameStep} frames",
-                    valueRange = 1f..30f,
-                    presets = listOf(1 to "1f", 5 to "5f", 10 to "10f", 15 to "15f", 30 to "30f"),
+                    displayValue = displayStepText,
+                    valueRange = 0f..30f,
+                    presets = listOf(0 to "Auto", 1 to "1f", 5 to "5f", 10 to "10f", 15 to "15f", 30 to "30f"),
                     onValueChanged = onVisualFrameStepChanged
                 )
 

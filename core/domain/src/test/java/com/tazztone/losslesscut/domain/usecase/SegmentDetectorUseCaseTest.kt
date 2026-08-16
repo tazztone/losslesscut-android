@@ -100,7 +100,32 @@ internal class SegmentDetectorUseCaseTest {
         assertEquals(1, hitRangesResult!!.size)
         assertEquals(0L..100L, hitRangesResult!![0])
 
-        // 3. Clear cache
+        // 3. Third run: switch strategy to SCENE_CHANGE (memory cache hit, instant filter, no decode)
+        val sceneConfig = VisualDetectionConfig(
+            strategy = VisualStrategy.SCENE_CHANGE,
+            sensitivityThreshold = 10f,
+            sampleIntervalFrames = 5,
+            minSegmentDurationMs = 100L
+        )
+        var sceneRangesResult: List<LongRange>? = null
+        segmentDetector.detectVisual(
+            scope = this,
+            uri = uri,
+            config = sceneConfig,
+            allowDecode = false,
+            listener = object : VisualDetectionListener {
+                override fun onComplete(ranges: List<LongRange>) {
+                    sceneRangesResult = ranges
+                }
+                override fun onError(error: Throwable) {
+                    fail("Should not fail: ${error.message}")
+                }
+            }
+        )
+        advanceUntilIdle()
+        assertNotNull(sceneRangesResult)
+
+        // 4. Clear cache
         segmentDetector.clearCache()
         assertFalse(segmentDetector.hasCachedAnalysis())
     }

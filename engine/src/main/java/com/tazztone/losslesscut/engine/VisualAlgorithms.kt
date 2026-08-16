@@ -43,6 +43,19 @@ internal object VisualAlgorithms {
         override fun initialValue() = PHashContext()
     }
 
+    private const val LAPLACIAN_EDGE_THRESHOLD = 3
+    private const val MIN_EDGE_DENSITY_RATIO = 0.08
+    private const val TEXTURELESS_BASELINE_VARIANCE = 10000.0
+
+    fun calculateMeanLuma(smallY: ByteArray): Double {
+        if (smallY.isEmpty()) return MAX_LUMA
+        var sum = 0L
+        for (i in smallY.indices) {
+            sum += smallY[i].toInt() and PIXEL_MASK
+        }
+        return sum.toDouble() / smallY.size
+    }
+
     fun calculateMeanLuma(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Double {
         val width = format.getInteger(MediaFormat.KEY_WIDTH)
         val height = format.getInteger(MediaFormat.KEY_HEIGHT)
@@ -77,6 +90,7 @@ internal object VisualAlgorithms {
         var sumVar = 0.0
         var sumSqVar = 0.0
         var count = 0
+        var activeEdgeCount = 0
 
         for (y in 1 until h - 1) {
             for (x in 1 until w - 1) {
@@ -90,10 +104,20 @@ internal object VisualAlgorithms {
                 sumVar += lap
                 sumSqVar += lap * lap
                 count++
+                if (abs(lap) > LAPLACIAN_EDGE_THRESHOLD) {
+                    activeEdgeCount++
+                }
             }
         }
 
         if (count == 0) return 0.0
+
+        // Textureless flat scene protection (clear sky, flat wall, smooth skin close-ups)
+        val edgeDensity = activeEdgeCount.toDouble() / count
+        if (edgeDensity < MIN_EDGE_DENSITY_RATIO) {
+            return TEXTURELESS_BASELINE_VARIANCE
+        }
+
         val mean = sumVar / count
         val rawVar = (sumSqVar / count) - (mean * mean)
 
@@ -117,8 +141,8 @@ internal object VisualAlgorithms {
         return sad.toDouble() / size
     }
 
-    fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
-        val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
+    fun calculatePHash(smallY: ByteArray): Long {
+        require(smallY.size >= DOWNSCALE_SIZE * DOWNSCALE_SIZE) { "smallY must be at least 32x32" }
 
         val ctx = pHashContext.get()!!
         val rowTransformed = ctx.rowTransformed
@@ -129,8 +153,8 @@ internal object VisualAlgorithms {
             for (u in 0 until DCT_SIZE) {
                 var sum = 0.0
                 for (x in 0 until DOWNSCALE_SIZE) {
-                     val pixelVal = (small[y * DOWNSCALE_SIZE + x].toInt() and PIXEL_MASK).toDouble()
-                     sum += pixelVal * DCT_COSINE_TABLE[x][u]
+                    val pixelVal = (smallY[y * DOWNSCALE_SIZE + x].toInt() and PIXEL_MASK).toDouble()
+                    sum += pixelVal * DCT_COSINE_TABLE[x][u]
                 }
                 rowTransformed[y][u] = DCT_SCALE * DCT_C[u] * sum
             }
@@ -158,6 +182,11 @@ internal object VisualAlgorithms {
             hash = hash or (bit shl i)
         }
         return hash
+    }
+
+    fun calculatePHash(buffer: ByteBuffer, format: MediaFormat, info: MediaCodec.BufferInfo): Long {
+        val small = downscaleY(buffer, format, info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
+        return calculatePHash(small)
     }
 
     fun downscaleY(

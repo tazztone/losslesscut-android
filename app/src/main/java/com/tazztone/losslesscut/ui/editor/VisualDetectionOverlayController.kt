@@ -80,7 +80,14 @@ class VisualDetectionOverlayController(
         preferenceJob?.cancel()
         preferenceJob = scope.launch {
             viewModel.defaultVisualFrameStepFlow.collect { frameStep ->
-                sliderInterval.value = frameStep.coerceIn(MIN_FRAME_STEP, MAX_FRAME_STEP).toFloat()
+                val step = if (frameStep == 0) {
+                    val state = viewModel.uiState.value as? VideoEditingUiState.Success
+                    val durationMs = state?.clips?.getOrNull(state.selectedClipIndex)?.durationMs ?: 0L
+                    VisualDetectionConfig.calculateSmartInterval(durationMs)
+                } else {
+                    frameStep.coerceIn(MIN_FRAME_STEP, MAX_FRAME_STEP)
+                }
+                sliderInterval.value = step.toFloat()
             }
         }
         updateStrategyUI()
@@ -115,12 +122,14 @@ class VisualDetectionOverlayController(
             if (newStrategy != currentStrategy) {
                 currentStrategy = newStrategy
                 seeker.visualStrategy = newStrategy
-                hasDetectionRequest = false
-                filterJob?.cancel()
-                viewModel.cancelVisualDetection()
                 updateSelectionUI()
                 updateStrategyUI()
-                btnDetectAction.isEnabled = true
+                if (hasDetectionRequest) {
+                    filterJob?.cancel()
+                    triggerFiltering()
+                } else {
+                    btnDetectAction.isEnabled = true
+                }
             }
         }
         btnSceneChange.setOnClickListener(onStrategyClick)
@@ -270,12 +279,20 @@ class VisualDetectionOverlayController(
     }
 
     private fun updateIntervalText(frameStep: Int) {
-        val fps = (viewModel.uiState.value as? VideoEditingUiState.Success)?.videoFps ?: 30f
+        val state = viewModel.uiState.value as? VideoEditingUiState.Success
+        val durationMs = state?.clips?.getOrNull(state.selectedClipIndex)?.durationMs ?: 0L
+        val smartStep = VisualDetectionConfig.calculateSmartInterval(durationMs)
+        val fps = state?.videoFps ?: 30f
         val sec = if (fps > 0f) frameStep / fps else frameStep * 0.0333f
-        tvIntervalValue.text = if (frameStep == 1) {
+        val baseText = if (frameStep == 1) {
             String.format(Locale.getDefault(), "1 frame (%.2fs)", sec)
         } else {
             String.format(Locale.getDefault(), "%d frames (%.2fs)", frameStep, sec)
+        }
+        tvIntervalValue.text = if (frameStep == smartStep) {
+            "$baseText • Auto"
+        } else {
+            baseText
         }
     }
 

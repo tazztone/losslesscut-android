@@ -126,11 +126,10 @@ class AnalysisCacheImpl @Inject constructor(
 
     override fun getFrameAnalysis(
         clip: MediaClip,
-        strategy: VisualStrategy,
         sampleIntervalFrames: Int
     ): List<FrameAnalysis>? = synchronized(lock) {
         val clipHash = getClipIdentityHash(clip)
-        val file = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin")
+        val file = File(cacheDir, "visual_${clipHash}_${sampleIntervalFrames}f_v2.bin")
         if (!file.exists()) return null
 
         try {
@@ -181,14 +180,13 @@ class AnalysisCacheImpl @Inject constructor(
 
     override fun saveFrameAnalysis(
         clip: MediaClip,
-        strategy: VisualStrategy,
         sampleIntervalFrames: Int,
         analysis: List<FrameAnalysis>
     ): Unit = synchronized(lock) {
         if (analysis.size > MAX_FRAME_ANALYSIS_SAMPLES) return
         val clipHash = getClipIdentityHash(clip)
-        val targetFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin")
-        val tmpFile = File(cacheDir, "visual_${clipHash}_${strategy.name}_${sampleIntervalFrames}f_v1.bin.tmp")
+        val targetFile = File(cacheDir, "visual_${clipHash}_${sampleIntervalFrames}f_v2.bin")
+        val tmpFile = File(cacheDir, "visual_${clipHash}_${sampleIntervalFrames}f_v2.bin.tmp")
 
         try {
             DataOutputStream(FileOutputStream(tmpFile)).use { out ->
@@ -297,7 +295,7 @@ class AnalysisCacheImpl @Inject constructor(
 
     companion object {
         private const val WAVEFORM_PAYLOAD_VERSION = 2
-        private const val VISUAL_PAYLOAD_VERSION = 1
+        private const val VISUAL_PAYLOAD_VERSION = 2
         private const val WAVEFORM_HEADER_BYTES = Int.SIZE_BYTES + Long.SIZE_BYTES + Float.SIZE_BYTES + Int.SIZE_BYTES
         private const val VISUAL_HEADER_BYTES = Int.SIZE_BYTES + Int.SIZE_BYTES
         private const val MIN_FRAME_ANALYSIS_BYTES = Long.SIZE_BYTES + Double.SIZE_BYTES + Double.SIZE_BYTES + 2L

@@ -1,9 +1,11 @@
 package com.tazztone.losslesscut.domain.engine
 
 import kotlin.math.absoluteValue
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
- * Pure logic for processing raw PCM data into waveform peaks and normalizing them.
+ * Pure logic for processing raw PCM data into waveform RMS energy / peaks and normalizing them.
  */
 public object AudioWaveformProcessor {
 
@@ -20,6 +22,7 @@ public object AudioWaveformProcessor {
     private const val MIN_BUCKET_COUNT = 500
     private const val MAX_BUCKET_COUNT = 5000
     private const val MS_PER_SEC = 1000.0
+    public const val PERCEPTUAL_EXPONENT: Double = 0.75
 
     public data class WaveformBufferInfo(
         val buffer: ByteArray,
@@ -27,8 +30,27 @@ public object AudioWaveformProcessor {
         val startTimeUs: Long,
         val totalDurationUs: Long,
         val sampleRate: Int,
-        val channelCount: Int
+        val channelCount: Int,
+        val isFloatPcm: Boolean = false
     )
+
+    public class RmsAccumulator(bucketCount: Int) {
+        public val sumSquares: DoubleArray = DoubleArray(bucketCount)
+        public val sampleCounts: IntArray = IntArray(bucketCount)
+        public val buckets: FloatArray = FloatArray(bucketCount)
+
+        public fun toFinalRmsBuckets(): FloatArray {
+            for (i in buckets.indices) {
+                val count = sampleCounts[i]
+                buckets[i] = if (count > 0) {
+                    sqrt(sumSquares[i] / count).toFloat().coerceIn(0f, 1f)
+                } else {
+                    0f
+                }
+            }
+            return buckets
+        }
+    }
 
     /**
      * Extracts the peak amplitude from a buffer of 16-bit PCM data.
@@ -51,7 +73,7 @@ public object AudioWaveformProcessor {
     }
 
     /**
-     * Normalizes a FloatArray of peaks so the maximum value is 1.0.
+     * Normalizes a FloatArray so the maximum value is 1.0.
      */
     public fun normalize(buckets: FloatArray) {
         val maxPeak = buckets.maxOrNull() ?: 0f
@@ -70,18 +92,107 @@ public object AudioWaveformProcessor {
     }
 
     /**
-     * Updates multiple buckets with PCM data from a buffer.
-     * Accurately distributes samples across all buckets they span.
+     * Applies a perceptual power curve (amp^0.75) to normalized amplitudes for natural UI display.
+     */
+    public fun applyPerceptualCurve(buckets: FloatArray, power: Double = PERCEPTUAL_EXPONENT) {
+        for (i in buckets.indices) {
+            val v = buckets[i].toDouble()
+            if (v > 0.0) {
+                buckets[i] = v.pow(power).toFloat().coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    private const val BYTES_PER_SHORT_SAMPLE = 2
+    private const val BYTES_PER_FLOAT_SAMPLE = 4
+    private const val SHORT_LOOKAHEAD_OFFSET = 1
+    private const val FLOAT_LOOKAHEAD_OFFSET = 3
+    private const val FLOAT_BYTE_OFFSET_1 = 1
+    private const val FLOAT_BYTE_OFFSET_2 = 2
+    private const val FLOAT_BYTE_OFFSET_3 = 3
+    private const val SHIFT_8 = 8
+    private const val SHIFT_16 = 16
+    private const val SHIFT_24 = 24
+
+    /**
+     * Updates RMS accumulator with PCM data from a buffer.
+     * Accurately distributes samples across all buckets they span and handles both 16-bit and 32-bit float PCM.
+     */
+    public fun updateBucketsRms(
+        info: WaveformBufferInfo,
+        accumulator: RmsAccumulator
+    ) {
+        if (info.totalDurationUs <= 0 || info.size <= 0 || info.sampleRate <= 0) return
+
+        val bucketCount = accumulator.buckets.size
+        val bytesPerSample = if (info.isFloatPcm) {
+            BYTES_PER_FLOAT_SAMPLE * info.channelCount
+        } else {
+            BYTES_PER_SHORT_SAMPLE * info.channelCount
+        }
+        val step = bytesPerSample
+
+        val usPerSample = US_PER_SEC / info.sampleRate.toDouble()
+        val bucketRatio = (bucketCount - 1).toDouble() / info.totalDurationUs.toDouble()
+        val timeOffsetBucket = info.startTimeUs.toDouble() * bucketRatio
+        val samplesToBucket = usPerSample * bucketRatio
+        val invMaxShort = 1.0 / Short.MAX_VALUE
+
+        val sumSq = accumulator.sumSquares
+        val counts = accumulator.sampleCounts
+        val buckets = accumulator.buckets
+
+        val limit = info.size - (if (info.isFloatPcm) FLOAT_LOOKAHEAD_OFFSET else SHORT_LOOKAHEAD_OFFSET)
+        for (j in 0 until limit step step) {
+            val sampleIdxInFullBuffer = j / bytesPerSample
+            val bucketIdx = (timeOffsetBucket + sampleIdxInFullBuffer * samplesToBucket)
+                .toInt().coerceIn(0, bucketCount - 1)
+
+            val normalizedVal: Double = if (info.isFloatPcm) {
+                val b0 = info.buffer[j].toInt() and BYTE_MASK
+                val b1 = info.buffer[j + FLOAT_BYTE_OFFSET_1].toInt() and BYTE_MASK
+                val b2 = info.buffer[j + FLOAT_BYTE_OFFSET_2].toInt() and BYTE_MASK
+                val b3 = info.buffer[j + FLOAT_BYTE_OFFSET_3].toInt() and BYTE_MASK
+                val bits = b0 or (b1 shl SHIFT_8) or (b2 shl SHIFT_16) or (b3 shl SHIFT_24)
+                java.lang.Float.intBitsToFloat(bits).toDouble().coerceIn(-1.0, 1.0)
+            } else {
+                val low = info.buffer[j].toInt() and BYTE_MASK
+                val high = info.buffer[j + 1].toInt() shl BITS_PER_BYTE
+                val sample = (high or low).toShort().toInt()
+                sample * invMaxShort
+            }
+
+            sumSq[bucketIdx] += normalizedVal * normalizedVal
+            counts[bucketIdx]++
+
+            // Keep live running RMS for streaming progress
+            val c = counts[bucketIdx]
+            if (c > 0) {
+                buckets[bucketIdx] = sqrt(sumSq[bucketIdx] / c).toFloat().coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    /**
+     * Legacy/direct bucket updater.
      */
     public fun updateBuckets(
         info: WaveformBufferInfo,
         buckets: FloatArray,
-        step: Int = 2 * info.channelCount
+        step: Int = if (info.isFloatPcm) {
+            BYTES_PER_FLOAT_SAMPLE * info.channelCount
+        } else {
+            BYTES_PER_SHORT_SAMPLE * info.channelCount
+        }
     ) {
         if (info.totalDurationUs <= 0 || info.size <= 0 || info.sampleRate <= 0) return
 
         val bucketCount = buckets.size
-        val bytesPerSample = 2 * info.channelCount
+        val bytesPerSample = if (info.isFloatPcm) {
+            BYTES_PER_FLOAT_SAMPLE * info.channelCount
+        } else {
+            BYTES_PER_SHORT_SAMPLE * info.channelCount
+        }
 
         val usPerSample = US_PER_SEC / info.sampleRate.toDouble()
         val bucketRatio = (bucketCount - 1).toDouble() / info.totalDurationUs.toDouble()
@@ -89,16 +200,25 @@ public object AudioWaveformProcessor {
         val samplesToBucket = usPerSample * bucketRatio
         val invMaxShort = 1.0f / Short.MAX_VALUE
 
-        for (j in 0 until info.size - 1 step step) {
+        val limit = info.size - (if (info.isFloatPcm) FLOAT_LOOKAHEAD_OFFSET else SHORT_LOOKAHEAD_OFFSET)
+        for (j in 0 until limit step step) {
             val sampleIdxInFullBuffer = j / bytesPerSample
-            
             val bucketIdx = (timeOffsetBucket + sampleIdxInFullBuffer * samplesToBucket)
                 .toInt().coerceIn(0, bucketCount - 1)
 
-            val low = info.buffer[j].toInt() and BYTE_MASK
-            val high = info.buffer[j + 1].toInt() shl BITS_PER_BYTE
-            val sample = (high or low).toShort().toInt()
-            val normalizedAbsVal = if (sample < 0) -sample * invMaxShort else sample * invMaxShort
+            val normalizedAbsVal: Float = if (info.isFloatPcm) {
+                val b0 = info.buffer[j].toInt() and BYTE_MASK
+                val b1 = info.buffer[j + FLOAT_BYTE_OFFSET_1].toInt() and BYTE_MASK
+                val b2 = info.buffer[j + FLOAT_BYTE_OFFSET_2].toInt() and BYTE_MASK
+                val b3 = info.buffer[j + FLOAT_BYTE_OFFSET_3].toInt() and BYTE_MASK
+                val bits = b0 or (b1 shl SHIFT_8) or (b2 shl SHIFT_16) or (b3 shl SHIFT_24)
+                java.lang.Float.intBitsToFloat(bits).absoluteValue.coerceIn(0f, 1f)
+            } else {
+                val low = info.buffer[j].toInt() and BYTE_MASK
+                val high = info.buffer[j + 1].toInt() shl BITS_PER_BYTE
+                val sample = (high or low).toShort().toInt()
+                if (sample < 0) -sample * invMaxShort else sample * invMaxShort
+            }
 
             if (normalizedAbsVal > buckets[bucketIdx]) {
                 buckets[bucketIdx] = normalizedAbsVal
@@ -135,7 +255,7 @@ public object AudioWaveformProcessor {
 
     /**
      * Downsamples a high-resolution waveform to a target bucket count for UI display.
-     * Uses max-pooling to preserve peaks.
+     * Uses max-pooling to preserve peaks and dynamic range.
      */
     public fun downsample(source: FloatArray, targetCount: Int): FloatArray {
         require(targetCount > 0) { "targetCount must be positive, was $targetCount" }
@@ -174,3 +294,4 @@ public object AudioWaveformProcessor {
         }
     }
 }
+

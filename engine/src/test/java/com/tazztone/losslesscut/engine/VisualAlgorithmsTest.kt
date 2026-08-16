@@ -71,7 +71,7 @@ class VisualAlgorithmsTest {
     }
 
     @Test
-    fun calculateBlurVariance_withSolidBuffer_returnsLowVariance() {
+    fun calculateBlurVariance_withTexturelessSolidBuffer_returnsProtectedBaseline() {
         val width = 300
         val height = 300
         val buffer = ByteBuffer.allocate(width * height)
@@ -82,6 +82,35 @@ class VisualAlgorithmsTest {
         val info = MediaCodec.BufferInfo().apply { offset = 0; size = width * height }
 
         val variance = VisualAlgorithms.calculateBlurVariance(buffer, format, info)
-        assertEquals(0.0, variance, 0.1)
+        assertEquals(10000.0, variance, 0.1)
+    }
+
+    @Test
+    fun calculateMeanLuma_fromSmallY_returnsCorrectValue() {
+        val smallY = ByteArray(32 * 32) { 100.toByte() }
+        val meanLuma = VisualAlgorithms.calculateMeanLuma(smallY)
+        assertEquals(100.0, meanLuma, 0.001)
+    }
+
+    @Test
+    fun calculatePHash_fromSmallY_matchesBufferPHash() {
+        val width = 64
+        val height = 64
+        val buffer = ByteBuffer.allocate(width * height)
+        for (i in 0 until width * height) {
+            buffer.put((i % 256).toByte())
+        }
+        buffer.flip()
+
+        val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height)
+        val info = MediaCodec.BufferInfo().apply { offset = 0; size = width * height }
+
+        val hashFromBuffer = VisualAlgorithms.calculatePHash(buffer, format, info)
+        buffer.rewind()
+        val smallY = VisualAlgorithms.downscaleY(buffer, format, info, 32, 32).data
+        val hashFromSmallY = VisualAlgorithms.calculatePHash(smallY)
+
+        assertEquals(hashFromBuffer, hashFromSmallY)
     }
 }
+

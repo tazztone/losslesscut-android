@@ -178,8 +178,8 @@ class AppPreferences @Inject constructor(
     }
 
     suspend fun setDefaultVisualFrameStep(frameStep: Int) {
-        require(frameStep in MIN_FRAME_STEP..MAX_FRAME_STEP) {
-            "Frame step must be between $MIN_FRAME_STEP and $MAX_FRAME_STEP"
+        require(frameStep == AUTO_FRAME_STEP || frameStep in MIN_FRAME_STEP..MAX_FRAME_STEP) {
+            "Frame step must be 0 (Auto) or between $MIN_FRAME_STEP and $MAX_FRAME_STEP"
         }
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DEFAULT_VISUAL_FRAME_STEP] = frameStep
@@ -275,6 +275,7 @@ class AppPreferences @Inject constructor(
 
     companion object {
         private const val BYTES_PER_MIB = 1024L * 1024L
+        const val AUTO_FRAME_STEP = 0
         const val DEFAULT_FRAME_STEP = 5
         const val MIN_FRAME_STEP = 1
         const val MAX_FRAME_STEP = 30

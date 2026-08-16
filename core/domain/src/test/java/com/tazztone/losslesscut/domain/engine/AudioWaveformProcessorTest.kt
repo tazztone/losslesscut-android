@@ -161,4 +161,64 @@ public class AudioWaveformProcessorTest {
         assertEquals(0f, target[0], 0.001f)
         assertEquals(0f, target[1], 0.001f)
     }
+
+    @Test
+    public fun testRmsAccumulator_calculatesRmsCorrectly(): Unit {
+        val accumulator = AudioWaveformProcessor.RmsAccumulator(2)
+        // 16-bit PCM: sample 16384 (0.5), 0 (0.0) -> RMS for bucket 0
+        val buffer = byteArrayOf(
+            0x00, 0x40, 0x00, 0x00 // 16384 stereo
+        )
+        AudioWaveformProcessor.updateBucketsRms(
+            info = AudioWaveformProcessor.WaveformBufferInfo(
+                buffer = buffer,
+                size = buffer.size,
+                startTimeUs = 0,
+                totalDurationUs = 1000,
+                sampleRate = 44100,
+                channelCount = 2,
+                isFloatPcm = false
+            ),
+            accumulator = accumulator
+        )
+        val finalBuckets = accumulator.toFinalRmsBuckets()
+        assertTrue(finalBuckets[0] > 0.49f && finalBuckets[0] < 0.51f)
+    }
+
+    @Test
+    public fun testUpdateBucketsRms_floatPcm(): Unit {
+        val accumulator = AudioWaveformProcessor.RmsAccumulator(2)
+        val floatVal = 0.5f
+        val bits = java.lang.Float.floatToIntBits(floatVal)
+        val buffer = byteArrayOf(
+            (bits and 0xFF).toByte(),
+            ((bits shr 8) and 0xFF).toByte(),
+            ((bits shr 16) and 0xFF).toByte(),
+            ((bits shr 24) and 0xFF).toByte()
+        )
+        AudioWaveformProcessor.updateBucketsRms(
+            info = AudioWaveformProcessor.WaveformBufferInfo(
+                buffer = buffer,
+                size = buffer.size,
+                startTimeUs = 0,
+                totalDurationUs = 1000,
+                sampleRate = 44100,
+                channelCount = 1,
+                isFloatPcm = true
+            ),
+            accumulator = accumulator
+        )
+        val finalBuckets = accumulator.toFinalRmsBuckets()
+        assertEquals(0.5f, finalBuckets[0], 0.01f)
+    }
+
+    @Test
+    public fun testApplyPerceptualCurve(): Unit {
+        val buckets = floatArrayOf(0f, 0.5f, 1.0f)
+        AudioWaveformProcessor.applyPerceptualCurve(buckets, 0.75)
+        assertEquals(0f, buckets[0], 0.001f)
+        assertTrue(buckets[1] > 0.5f) // Expanded: 0.5^0.75 ≈ 0.5946
+        assertEquals(1.0f, buckets[2], 0.001f)
+    }
 }
+

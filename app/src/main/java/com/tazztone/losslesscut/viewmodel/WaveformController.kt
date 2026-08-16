@@ -22,7 +22,7 @@ import javax.inject.Inject
 class WaveformController @Inject constructor(
     private val repository: IVideoEditingRepository,
     private val silenceDetectionUseCase: SilenceDetectionUseCase,
-    @IoDispatcher private val ioDispatcher: CoroutineDispatcher
+    @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     data class SilenceDetectionParams(
         val threshold: Float,
@@ -74,6 +74,7 @@ class WaveformController @Inject constructor(
         val downsampled = AudioWaveformProcessor.downsample(result.rawAmplitudes, uiBucketCount)
         AudioWaveformProcessor.fillEdgeBuckets(downsampled)
         AudioWaveformProcessor.normalize(downsampled, result.maxAmplitude)
+        AudioWaveformProcessor.applyPerceptualCurve(downsampled)
         _maxAmplitude.value = if (result.maxAmplitude > 0f) result.maxAmplitude else 1f
         _waveformData.value = downsampled
     }

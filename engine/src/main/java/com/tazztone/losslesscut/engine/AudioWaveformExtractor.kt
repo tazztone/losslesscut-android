@@ -21,19 +21,19 @@ class AudioWaveformExtractorImpl @Inject constructor(
         uri: String, 
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(ioDispatcher) {
-        var buckets = FloatArray(0)
+        var accumulator: AudioWaveformProcessor.RmsAccumulator? = null
         var durationMs = 0L
         var lastProgressUpdateUs = 0L
 
         try {
             audioDecoder.decode(uri).collect { pcm ->
-                if (buckets.isEmpty()) {
+                if (accumulator == null) {
                     durationMs = pcm.durationUs / US_PER_MS
                     val bucketCount = AudioWaveformProcessor.calculateEngineBucketCount(durationMs)
-                    buckets = FloatArray(bucketCount)
+                    accumulator = AudioWaveformProcessor.RmsAccumulator(bucketCount)
                 }
                 
-                AudioWaveformProcessor.updateBuckets(
+                AudioWaveformProcessor.updateBucketsRms(
                     info = AudioWaveformProcessor.WaveformBufferInfo(
                         buffer = pcm.buffer,
                         size = pcm.size,
@@ -42,24 +42,27 @@ class AudioWaveformExtractorImpl @Inject constructor(
                         sampleRate = pcm.sampleRate,
                         channelCount = pcm.channelCount
                     ),
-                    buckets = buckets
+                    accumulator = accumulator!!
                 )
 
                 val durationUs = pcm.durationUs
                 val progressIntervalUs = if (durationUs > 0) durationUs / 10 else progressUpdateIntervalUs
                 if (onProgress != null && pcm.timeUs - lastProgressUpdateUs > progressIntervalUs) {
                     lastProgressUpdateUs = pcm.timeUs
-                    val currentMax = buckets.maxOrNull() ?: 0f
-                    onProgress(WaveformResult(buckets.clone(), currentMax, durationUs))
+                    val currentBuckets = accumulator!!.buckets
+                    val currentMax = currentBuckets.maxOrNull() ?: 0f
+                    onProgress(WaveformResult(currentBuckets.clone(), currentMax, durationUs))
                 }
             }
 
-            if (buckets.isEmpty()) return@withContext null
+            val finalAccumulator = accumulator ?: return@withContext null
+            val finalBuckets = finalAccumulator.toFinalRmsBuckets()
+            if (finalBuckets.isEmpty()) return@withContext null
 
-            val maxAmplitude = buckets.maxOrNull() ?: 0f
+            val maxAmplitude = finalBuckets.maxOrNull() ?: 0f
             // Store raw amplitudes BEFORE fillEdgeBuckets to preserve true silence at edges
-            val rawForDetection = buckets.clone()
-            AudioWaveformProcessor.fillEdgeBuckets(buckets)
+            val rawForDetection = finalBuckets.clone()
+            AudioWaveformProcessor.fillEdgeBuckets(finalBuckets)
             WaveformResult(rawForDetection, maxAmplitude, durationMs * US_PER_MS)
 
         } catch (e: kotlinx.coroutines.CancellationException) {

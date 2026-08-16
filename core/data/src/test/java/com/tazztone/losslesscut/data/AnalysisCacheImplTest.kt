@@ -90,8 +90,8 @@ class AnalysisCacheImplTest {
             FrameAnalysis(timeMs = 1000L, meanLuma = 250.0, blurVariance = 50.0, sceneDistance = null, freezeDiff = null)
         )
 
-        cache.saveFrameAnalysis(sampleClip, VisualStrategy.BLACK_FRAMES, 5, analysis)
-        val loaded = cache.getFrameAnalysis(sampleClip, VisualStrategy.BLACK_FRAMES, 5)
+        cache.saveFrameAnalysis(sampleClip, 5, analysis)
+        val loaded = cache.getFrameAnalysis(sampleClip, 5)
 
         assertNotNull(loaded)
         assertEquals(2, loaded!!.size)

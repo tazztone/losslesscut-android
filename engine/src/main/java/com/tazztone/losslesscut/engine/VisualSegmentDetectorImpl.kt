@@ -222,35 +222,28 @@ class VisualSegmentDetectorImpl @Inject constructor(
         val outputFormat = ctx.codec.getOutputFormat(index)
 
         if (outputBuffer != null) {
-            val meanLuma = if (ctx.strategy == VisualStrategy.BLACK_FRAMES) {
-                VisualAlgorithms.calculateMeanLuma(outputBuffer, outputFormat, ctx.info)
-            } else DEFAULT_MEAN_LUMA
+            // 1. Downscale to 32x32 once for Luma, pHash, and SAD Freeze Diff
+            val smallY = VisualAlgorithms.downscaleY(
+                outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE
+            ).data
 
-            val blurVariance = if (ctx.strategy == VisualStrategy.BLUR_QUALITY) {
-                VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
-            } else 0.0
+            val meanLuma = VisualAlgorithms.calculateMeanLuma(smallY)
+            val blurVariance = VisualAlgorithms.calculateBlurVariance(outputBuffer, outputFormat, ctx.info)
+            val currentHash = VisualAlgorithms.calculatePHash(smallY)
 
-            val currentHash = if (ctx.strategy == VisualStrategy.SCENE_CHANGE) {
-                VisualAlgorithms.calculatePHash(outputBuffer, outputFormat, ctx.info)
-            } else null
-
-            val currentSmallY = if (ctx.strategy == VisualStrategy.FREEZE_FRAME) {
-                VisualAlgorithms.downscaleY(outputBuffer, outputFormat, ctx.info, DOWNSCALE_SIZE, DOWNSCALE_SIZE).data
-            } else null
-            
-            val sceneDistance = if (currentHash != null && ctx.previousHash != null) {
+            val sceneDistance = if (ctx.previousHash != null) {
                 java.lang.Long.bitCount(currentHash xor ctx.previousHash!!)
             } else null
-            
-            val freezeDiff = if (currentSmallY != null && ctx.previousSmallY != null) {
-                val rawSad = VisualAlgorithms.calculateSAD(currentSmallY, ctx.previousSmallY!!)
+
+            val freezeDiff = if (ctx.previousSmallY != null) {
+                val rawSad = VisualAlgorithms.calculateSAD(smallY, ctx.previousSmallY!!)
                 val currentUs = ctx.info.presentationTimeUs
                 val actualIntervalMs = if (ctx.lastProcessedUs > 0) {
                     (currentUs - ctx.lastProcessedUs) / US_PER_MS
                 } else DEFAULT_FRAME_DURATION_MS
                 if (actualIntervalMs > 0) (rawSad * MS_PER_SEC / actualIntervalMs) else rawSad
             } else null
-            
+
             ctx.analyses.add(FrameAnalysis(
                 timeMs = ctx.info.presentationTimeUs / US_PER_MS,
                 meanLuma = meanLuma,
@@ -259,8 +252,8 @@ class VisualSegmentDetectorImpl @Inject constructor(
                 freezeDiff = freezeDiff
             ))
 
-            if (currentHash != null) ctx.previousHash = currentHash
-            if (currentSmallY != null) ctx.previousSmallY = currentSmallY
+            ctx.previousHash = currentHash
+            ctx.previousSmallY = smallY
         }
     }
 
@@ -273,6 +266,5 @@ class VisualSegmentDetectorImpl @Inject constructor(
         private const val US_PER_MS = 1000L
         private const val MS_PER_SEC = 1000.0
         private const val DOWNSCALE_SIZE = 32
-        private const val DEFAULT_MEAN_LUMA = 255.0
     }
 }
