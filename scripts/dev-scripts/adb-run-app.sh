@@ -18,6 +18,8 @@ echo "🚀 Building and installing debug APK (version: $VERSION_NAME)..."
 
 if [ $? -eq 0 ]; then
     echo "✅ Install successful ($VERSION_NAME). Launching $PACKAGE_NAME..."
+    $ADB shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1 || true
+    $ADB shell wm dismiss-keyguard >/dev/null 2>&1 || true
     $ADB shell am start -n $PACKAGE_NAME/$MAIN_ACTIVITY
 else
     echo "❌ Build or Install failed."
