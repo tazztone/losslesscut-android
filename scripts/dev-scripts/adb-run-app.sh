@@ -1,4 +1,5 @@
 #!/bin/bash
+export GRADLE_USER_HOME="${GRADLE_USER_HOME:-/tmp/lossless-cut-gradle}"
 
 # Configuration
 PACKAGE_NAME="com.tazztone.losslesscut"

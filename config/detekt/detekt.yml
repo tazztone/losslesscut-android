@@ -176,7 +176,7 @@ complexity:
     thresholdInEnums: 20
     ignoreDeprecated: false
     ignorePrivate: false
-    ignoreOverridden: false
+    ignoreOverridden: true
     ignoreAnnotatedFunctions: []
 
 coroutines:

@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+export GRADLE_USER_HOME="${GRADLE_USER_HOME:-/tmp/lossless-cut-gradle}"
 
 echo "🔍 Running Lint, Unit Tests, and Coverage Report..."
 ./gradlew detekt

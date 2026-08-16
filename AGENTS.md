@@ -17,3 +17,5 @@
 ## Environment and Changes
 
 - Verify actual files under `com/tazztone/losslesscut` with `rg` before editing; inspect `git status` before staging, and rerun `git add`/`git commit` with approved escalation if `.git/index.lock` is read-only.
+- When adding or editing UI string keys in `values/strings.xml`, always add matching German translations in `values-de/strings.xml` to avoid Android Lint `MissingTranslation` failures.
+- If data class signatures change and Gradle reports synthetic constructor `NoSuchMethodError` in tests, run `./scripts/dev-scripts/project-clean.sh --all` to wipe stale persistent bytecode cache.

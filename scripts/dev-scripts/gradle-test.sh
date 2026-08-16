@@ -1,4 +1,5 @@
 #!/bin/bash
+export GRADLE_USER_HOME="${GRADLE_USER_HOME:-/tmp/lossless-cut-gradle}"
 
 # Utility script to run specific Gradle unit tests more easily.
 # Usage: ./dev-scripts/gradle-test.sh <module> <test_pattern>
