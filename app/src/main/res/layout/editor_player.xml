@@ -20,11 +20,14 @@
         android:layout_margin="8dp"
         android:padding="8dp"
         android:text="@string/default_time_stamp"
-        android:textColor="@android:color/white"
+        android:textColor="#D0D0D0"
         android:textSize="14sp"
-        android:background="@drawable/tooltip_background"
         android:maxLines="1"
         android:ellipsize="end"
+        android:shadowColor="#CC000000"
+        android:shadowDx="0"
+        android:shadowDy="0"
+        android:shadowRadius="2"
         android:gravity="start" />
 
     <LinearLayout

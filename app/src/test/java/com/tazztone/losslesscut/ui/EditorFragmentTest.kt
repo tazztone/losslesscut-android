@@ -74,6 +74,7 @@ class EditorFragmentTest {
             val params = binding.playerSection.tvDuration.layoutParams as FrameLayout.LayoutParams
 
             assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, params.width)
+            assertEquals(0, binding.playerSection.tvDuration.background?.alpha ?: 0)
             assertTrue(params.gravity and Gravity.TOP == Gravity.TOP)
             assertTrue(params.gravity and Gravity.START == Gravity.START)
         }
