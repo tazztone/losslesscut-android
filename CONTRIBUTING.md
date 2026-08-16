@@ -38,7 +38,10 @@ All developer automation scripts reside under `./scripts/dev-scripts/`:
 | **Launch App** | `./scripts/dev-scripts/adb-run-app.sh` | Builds and launches debug APK on target device. |
 | **Clean Reinstall** | `./scripts/dev-scripts/adb-reinstall.sh` | Performs clean uninstall and reinstall to resolve storage/signature cache conflicts. |
 | **Logcat Stream** | `./scripts/dev-scripts/adb-logcat.sh` | Streams filtered logcat logs for `com.tazztone.losslesscut`. |
-| **Clean Caches** | `./scripts/dev-scripts/project-clean.sh` | Cleans Gradle build caches and temporary build artifacts. |
+| **Clean Caches** | `./scripts/dev-scripts/project-clean.sh [--all]` | Cleans Gradle build outputs; `--all` / `--cache` also wipes persistent transform/build cache directories. |
+
+> [!NOTE]
+> All scripts under `./scripts/dev-scripts/` automatically configure `GRADLE_USER_HOME` to `/tmp/lossless-cut-gradle` if not already defined.
 
 ---
 

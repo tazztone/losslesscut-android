@@ -25,8 +25,8 @@ The central domain aggregate managing an active NLE editing workspace for one or
 - **VisualDetectionConfig**: Configuration object driving frame analysis: frame sampling step (`sampleIntervalFrames`), pHash difference threshold, SAD luminance delta, and contrast-normalized Laplacian variance threshold.
 
 ### FrameAnalysis & WaveformResult
-- **FrameAnalysis**: Computed frame quality metrics (perceptual hash, sum of absolute differences, Laplacian blur score).
-- **WaveformResult**: Decoded PCM audio amplitude vector optimized for timeline waveform rendering.
+- **FrameAnalysis**: Single-pass computed frame quality metrics (perceptual hash, luminance delta/sec, and contrast-normalized Laplacian blur score with edge-density gating).
+- **WaveformResult**: Decoded PCM audio amplitude vector with true RMS energy and perceptual scaling for timeline waveform rendering. Supports multi-track targeting by audio stream index.
 
 ---
 
@@ -40,8 +40,8 @@ The internal `:engine` processing pipeline hiding keyframe seeking, sample copyi
 ## 4. Storage & Cache Subsystems
 
 ### IAnalysisCache & AnalysisCacheImpl
-- **IAnalysisCache**: Pure JVM domain interface defining cache read/write contracts for waveforms and frame metrics.
-- **AnalysisCacheImpl**: Android file-backed binary cache implementation in `:core:data` using versioned binary headers, LRU byte cap eviction, and age-based retention expiry in app-private storage.
+- **IAnalysisCache**: Pure JVM domain interface defining cache read/write contracts for track-indexed waveforms (`getWaveform(clip, trackIndex)`) and strategy-agnostic visual frame metrics (`getVisualAnalysis(clip, sampleInterval)`).
+- **AnalysisCacheImpl**: Android file-backed binary cache implementation in `:core:data` using versioned binary headers (`_v2.bin`), track-keyed waveform files (`_t${trackIndex}_v2.bin`), LRU byte cap eviction, and age-based retention expiry in app-private storage.
 
 ### IMediaFinalizer & StorageUtils
 - **IMediaFinalizer**: Domain interface handling storage destination registration (`IS_PENDING = 0` lifecycle on Android 10+ MediaStore vs SAF DocumentFile SAF tree targets).
