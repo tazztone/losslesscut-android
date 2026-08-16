@@ -269,24 +269,24 @@ private fun HeroActionCard(
             // Stylized Hero Icon Badge
             Box(
                 modifier = Modifier
-                    .size(76.dp)
+                    .size(80.dp)
                     .clip(CircleShape)
                     .background(
                         Brush.radialGradient(
                             colors = listOf(
-                                primaryColor.copy(alpha = 0.22f),
-                                Color(0xFF181D2A)
+                                primaryColor.copy(alpha = 0.25f),
+                                Color(0xFF161A26),
+                                Color(0xFF0F121C)
                             )
                         )
                     )
-                    .padding(2.dp),
+                    .padding(4.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_add_photos_24),
+                androidx.compose.foundation.Image(
+                    painter = painterResource(id = R.drawable.ic_splash_icon),
                     contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = primaryColor
+                    modifier = Modifier.size(72.dp)
                 )
             }
 
