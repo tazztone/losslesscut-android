@@ -5,8 +5,13 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
+import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import io.mockk.*
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -244,6 +249,119 @@ class PlayerManagerTest {
     }
 
     @Test
+    fun `seekToFrame reports the requested frame before seeking`() {
+        val events = mutableListOf<String>()
+        val requestedPositions = mutableListOf<Long>()
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel,
+        )
+        playerManager.setOnFrameStepRequested {
+            requestedPositions += it
+            events += "callback"
+        }
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        every { exoPlayer.currentPosition } returns 1000L
+        every { exoPlayer.duration } returns 10_000L
+        every { exoPlayer.isPlaying } returns false
+        every { exoPlayer.seekTo(1033L) } answers { events += "seek" }
+        every { viewModel.uiState } returns MutableStateFlow(frameState())
+        attachPlayer(playerManager, exoPlayer)
+
+        assertTrue(playerManager.seekToFrame(1))
+
+        assertEquals(listOf(1033L), requestedPositions)
+        assertEquals(listOf("callback", "seek"), events)
+        verify { exoPlayer.seekTo(1033L) }
+    }
+
+    @Test
+    fun `seekToFrame advances from pending frame when player position is stale`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        every { exoPlayer.currentPosition } returns 1000L
+        every { exoPlayer.duration } returns 10_000L
+        every { exoPlayer.isPlaying } returns false
+        every { viewModel.uiState } returns MutableStateFlow(frameState())
+        attachPlayer(playerManager, exoPlayer)
+
+        assertTrue(playerManager.seekToFrame(1))
+        assertTrue(playerManager.seekToFrame(1))
+
+        verify { exoPlayer.seekTo(1033L) }
+        verify { exoPlayer.seekTo(1067L) }
+    }
+
+    @Test
+    fun `seekToFrame pauses playback before requesting the frame`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        every { exoPlayer.currentPosition } returns 1000L
+        every { exoPlayer.duration } returns 10_000L
+        every { exoPlayer.isPlaying } returns true
+        every { viewModel.uiState } returns MutableStateFlow(frameState())
+        attachPlayer(playerManager, exoPlayer)
+
+        assertTrue(playerManager.seekToFrame(1))
+
+        verify { exoPlayer.pause() }
+        verify { exoPlayer.seekTo(1033L) }
+    }
+
+    @Test
+    fun `seekToFrame rejects audio-only and boundary steps`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        every { exoPlayer.currentPosition } returns 0L
+        every { exoPlayer.duration } returns 10_000L
+        every { exoPlayer.isPlaying } returns false
+        attachPlayer(playerManager, exoPlayer)
+
+        every { viewModel.uiState } returns MutableStateFlow(frameState(isAudioOnly = true))
+        assertFalse(playerManager.seekToFrame(1))
+
+        every { viewModel.uiState } returns MutableStateFlow(frameState())
+        assertFalse(playerManager.seekToFrame(-1))
+
+        verify(exactly = 0) { exoPlayer.seekTo(any<Long>()) }
+    }
+
+    @Test
+    fun `non-frame seek clears pending frame cursor`() {
+        val playerManager = PlayerManager(
+            context = context,
+            playerView = playerView,
+            viewModel = viewModel
+        )
+        val exoPlayer = mockk<ExoPlayer>(relaxed = true)
+        every { exoPlayer.currentPosition } returns 1000L
+        every { exoPlayer.duration } returns 10_000L
+        every { exoPlayer.isPlaying } returns false
+        every { viewModel.uiState } returns MutableStateFlow(frameState())
+        attachPlayer(playerManager, exoPlayer)
+
+        assertTrue(playerManager.seekToFrame(1))
+        playerManager.seekTo(5000L)
+        assertTrue(playerManager.seekToFrame(1))
+
+        verify(exactly = 2) { exoPlayer.seekTo(1033L) }
+        verify { exoPlayer.seekTo(5000L) }
+    }
+
+    @Test
     fun `cyclePlaybackSpeed should correctly cycle through playback speeds`() {
         var callbackSpeed = 0f
         var callbackPitch = true
@@ -303,4 +421,22 @@ class PlayerManagerTest {
         playerManager.cyclePlaybackSpeed()
         assert(callbackPitch == true)
     }
+
+    private fun attachPlayer(playerManager: PlayerManager, player: ExoPlayer) {
+        PlayerManager::class.java.getDeclaredField("player").apply {
+            isAccessible = true
+            set(playerManager, player)
+        }
+    }
+
+    private fun frameState(
+        fps: Float = 30f,
+        isAudioOnly: Boolean = false
+    ) = VideoEditingUiState.Success(
+        clips = emptyList(),
+        keyframes = emptyList(),
+        segments = emptyList(),
+        videoFps = fps,
+        isAudioOnly = isAudioOnly
+    )
 }

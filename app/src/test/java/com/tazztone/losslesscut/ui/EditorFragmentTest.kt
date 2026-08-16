@@ -1,6 +1,9 @@
 package com.tazztone.losslesscut.ui
 
+import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
+import android.widget.FrameLayout
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
@@ -13,6 +16,8 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import org.junit.Before
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +64,18 @@ class EditorFragmentTest {
             assert(binding.editingControls.root != null)
             assert(binding.playerSection.root != null)
             assert(binding.seekerContainer.root != null)
+        }
+    }
+
+    @Test
+    fun `duration badge is top aligned and does not fill player width`() {
+        launchFragmentInHiltContainer<EditorFragment> {
+            val binding = getBinding(this as EditorFragment)
+            val params = binding.playerSection.tvDuration.layoutParams as FrameLayout.LayoutParams
+
+            assertEquals(ViewGroup.LayoutParams.WRAP_CONTENT, params.width)
+            assertTrue(params.gravity and Gravity.TOP == Gravity.TOP)
+            assertTrue(params.gravity and Gravity.START == Gravity.START)
         }
     }
 

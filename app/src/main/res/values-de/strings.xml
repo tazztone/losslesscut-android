@@ -32,7 +32,7 @@
     <string name="add_audio">Audio hinzufügen</string>
     <string name="merge_video">Zusammenführen</string>
     <string name="loading">Medien werden importiert…</string>
-    <string name="default_time_stamp">00:00 / 00:00</string>
+    <string name="default_time_stamp">00:00.000 / 00:00.000</string>
     <string name="cancel">Abbrechen</string>
     <string name="keep_right_portion">Links entfernen</string>
     <string name="keep_left_portion">Rechts entfernen</string>

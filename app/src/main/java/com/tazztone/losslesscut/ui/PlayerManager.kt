@@ -7,8 +7,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
-import com.tazztone.losslesscut.R
-import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
 import com.tazztone.losslesscut.viewmodel.*
 
 @OptIn(UnstableApi::class)
@@ -25,6 +23,11 @@ class PlayerManager(
     private val onMediaTransitionCallback = onMediaTransition
     private val onIsPlayingChangedCallback = onIsPlayingChanged
     private val onPlaybackParametersChangedCallback = onPlaybackParametersChanged
+    private var onFrameStepRequestedCallback: (Long) -> Unit = {}
+
+    // ponytail: input-rate limiting is the initial ceiling; add decoder-aware
+    // coalescing only if device profiling proves it necessary.
+    private var pendingFrameIndex: Long? = null
 
     var player: ExoPlayer? = null
         private set
@@ -37,6 +40,7 @@ class PlayerManager(
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            pendingFrameIndex = null
             val index = currentMediaItemIndex
             viewModel.selectClip(index)
             onMediaTransitionCallback(index)
@@ -47,6 +51,7 @@ class PlayerManager(
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) pendingFrameIndex = null
             onIsPlayingChangedCallback(isPlaying)
         }
     }
@@ -58,7 +63,12 @@ class PlayerManager(
         }
     }
 
+    fun setOnFrameStepRequested(callback: (Long) -> Unit) {
+        onFrameStepRequestedCallback = callback
+    }
+
     fun release() {
+        pendingFrameIndex = null
         player?.apply {
             removeListener(playerListener)
             release()
@@ -67,6 +77,7 @@ class PlayerManager(
     }
 
     fun seekToKeyframe(direction: Int) {
+        pendingFrameIndex = null
         val currentPos = currentPosition
         val state = viewModel.uiState.value as? VideoEditingUiState.Success
         val keyframes = state?.keyframes ?: emptyList()
@@ -82,14 +93,34 @@ class PlayerManager(
         }
     }
 
-    fun seekToFrame(direction: Int) {
-        val currentPos = currentPosition
+    fun seekToFrame(direction: Int): Boolean {
+        val player = player ?: return false
         val state = viewModel.uiState.value as? VideoEditingUiState.Success
+        if (state?.isAudioOnly == true) return false
+
         val fps = (state?.videoFps ?: 30f).takeIf { it > 0f } ?: 30f
-        val currentFrameIndex = Math.round(currentPos * fps / 1000.0)
+        val currentPos = player.currentPosition
+        val currentFrameIndex = pendingFrameIndex
+            ?: Math.round(currentPos * fps / 1000.0)
         val targetFrameIndex = (currentFrameIndex + direction).coerceAtLeast(0)
-        val targetMs = Math.round(targetFrameIndex * 1000.0 / fps)
-        seekTo(targetMs)
+        val unboundedTargetMs = Math.round(targetFrameIndex * 1000.0 / fps)
+        val targetMs = if (player.duration > 0L) {
+            unboundedTargetMs.coerceAtMost(player.duration)
+        } else {
+            unboundedTargetMs
+        }
+        val effectiveFrameIndex = Math.round(targetMs * fps / 1000.0)
+        val currentLogicalPosition = pendingFrameIndex?.let {
+            Math.round(it * 1000.0 / fps)
+        } ?: currentPos
+
+        if (targetMs == currentLogicalPosition) return false
+
+        pendingFrameIndex = effectiveFrameIndex
+        if (player.isPlaying) player.pause()
+        onFrameStepRequestedCallback(targetMs)
+        player.seekTo(targetMs)
+        return true
     }
 
     fun selectAudioTrack(trackIndex: Int) {
@@ -123,6 +154,7 @@ class PlayerManager(
     }
 
     fun setMediaItems(uris: List<Uri>, initialIndex: Int = 0, initialPosition: Long = 0, playWhenReady: Boolean = false) {
+        pendingFrameIndex = null
         val mediaItems = uris.map { MediaItem.fromUri(it) }
         player?.apply {
             setMediaItems(mediaItems)
@@ -135,15 +167,22 @@ class PlayerManager(
     fun togglePlayback() {
         player?.let {
             if (it.playbackState == Player.STATE_ENDED) {
+                pendingFrameIndex = null
                 it.seekTo(0)
                 it.play()
             } else {
-                if (it.isPlaying) it.pause() else it.play()
+                if (it.isPlaying) {
+                    it.pause()
+                } else {
+                    pendingFrameIndex = null
+                    it.play()
+                }
             }
         }
     }
 
     fun performNudge(direction: Int) {
+        pendingFrameIndex = null
         player?.let {
             val delta = 100L * direction // 100ms nudge
             it.seekTo(it.currentPosition + delta)
@@ -151,10 +190,12 @@ class PlayerManager(
     }
 
     fun seekTo(positionMs: Long) {
+        pendingFrameIndex = null
         player?.seekTo(positionMs)
     }
 
     fun seekTo(index: Int, positionMs: Long) {
+        pendingFrameIndex = null
         player?.seekTo(index, positionMs)
     }
 
@@ -182,18 +223,22 @@ class PlayerManager(
     }
 
     fun moveMediaItem(from: Int, to: Int) {
+        pendingFrameIndex = null
         player?.moveMediaItem(from, to)
     }
 
     fun removeMediaItem(index: Int) {
+        pendingFrameIndex = null
         player?.removeMediaItem(index)
     }
 
     fun seekToPrevious() {
+        pendingFrameIndex = null
         player?.seekToPrevious()
     }
 
     fun seekToNext() {
+        pendingFrameIndex = null
         player?.seekToNext()
     }
 
@@ -202,6 +247,7 @@ class PlayerManager(
     }
 
     fun play() {
+        pendingFrameIndex = null
         player?.play()
     }
 

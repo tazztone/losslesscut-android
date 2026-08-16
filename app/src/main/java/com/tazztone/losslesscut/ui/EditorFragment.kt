@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -16,6 +17,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.util.asString
+import com.tazztone.losslesscut.util.setupAutoRepeat
 import com.tazztone.losslesscut.utils.MediaDeletionResult
 import com.tazztone.losslesscut.utils.StorageUtils
 import com.tazztone.losslesscut.databinding.FragmentEditorBinding
@@ -118,6 +120,10 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
                 viewModel.setPlaybackParameters(speed, pitch)
             }
         )
+        playerManager.setOnFrameStepRequested { position ->
+            binding.seekerContainer.customVideoSeeker.setSeekPosition(position)
+            updateDurationDisplay(position, playerManager.duration)
+        }
         playerManager.initialize()
 
         progressTicker = com.tazztone.losslesscut.ui.editor.PlaybackProgressTicker(
@@ -297,8 +303,16 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
         binding.editingControls.containerReset.setOnClickListener { handleResetAction() }
 
         binding.playerSection.btnNudgeBack.setOnClickListener { playerManager.seekToKeyframe(-1) }
-        binding.playerSection.btnFrameBack.setOnClickListener { playerManager.seekToFrame(-1) }
-        binding.playerSection.btnFrameForward.setOnClickListener { playerManager.seekToFrame(1) }
+        binding.playerSection.btnFrameBack.setupAutoRepeat {
+            if (playerManager.seekToFrame(-1)) {
+                binding.playerSection.btnFrameBack.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
+        }
+        binding.playerSection.btnFrameForward.setupAutoRepeat {
+            if (playerManager.seekToFrame(1)) {
+                binding.playerSection.btnFrameForward.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+            }
+        }
         binding.playerSection.btnNudgeForward.setOnClickListener { playerManager.seekToKeyframe(1) }
     }
 
@@ -443,6 +457,12 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
     }
 
     private fun updateControlsAndBadgesUI(state: VideoEditingUiState.Success) {
+        val discreteSeekEnabled = !state.isAudioOnly
+        binding.playerSection.btnNudgeBack.isEnabled = discreteSeekEnabled
+        binding.playerSection.btnFrameBack.isEnabled = discreteSeekEnabled
+        binding.playerSection.btnFrameForward.isEnabled = discreteSeekEnabled
+        binding.playerSection.btnNudgeForward.isEnabled = discreteSeekEnabled
+
         binding.navBar.btnUndo.isEnabled = state.canUndo
         binding.navBar.btnUndo.alpha = if (state.canUndo) 1.0f else 0.5f
         binding.navBar.btnRedo.isEnabled = state.canRedo
