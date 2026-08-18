@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.io.File
+import java.io.IOException
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -88,10 +89,10 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     override suspend fun extractWaveform(
         uri: String,
-        trackIndex: Int?,
+        trackId: Int?,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? {
-        return waveformExtractor.extract(uri, trackIndex = trackIndex, onProgress = onProgress)
+        return waveformExtractor.extract(uri, trackId = trackId, onProgress = onProgress)
     }
 
     override suspend fun getFrameAt(uri: String, positionMs: Long, format: String, quality: Int) = withContext(ioDispatcher) {
@@ -148,10 +149,9 @@ class VideoEditingRepositoryImpl @Inject constructor(
 
     // --- Session & Cache Management ---
 
-    override suspend fun saveSession(clips: List<MediaClip>) = withContext(ioDispatcher) {
-        if (clips.isEmpty()) return@withContext
+    override suspend fun saveSession(sessionId: String, clips: List<MediaClip>): Result<Unit> = withContext(ioDispatcher) {
+        if (clips.isEmpty()) return@withContext Result.success(Unit)
         try {
-            val sessionId = getSessionId(clips.first().uri.toString())
             val sessionFile = File(sessionsDir, "session_$sessionId.json")
             val temporaryFile = File(sessionsDir, "session_$sessionId.json.tmp")
             try {
@@ -162,24 +162,27 @@ class VideoEditingRepositoryImpl @Inject constructor(
             } finally {
                 if (temporaryFile.exists()) temporaryFile.delete()
             }
-            updateSessionIndex(
+            val indexUpdated = updateSessionIndex(
                 SessionSummary(
                     uri = clips.first().uri,
                     fileName = clips.first().fileName,
                     clipCount = clips.size,
-                    updatedAtEpochMs = System.currentTimeMillis()
+                    updatedAtEpochMs = System.currentTimeMillis(),
+                    sessionId = sessionId
                 )
             )
+            if (!indexUpdated) throw IOException("Failed to update recent session index")
+            Result.success(Unit)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e("VideoEditingRepositoryImpl", "Failed to save session", e)
+            Result.failure(e)
         }
     }
 
-    override suspend fun restoreSession(uri: String): List<MediaClip>? = withContext(ioDispatcher) {
+    override suspend fun restoreSession(sessionId: String): SessionRestoreResult? = withContext(ioDispatcher) {
         try {
-            val sessionId = getSessionId(uri)
             val sessionFile = File(sessionsDir, "session_$sessionId.json")
             if (!sessionFile.exists()) return@withContext null
             
@@ -187,7 +190,7 @@ class VideoEditingRepositoryImpl @Inject constructor(
             val restoredClips: List<MediaClip> = json.decodeFromString(jsonText)
             
             kotlinx.coroutines.coroutineScope {
-                restoredClips.map { clip ->
+                val restored = restoredClips.map { clip ->
                     async {
                         val isValid = try {
                             val clipUri = Uri.parse(clip.uri)
@@ -201,7 +204,13 @@ class VideoEditingRepositoryImpl @Inject constructor(
                         }
                         if (isValid) clip else null
                     }
-                }.awaitAll().filterNotNull()
+                }.awaitAll()
+                SessionRestoreResult(
+                    clips = restored.filterNotNull(),
+                    missingUris = restoredClips.zip(restored).mapNotNull { (clip, restoredClip) ->
+                        if (restoredClip == null) clip.uri else null
+                    }
+                )
             }
         } catch (e: CancellationException) {
             throw e
@@ -211,39 +220,39 @@ class VideoEditingRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun hasSavedSession(uri: String): Boolean = withContext(ioDispatcher) {
-        val sessionFile = File(sessionsDir, "session_${getSessionId(uri)}.json")
+    override suspend fun hasSavedSession(sessionId: String): Boolean = withContext(ioDispatcher) {
+        val sessionFile = File(sessionsDir, "session_$sessionId.json")
         sessionFile.exists()
     }
 
     override suspend fun listSavedSessions(): List<SessionSummary> = withContext(ioDispatcher) {
         sessionIndexMutex.withLock {
             readSessionIndex()
-                .filter { File(sessionsDir, "session_${getSessionId(it.uri)}.json").exists() }
+                .filter { File(sessionsDir, "session_${normalizedSessionId(it)}.json").exists() }
                 .sortedByDescending { it.updatedAtEpochMs }
         }
     }
 
-    override suspend fun deleteSession(uri: String): Unit = withContext(ioDispatcher) {
+    override suspend fun deleteSession(sessionId: String): Unit = withContext(ioDispatcher) {
         sessionIndexMutex.withLock {
-            File(sessionsDir, "session_${getSessionId(uri)}.json").delete()
-            writeSessionIndex(readSessionIndex().filterNot { it.uri == uri })
+            File(sessionsDir, "session_$sessionId.json").delete()
+            writeSessionIndex(readSessionIndex().filterNot { normalizedSessionId(it) == sessionId })
         }
     }
 
     override suspend fun getWaveform(
         clip: MediaClip,
-        trackIndex: Int?,
+        trackId: Int?,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(ioDispatcher) {
-        val cached = analysisCache.getWaveform(clip, trackIndex)
+        val cached = analysisCache.getWaveform(clip, trackId)
         if (cached != null) {
             return@withContext cached
         }
 
-        val extracted = extractWaveform(clip.uri, trackIndex, onProgress)
+        val extracted = extractWaveform(clip.uri, trackId, onProgress)
         if (extracted != null) {
-            analysisCache.saveWaveform(clip, extracted, trackIndex)
+            analysisCache.saveWaveform(clip, extracted, trackId)
         }
         extracted
     }
@@ -267,13 +276,13 @@ class VideoEditingRepositoryImpl @Inject constructor(
         return HashUtils.sha256(uriString)
     }
 
-    private suspend fun updateSessionIndex(summary: SessionSummary) {
+    private suspend fun updateSessionIndex(summary: SessionSummary): Boolean {
         sessionIndexMutex.withLock {
             val updated = buildList {
                 add(summary)
-                addAll(readSessionIndex().filterNot { it.uri == summary.uri })
+                addAll(readSessionIndex().filterNot { normalizedSessionId(it) == summary.sessionId })
             }.take(MAX_RECENT_SESSIONS)
-            writeSessionIndex(updated)
+            return writeSessionIndex(updated)
         }
     }
 
@@ -282,25 +291,39 @@ class VideoEditingRepositoryImpl @Inject constructor(
         if (!indexFile.exists()) return emptyList()
         return runCatching {
             json.decodeFromString<List<SessionSummary>>(indexFile.readText())
+                .map { summary ->
+                    if (summary.sessionId.isEmpty()) {
+                        summary.copy(sessionId = getSessionId(summary.uri))
+                    } else {
+                        summary
+                    }
+                }
         }.getOrElse {
             Log.w("VideoEditingRepositoryImpl", "Failed to read recent session index", it)
             emptyList()
         }
     }
 
-    private fun writeSessionIndex(sessions: List<SessionSummary>) {
+    private fun writeSessionIndex(sessions: List<SessionSummary>): Boolean {
         val indexFile = File(sessionsDir, SESSION_INDEX_FILE)
         val temporaryFile = File(sessionsDir, "$SESSION_INDEX_FILE.tmp")
-        runCatching {
+        val result = runCatching {
             temporaryFile.writeText(json.encodeToString(sessions))
             Files.move(temporaryFile.toPath(), indexFile.toPath(), ATOMIC_MOVE, REPLACE_EXISTING)
+            true
         }.recoverCatching {
             Files.move(temporaryFile.toPath(), indexFile.toPath(), REPLACE_EXISTING)
+            true
         }.onFailure {
             Log.e("VideoEditingRepositoryImpl", "Failed to write recent session index", it)
         }.also {
             if (temporaryFile.exists()) temporaryFile.delete()
         }
+        return result.getOrDefault(false)
+    }
+
+    private fun normalizedSessionId(summary: SessionSummary): String {
+        return summary.sessionId.ifEmpty { getSessionId(summary.uri) }
     }
 
     private fun validateMimeCompatibility(videoMime: String?, audioMime: String?) {

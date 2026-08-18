@@ -164,6 +164,8 @@
     <string name="playback_speed">Wiedergabegeschwindigkeit</string>
     <string name="export_folder">Exportordner</string>
     <string name="session_restored">Vorherige Sitzung wiederhergestellt</string>
+    <string name="session_restored_missing_files">Vorherige Sitzung wiederhergestellt; %1$d Quelldatei(en) waren nicht verfügbar.</string>
+    <string name="session_save_failed">Bearbeitungssitzung konnte nicht gespeichert werden: %1$s</string>
     <string name="restore_session_title">Sitzung wiederherstellen</string>
     <string name="restore_session_message">Vorherige Bearbeitungen für diese Datei wiederherstellen?</string>
     <string name="restore">Wiederherstellen</string>
@@ -194,7 +196,7 @@
     <string name="reset">Reset</string>
     <string name="smart_cut">Smart Cut</string>
     <string name="silence">Stille</string>
-    <string name="visual">Visuell</string>
+    <string name="visual">Visuell (Beta)</string>
     <string name="detect">Erkennen</string>
     <string name="strategy">Strategie</string>
     <string name="analyzing_video">Videoinhalt wird analysiert…</string>
@@ -233,7 +235,7 @@
     <string name="tooltip_detect">Startet die Frame-Analyse. Vorschau-Bereiche können vor dem Anwenden angepasst werden.</string>
     <string name="tooltip_apply_smart_cut">Wendet die Schnitte an und verwirft die markierten Bereiche.</string>
     <string name="tooltip_silence_tab">Erkennt und entfernt stille Pausen.</string>
-    <string name="tooltip_visual_tab">Sucht Szenenwechsel, schwarze Frames und Standbilder.</string>
+    <string name="tooltip_visual_tab">Beta: Sucht Szenenwechsel, schwarze Frames und Standbilder. Ergebnisse müssen möglicherweise geprüft werden.</string>
     <string name="content_desc_link_padding">Puffer-Schieberegler verknüpfen</string>
 
     <string name="error_visual_on_audio">Visuelle Erkennung ist für Audiodateien nicht verfügbar</string>

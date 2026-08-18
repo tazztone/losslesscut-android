@@ -33,7 +33,7 @@
 
 ### 🤖 Smart Cut (v2.0) Automated Detection
 - 🔇 **Silence Cut**: Automated detection and removal of quiet sections with interactive ghost state preview and incremental +/- step slider controls.
-- 👁️ **Visual Detection**: pHash, SAD luminance delta, and contrast-normalized Laplacian variance for Scene, Black, Freeze, and Blur detection.
+- 👁️ **Visual Detection (Beta)**: pHash, SAD luminance delta, and contrast-normalized Laplacian variance for Scene, Black, Freeze, and Blur detection. Results are experimental and should be reviewed.
 - ⏭️ **Interactive Match Jumpers**: Prev/Next match navigation buttons to step the playhead directly through detected preview ranges on the timeline.
 - 🔀 **Invert Keep/Discard**: Instantly toggle between removing or preserving detected ranges.
 
@@ -116,7 +116,7 @@ If you discover a security vulnerability, please [report it privately](https://g
 
 ## 🗺️ Roadmap
 
-- [x] **Smart Cut (v2.0)**: Integrated visual detection (Scene, Black, Freeze, Blur) with Silence Cut.
+- [ ] **Smart Cut (v2.0)**: Silence Cut is supported; Visual Detection remains Beta while accuracy and performance are refined.
 - [x] **Architectural Enforcement**: Konsist tests safeguarding module boundaries.
 - [x] **Domain Purification**: Standard pure JVM domain module (`:core:domain`).
 - [x] **Modern Build**: Full migration to Gradle Kotlin DSL and AGP 9.0.

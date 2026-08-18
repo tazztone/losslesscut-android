@@ -43,7 +43,7 @@ class AudioWaveformExtractorTest {
 
         coEvery { decoder.decode(uri, any()) } returns flowOf(pcmData)
 
-        val result = extractor.extract(uri, trackIndex = 1, onProgress = null)
+        val result = extractor.extract(uri, trackId = 1, onProgress = null)
 
         assertNotNull(result)
         assertEquals(1000000L, result?.durationUs)

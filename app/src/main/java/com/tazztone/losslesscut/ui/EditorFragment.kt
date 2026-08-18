@@ -59,18 +59,17 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
     @Inject
     lateinit var storageUtils: StorageUtils
 
-    private var pendingDeleteUris: List<Uri> = emptyList()
+    private var pendingDeleteMediaStoreUris: List<Uri> = emptyList()
+    private var pendingDeleteDeferredUris: List<Uri> = emptyList()
+    private var pendingDeletePermissionApproved: Boolean? = null
 
     private val deletePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
-            viewModel.onOriginalClipsDeleted(pendingDeleteUris)
-        } else {
-            Toast.makeText(requireContext(), R.string.original_clip_retained, Toast.LENGTH_SHORT).show()
+        pendingDeletePermissionApproved = result.resultCode == Activity.RESULT_OK
+        if (view != null) {
+            handlePendingDeletePermission()
         }
-        pendingDeleteUris = emptyList()
     }
 
 
@@ -92,6 +91,7 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentEditorBinding.bind(view)
+        handlePendingDeletePermission()
         segmentActionPopup = SegmentActionPopup(requireContext())
         
         playerManager = PlayerManager(
@@ -192,7 +192,9 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
                     }
                 }
                 if (uris != null && uris.isNotEmpty()) {
-                    viewModel.restoreSession(uris[0])
+                    val sessionId = activity?.intent?.getStringExtra(VideoEditingActivity.EXTRA_SESSION_ID)
+                        ?: HashUtils.sha256(uris[0].toString())
+                    viewModel.restoreSession(sessionId)
                 }
             }
         )
@@ -374,20 +376,24 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
                             bottomSheet.show(childFragmentManager, "ExportSuccessBottomSheet")
                         }
                         if (event.success && event.deleteOriginalAfterExport && event.sourceUris.isNotEmpty()) {
-                            lifecycleScope.launch {
+                            viewLifecycleOwner.lifecycleScope.launch {
                                 val uris = event.sourceUris.map { Uri.parse(it) }
                                 when (val result = storageUtils.deleteOriginalMedia(uris)) {
                                     is MediaDeletionResult.Success -> {
                                         Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
-                                        viewModel.onOriginalClipsDeleted(uris)
+                                        viewModel.onOriginalClipsDeleted(result.removedUris)
                                     }
                                     is MediaDeletionResult.RequiresPermissionPrompt -> {
-                                        pendingDeleteUris = uris
+                                        pendingDeleteMediaStoreUris = result.mediaStoreUris
+                                        pendingDeleteDeferredUris = result.deferredDocumentUris
                                         deletePermissionLauncher.launch(
                                             IntentSenderRequest.Builder(result.intentSender).build()
                                         )
                                     }
                                     is MediaDeletionResult.Failed -> {
+                                        if (result.removedUris.isNotEmpty()) {
+                                            viewModel.onOriginalClipsDeleted(result.removedUris)
+                                        }
                                         val msg = getString(R.string.failed_to_delete_original, result.exception.message ?: "")
                                         Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
                                     }
@@ -405,6 +411,52 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
         
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.waveformData.collect { waveform -> binding.seekerContainer.customVideoSeeker.setWaveformData(waveform) }
+        }
+    }
+
+    private fun handlePendingDeletePermission() {
+        val approved = pendingDeletePermissionApproved ?: return
+        pendingDeletePermissionApproved = null
+
+        val confirmedByPrompt = if (approved) pendingDeleteMediaStoreUris else emptyList()
+        val deferredUris = pendingDeleteDeferredUris
+        pendingDeleteMediaStoreUris = emptyList()
+        pendingDeleteDeferredUris = emptyList()
+
+        if (!approved) {
+            Toast.makeText(requireContext(), R.string.original_clip_retained, Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            when (val deferredResult = storageUtils.deleteOriginalMedia(deferredUris)) {
+                is MediaDeletionResult.Success -> {
+                    val confirmedUris = confirmedByPrompt + deferredResult.removedUris
+                    if (confirmedUris.isNotEmpty()) {
+                        viewModel.onOriginalClipsDeleted(confirmedUris)
+                    }
+                    Toast.makeText(requireContext(), R.string.original_clip_deleted, Toast.LENGTH_SHORT).show()
+                }
+                is MediaDeletionResult.RequiresPermissionPrompt -> {
+                    pendingDeleteMediaStoreUris = confirmedByPrompt + deferredResult.mediaStoreUris
+                    pendingDeleteDeferredUris = deferredResult.deferredDocumentUris
+                    pendingDeletePermissionApproved = null
+                    deletePermissionLauncher.launch(
+                        IntentSenderRequest.Builder(deferredResult.intentSender).build()
+                    )
+                }
+                is MediaDeletionResult.Failed -> {
+                    val confirmedUris = confirmedByPrompt + deferredResult.removedUris
+                    if (confirmedUris.isNotEmpty()) {
+                        viewModel.onOriginalClipsDeleted(confirmedUris)
+                    }
+                    val msg = getString(
+                        R.string.failed_to_delete_original,
+                        deferredResult.exception.message ?: ""
+                    )
+                    Toast.makeText(requireContext(), msg, Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

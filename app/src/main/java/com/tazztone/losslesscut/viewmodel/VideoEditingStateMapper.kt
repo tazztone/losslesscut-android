@@ -15,12 +15,17 @@ public data class MapStateInput(
     val selectedAudioTrackIndex: Int,
     val playbackSpeed: Float,
     val isPitchCorrectionEnabled: Boolean,
-    val currentState: VideoEditingUiState
+    val currentState: VideoEditingUiState,
+    val isExporting: Boolean = false
 )
 
 public object VideoEditingStateMapper {
 
     public fun mapToState(input: MapStateInput): VideoEditingUiState {
+        if (input.isExporting && input.currentState is VideoEditingUiState.Loading) {
+            return input.currentState
+        }
+
         val clip = input.currentClips.getOrNull(input.selectedClipIndex)
         if (clip == null) {
             return if (input.currentState is VideoEditingUiState.Success) {

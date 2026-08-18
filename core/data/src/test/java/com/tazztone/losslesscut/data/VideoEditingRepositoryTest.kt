@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.tazztone.losslesscut.domain.engine.AudioWaveformExtractor
 import com.tazztone.losslesscut.domain.engine.ILosslessEngine
 import com.tazztone.losslesscut.domain.model.MediaClip
-import com.tazztone.losslesscut.domain.model.HashUtils
 import com.tazztone.losslesscut.domain.model.WaveformResult
 import com.tazztone.losslesscut.utils.StorageUtils
 import io.mockk.coEvery
@@ -59,10 +58,10 @@ class VideoEditingRepositoryTest {
             fps = 30f, rotation = 0, isAudioOnly = false
         )
         val clips = listOf(clip)
+        val sessionId = "session-primary"
 
-        repository.saveSession(clips)
+        assertTrue(repository.saveSession(sessionId, clips).isSuccess)
         
-        val sessionId = HashUtils.sha256(clip.uri)
         val sessionFile = File(context.noBackupFilesDir, "editing_sessions/session_$sessionId.json")
         assertTrue("Session file should exist", sessionFile.exists())
         assertFalse("Session must not be stored in evictable cacheDir", File(context.cacheDir, sessionFile.name).exists())
@@ -70,9 +69,10 @@ class VideoEditingRepositoryTest {
         val recentSessions = repository.listSavedSessions()
         assertEquals(clip.uri, recentSessions.first { it.uri == clip.uri }.uri)
         assertEquals(1, recentSessions.first { it.uri == clip.uri }.clipCount)
+        assertEquals(sessionId, recentSessions.first { it.uri == clip.uri }.sessionId)
 
-        repository.deleteSession(clip.uri)
-        assertFalse(repository.hasSavedSession(clip.uri))
+        repository.deleteSession(sessionId)
+        assertFalse(repository.hasSavedSession(sessionId))
         assertFalse(repository.listSavedSessions().any { it.uri == clip.uri })
     }
 
@@ -93,12 +93,11 @@ class VideoEditingRepositoryTest {
             isAudioOnly = false
         )
 
-        repository.saveSession(listOf(clip))
-        repository.saveSession(listOf(clip.copy(uri = "BB")))
+        repository.saveSession("session-a", listOf(clip))
+        repository.saveSession("session-b", listOf(clip.copy(uri = "BB")))
 
-        assertNotEquals(HashUtils.sha256("Aa"), HashUtils.sha256("BB"))
-        assertTrue(repository.hasSavedSession("Aa"))
-        assertTrue(repository.hasSavedSession("BB"))
+        assertTrue(repository.hasSavedSession("session-a"))
+        assertTrue(repository.hasSavedSession("session-b"))
     }
 
     @Test
@@ -120,7 +119,7 @@ class VideoEditingRepositoryTest {
             )
         }
 
-        clips.forEach { repository.saveSession(listOf(it)) }
+        clips.forEachIndexed { index, clip -> repository.saveSession("session-$index", listOf(clip)) }
 
         val sessions = repository.listSavedSessions()
         assertEquals(5, sessions.size)
@@ -149,9 +148,25 @@ class VideoEditingRepositoryTest {
             isAudioOnly = false
         )
 
-        repository.saveSession(listOf(clip))
+        repository.saveSession("session-recovered", listOf(clip))
 
         assertEquals(listOf(clip.uri), repository.listSavedSessions().map { it.uri })
+    }
+
+    @Test
+    fun reorderAndRemoveFirstClip_keepsStableSessionIdentity() = runTest {
+        val clips = listOf(
+            MediaClip(uri = "content://mock/first", fileName = "first.mp4", durationMs = 1000L, width = 1920, height = 1080, videoMime = "video/mp4", audioMime = "audio/aac", sampleRate = 44100, channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false),
+            MediaClip(uri = "content://mock/second", fileName = "second.mp4", durationMs = 1000L, width = 1920, height = 1080, videoMime = "video/mp4", audioMime = "audio/aac", sampleRate = 44100, channelCount = 2, fps = 30f, rotation = 0, isAudioOnly = false)
+        )
+
+        repository.saveSession("stable-session", clips)
+        repository.saveSession("stable-session", listOf(clips[1]))
+
+        val sessions = repository.listSavedSessions()
+        assertEquals(1, sessions.size)
+        assertEquals("stable-session", sessions.single().sessionId)
+        assertEquals("content://mock/second", sessions.single().uri)
     }
 
     @Test

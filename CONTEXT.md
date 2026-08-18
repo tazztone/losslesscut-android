@@ -40,7 +40,7 @@ The internal `:engine` processing pipeline hiding keyframe seeking, sample copyi
 ## 4. Storage & Cache Subsystems
 
 ### IAnalysisCache & AnalysisCacheImpl
-- **IAnalysisCache**: Pure JVM domain interface defining cache read/write contracts for track-indexed waveforms (`getWaveform(clip, trackIndex)`) and strategy-agnostic visual frame metrics (`getVisualAnalysis(clip, sampleInterval)`).
+- **IAnalysisCache**: Pure JVM domain interface defining cache read/write contracts for extractor-track-ID waveforms (`getWaveform(clip, trackId)`) and strategy-agnostic visual frame metrics (`getVisualAnalysis(clip, sampleInterval)`). Visual frame detection is currently Beta.
 - **AnalysisCacheImpl**: Android file-backed binary cache implementation in `:core:data` using versioned binary headers (`_v2.bin`), track-keyed waveform files (`_t${trackIndex}_v2.bin`), LRU byte cap eviction, and age-based retention expiry in app-private storage.
 
 ### IMediaFinalizer & StorageUtils
@@ -53,4 +53,3 @@ The internal `:engine` processing pipeline hiding keyframe seeking, sample copyi
 
 ### TimelineViewport (UI Geometry Module)
 Pure Kotlin timeline geometry module in `:app/customviews` (zero Android dependencies). Encapsulates timestamp-to-pixel coordinate translations, zoom factor constraints (1x..20x), scroll panning offsets, hit-testing, and visible tile index calculations. Shared across `CustomVideoSeeker`, `SeekerRenderer`, `SeekerGhostRenderer`, and `SeekerAccessibilityHelper`.
-

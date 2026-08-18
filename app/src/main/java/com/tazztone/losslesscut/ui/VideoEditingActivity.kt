@@ -12,6 +12,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.navigation.fragment.NavHostFragment
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.databinding.ActivityVideoEditingBinding
+import com.tazztone.losslesscut.domain.model.HashUtils
 import com.tazztone.losslesscut.viewmodel.VideoEditingUiState
 import com.tazztone.losslesscut.viewmodel.VideoEditingViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -23,6 +24,7 @@ class VideoEditingActivity : BaseActivity() {
     companion object {
         const val EXTRA_VIDEO_URIS = "com.tazztone.losslesscut.EXTRA_VIDEO_URIS"
         const val EXTRA_RESUME_SESSION = "com.tazztone.losslesscut.EXTRA_RESUME_SESSION"
+        const val EXTRA_SESSION_ID = "com.tazztone.losslesscut.EXTRA_SESSION_ID"
     }
 
     private val viewModel: VideoEditingViewModel by viewModels()
@@ -48,11 +50,14 @@ class VideoEditingActivity : BaseActivity() {
 
         hideSystemUI()
 
+        val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
+            ?: HashUtils.sha256(videoUris.first().toString())
+
         if (savedInstanceState == null || viewModel.uiState.value is VideoEditingUiState.Initial) {
             if (intent.getBooleanExtra(EXTRA_RESUME_SESSION, false)) {
-                viewModel.restoreSession(videoUris.first())
+                viewModel.restoreSession(sessionId)
             } else {
-                viewModel.initialize(videoUris)
+                viewModel.initialize(videoUris, sessionId)
             }
         }
 

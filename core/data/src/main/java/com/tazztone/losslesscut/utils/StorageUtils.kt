@@ -10,6 +10,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
 import com.tazztone.losslesscut.data.AppPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -23,9 +24,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 sealed class MediaDeletionResult {
-    object Success : MediaDeletionResult()
-    data class RequiresPermissionPrompt(val intentSender: IntentSender) : MediaDeletionResult()
-    data class Failed(val exception: Throwable) : MediaDeletionResult()
+    data class Success(val removedUris: List<Uri>) : MediaDeletionResult()
+    data class RequiresPermissionPrompt(
+        val intentSender: IntentSender,
+        val mediaStoreUris: List<Uri>,
+        val deferredDocumentUris: List<Uri>
+    ) : MediaDeletionResult()
+    data class Failed(
+        val exception: Throwable,
+        val removedUris: List<Uri>,
+        val remainingUris: List<Uri>
+    ) : MediaDeletionResult()
 }
 
 @Singleton
@@ -188,95 +197,75 @@ class StorageUtils @Inject constructor(
     suspend fun deleteOriginalMedia(uri: Uri): MediaDeletionResult = deleteOriginalMedia(listOf(uri))
 
     suspend fun deleteOriginalMedia(uris: List<Uri>): MediaDeletionResult = withContext(ioDispatcher) {
-        if (uris.isEmpty()) return@withContext MediaDeletionResult.Success
-        val resolver = context.contentResolver
+        val distinctUris = uris.distinct()
+        if (distinctUris.isEmpty()) return@withContext MediaDeletionResult.Success(emptyList())
+        val (documentUris, mediaStoreUris) = distinctUris.partition { DocumentsContract.isDocumentUri(context, it) }
 
-        val (documentUris, mediaStoreUris) = uris.partition { DocumentsContract.isDocumentUri(context, it) }
-
-        val docError = deleteDocumentUris(resolver, documentUris)
-        if (docError != null) return@withContext MediaDeletionResult.Failed(docError)
-
-        if (mediaStoreUris.isEmpty()) return@withContext MediaDeletionResult.Success
-
-        deleteMediaStoreUris(resolver, mediaStoreUris)
-    }
-
-    private fun deleteDocumentUris(resolver: android.content.ContentResolver, documentUris: List<Uri>): Throwable? {
-        for (docUri in documentUris) {
-            val error = try {
-                if (!DocumentsContract.deleteDocument(resolver, docUri)) {
-                    IOException("Failed to delete document URI: $docUri")
-                } else {
-                    null
-                }
-            } catch (e: SecurityException) {
-                e
-            } catch (e: IOException) {
-                e
-            } catch (e: UnsupportedOperationException) {
-                e
-            }
-            if (error != null) return error
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && mediaStoreUris.isNotEmpty()) {
+            return@withContext createTrashRequestResult(mediaStoreUris, documentUris, distinctUris)
         }
-        return null
-    }
 
-    private fun deleteMediaStoreUris(
-        resolver: android.content.ContentResolver,
-        mediaStoreUris: List<Uri>
-    ): MediaDeletionResult {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return try {
-                val intentSender = MediaStore.createTrashRequest(resolver, mediaStoreUris, true).intentSender
-                MediaDeletionResult.RequiresPermissionPrompt(intentSender)
-            } catch (e: SecurityException) {
-                MediaDeletionResult.Failed(e)
-            } catch (e: IllegalArgumentException) {
-                MediaDeletionResult.Failed(e)
-            } catch (e: UnsupportedOperationException) {
-                MediaDeletionResult.Failed(e)
-            } catch (e: ClassCastException) {
-                MediaDeletionResult.Failed(e)
-            }
-        }
-        return deleteMediaStoreLegacy(resolver, mediaStoreUris)
-    }
-
-
-    private fun deleteMediaStoreLegacy(
-        resolver: android.content.ContentResolver,
-        mediaStoreUris: List<Uri>
-    ): MediaDeletionResult {
-        for (mediaUri in mediaStoreUris) {
-            val result = try {
-                val rowsDeleted = resolver.delete(mediaUri, null, null)
-                if (rowsDeleted <= 0) {
-                    MediaDeletionResult.Failed(IOException("No rows deleted for URI: $mediaUri"))
-                } else {
-                    null
-                }
-            } catch (e: SecurityException) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    handleQSecurityException(e) ?: MediaDeletionResult.Failed(e)
-                } else {
-                    MediaDeletionResult.Failed(e)
-                }
-            } catch (e: IllegalArgumentException) {
-                MediaDeletionResult.Failed(e)
-            }
-            if (result != null) return result
-        }
-        return MediaDeletionResult.Success
-    }
-
-    @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
-    private fun handleQSecurityException(e: SecurityException): MediaDeletionResult? {
-        return if (e is RecoverableSecurityException) {
-            MediaDeletionResult.RequiresPermissionPrompt(e.userAction.actionIntent.intentSender)
+        val orderedUris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            mediaStoreUris + documentUris
         } else {
-            null
+            documentUris + mediaStoreUris
         }
+        deleteUris(orderedUris)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun createTrashRequestResult(
+        mediaStoreUris: List<Uri>,
+        documentUris: List<Uri>,
+        allUris: List<Uri>
+    ): MediaDeletionResult = try {
+        val intentSender = MediaStore.createTrashRequest(context.contentResolver, mediaStoreUris, true).intentSender
+        MediaDeletionResult.RequiresPermissionPrompt(
+            intentSender = intentSender,
+            mediaStoreUris = mediaStoreUris,
+            deferredDocumentUris = documentUris
+        )
+    } catch (e: SecurityException) {
+        MediaDeletionResult.Failed(e, emptyList(), allUris)
+    } catch (e: IllegalArgumentException) {
+        MediaDeletionResult.Failed(e, emptyList(), allUris)
+    } catch (e: UnsupportedOperationException) {
+        MediaDeletionResult.Failed(e, emptyList(), allUris)
+    } catch (e: ClassCastException) {
+        MediaDeletionResult.Failed(e, emptyList(), allUris)
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun deleteUris(orderedUris: List<Uri>): MediaDeletionResult {
+        val removedUris = mutableListOf<Uri>()
+
+        for ((index, uri) in orderedUris.withIndex()) {
+            try {
+                val removed = if (DocumentsContract.isDocumentUri(context, uri)) {
+                    DocumentsContract.deleteDocument(context.contentResolver, uri)
+                } else {
+                    context.contentResolver.delete(uri, null, null) > 0
+                }
+                if (!removed) {
+                    return MediaDeletionResult.Failed(
+                        IOException("Failed to delete URI: $uri"),
+                        removedUris.toList(),
+                        orderedUris.drop(index)
+                    )
+                }
+                removedUris += uri
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: RecoverableSecurityException) {
+                return MediaDeletionResult.RequiresPermissionPrompt(
+                    intentSender = e.userAction.actionIntent.intentSender,
+                    mediaStoreUris = listOf(uri),
+                    deferredDocumentUris = orderedUris.drop(index + 1)
+                )
+            } catch (e: Exception) {
+                return MediaDeletionResult.Failed(e, removedUris.toList(), orderedUris.drop(index))
+            }
+        }
+        return MediaDeletionResult.Success(removedUris)
     }
 }
-
-

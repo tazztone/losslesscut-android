@@ -113,4 +113,43 @@ public class VideoEditingStateMapperTest {
         assertEquals(1.5f, successState.playbackSpeed)
         assertEquals(true, successState.isPitchCorrectionEnabled)
     }
+
+    @Test
+    public fun `mapToState preserves export loading while unrelated state emits`() {
+        val clip = MediaClip(
+            uri = "uri",
+            fileName = "file.mp4",
+            durationMs = 1000,
+            width = 1920,
+            height = 1080,
+            videoMime = "video/mp4",
+            audioMime = "audio/mp4",
+            sampleRate = 44100,
+            channelCount = 2,
+            fps = 30f,
+            rotation = 0,
+            isAudioOnly = false
+        )
+        val loading = VideoEditingUiState.Loading(50)
+
+        val result = VideoEditingStateMapper.mapToState(
+            MapStateInput(
+                currentClips = listOf(clip),
+                selectedClipIndex = 0,
+                currentKeyframes = emptyList(),
+                selectedSegmentId = null,
+                canUndo = false,
+                canRedo = false,
+                isSnapshotInProgress = false,
+                detectionPreviewRanges = emptyList(),
+                selectedAudioTrackIndex = 0,
+                playbackSpeed = 1f,
+                isPitchCorrectionEnabled = false,
+                currentState = loading,
+                isExporting = true
+            )
+        )
+
+        assertEquals(loading, result)
+    }
 }

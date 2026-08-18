@@ -23,6 +23,7 @@ internal class ExportUseCaseTest {
     internal fun setup() {
         repository = mockk()
         useCase = ExportUseCase(repository, Dispatchers.Unconfined)
+        coEvery { repository.deleteOutput(any()) } returns true
     }
 
     @Test
@@ -148,6 +149,30 @@ internal class ExportUseCaseTest {
         val failure = results.last() as ExportUseCase.Result.Failure
         // Check for specific segment failure as defined in ExportUseCase.kt
         assertTrue("Error should mention Segment 2 failure", failure.error.contains("Segment 2 failed"))
+        io.mockk.coVerify(exactly = 1) { repository.deleteOutput("output_uri") }
+    }
+
+    @Test
+    internal fun `execute mergeSegments deletes output when repository fails`() = runTest {
+        val clip = createDummyClip(segments = listOf(TrimSegment(startMs = 0, endMs = 500)))
+        val params = ExportUseCase.Params(
+            clips = listOf(clip),
+            selectedClipIndex = 0,
+            keepAudio = true,
+            keepVideo = true,
+            rotationOverride = null,
+            mergeSegments = true
+        )
+
+        coEvery { repository.createMediaOutputUri(any(), any()) } returns "merge_output_uri"
+        coEvery { repository.executeLosslessMerge(any(), any(), any(), any(), any(), any()) } returns
+            Result.failure(Exception("Merge failed"))
+
+        val results = useCase.execute(params).toList()
+
+        assertTrue(results.last() is ExportUseCase.Result.Failure)
+        assertTrue((results.last() as ExportUseCase.Result.Failure).error.contains("Merge failed"))
+        io.mockk.coVerify(exactly = 1) { repository.deleteOutput("merge_output_uri") }
     }
 
     @Test

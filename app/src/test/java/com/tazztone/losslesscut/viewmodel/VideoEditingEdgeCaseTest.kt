@@ -43,6 +43,7 @@ public class VideoEditingEdgeCaseTest {
         // Explicitly stub common repository calls to avoid MockK/Coroutine ClassCastException
         coEvery { mockRepo.getWaveform(any(), any(), any()) } returns null
         coEvery { mockRepo.getKeyframes(any()) } returns emptyList()
+        coEvery { mockRepo.saveSession(any(), any()) } returns Result.success(Unit)
         
         val useCases = VideoEditingUseCases(
             ClipManagementUseCase(mockRepo, testDispatcher),

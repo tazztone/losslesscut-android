@@ -1,6 +1,7 @@
 package com.tazztone.losslesscut.domain.repository
 
 import com.tazztone.losslesscut.domain.model.MediaClip
+import com.tazztone.losslesscut.domain.model.SessionRestoreResult
 import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.model.WaveformResult
 
@@ -8,8 +9,8 @@ public interface IVideoEditingRepository {
     public suspend fun createClipFromUri(uri: String): Result<MediaClip>
     public suspend fun getKeyframes(uri: String): List<Long>
     public suspend fun extractWaveform(
-        uri: String, 
-        trackIndex: Int? = null,
+        uri: String,
+        trackId: Int? = null,
         onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
     public suspend fun getFrameAt(
@@ -43,14 +44,14 @@ public interface IVideoEditingRepository {
         rotationOverride: Int?,
         selectedTracks: List<Int>?
     ): Result<String>
-    public suspend fun saveSession(clips: List<MediaClip>)
-    public suspend fun restoreSession(uri: String): List<MediaClip>?
-    public suspend fun hasSavedSession(uri: String): Boolean
+    public suspend fun saveSession(sessionId: String, clips: List<MediaClip>): Result<Unit>
+    public suspend fun restoreSession(sessionId: String): SessionRestoreResult?
+    public suspend fun hasSavedSession(sessionId: String): Boolean
     public suspend fun listSavedSessions(): List<SessionSummary>
-    public suspend fun deleteSession(uri: String)
+    public suspend fun deleteSession(sessionId: String)
     public suspend fun getWaveform(
         clip: MediaClip,
-        trackIndex: Int? = null,
+        trackId: Int? = null,
         onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
     public suspend fun writeSnapshot(bitmap: ByteArray, outputUri: String): Boolean

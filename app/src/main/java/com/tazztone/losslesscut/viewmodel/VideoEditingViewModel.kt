@@ -91,6 +91,8 @@ class VideoEditingViewModel @Inject constructor(
 
     private var editingSession: com.tazztone.losslesscut.domain.session.EditingSession =
         com.tazztone.losslesscut.domain.session.EditingSession()
+    private var editingSessionId: String = ""
+    private var sessionSaveJob: Job? = null
 
     private val currentClips get() = editingSession.currentSnapshot.clips
     private val selectedClipIndex get() = editingSession.currentSnapshot.selectedClipIndex
@@ -140,7 +142,7 @@ class VideoEditingViewModel @Inject constructor(
                 }
         }
         viewModelScope.launch {
-            waveformController.activeTrackIndex
+            waveformController.activeTrackId
                 .collect {
                     updateStateInternal()
                 }
@@ -159,10 +161,13 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun initialize(uris: List<Uri>) {
+    fun initialize(uris: List<Uri>, sessionId: String = UUID.randomUUID().toString()) {
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 try {
+                    sessionSaveJob?.cancel()
+                    sessionSaveJob = null
+                    editingSessionId = sessionId
                     val undoLimit = preferences.undoLimitFlow.first()
                     editingSession = com.tazztone.losslesscut.domain.session.EditingSession(undoLimit)
                     resetInternal()
@@ -235,7 +240,7 @@ class VideoEditingViewModel @Inject constructor(
                     stateMutex.withLock {
                         val updated = currentClips + newClips
                         editingSession.updateClipsList(updated, selectedClipIndex)
-                        _isDirty.value = true
+                        markDirty()
                         updateStateInternal()
                     }
                 },
@@ -273,7 +278,7 @@ class VideoEditingViewModel @Inject constructor(
                     else -> selectedClipIndex
                 }
                 editingSession.updateClipsList(newList, newIndex)
-                _isDirty.value = true
+                markDirty()
                 loadClipDataInternal(selectedClipIndex)
             }
         }
@@ -295,7 +300,7 @@ class VideoEditingViewModel @Inject constructor(
                     invalidateVisualDetection()
                     val newIndex = if (selectedClipIndex >= remainingClips.size) remainingClips.size - 1 else selectedClipIndex
                     editingSession.updateClipsList(remainingClips, newIndex)
-                    _isDirty.value = true
+                    markDirty()
                     loadClipDataInternal(newIndex)
                 }
             }
@@ -308,7 +313,7 @@ class VideoEditingViewModel @Inject constructor(
             stateMutex.withLock {
                 val success = editingSession.reorderClips(from, to)
                 if (success) {
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                 }
             }
@@ -332,7 +337,7 @@ class VideoEditingViewModel @Inject constructor(
                     _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.error_segment_too_small_split))) 
                     return@withLock
                 }
-                _isDirty.value = true
+                markDirty()
                 updateStateInternal()
             }
         }
@@ -350,7 +355,7 @@ class VideoEditingViewModel @Inject constructor(
                     )
                     return@withLock
                 }
-                _isDirty.value = true
+                markDirty()
                 updateStateInternal()
             }
         }
@@ -362,14 +367,14 @@ class VideoEditingViewModel @Inject constructor(
                 val clip = editingSession.currentSnapshot.selectedClip ?: return@withLock
                 // The export engine is lossless in every mode, so never allow a
                 // boundary before the requested content to reintroduce pre-roll.
-                val effectivePos = snapLosslessStart(positionMs)
+                val effectivePos = snapLosslessStart(positionMs).coerceIn(0L, clip.durationMs)
 
                 val containingSeg = clip.segments.find { effectivePos >= it.startMs && effectivePos < it.endMs }
                 if (containingSeg != null) {
                     editingSession.selectSegment(containingSeg.id)
                     editingSession.updateSegmentBounds(containingSeg.id, effectivePos, containingSeg.endMs)
                     editingSession.finishSegmentBoundsEdit()
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                     _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                 } else {
@@ -378,10 +383,20 @@ class VideoEditingViewModel @Inject constructor(
                         editingSession.selectSegment(nextSeg.id)
                         editingSession.updateSegmentBounds(nextSeg.id, effectivePos, nextSeg.endMs)
                         editingSession.finishSegmentBoundsEdit()
-                        _isDirty.value = true
+                        markDirty()
                         updateStateInternal()
                         _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                     } else {
+                        val minDurationMs = com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS
+                        if (clip.durationMs < minDurationMs || effectivePos > clip.durationMs - minDurationMs) {
+                            _uiEvents.send(
+                                VideoEditingEvent.ShowToast(
+                                    UiText.StringResource(R.string.error_segment_too_small_split)
+                                )
+                            )
+                            return@withLock
+                        }
+
                         val futureKeyframes = currentKeyframes.filter { it > effectivePos }
                         val targetEndMs = when {
                             futureKeyframes.size >= NEW_SEGMENT_KEYFRAME_COUNT -> futureKeyframes[NEW_SEGMENT_KEYFRAME_INDEX]
@@ -389,12 +404,12 @@ class VideoEditingViewModel @Inject constructor(
                             else -> effectivePos + DEFAULT_NEW_SEGMENT_DURATION_MS
                         }
                         val endMs = targetEndMs.coerceIn(
-                            effectivePos + com.tazztone.losslesscut.domain.session.EditingSession.MIN_SEGMENT_DURATION_MS,
+                            effectivePos + minDurationMs,
                             clip.durationMs
                         )
                         val newSegId = editingSession.addSegment(effectivePos, endMs)
                         if (newSegId != null) {
-                            _isDirty.value = true
+                            markDirty()
                             updateStateInternal()
                             _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                         } else {
@@ -421,7 +436,7 @@ class VideoEditingViewModel @Inject constructor(
                     editingSession.selectSegment(containingSeg.id)
                     editingSession.updateSegmentBounds(containingSeg.id, containingSeg.startMs, effectivePos)
                     editingSession.finishSegmentBoundsEdit()
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                     _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                 } else {
@@ -430,7 +445,7 @@ class VideoEditingViewModel @Inject constructor(
                         editingSession.selectSegment(prevSeg.id)
                         editingSession.updateSegmentBounds(prevSeg.id, prevSeg.startMs, effectivePos)
                         editingSession.finishSegmentBoundsEdit()
-                        _isDirty.value = true
+                        markDirty()
                         updateStateInternal()
                         _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                     } else {
@@ -448,7 +463,7 @@ class VideoEditingViewModel @Inject constructor(
                         )
                         val newSegId = editingSession.addSegment(startMs, effectivePos)
                         if (newSegId != null) {
-                            _isDirty.value = true
+                            markDirty()
                             updateStateInternal()
                             _uiEvents.send(VideoEditingEvent.SeekToPosition(effectivePos))
                         } else {
@@ -484,7 +499,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 editingSession.finishSegmentBoundsEdit()
-                _isDirty.value = true
+                markDirty()
                 updateStateInternal()
             }
         }
@@ -494,7 +509,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (editingSession.undo()) {
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                     loadClipDataInternal(selectedClipIndex)
                 }
@@ -506,7 +521,7 @@ class VideoEditingViewModel @Inject constructor(
         viewModelScope.launch(ioDispatcher) {
             stateMutex.withLock {
                 if (editingSession.redo()) {
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                     loadClipDataInternal(selectedClipIndex)
                 }
@@ -519,7 +534,7 @@ class VideoEditingViewModel @Inject constructor(
             stateMutex.withLock {
                 invalidateVisualDetection()
                 if (editingSession.resetClipSegments()) {
-                    _isDirty.value = true
+                    markDirty()
                     updateStateInternal()
                 }
             }
@@ -573,17 +588,28 @@ class VideoEditingViewModel @Inject constructor(
                 canRedo = snapshot.canRedo,
                 isSnapshotInProgress = exportController.isSnapshotInProgress.value,
                 detectionPreviewRanges = _detectionPreviewRanges.value,
-                selectedAudioTrackIndex = waveformController.activeTrackIndex.value,
+                selectedAudioTrackIndex = selectedAudioTrackOrdinal(snapshot.clips.getOrNull(snapshot.selectedClipIndex)),
                 playbackSpeed = currentPlaybackSpeed,
                 isPitchCorrectionEnabled = isPitchCorrectionEnabled,
-                currentState = _uiState.value
+                currentState = _uiState.value,
+                isExporting = isExporting.get()
             )
         )
     }
 
     fun setSelectedAudioTrack(index: Int) {
         val clip = currentClips.getOrNull(selectedClipIndex) ?: return
-        waveformController.extractWaveform(viewModelScope, clip, index)
+        val audioTrack = clip.availableTracks.filter { it.isAudio }.getOrNull(index) ?: return
+        waveformController.extractWaveform(viewModelScope, clip, audioTrack.id)
+    }
+
+    private fun selectedAudioTrackOrdinal(clip: MediaClip?): Int {
+        val activeTrackId = waveformController.activeTrackId.value ?: return 0
+        return clip?.availableTracks
+            ?.filter { it.isAudio }
+            ?.indexOfFirst { it.id == activeTrackId }
+            ?.takeIf { it >= 0 }
+            ?: 0
     }
 
     fun seekTo(positionMs: Long) {
@@ -749,7 +775,7 @@ class VideoEditingViewModel @Inject constructor(
                 visualRequestClipId = null
                 _detectionPreviewRanges.value = emptyList()
                 _rawSilencePreviewRanges.value = null
-                _isDirty.value = true
+                markDirty()
                 updateStateInternal()
             }
         }
@@ -810,7 +836,9 @@ class VideoEditingViewModel @Inject constructor(
                                 )
                             )
                             _isDirty.value = false
-                            clips.firstOrNull()?.uri?.let { useCases.sessionUseCase.deleteSession(it) }
+                            if (editingSessionId.isNotEmpty()) {
+                                useCases.sessionUseCase.deleteSession(editingSessionId)
+                            }
                             stateMutex.withLock { updateStateInternal() }
                         }
                         is ExportUseCase.Result.Failure -> {
@@ -822,6 +850,9 @@ class VideoEditingViewModel @Inject constructor(
                 }
             } finally {
                 isExporting.set(false)
+                if (currentCoroutineContext().isActive) {
+                    stateMutex.withLock { updateStateInternal() }
+                }
             }
         }
     }
@@ -859,9 +890,9 @@ class VideoEditingViewModel @Inject constructor(
     }
 
     fun saveSession() {
-        viewModelScope.launch(ioDispatcher) {
-            val clips = stateMutex.withLock { currentClips }
-            useCases.sessionUseCase.saveSession(clips)
+        sessionSaveJob?.cancel()
+        sessionSaveJob = viewModelScope.launch(ioDispatcher) {
+            persistSession()
         }
     }
 
@@ -869,10 +900,40 @@ class VideoEditingViewModel @Inject constructor(
         if (_isDirty.value) saveSession()
     }
 
+    private fun markDirty() {
+        _isDirty.value = true
+        sessionSaveJob?.cancel()
+        sessionSaveJob = viewModelScope.launch(ioDispatcher) {
+            delay(SESSION_SAVE_DEBOUNCE_MS)
+            persistSession()
+        }
+    }
+
+    private suspend fun persistSession() {
+        val (sessionId, clips) = stateMutex.withLock { editingSessionId to currentClips }
+        if (sessionId.isEmpty() || clips.isEmpty()) return
+
+        useCases.sessionUseCase.saveSession(sessionId, clips)
+            .onSuccess {
+                stateMutex.withLock {
+                    if (editingSessionId == sessionId && currentClips == clips) {
+                        _isDirty.value = false
+                    }
+                }
+            }
+            .onFailure { error ->
+                _uiEvents.send(
+                    VideoEditingEvent.ShowToast(
+                        UiText.StringResource(R.string.session_save_failed, error.message ?: "Unknown error")
+                    )
+                )
+            }
+    }
+
     fun discardSession(onComplete: () -> Unit) {
         viewModelScope.launch(ioDispatcher) {
-            val uri = stateMutex.withLock { currentClips.firstOrNull()?.uri }
-            if (uri != null) useCases.sessionUseCase.deleteSession(uri)
+            val sessionId = stateMutex.withLock { editingSessionId }
+            if (sessionId.isNotEmpty()) useCases.sessionUseCase.deleteSession(sessionId)
             withContext(Dispatchers.Main.immediate) {
                 clearDirty()
                 onComplete()
@@ -880,22 +941,27 @@ class VideoEditingViewModel @Inject constructor(
         }
     }
 
-    fun checkSessionExists(uri: Uri) {
+    fun checkSessionExists(sessionId: String) {
         viewModelScope.launch(ioDispatcher) {
-            val exists = useCases.sessionUseCase.hasSavedSession(uri.toString())
+            val exists = useCases.sessionUseCase.hasSavedSession(sessionId)
             stateMutex.withLock {
                 _sessionExists.value = exists
             }
         }
     }
 
-    fun restoreSession(uri: Uri) {
+    fun restoreSession(sessionId: String) {
         viewModelScope.launch(ioDispatcher) {
             try {
+                stateMutex.withLock {
+                    sessionSaveJob?.cancel()
+                    sessionSaveJob = null
+                    editingSessionId = sessionId
+                }
                 _uiState.value = VideoEditingUiState.Loading()
-                val validClips = useCases.sessionUseCase.restoreSession(uri.toString())
+                val restoreResult = useCases.sessionUseCase.restoreSession(sessionId)
 
-                if (validClips.isNullOrEmpty()) {
+                if (restoreResult == null || restoreResult.clips.isEmpty()) {
                     _uiEvents.send(VideoEditingEvent.ShowToast(
                         UiText.StringResource(R.string.error_restore_failed_files_missing)
                     ))
@@ -904,12 +970,19 @@ class VideoEditingViewModel @Inject constructor(
                 }
 
                 stateMutex.withLock {
-                    editingSession.setClips(validClips, 0)
-                    editingSession.markDirty()
-                    _isDirty.value = true
+                    editingSession.setClips(restoreResult.clips, 0)
+                    _isDirty.value = false
                     loadClipDataInternal(selectedClipIndex)
                 }
-                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.session_restored)))
+                val restoredMessage = if (restoreResult.missingUris.isEmpty()) {
+                    UiText.StringResource(R.string.session_restored)
+                } else {
+                    UiText.StringResource(
+                        R.string.session_restored_missing_files,
+                        restoreResult.missingUris.size
+                    )
+                }
+                _uiEvents.send(VideoEditingEvent.ShowToast(restoredMessage))
                 _uiEvents.send(VideoEditingEvent.SessionRestored)
             } catch (e: CancellationException) {
                 throw e
@@ -927,6 +1000,7 @@ class VideoEditingViewModel @Inject constructor(
         private const val NEW_SEGMENT_KEYFRAME_COUNT = 3
         private const val NEW_SEGMENT_KEYFRAME_INDEX = 2
         private const val DEFAULT_NEW_SEGMENT_DURATION_MS = 3000L
+        private const val SESSION_SAVE_DEBOUNCE_MS = 500L
     }
 
 }

@@ -20,27 +20,29 @@ public class SessionUseCaseTest {
 
     @Test
     public fun testSaveSession(): Unit = runBlocking {
+        val sessionId = "session-1"
         val clips = listOf(mockk<MediaClip>())
-        sessionUseCase.saveSession(clips)
-        coVerify { repository.saveSession(clips) }
+        sessionUseCase.saveSession(sessionId, clips)
+        coVerify { repository.saveSession(sessionId, clips) }
     }
 
     @Test
     public fun testRestoreSession(): Unit = runBlocking {
-        val uri = "file:///test.mp4"
+        val sessionId = "session-1"
         val clips = listOf(mockk<MediaClip>())
-        coEvery { repository.restoreSession(uri) } returns clips
+        val restoreResult = com.tazztone.losslesscut.domain.model.SessionRestoreResult(clips)
+        coEvery { repository.restoreSession(sessionId) } returns restoreResult
         
-        val result = sessionUseCase.restoreSession(uri)
-        assertEquals(clips, result)
+        val result = sessionUseCase.restoreSession(sessionId)
+        assertEquals(restoreResult, result)
     }
 
     @Test
     public fun testHasSavedSession(): Unit = runBlocking {
-        val uri = "file:///test.mp4"
-        coEvery { repository.hasSavedSession(uri) } returns true
+        val sessionId = "session-1"
+        coEvery { repository.hasSavedSession(sessionId) } returns true
         
-        val result = sessionUseCase.hasSavedSession(uri)
+        val result = sessionUseCase.hasSavedSession(sessionId)
         assertTrue(result)
     }
 
@@ -50,7 +52,7 @@ public class SessionUseCaseTest {
         coEvery { repository.listSavedSessions() } returns sessions
 
         assertEquals(sessions, sessionUseCase.listSavedSessions())
-        sessionUseCase.deleteSession(sessions.single().uri)
-        coVerify { repository.deleteSession(sessions.single().uri) }
+        sessionUseCase.deleteSession(sessions.single().sessionId)
+        coVerify { repository.deleteSession(sessions.single().sessionId) }
     }
 }

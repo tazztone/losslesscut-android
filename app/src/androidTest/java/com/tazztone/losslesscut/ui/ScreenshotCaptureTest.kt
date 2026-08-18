@@ -87,7 +87,7 @@ class ScreenshotCaptureTest {
                             )
                         )
                     )
-                    activity.sessionUseCase.saveSession(listOf(clip))
+                    activity.sessionUseCase.saveSession("screenshot-dashboard", listOf(clip))
                 }
             }
 

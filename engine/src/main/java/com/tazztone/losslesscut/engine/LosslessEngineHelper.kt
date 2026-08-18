@@ -46,16 +46,20 @@ internal object LosslessEngineHelper {
             var trackSampleRate = 0
 
             if (isVideo) {
-                videoMime = mime
-                fps = com.tazztone.losslesscut.engine.muxing.MuxingPipeline.getVideoFps(format)
+                if (videoMime == null) {
+                    videoMime = mime
+                    fps = com.tazztone.losslesscut.engine.muxing.MuxingPipeline.getVideoFps(format)
+                }
             } else if (isAudio) {
-                audioMime = mime
                 if (format.containsKey(MediaFormat.KEY_SAMPLE_RATE)) {
                     trackSampleRate = format.getInteger(MediaFormat.KEY_SAMPLE_RATE)
-                    sampleRate = trackSampleRate
                 }
                 if (format.containsKey(MediaFormat.KEY_CHANNEL_COUNT)) {
                     trackChannels = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
+                }
+                if (audioMime == null) {
+                    audioMime = mime
+                    sampleRate = trackSampleRate
                     channelCount = trackChannels
                 }
             }

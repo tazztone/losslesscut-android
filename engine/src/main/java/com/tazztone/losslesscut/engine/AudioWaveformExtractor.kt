@@ -19,7 +19,7 @@ class AudioWaveformExtractorImpl @Inject constructor(
 
     override suspend fun extract(
         uri: String, 
-        trackIndex: Int?,
+        trackId: Int?,
         onProgress: ((WaveformResult) -> Unit)?
     ): WaveformResult? = withContext(ioDispatcher) {
         var accumulator: AudioWaveformProcessor.RmsAccumulator? = null
@@ -27,7 +27,7 @@ class AudioWaveformExtractorImpl @Inject constructor(
         var lastProgressUpdateUs = 0L
 
         try {
-            audioDecoder.decode(uri, trackIndex).collect { pcm ->
+            audioDecoder.decode(uri, trackId).collect { pcm ->
                 if (accumulator == null) {
                     durationMs = pcm.durationUs / US_PER_MS
                     val bucketCount = AudioWaveformProcessor.calculateEngineBucketCount(durationMs)

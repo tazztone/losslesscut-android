@@ -21,6 +21,13 @@ abstract class BaseEditingFragment(@LayoutRes layoutId: Int) : Fragment(layoutId
         super.onViewCreated(view, savedInstanceState)
     }
 
+    override fun onStop() {
+        if (::playerManager.isInitialized) {
+            playerManager.pause()
+        }
+        super.onStop()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         playerManager.release()

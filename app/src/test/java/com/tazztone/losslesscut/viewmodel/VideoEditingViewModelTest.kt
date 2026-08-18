@@ -44,6 +44,7 @@ public class VideoEditingViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         every { mockPrefs.undoLimitFlow } returns flowOf(30)
+        coEvery { mockSessionUseCase.saveSession(any(), any()) } returns Result.success(Unit)
         clipUseCase = ClipManagementUseCase(mockRepo, testDispatcher)
         silenceUseCase = SilenceDetectionUseCase(mockRepo, testDispatcher)
     }
@@ -270,6 +271,23 @@ public class VideoEditingViewModelTest {
         assertEquals(10000L, newSeg.startMs) // Snapped forward to 10000ms.
         assertEquals(14000L, newSeg.endMs) // 3rd keyframe after 10000ms (10000, 12000, 14000)
         assertEquals(newSeg.id, state.selectedSegmentId)
+    }
+
+    @Test
+    public fun testSetInPoint_atClipEnd_doesNotCrashOrCreateInvalidSegment() = runTest {
+        val clip = createMockClip("content://mock/video1.mp4", 20000L).copy(
+            segments = listOf(TrimSegment(startMs = 0L, endMs = 3000L))
+        )
+        coEvery { mockRepo.createClipFromUri(any()) } returns Result.success(clip)
+
+        val viewModel = VideoEditingViewModel(mockRepo, mockPrefs, createUseCases(), testDispatcher)
+        viewModel.initialize(listOf(Uri.parse(clip.uri)))
+
+        viewModel.setInPoint(clip.durationMs)
+
+        val state = viewModel.uiState.value as VideoEditingUiState.Success
+        assertEquals(1, state.segments.size)
+        assertEquals(3000L, state.segments.single().endMs)
     }
 
     @Test

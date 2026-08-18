@@ -4,11 +4,13 @@ import com.tazztone.losslesscut.domain.di.IoDispatcher
 import com.tazztone.losslesscut.domain.model.*
 import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 public class ExportUseCase @Inject constructor(
@@ -82,25 +84,35 @@ public class ExportUseCase @Inject constructor(
             return@flow
         }
 
-        val result = repository.executeLosslessMerge(
-            outputUri, segments, params.keepAudio, params.keepVideo, 
-            params.rotationOverride, params.selectedTracks
-        )
+        try {
+            val result = repository.executeLosslessMerge(
+                outputUri, segments, params.keepAudio, params.keepVideo,
+                params.rotationOverride, params.selectedTracks
+            )
 
-        val sourceUris = params.clips.map { it.uri }.distinct()
-        result.fold(
-            onSuccess = {
-                emit(
-                    Result.Success(
-                        count = 1,
-                        outputUris = listOf(outputUri),
-                        deleteOriginalAfterExport = params.deleteOriginalAfterExport,
-                        sourceUris = sourceUris
+            val sourceUris = params.clips.map { it.uri }.distinct()
+            result.fold(
+                onSuccess = {
+                    emit(
+                        Result.Success(
+                            count = 1,
+                            outputUris = listOf(outputUri),
+                            deleteOriginalAfterExport = params.deleteOriginalAfterExport,
+                            sourceUris = sourceUris
+                        )
                     )
-                )
-            },
-            onFailure = { emit(Result.Failure(it.message ?: "Unknown merge error")) }
-        )
+                },
+                onFailure = {
+                    emit(failureWithCleanup(it.message ?: "Unknown merge error", listOf(outputUri)))
+                }
+            )
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            cleanupOutputs(listOf(outputUri))
+            throw e
+        } catch (e: Exception) {
+            cleanupOutputs(listOf(outputUri))
+            throw e
+        }
     }
 
     private fun cutSegments(params: Params): Flow<Result> = flow {
@@ -114,49 +126,72 @@ public class ExportUseCase @Inject constructor(
 
         var successCount = 0
         val outputUris = mutableListOf<String>()
+        val createdOutputUris = mutableListOf<String>()
         val errors = mutableListOf<String>()
 
-        for ((index, segment) in segments.withIndex()) {
-            currentCoroutineContext().ensureActive()
-            val progress = ((index.toFloat() / segments.size) * 100).toInt()
-            emit(Result.Progress(progress, "Saving segment ${index + 1} of ${segments.size}"))
+        try {
+            for ((index, segment) in segments.withIndex()) {
+                currentCoroutineContext().ensureActive()
+                val progress = ((index.toFloat() / segments.size) * 100).toInt()
+                emit(Result.Progress(progress, "Saving segment ${index + 1} of ${segments.size}"))
 
-            val extension = if (!params.keepVideo) "m4a" else "mp4"
-            val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}" +
-                    "-${TimeUtils.formatFilenameDuration(segment.endMs)}"
-            val baseName = selectedClip.fileName.substringBeforeLast(".")
-            val outputUri = repository.createMediaOutputUri("$baseName$timeSuffix.$extension", !params.keepVideo)
+                val extension = if (!params.keepVideo) "m4a" else "mp4"
+                val timeSuffix = "_${TimeUtils.formatFilenameDuration(segment.startMs)}" +
+                        "-${TimeUtils.formatFilenameDuration(segment.endMs)}"
+                val baseName = selectedClip.fileName.substringBeforeLast(".")
+                val outputUri = repository.createMediaOutputUri("$baseName$timeSuffix.$extension", !params.keepVideo)
 
-            if (outputUri == null) {
-                errors.add("Failed to create output file for segment ${index + 1}")
-                continue
+                if (outputUri == null) {
+                    errors.add("Failed to create output file for segment ${index + 1}")
+                    continue
+                }
+                createdOutputUris.add(outputUri)
+
+                val result = repository.executeLosslessCut(
+                    selectedClip.uri, outputUri, segment.startMs, segment.endMs,
+                    params.keepAudio, params.keepVideo,
+                    params.rotationOverride ?: selectedClip.rotation, params.selectedTracks
+                )
+                result.fold(
+                    onSuccess = {
+                        outputUris.add(outputUri)
+                        successCount++
+                    },
+                    onFailure = { errors.add("Segment ${index + 1} failed: ${it.message}") }
+                )
             }
 
-            val result = repository.executeLosslessCut(
-                selectedClip.uri, outputUri, segment.startMs, segment.endMs,
-                params.keepAudio, params.keepVideo, 
-                params.rotationOverride ?: selectedClip.rotation, params.selectedTracks
-            )
-            result.fold(
-                onSuccess = {
-                    outputUris.add(outputUri)
-                    successCount++
-                },
-                onFailure = { errors.add("Segment ${index + 1} failed: ${it.message}") }
-            )
-        }
-
-        if (errors.isEmpty() && successCount > 0) {
-            emit(
-                Result.Success(
-                    count = successCount,
-                    outputUris = outputUris,
-                    deleteOriginalAfterExport = params.deleteOriginalAfterExport,
-                    sourceUris = listOf(selectedClip.uri)
+            if (errors.isEmpty() && successCount > 0) {
+                emit(
+                    Result.Success(
+                        count = successCount,
+                        outputUris = outputUris,
+                        deleteOriginalAfterExport = params.deleteOriginalAfterExport,
+                        sourceUris = listOf(selectedClip.uri)
+                    )
                 )
-            )
-        } else if (errors.isNotEmpty()) {
-            emit(Result.Failure(errors.joinToString("\n")))
+            } else if (errors.isNotEmpty()) {
+                emit(failureWithCleanup(errors.joinToString("\n"), createdOutputUris))
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            cleanupOutputs(createdOutputUris)
+            throw e
+        } catch (e: Exception) {
+            cleanupOutputs(createdOutputUris)
+            throw e
         }
+    }
+
+    private suspend fun failureWithCleanup(message: String, outputUris: List<String>): Result.Failure {
+        val cleanupFailures = cleanupOutputs(outputUris)
+        return if (cleanupFailures.isEmpty()) {
+            Result.Failure(message)
+        } else {
+            Result.Failure("$message\nFailed to clean up output: ${cleanupFailures.joinToString()}")
+        }
+    }
+
+    private suspend fun cleanupOutputs(outputUris: List<String>): List<String> = withContext(NonCancellable) {
+        outputUris.distinct().filterNot { repository.deleteOutput(it) }
     }
 }

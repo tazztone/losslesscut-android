@@ -164,6 +164,8 @@
     <string name="playback_speed">Playback Speed</string>
     <string name="export_folder">Export Folder</string>
     <string name="session_restored">Previous session restored</string>
+    <string name="session_restored_missing_files">Previous session restored; %1$d source file(s) were unavailable.</string>
+    <string name="session_save_failed">Could not save the editing session: %1$s</string>
     <string name="restore_session_title">Restore Session</string>
     <string name="restore_session_message">Do you want to restore your previous edits for this file?</string>
     <string name="restore">Restore</string>
@@ -194,7 +196,7 @@
     <string name="reset">Reset</string>
     <string name="smart_cut">Smart Cut</string>
     <string name="silence">Silence</string>
-    <string name="visual">Visual</string>
+    <string name="visual">Visual (Beta)</string>
     <string name="detect">Detect</string>
     <string name="strategy">Strategy</string>
     <string name="analyzing_video">Analyzing video content…</string>
@@ -233,7 +235,7 @@
     <string name="tooltip_detect">Starts frame analysis. You can adjust and review the preview ranges on the timeline before applying.</string>
     <string name="tooltip_apply_smart_cut">Applies the cuts. Discards red segments and merges green segments on the main timeline.</string>
     <string name="tooltip_silence_tab">Detects and removes silent pauses. Ideal for podcasts, lectures, or talking-head videos.</string>
-    <string name="tooltip_visual_tab">Scans for scene transitions, black frames, or frozen video. Ideal for screen recordings or B-roll.</string>
+    <string name="tooltip_visual_tab">Beta: scans for scene transitions, black frames, or frozen video. Results may need review.</string>
     <string name="content_desc_link_padding">Link Padding Sliders</string>
 
     <string name="error_visual_on_audio">Visual detection not available for audio files</string>

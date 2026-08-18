@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.tazztone.losslesscut.R
+import com.tazztone.losslesscut.domain.model.HashUtils
 import com.tazztone.losslesscut.domain.model.SessionSummary
 import com.tazztone.losslesscut.domain.usecase.SessionUseCase
 import com.tazztone.losslesscut.ui.compose.dashboard.MainDashboardScreen
@@ -94,9 +95,8 @@ class MainActivity : BaseActivity() {
 
     private fun handleIncomingIntent(intent: Intent) {
         val action = intent.action
-        val type = intent.type
 
-        if (Intent.ACTION_SEND_MULTIPLE == action && type != null) {
+        if (Intent.ACTION_SEND_MULTIPLE == action) {
             val uris = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             } else {
@@ -108,7 +108,7 @@ class MainActivity : BaseActivity() {
                 Log.d("IncomingIntent", "Received ${validUris.size} valid media item(s)")
                 navigateToEditingScreen(validUris)
             }
-        } else if ((Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) && type != null) {
+        } else if (Intent.ACTION_SEND == action || Intent.ACTION_VIEW == action) {
             val uri = if (Intent.ACTION_SEND == action) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
@@ -180,13 +180,18 @@ class MainActivity : BaseActivity() {
         selectMediaLauncher.launch(arrayOf("video/*", "audio/*"))
     }
 
-    private fun navigateToEditingScreen(mediaUris: List<Uri>, resumeSession: Boolean = false) {
+    private fun navigateToEditingScreen(
+        mediaUris: List<Uri>,
+        resumeSession: Boolean = false,
+        sessionId: String = java.util.UUID.randomUUID().toString()
+    ) {
         mediaUris.forEach(::persistReadPermission)
         Log.d("Navigation", "Navigating ${mediaUris.size} media item(s) to unified editor")
         val intent = Intent(this, VideoEditingActivity::class.java).apply {
             setPackage(packageName)
             putParcelableArrayListExtra(VideoEditingActivity.EXTRA_VIDEO_URIS, ArrayList(mediaUris))
             putExtra(VideoEditingActivity.EXTRA_RESUME_SESSION, resumeSession)
+            putExtra(VideoEditingActivity.EXTRA_SESSION_ID, sessionId)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
             if (mediaUris.isNotEmpty()) {
@@ -215,16 +220,11 @@ class MainActivity : BaseActivity() {
 
     private fun resumeSession(session: SessionSummary) {
         val uri = Uri.parse(session.uri)
+        val sessionId = session.sessionId.ifEmpty { HashUtils.sha256(session.uri) }
         if (isValidUri(uri)) {
             persistReadPermission(uri)
-            navigateToEditingScreen(listOf(uri), resumeSession = true)
-        } else {
-            lifecycleScope.launch {
-                sessionUseCase.deleteSession(session.uri)
-                loadRecentSessions()
-            }
-            Toast.makeText(this, R.string.session_unavailable, Toast.LENGTH_LONG).show()
         }
+        navigateToEditingScreen(listOf(uri), resumeSession = true, sessionId = sessionId)
     }
 
     private fun removeSession(session: SessionSummary) {
@@ -244,7 +244,7 @@ class MainActivity : BaseActivity() {
                 recentSessions = previousList
             } else {
                 // Actually delete from persistence
-                sessionUseCase.deleteSession(session.uri)
+                sessionUseCase.deleteSession(session.sessionId.ifEmpty { HashUtils.sha256(session.uri) })
                 loadRecentSessions()
             }
         }

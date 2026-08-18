@@ -4,8 +4,8 @@ import com.tazztone.losslesscut.domain.model.WaveformResult
 
 public interface AudioWaveformExtractor {
     public suspend fun extract(
-        uri: String, 
-        trackIndex: Int? = null,
+        uri: String,
+        trackId: Int? = null,
         onProgress: ((WaveformResult) -> Unit)? = null
     ): WaveformResult?
 }
