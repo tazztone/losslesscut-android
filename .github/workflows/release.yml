@@ -116,7 +116,10 @@ jobs:
           ./gradlew bundleRelease assembleRelease \
             -PversionCode=${{ steps.meta.outputs.versionCode }} \
             -PversionName=${{ steps.meta.outputs.versionName }} \
-            -PstoreFile=../keystore.jks
+            -PstoreFile=../keystore.jks \
+            -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
+            -PkeyAlias="$ANDROID_KEY_ALIAS" \
+            -PkeyPassword="$ANDROID_KEY_PASSWORD"
           
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
