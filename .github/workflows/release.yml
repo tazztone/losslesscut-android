@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       version_name:
-        description: 'Semantic version to publish (for example 1.2.3)'
-        required: true
+        description: 'Semantic version to publish (for example 1.2.3). If left empty, a date-based version will be auto-generated.'
+        required: false
         type: string
       publish_to_play_store:
         description: 'Publish to Play Store'
@@ -86,7 +86,11 @@ jobs:
             VERSION_NAME="${GITHUB_REF_NAME#v}"
             TAG_NAME="$GITHUB_REF_NAME"
           else
-            VERSION_NAME="${MANUAL_VERSION_NAME#v}"
+            if [ -z "$MANUAL_VERSION_NAME" ]; then
+              VERSION_NAME=$(date +'%Y.%m.%d-%H%M%S')
+            else
+              VERSION_NAME="${MANUAL_VERSION_NAME#v}"
+            fi
             TAG_NAME="v$VERSION_NAME"
           fi
 
