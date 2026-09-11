@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="slider_values">
+        <item>20.0</item>
+        <item>70.0</item>
+    </array>
+    <string-array name="rotation_options">
+        <item>Zachovať originál</item>
+        <item>Otočiť na 0°</item>
+        <item>Otočiť o 90°</item>
+        <item>Otočiť o 180°</item>
+        <item>Otočiť o 270°</item>
+    </string-array>
+</resources>
