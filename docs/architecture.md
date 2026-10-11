@@ -56,7 +56,7 @@ To prevent technical debt and maintain zero-loss performance, the following rule
 
 - **`:app`**: Android UI & presentation.
   - `ui/`: `MainActivity` host, `EditorFragment`, `PlayerManager`, and `ShortcutHandler`.
-  - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `TimelineViewport`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
+  - `customviews/`: Timeline scrubbing (`CustomVideoSeeker`, `SeekerRenderer`, `SeekerGhostRenderer`, `SeekerAccessibilityHelper`).
   - `ui/compose/`: Isolated Compose dialogs, bottom sheets, loading overlays, and `MainDashboardScreen`.
   - `viewmodel/`: `VideoEditingViewModel` orchestrating UI events and delegating state to `EditingSession`.
 - **`:core:domain`**: Core business domain (Pure JVM).

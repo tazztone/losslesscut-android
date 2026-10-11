@@ -45,7 +45,7 @@ public class VideoEditingConcurrencyTest {
             ClipManagementUseCase(mockRepo, testDispatcher),
             mockExportUseCase,
             ExtractSnapshotUseCase(mockRepo, testDispatcher),
-            SilenceDetectionUseCase(mockRepo, testDispatcher),
+            SilenceDetectionUseCase(testDispatcher),
             SessionUseCase(mockRepo, testDispatcher),
             mockSegmentDetector
         )

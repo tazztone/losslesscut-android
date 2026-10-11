@@ -51,5 +51,5 @@ The internal `:engine` processing pipeline hiding keyframe seeking, sample copyi
 
 ## 5. UI Geometry & Rendering
 
-### TimelineViewport (UI Geometry Module)
-Pure Kotlin timeline geometry module in `:app/customviews` (zero Android dependencies). Encapsulates timestamp-to-pixel coordinate translations, zoom factor constraints (1x..20x), scroll panning offsets, hit-testing, and visible tile index calculations. Shared across `CustomVideoSeeker`, `SeekerRenderer`, `SeekerGhostRenderer`, and `SeekerAccessibilityHelper`.
+### Timeline geometry (CustomVideoSeeker internals)
+Pure Kotlin timeline geometry inside `CustomVideoSeeker` (`:app/customviews`, zero Android dependencies): timestamp-to-pixel coordinate translations, zoom factor constraints (1x..20x), scroll panning offsets, hit-testing, and visible tile index calculations.

@@ -46,7 +46,7 @@ public class VideoEditingViewModelTest {
         every { mockPrefs.undoLimitFlow } returns flowOf(30)
         coEvery { mockSessionUseCase.saveSession(any(), any()) } returns Result.success(Unit)
         clipUseCase = ClipManagementUseCase(mockRepo, testDispatcher)
-        silenceUseCase = SilenceDetectionUseCase(mockRepo, testDispatcher)
+        silenceUseCase = SilenceDetectionUseCase(testDispatcher)
     }
 
     @After

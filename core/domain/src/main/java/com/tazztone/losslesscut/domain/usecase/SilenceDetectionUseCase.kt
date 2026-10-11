@@ -6,14 +6,12 @@ import com.tazztone.losslesscut.domain.model.MediaClip
 import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.domain.model.TrimSegment
 import com.tazztone.losslesscut.domain.model.WaveformResult
-import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.util.UUID
 import javax.inject.Inject
 
 public class SilenceDetectionUseCase @Inject constructor(
-    private val repository: IVideoEditingRepository,
     @param:IoDispatcher private val ioDispatcher: CoroutineDispatcher
 ) {
     public data class DetectionResult(

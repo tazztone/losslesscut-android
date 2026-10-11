@@ -1,7 +1,5 @@
 package com.tazztone.losslesscut.domain.model
 
-public typealias TimeRangeMs = LongRange
-
 public data class VisualDetectionConfig(
     val strategy: VisualStrategy,
     val sensitivityThreshold: Float,
@@ -9,7 +7,6 @@ public data class VisualDetectionConfig(
     val sampleIntervalFrames: Int = VisualDetectionConfigDefaults.DEFAULT_SAMPLE_INTERVAL_FRAMES
 ) {
     public companion object {
-        public const val AUTO_INTERVAL: Int = 0
         private const val DURATION_1_MIN_MS = 60_000L
         private const val DURATION_5_MIN_MS = 300_000L
         private const val DURATION_20_MIN_MS = 1_200_000L
@@ -30,7 +27,6 @@ public data class VisualDetectionConfig(
 
 public object VisualDetectionConfigDefaults {
     public const val DEFAULT_SAMPLE_INTERVAL_FRAMES: Int = 5
-    public const val AUTO_INTERVAL_SETTING: Int = 0
 }
 
 public enum class VisualStrategy {
@@ -39,4 +35,3 @@ public enum class VisualStrategy {
     FREEZE_FRAME,     // Pixel diff / histogram delta near-zero
     BLACK_FRAMES      // Mean luma < threshold
 }
-

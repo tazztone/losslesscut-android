@@ -16,16 +16,14 @@ import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment
+import com.tazztone.losslesscut.ui.compose.BaseComposeBottomSheetDialogFragment
 import com.tazztone.losslesscut.R
 import com.tazztone.losslesscut.ui.compose.theme.LosslessCutTheme
 import com.tazztone.losslesscut.viewmodel.SettingsViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
+class SettingsBottomSheetDialogFragment : BaseComposeBottomSheetDialogFragment() {
 
     private val viewModel: SettingsViewModel by viewModels()
 
@@ -93,32 +91,9 @@ class SettingsBottomSheetDialogFragment : BottomSheetDialogFragment() {
                             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                         }
                     },
-                    onScrollChanged = { scrollValue ->
-                        val bottomSheet = (dialog as? BottomSheetDialog)
-                            ?.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet)
-                        if (bottomSheet != null) {
-                            BottomSheetBehavior.from(bottomSheet).isDraggable = scrollValue == 0
-                        }
-                    }
+                    onScrollChanged = { scrollValue -> setSheetDraggable(scrollValue == 0) }
                 )
             }
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        (view.parent as? View)?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-    }
-
-    override fun onStart() {
-        super.onStart()
-        val dialog = dialog as? BottomSheetDialog ?: return
-        val bottomSheet = dialog.findViewById<View>(com.google.android.material.R.id.design_bottom_sheet) ?: return
-        bottomSheet.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
-        BottomSheetBehavior.from(bottomSheet).apply {
-            isFitToContents = true
-            state = BottomSheetBehavior.STATE_EXPANDED
-            skipCollapsed = true
         }
     }
 }

@@ -5,8 +5,6 @@ import com.tazztone.losslesscut.domain.model.SegmentAction
 import com.tazztone.losslesscut.domain.model.DetectionUtils
 import com.tazztone.losslesscut.domain.model.TrimSegment
 import com.tazztone.losslesscut.domain.model.WaveformResult
-import com.tazztone.losslesscut.domain.repository.IVideoEditingRepository
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -14,8 +12,7 @@ import org.junit.Test
 
 public class SilenceDetectionUseCaseTest {
 
-    private val repository = mockk<IVideoEditingRepository>()
-    private val useCase = SilenceDetectionUseCase(repository, Dispatchers.Unconfined)
+    private val useCase = SilenceDetectionUseCase(Dispatchers.Unconfined)
 
     @Test
     public fun testApplySilenceDetection(): Unit {
