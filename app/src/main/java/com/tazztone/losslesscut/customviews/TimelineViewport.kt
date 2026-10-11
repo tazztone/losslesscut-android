@@ -30,10 +30,6 @@ public data class TimelineViewport(
         return (fraction * durationMs).toLong()
     }
 
-    public fun clampScrollX(targetScrollX: Float): Float {
-        return targetScrollX.coerceIn(0f, maxScrollXPx)
-    }
-
     public fun zoomAt(focusPixelX: Float, newZoomFactor: Float): TimelineViewport {
         val clampedZoom = newZoomFactor.coerceIn(MIN_ZOOM, MAX_ZOOM)
         if (clampedZoom == zoomFactor || durationMs <= 0L) {

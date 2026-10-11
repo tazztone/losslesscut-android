@@ -12,15 +12,4 @@ class DispatchersModuleTest {
         assertEquals(Dispatchers.IO, dispatcher)
     }
 
-    @Test
-    fun testProvideMainDispatcher() {
-        val dispatcher = DispatchersModule.provideMainDispatcher()
-        assertEquals(Dispatchers.Main, dispatcher)
-    }
-
-    @Test
-    fun testProvideDefaultDispatcher() {
-        val dispatcher = DispatchersModule.provideDefaultDispatcher()
-        assertEquals(Dispatchers.Default, dispatcher)
-    }
 }

@@ -212,26 +212,11 @@ class VisualDetectionOverlayController(
         val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: return
         val ranges = state.detectionPreviewRanges.ifEmpty { return }
         val currentPos = seeker.seekPositionMs
-
-        val targetRange = if (direction > 0) {
-            ranges.firstOrNull { it.first > currentPos + 50L } ?: ranges.first()
-        } else {
-            ranges.lastOrNull { it.first < currentPos - 50L } ?: ranges.last()
-        }
-        viewModel.seekTo(targetRange.first)
+        viewModel.seekTo(findMatchTarget(ranges, currentPos, direction))
     }
 
-    private fun stepSlider(slider: Slider, direction: Int): Float {
-        val step = if (slider.stepSize > 0f) slider.stepSize else 1f
-        val rawValue = slider.value + (direction * step)
-        val clamped = rawValue.coerceIn(slider.valueFrom, slider.valueTo)
-        if (slider.stepSize > 0f) {
-            val stepsFromMin = Math.round((clamped - slider.valueFrom) / slider.stepSize)
-            val stepped = slider.valueFrom + (stepsFromMin * slider.stepSize)
-            return stepped.coerceIn(slider.valueFrom, slider.valueTo)
-        }
-        return clamped
-    }
+    private fun stepSlider(slider: Slider, direction: Int): Float =
+        stepSliderValue(slider.value, slider.valueFrom, slider.valueTo, slider.stepSize, direction)
 
     private fun startDetection() {
         seeker.visualStrategy = currentStrategy
