@@ -134,7 +134,6 @@ jobs:
           CODE=${{ steps.meta.outputs.versionCode }}
           mv "app/build/outputs/bundle/release/app-release.aab" "app/build/outputs/bundle/release/lossless-cut-v${VERSION}-${CODE}.aab"
           mv "app/build/outputs/apk/release/app-release.apk" "app/build/outputs/apk/release/lossless-cut-v${VERSION}-${CODE}.apk"
-          mv "app/build/outputs/mapping/release/mapping.txt" "app/build/outputs/mapping/release/lossless-cut-v${VERSION}-${CODE}-mapping.txt"
 
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
@@ -147,7 +146,6 @@ jobs:
           files: |
             app/build/outputs/bundle/release/*.aab
             app/build/outputs/apk/release/*.apk
-            app/build/outputs/mapping/release/*-mapping.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
