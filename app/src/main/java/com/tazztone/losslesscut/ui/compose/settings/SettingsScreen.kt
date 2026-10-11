@@ -876,7 +876,7 @@ fun AboutSystemContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
-                onClick = { onOpenUrl("https://github.com/mifi/lossless-cut") },
+                onClick = { onOpenUrl("https://github.com/tazztone/lossless-video-cut") },
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
