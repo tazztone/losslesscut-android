@@ -52,4 +52,4 @@ The internal `:engine` processing pipeline hiding keyframe seeking, sample copyi
 ## 5. UI Geometry & Rendering
 
 ### Timeline geometry (CustomVideoSeeker internals)
-Pure Kotlin timeline geometry inside `CustomVideoSeeker` (`:app/customviews`, zero Android dependencies): timestamp-to-pixel coordinate translations, zoom factor constraints (1x..20x), scroll panning offsets, hit-testing, and visible tile index calculations.
+Timestamp-to-pixel mapping helpers inside `CustomVideoSeeker` (`:app/customviews`, View-coupled: read the View's width): timestamp↔pixel translations, zoom factor constraints (1x..20x), scroll panning offsets, and hit-testing.

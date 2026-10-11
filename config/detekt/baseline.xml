@@ -243,7 +243,6 @@
     <ID>UnusedPrivateProperty:MainActivity.kt$MainActivity$private lateinit var requestPermissionsLauncher: ActivityResultLauncher&lt;Array&lt;String&gt;&gt;</ID>
     <ID>UnusedPrivateProperty:MetadataFragment.kt$MetadataFragment$val state = viewModel.uiState.value as? VideoEditingUiState.Success ?: run { Toast.makeText(requireContext(), R.string.please_wait, Toast.LENGTH_SHORT).show() return }</ID>
     <ID>UnusedPrivateProperty:ShortcutHandler.kt$ShortcutHandler$private val viewModel: VideoEditingViewModel</ID>
-    <ID>UnusedPrivateProperty:SilenceDetectionUseCase.kt$SilenceDetectionUseCase$private val repository: IVideoEditingRepository</ID>
     <ID>VariableNaming:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$private val VIRTUAL_ID_HANDLE_START = 100</ID>
     <ID>VariableNaming:CustomVideoSeeker.kt$CustomVideoSeeker.SeekerAccessibilityHelper$private val VIRTUAL_ID_PLAYHEAD = 0</ID>
     <ID>WildcardImport:EditorFragment.kt$import com.tazztone.losslesscut.domain.model.*</ID>
