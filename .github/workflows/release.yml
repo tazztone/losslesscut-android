@@ -120,12 +120,20 @@ jobs:
             -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
             -PkeyAlias="$ANDROID_KEY_ALIAS" \
             -PkeyPassword="$ANDROID_KEY_PASSWORD"
+      - name: Assert no network permissions in release manifest
+        run: |
+          MANIFEST=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$MANIFEST"
+          if grep -E "android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)" "$MANIFEST"; then
+            echo "::error::Release manifest contains a network permission"
+            exit 1
+          fi
 
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.meta.outputs.tagName }}
-          name: "Production Release v${{ steps.meta.outputs.versionName }} (Build ${{ steps.meta.outputs.versionCode }})"
+          name: "v${{ steps.meta.outputs.versionName }} (build ${{ steps.meta.outputs.versionCode }})"
           generate_release_notes: true
           draft: false
           prerelease: false
