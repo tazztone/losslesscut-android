@@ -2,9 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Playback AARs (Media3) contribute network permissions via manifest merge; -->
-    <!-- the app only plays local SAF/MediaStore URIs, so strip them. -->
-    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
+    <!-- A dependency AAR contributes ACCESS_NETWORK_STATE via manifest merge; -->
+    <!-- the app only plays local SAF/MediaStore URIs, so strip it. -->
+    <!-- (No marker for INTERNET: no AAR contributes it, and a remove marker -->
+    <!-- with no other declaration present only emits a merge warning.) -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application

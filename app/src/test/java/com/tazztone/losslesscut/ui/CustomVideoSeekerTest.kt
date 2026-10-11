@@ -112,25 +112,6 @@ class CustomVideoSeekerTest {
     }
 
     @Test
-    fun `setSeekPosition should use targeted invalidation during playback`() {
-        // We use a subclass to track invalidation calls
-        val testSeeker = TestCustomVideoSeeker(RuntimeEnvironment.getApplication())
-        testSeeker.setVideoDuration(videoDuration)
-        testSeeker.layout(0, 0, 1000, 100)
-        
-        testSeeker.resetInvalidateCounters()
-        
-        // Move playhead within visible bounds
-        testSeeker.setSeekPosition(2000L)
-        
-        // Targeted invalidation means:
-        // 1. Full invalidate() should NOT be called
-        // 2. Targeted invalidate(l,t,r,b) should be called (twice: one for old, one for new pos)
-        assertEquals(0, testSeeker.fullInvalidateCount)
-        assertEquals(2, testSeeker.rectInvalidateCount)
-    }
-
-    @Test
     fun `pinch to zoom should update zoomFactor and scrollOffset`() {
         // Simulate pinch zoom
         // Center is 500. focusX = 500.
@@ -292,7 +273,6 @@ class CustomVideoSeekerTest {
         seeker.segmentsVisible = true
         
         // If Robolectric runs this without an exception, the data binding works basically
-        // (Invalidations are mocked correctly by TestCustomVideoSeeker in other tests)
     }
 
     @Test
@@ -370,29 +350,6 @@ class CustomVideoSeekerTest {
 
         // Should return timelinePadding (50f)
         assertEquals(50f, seeker.timeToX(5000L))
-    }
-
-    /**
-     * Test subclass to track invalidation calls for architectural verification.
-     */
-    private class TestCustomVideoSeeker(context: android.content.Context) : CustomVideoSeeker(context) {
-        var fullInvalidateCount = 0
-        var rectInvalidateCount = 0
-
-        override fun invalidate() {
-            fullInvalidateCount++
-            super.invalidate()
-        }
-
-        override fun invalidate(l: Int, t: Int, r: Int, b: Int) {
-            rectInvalidateCount++
-            super.invalidate(l, t, r, b)
-        }
-
-        fun resetInvalidateCounters() {
-            fullInvalidateCount = 0
-            rectInvalidateCount = 0
-        }
     }
 
     @Test

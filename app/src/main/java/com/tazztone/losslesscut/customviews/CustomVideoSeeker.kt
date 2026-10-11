@@ -348,7 +348,6 @@ open class CustomVideoSeeker @JvmOverloads constructor(
     }
 
     fun setSeekPosition(positionMs: Long) {
-        val oldSeekX = timeToX(this.seekPositionMs)
         this.seekPositionMs = positionMs
         
         val playheadX = timeToX(positionMs)
@@ -360,26 +359,8 @@ open class CustomVideoSeeker @JvmOverloads constructor(
             invalidate() // Full redraw needed because we panned/scrolled
         } else {
             accessibilityHelper.invalidateVirtualView(0) // VIRTUAL_ID_PLAYHEAD
-            
-            // Targeted invalidation: only redraw the area where the playhead was and where it is now.
-            // Using a buffer (PLAYHEAD_HANDLE_WIDTH/2 + 10px) to ensure we cover the handle.
-            val hw = 30f // Slightly wider than SeekerRenderer.PLAYHEAD_HANDLE_WIDTH / 2 (20f)
-            
-            // Invalidate old position
-            invalidate(
-                (oldSeekX - hw - scrollOffsetX).toInt(), 
-                0, 
-                (oldSeekX + hw - scrollOffsetX).toInt(), 
-                height
-            )
-            
-            // Invalidate new position
-            invalidate(
-                (playheadX - hw - scrollOffsetX).toInt(), 
-                0, 
-                (playheadX + hw - scrollOffsetX).toInt(), 
-                height
-            )
+            // Dirty rect ignored under HW acceleration (API 21+); full invalidate is equivalent.
+            invalidate()
         }
     }
 
