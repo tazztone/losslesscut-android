@@ -20,5 +20,5 @@
 
 - Verify actual files under `com/tazztone/losslesscut` with `rg` before editing; inspect `git status` before staging, and rerun `git add`/`git commit` with approved escalation if `.git/index.lock` is read-only.
 - When adding or editing UI string keys in `values/strings.xml`, always add matching German translations in `values-de/strings.xml` to avoid Android Lint `MissingTranslation` failures.
-- If data class signatures change and Gradle reports synthetic constructor `NoSuchMethodError` in tests, run `./scripts/dev-scripts/project-clean.sh --all` to wipe stale persistent bytecode cache.
+- If data class signatures change and Gradle reports synthetic constructor `NoSuchMethodError` in tests, run `./scripts/dev-scripts/project-clean.sh --all` to wipe stale persistent bytecode cache. Same remedy when release-only Kotlin compile reports phantom `Unresolved reference` errors that a `./gradlew :app:compileReleaseKotlin --rerun-tasks` recompile clears.
 - Run `./scripts/dev-scripts/generate-screenshots.sh` for documentation screenshots; AGP uninstalls target packages on test completion, which the script automatically restores.
