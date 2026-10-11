@@ -125,3 +125,14 @@ kotlin-ide/
 assets/example_files/
 kotlinc/
 kotlin-compiler.zip
+
+# Sandbox-injected HOME-style masks (/dev/null bind-mounts in workspace root).
+# Never track: .gitconfig may carry credential helpers.
+.bash_profile
+.bashrc
+.gitconfig
+.mcp.json
+.profile
+.ripgreprc
+.zprofile
+.zshrc

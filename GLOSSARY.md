@@ -1,4 +1,4 @@
-# LosslessCut Domain Model & Glossary (`CONTEXT.md`)
+# LosslessCut Domain Model & Glossary (`GLOSSARY.md`)
 
 This document establishes the ubiquitous domain language and architectural aggregates for LosslessCut.
 

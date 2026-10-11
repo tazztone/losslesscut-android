@@ -120,19 +120,34 @@ jobs:
             -PstorePassword="$ANDROID_KEYSTORE_PASSWORD" \
             -PkeyAlias="$ANDROID_KEY_ALIAS" \
             -PkeyPassword="$ANDROID_KEY_PASSWORD"
-          
+      - name: Assert no network permissions in release manifest
+        run: |
+          MANIFEST=app/build/intermediates/merged_manifest/release/processReleaseMainManifest/AndroidManifest.xml
+          test -f "$MANIFEST"
+          if grep -E "android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)" "$MANIFEST"; then
+            echo "::error::Release manifest contains a network permission"
+            exit 1
+          fi
+      - name: Rename artifacts
+        run: |
+          VERSION=${{ steps.meta.outputs.versionName }}
+          CODE=${{ steps.meta.outputs.versionCode }}
+          mv "app/build/outputs/bundle/release/app-release.aab" "app/build/outputs/bundle/release/lossless-cut-v${VERSION}-${CODE}.aab"
+          mv "app/build/outputs/apk/release/app-release.apk" "app/build/outputs/apk/release/lossless-cut-v${VERSION}-${CODE}.apk"
+          mv "app/build/outputs/mapping/release/mapping.txt" "app/build/outputs/mapping/release/lossless-cut-v${VERSION}-${CODE}-mapping.txt"
+
       - name: Create GitHub Release & Upload Artifacts
         uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
         with:
           tag_name: ${{ steps.meta.outputs.tagName }}
-          name: "Production Release v${{ steps.meta.outputs.versionName }} (Build ${{ steps.meta.outputs.versionCode }})"
+          name: "LosslessCut v${{ steps.meta.outputs.versionName }}"
           generate_release_notes: true
           draft: false
           prerelease: false
           files: |
-            app/build/outputs/bundle/release/app-release.aab
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/mapping/release/mapping.txt
+            app/build/outputs/bundle/release/*.aab
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/mapping/release/*-mapping.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -144,6 +159,6 @@ jobs:
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: com.tazztone.losslesscut
-          releaseFiles: app/build/outputs/bundle/release/app-release.aab
+          releaseFiles: app/build/outputs/bundle/release/lossless-cut-v${{ steps.meta.outputs.versionName }}-${{ steps.meta.outputs.versionCode }}.aab
           track: internal
           status: completed
