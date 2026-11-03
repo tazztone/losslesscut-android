@@ -334,6 +334,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.uiState.collect { state ->
+                // A running export must not be interrupted by the screen timing out.
+                binding.root.keepScreenOn = state is VideoEditingUiState.Loading && state.cancellable
                 when (state) {
                     is VideoEditingUiState.Loading -> {
                         binding.loadingScreen.root.visibility = View.VISIBLE
@@ -341,7 +343,8 @@ class EditorFragment : BaseEditingFragment(R.layout.fragment_editor) {
                             LoadingOverlay(
                                 progress = state.progress,
                                 message = state.message?.asString(requireContext()),
-                                isVisible = true
+                                isVisible = true,
+                                onCancel = if (state.cancellable) viewModel::cancelExport else null
                             )
                         }
                     }

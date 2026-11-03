@@ -8,7 +8,12 @@ import java.util.UUID
 
 public sealed class VideoEditingUiState {
     public object Initial : VideoEditingUiState()
-    public data class Loading(val progress: Int = 0, val message: UiText? = null) : VideoEditingUiState()
+    public data class Loading(
+        val progress: Int = 0,
+        val message: UiText? = null,
+        /** True while an export runs; the overlay then offers a cancel action. */
+        val cancellable: Boolean = false
+    ) : VideoEditingUiState()
     public data class Success(
         val clips: List<MediaClip>,
         val selectedClipIndex: Int = 0,
