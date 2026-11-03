@@ -108,6 +108,7 @@ class VideoEditingViewModel @Inject constructor(
     val waveformMaxAmplitude: StateFlow<Float> = waveformController.maxAmplitude
     private val stateMutex = Mutex()
     private val isExporting = AtomicBoolean(false)
+    private var exportJob: Job? = null
     private val visualRequestGeneration = AtomicLong(0L)
     @Volatile
     private var visualRequestClipId: UUID? = null
@@ -801,10 +802,10 @@ class VideoEditingViewModel @Inject constructor(
     fun exportSegments(settings: ExportSettings) {
         if (!isExporting.compareAndSet(false, true)) return
 
-        viewModelScope.launch(ioDispatcher) {
+        exportJob = viewModelScope.launch(ioDispatcher) {
             try {
                 val (clips, clipIndex) = stateMutex.withLock {
-                    _uiState.value = VideoEditingUiState.Loading()
+                    _uiState.value = VideoEditingUiState.Loading(cancellable = true)
                     currentClips to selectedClipIndex
                 }
 
@@ -813,7 +814,8 @@ class VideoEditingViewModel @Inject constructor(
                         is ExportUseCase.Result.Progress -> {
                             _uiState.value = VideoEditingUiState.Loading(
                                 result.percentage,
-                                UiText.DynamicString(result.message)
+                                UiText.DynamicString(result.message),
+                                cancellable = true
                             )
                         }
                         is ExportUseCase.Result.Success -> {
@@ -849,12 +851,27 @@ class VideoEditingViewModel @Inject constructor(
                     }
                 }
             } finally {
-                isExporting.set(false)
-                if (currentCoroutineContext().isActive) {
-                    stateMutex.withLock { updateStateInternal() }
-                }
+                finishExport(cancelled = !currentCoroutineContext().isActive)
             }
         }
+    }
+
+    private suspend fun finishExport(cancelled: Boolean) {
+        isExporting.set(false)
+        // Leave the loading overlay even when cancelled; the use case has already
+        // removed partial outputs by the time cancellation reaches here.
+        withContext(NonCancellable) {
+            if (cancelled) {
+                _uiEvents.send(VideoEditingEvent.ShowToast(UiText.StringResource(R.string.export_cancelled)))
+                _uiEvents.send(VideoEditingEvent.ExportComplete(false))
+            }
+            stateMutex.withLock { updateStateInternal() }
+        }
+    }
+
+    /** Stops a running export; partial output files are deleted by the use case. */
+    fun cancelExport() {
+        exportJob?.cancel()
     }
 
     override fun onCleared() {

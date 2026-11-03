@@ -34,6 +34,7 @@
     <string name="loading">Importing Media…</string>
     <string name="default_time_stamp">00:00.000 / 00:00.000</string>
     <string name="cancel">Cancel</string>
+    <string name="export_cancelled">Export cancelled</string>
     <string name="keep_right_portion">Remove left</string>
     <string name="keep_left_portion">Remove right</string>
     <string name="loading_tag">Buckle up! Your media is loading</string>

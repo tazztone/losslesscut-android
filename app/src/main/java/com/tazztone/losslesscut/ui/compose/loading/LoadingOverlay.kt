@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -52,6 +53,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -85,13 +87,15 @@ import kotlin.math.sin
  * @param progress Current progress percentage (0..100). If <= 0, operates in indeterminate mode.
  * @param message Dynamic status text describing the current processing step.
  * @param isVisible Controls overlay visibility with smooth enter/exit transitions and zero-CPU idle.
+ * @param onCancel When non-null, a Cancel action is shown that invokes it (used for exports).
  */
 @Composable
 fun LoadingOverlay(
     progress: Int,
     message: String?,
     isVisible: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCancel: (() -> Unit)? = null
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -142,6 +146,21 @@ fun LoadingOverlay(
                         progress = animatedProgress,
                         isDeterminate = progress > 0,
                         message = displayMessage
+                    )
+                }
+            }
+            if (onCancel != null) {
+                TextButton(
+                    onClick = onCancel,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 48.dp)
+                        .testTag("loading_cancel")
+                ) {
+                    Text(
+                        text = stringResource(R.string.cancel).uppercase(),
+                        color = CyanAccent,
+                        letterSpacing = 2.sp
                     )
                 }
             }
