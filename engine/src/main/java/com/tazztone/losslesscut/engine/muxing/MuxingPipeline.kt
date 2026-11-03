@@ -144,7 +144,7 @@ public class MuxingPipeline @Inject constructor(
             extractor.release()
             if (!success) {
                 try {
-                    context.contentResolver.delete(outUriParsed, null, null)
+                    OutputCleanup.delete(context, outUriParsed)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to delete corrupted output from authority: ${outUriParsed.authority}", e)
                 }
@@ -208,7 +208,7 @@ public class MuxingPipeline @Inject constructor(
             pfd?.close()
             if (!success) {
                 try {
-                    context.contentResolver.delete(outUriParsed, null, null)
+                    OutputCleanup.delete(context, outUriParsed)
                 } catch (e: Exception) {
                     Log.e(TAG, "Failed to delete corrupted output from authority: ${outUriParsed.authority}", e)
                 }

@@ -169,7 +169,13 @@ class StorageUtils @Inject constructor(
     @Suppress("TooGenericExceptionCaught")
     suspend fun deleteOutput(uri: Uri): Boolean = withContext(ioDispatcher) {
         try {
-            context.contentResolver.delete(uri, null, null) > 0
+            if (DocumentsContract.isDocumentUri(context, uri)) {
+                // Custom output folders are DocumentsProvider URIs; ContentResolver.delete is
+                // unsupported there and would leave the partial file behind.
+                DocumentsContract.deleteDocument(context.contentResolver, uri)
+            } else {
+                context.contentResolver.delete(uri, null, null) > 0
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
